@@ -1,0 +1,111 @@
+# ---------------------------------------------------------
+# CORE CONFIGURATION
+# ---------------------------------------------------------
+esphome:
+  name: '${device_name}'
+  friendly_name: '${friendly_name}'
+  # Force specific flash mode for better stability with C6
+  platformio_options:
+    board_build.flash_mode: dio
+
+# ---------------------------------------------------------
+# MICROCONTROLLER SETTINGS (Seeed XIAO ESP32C6)
+# ---------------------------------------------------------
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: esp32c6
+  framework:
+    type: esp-idf # The ESP32-C6 is newer and currently runs more stable with the official ESP-IDF framework than Arduino
+    
+    # Optional: Enable SDKCONFIG options if deep debugging is needed
+    # sdkconfig_options:
+    #   CONFIG_FREERTOS_UNICORE: "y"
+
+# ---------------------------------------------------------
+# LOGGING & DEBUGGING
+# ---------------------------------------------------------
+# Enables serial logging over USB-C
+logger:
+  # level: DEBUG # Default is DEBUG, change to VERBOSE for more info or INFO for less spam
+
+# ---------------------------------------------------------
+# HOME ASSISTANT API
+# ---------------------------------------------------------
+# Native API for direct integration with Home Assistant (faster/better than MQTT)
+api:
+  encryption:
+    key: "KYMSXhepNaErPxXKPB6BWFAc8pz9/FYAYN/FjK5yKTg="
+
+# ---------------------------------------------------------
+# OVER-THE-AIR UPDATES (OTA)
+# ---------------------------------------------------------
+# Allows flashing new firmware wirelessly without USB cable
+ota:
+  - platform: esphome
+    password: !secret otapw
+
+# ---------------------------------------------------------
+# WIFI CONNECTIVITY
+# ---------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid 
+  password: !secret wifi_password
+
+  # Fallback Hotspot:
+  # If the configured WiFi is not reachable within 1 minute, the device
+  # opens its own Hotspot (Captive Portal) to allow reconfiguration.
+  ap:
+    ssid: "${device_name} Hotspot"
+    password: !secret appw
+
+# ---------------------------------------------------------
+# WEB INTERFACE
+# ---------------------------------------------------------
+# Visit http://<device-ip> to see a simple control dashboard and logs
+web_server:
+  port: 80
+  auth:
+    username: !secret webuser
+    password: !secret webpw
+
+# ---------------------------------------------------------
+# TIME SYNCHRONIZATION
+# ---------------------------------------------------------
+# Syncs time from Home Assistant (needed for logs, charts, daily schedules)
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+# ---------------------------------------------------------
+# SYSTEM DIAGNOSTICS (SENSORS)
+# ---------------------------------------------------------
+sensor:
+  # Monitors WiFi connection quality (-50dBm is great, -90dBm is unusable)
+  - platform: wifi_signal
+    name: '${device_name} WiFi Signal'
+    update_interval: 60s
+    accuracy_decimals: 0
+    
+  # Tracks how long the device has been running without crash/reboot
+  - platform: uptime
+    name: '${device_name} Uptime'
+    unit_of_measurement: days
+    update_interval: 300s
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.000011574 # Convert seconds to days
+
+# ---------------------------------------------------------
+# SYSTEM INFORMATION (TEXT)
+# ---------------------------------------------------------
+text_sensor:
+  # Reports current firmware version (useful to check if update worked)
+  - platform: version
+    name: "${device_name} ESPHome Version"
+
+  # Reports current IP and connected SSID
+  - platform: wifi_info
+    ip_address:
+      name: "${device_name} ip"
+    ssid:
+      name: "${device_name} ssid"

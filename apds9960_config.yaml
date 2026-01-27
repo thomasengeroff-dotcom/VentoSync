@@ -1,0 +1,38 @@
+substitutions:
+  # Standard update interval for APDS sensors - fast for responsiveness
+  apds_update_interval: 100ms
+
+apds9960:
+  i2c_id: bus_a
+  address: 0x39
+  update_interval: ${apds_update_interval}
+
+# NOTE: Proximity and Color sensors must be DISABLED for Gesture Engine to work reliably on APDS9960
+sensor:
+  # Proximity Channel
+  - platform: apds9960
+    type: PROXIMITY
+    name: "APDS9960 Proximity"
+    id: prox_value
+    filters:
+      - delta: 2 # Log often but filter noise
+    on_value:
+      then:
+        - logger.log: 
+            format: "APDS Proximity: %.0f"
+            args: [ 'x' ]
+        - if:
+            condition:
+              lambda: 'return x > 38;' # > 15% (38/255)
+            then:
+              - switch.turn_on: switch_display
+              - script.execute: timeout_display
+
+  # Clear Channel
+  - platform: apds9960
+    type: CLEAR
+    name: "APDS9960 Clear"
+    id: apds_clear
+    filters:
+      - delta: 5
+

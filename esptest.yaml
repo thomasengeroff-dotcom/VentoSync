@@ -1,0 +1,378 @@
+substitutions:
+  device_name: esptest
+  friendly_name: "ESPTest"
+  min_fan_threshold: "10"
+
+# ---------------------------------------------------------
+# PACKAGES & INCLUDES
+# ---------------------------------------------------------
+# Include common settings (WiFi, Logger, API) and device-specific configs
+packages:
+  common: !include esp32c6_common.yaml
+  apds9960_pkg: !include apds9960_config.yaml
+
+esphome:
+  includes:
+    - led_effects.h      # Custom C++ code for LED patterns (Plasma Ring)
+    - display_render.h   # Custom C++ code for drawing the OLED interface
+    - automation_helpers.h # Helper functions logic
+  on_boot:
+    priority: 600
+    then:
+      # Briefly flash the display on boot to indicate life
+      - switch.turn_on: switch_display
+      - delay: 10s
+      - switch.turn_off: switch_display
+
+# ---------------------------------------------------------
+# GLOBAL VARIABLES (State Memory)
+# ---------------------------------------------------------
+globals:
+  # Main system power state
+  - id: system_on
+    type: bool
+    initial_value: 'true'
+  # Display state tracker (to prevent unnecessary I2C traffic when off)
+  - id: display_awake
+    type: bool
+    initial_value: 'false'
+
+# ---------------------------------------------------------
+# ESP-NOW COMMUNICATION
+# ---------------------------------------------------------
+# Configures peer-to-peer communication with the Slave/Consumer device
+espnow:
+  peers:
+    - "98:A3:16:85:96:70"  # Target MAC Address (Slave)
+
+packet_transport:
+  - platform: espnow
+    # Encryption is currently disabled/commented out
+    # encryption: "HubSecret123" 
+    peer_address: "98:A3:16:85:96:70"
+    sensors:
+      # Data sent over ESP-NOW to the other device
+      - iaq
+      - temperature
+
+# ---------------------------------------------------------
+# I2C BUS CONFIGURATION
+# ---------------------------------------------------------
+i2c:
+  sda: GPIO22  # Pin D4 on XIAO ESP32C6
+  scl: GPIO23  # Pin D5 on XIAO ESP32C6
+  scan: true
+  id: bus_a
+  frequency: 400kHz # High Speed I2C for smoother display updates
+  timeout: 50ms     # Increased timeout to prevent "software timeout" errors
+
+# Note: APDS9960 configuration is now in apds9960_config.yaml
+
+# ---------------------------------------------------------
+# BME680 SENSOR (BSEC2)
+# ---------------------------------------------------------
+# Configured via I2C at address 0x77
+bme68x_bsec2_i2c:
+  address: 0x77
+  model: bme680
+  operating_age: 28d # Time for the sensor to reach stable calibration
+  sample_rate: LP    # Low Power mode (sampling every 3s)
+  supply_voltage: 3.3V
+
+# ---------------------------------------------------------
+# FONTS & ICONS
+# ---------------------------------------------------------
+font:
+  # Tiny text for units and labels (10px)
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 10
+
+  # Main text for measurement values (14px)
+  - file: "gfonts://Roboto"
+    id: font_medium
+    size: 14
+
+  # Material Design Icons (must be present in config folder)
+  - file: "materialdesignicons-webfont.ttf"
+    id: icon_font
+    size: 14
+    glyphs:
+      - "\U000F050F" # Thermometer (mdi-thermometer)
+      - "\U000F058E" # Water drop (mdi-water-percent)
+      - "\U000F0210" # Fan (mdi-fan)
+      - "\U000F002F" # Air Filter/IAQ (mdi-air-filter)
+      - "\U000F0339" # Gauge (mdi-gauge - for pressure)
+
+# ---------------------------------------------------------
+# DISPLAY CONFIGURATION (SSD1306)
+# ---------------------------------------------------------
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x32"
+    address: 0x3C
+    i2c_id: bus_a
+    id: test_display 
+    rotation: 0
+    # Custom rendering lambda located in display_render.h
+    lambda: |-
+      draw_main_page(it, id(font_small), id(font_medium), id(icon_font), 
+                     id(fan_rpm), id(temperature), id(iaq), id(humidity), 
+                     id(breath_voc_equivalent), id(pressure));
+
+# ---------------------------------------------------------
+# SENSORS CONFIGURATION
+# ---------------------------------------------------------
+sensor:
+  # BME680 Environmental Data
+  - platform: bme68x_bsec2
+    temperature:
+      name: "BME680 Temperatur"
+      id: temperature
+    pressure:
+      name: "BME680 Luftdruck"
+      id: pressure
+    humidity:
+      name: "BME680 Luftfeuchtigkeit"
+      id: humidity
+    iaq:
+      name: "BME680 IAQ"
+      id: iaq
+      # Traffic light logic sent via ESP-NOW when IAQ updates
+      on_value:
+        then:
+          - espnow.send:
+              address: "98:A3:16:85:96:70"
+              data: !lambda 'return get_iaq_traffic_light_data(x);'
+    co2_equivalent:
+      name: "BME680 CO2 Äquivalent"
+      id: co2_equivalent
+    
+    # Der "Breath VOC equivalent" (b-VOC) Sensorwert des BME680 ist ein berechneter Messwert 
+    # der Bosch Sensortec Environmental Cluster (BSEC) Software, der die Konzentration flüchtiger 
+    # organischer Verbindungen (VOCs) in der Atemluft schätzt. Er korreliert den Gaswiderstandssensor 
+    # mit typischen Ausatemgasen, um ein Maß für die Luftqualität in Innenräumen zu liefern. 
+    # Anwendung: Dieser Wert hilft, die Belastung der Innenraumluft durch menschliche Ausatemluft zu beurteilen.
+    breath_voc_equivalent:
+      name: "BME680 Belastung durch Atemluft"
+      id: breath_voc_equivalent
+      
+  # Fan Tachometer (RPM) Reading
+  - platform: pulse_counter
+    pin: GPIO1 # Pin D1
+    name: "Lüfter Drehzahl"
+    id: fan_rpm
+    unit_of_measurement: 'RPM'
+    update_interval: 1s # 1s Window for stable RPM calculation
+    filters:
+      - multiply: 0.5 # 2 pulses per revolution -> divide by 2
+    on_value:
+      then:
+        - component.update: test_display # Force display update on RPM change
+
+# ---------------------------------------------------------
+# TEXT SENSORS (Status & Classification)
+# ---------------------------------------------------------
+text_sensor:
+  - platform: bme68x_bsec2
+    iaq_accuracy:
+      name: "${device_name} IAQ Accuracy"
+
+  # Human-readable IAQ classification (Good, Average, Bad, etc.)
+  - platform: template
+    name: "${device_name} IAQ Classification"
+    id: iaq_classification
+    lambda: |-
+      return get_iaq_classification(id(iaq).state);
+
+# ---------------------------------------------------------
+# FAN OUTPUT CONTROL (PWM)
+# ---------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO0 # Pin D0
+    frequency: 25000 Hz # Standard PWM frequency for PC fans
+    id: fan_pwm_output
+    inverted: true # Inverted for NPN Transistor drive (High ESP = Base on = Collector Low)
+    min_power: ${min_fan_threshold}%
+    zero_means_zero: true # Ensure 0% is truly off
+
+fan:
+  - platform: speed
+    output: fan_pwm_output
+    name: "Lüfter"
+    id: lueftung_fan
+    speed_count: 100 # 1-100% Granularity
+
+# ---------------------------------------------------------
+# UI CONTROLS (Home Assistant)
+# ---------------------------------------------------------
+# Manual Speed Slider
+number:
+  - platform: template
+    name: "Lüfter Geschwindigkeit"
+    id: test_speed_slider
+    icon: "mdi:fan-speed-3"
+    min_value: 0
+    max_value: 100
+    step: 1
+    mode: slider
+    optimistic: true
+    set_action:
+      then:
+        - if:
+            condition:
+              lambda: 'return is_fan_slider_off(x);'
+            then:
+              - fan.turn_off: lueftung_fan
+            else:
+              - fan.turn_on:
+                  id: lueftung_fan
+                  speed: !lambda 'return x;'
+
+# ---------------------------------------------------------
+# AUTOMATIONS & SWITCHES
+# ---------------------------------------------------------
+switch:
+  # Automatic Fan Cycle (Ramp Up -> Hold -> Ramp Down -> Off)
+  - platform: template
+    name: "Fan Automatic Cycle"
+    id: fan_auto_cycle
+    optimistic: true
+    turn_on_action:
+      - script.execute: fan_cycle_logic
+    turn_off_action:
+      - script.stop: fan_cycle_logic
+      - fan.turn_off: lueftung_fan
+
+  # Manual Toggle for LED Animation
+  - platform: template
+    name: "LED Animation Switch"
+    id: led_animation_switch
+    optimistic: true
+    turn_on_action:
+      - logger.log: "LED Animation: ON"
+      - light.turn_on:
+          id: led_ring_physical
+          brightness: 100%
+      - delay: 100ms
+      - light.turn_on:
+          id: led_ring_physical
+          effect: "Plasma Ring"
+    turn_off_action:
+      - logger.log: "LED Animation: OFF"
+      - light.turn_off: led_ring_physical
+
+  # Display Toggle (saves OLED life)
+  - platform: template
+    name: "Display Switch"
+    id: switch_display
+    optimistic: true
+    turn_on_action:
+      - globals.set:
+          id: display_awake
+          value: 'true'
+      - lambda: id(test_display).turn_on();
+    turn_off_action:
+      - globals.set:
+          id: display_awake
+          value: 'false'
+      - lambda: id(test_display).turn_off();
+    lambda: |-
+      return id(display_awake);
+
+# ---------------------------------------------------------
+# SCRIPTS (Complex Logic)
+# ---------------------------------------------------------
+script:
+  # Logic for the Fan Auto Cycle
+  - id: fan_cycle_logic
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: 'return true;'
+          then:
+            # 1. Ramp Up 0 -> 100% in 5s
+            - repeat:
+                count: 100
+                then:
+                  - output.set_level:
+                      id: fan_pwm_output
+                      level: !lambda 'return calculate_ramp_up(iteration);'
+                  - delay: 50ms
+                  
+            # 2. Sync Fan State (ON full speed)
+            - fan.turn_on:
+                id: lueftung_fan
+                speed: 100
+                
+            # 3. Hold for 20s
+            - delay: 20s
+            
+            # 4. Ramp Down 100% -> 0% in 5s
+            - repeat:
+                count: 100
+                then:
+                  - output.set_level:
+                      id: fan_pwm_output
+                      level: !lambda 'return calculate_ramp_down(iteration);'
+                  - delay: 50ms
+            
+            # 5. Sync Fan State (OFF)
+            - fan.turn_off: lueftung_fan
+
+            # 6. Pause before next cycle
+            - delay: 100ms
+
+  # Auto-off timer for display
+  - id: timeout_display
+    mode: restart
+    then:
+      - delay: 5s
+      - switch.turn_off: switch_display
+
+# ---------------------------------------------------------
+# TOUCH BUTTON (Input)
+# ---------------------------------------------------------
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO21  # Pin D3 on XIAO ESP32C6
+      mode:
+        input: true
+        pullup: true  # Capacitive sensors usually require pullup
+    name: "Button Display"
+    id: touch_button
+    filters:
+      - delayed_on: 50ms  # Debounce press
+      - delayed_off: 50ms # Debounce release
+    on_press:
+      then:
+        - logger.log: "Touch Button: PRESSED"
+        - switch.toggle: switch_display
+    on_release:
+      then:
+        - logger.log: "Touch Button: RELEASED"
+        
+# ---------------------------------------------------------
+# ADDRESSABLE LEDS (WS2812B)
+# ---------------------------------------------------------
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    chipset: ws2812
+    pin: GPIO2 # Pin D2
+    num_leds: 7
+    name: "DEBO LED RING 7"
+    id: led_ring_physical
+    internal: false
+    restore_mode: RESTORE_DEFAULT_OFF
+    effects:
+      - addressable_lambda:
+          name: "Plasma Ring"
+          update_interval: 33ms
+          lambda: |-
+            // Pass the current IAQ value to the effect generator
+            float current_iaq = id(iaq).has_state() ? id(iaq).state : 25.0f;
+            iaq_plasma_ring_effect(it, current_iaq);
