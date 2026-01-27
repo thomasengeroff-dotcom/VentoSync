@@ -19,12 +19,15 @@ packages:
   common: !include esp32c6_common.yaml
   apds9960_pkg: !include apds9960_config.yaml
 
+external_components:
+  - source:
+      type: local
+      path: components
+
 esphome:
   includes:
-    - led_effects.h      # Custom C++ code for LED patterns (Plasma Ring)
     - display_render.h   # Custom C++ code for drawing the OLED interface
     - automation_helpers.h # Helper functions logic
-    - ventilation_group.h # NEW: Decentralized Ventilation Logic
   on_boot:
     priority: 600
     then:
@@ -47,20 +50,16 @@ globals:
     initial_value: 'false'
 
 # ---------------------------------------------------------
-# CUSTOM VENTILATION CONTROLLER
+# VENTILATION COMPONENT (External)
 # ---------------------------------------------------------
-custom_component:
-  - lambda: |-
-      auto *v = new esphome::VentilationController();
-      v->floor_id = ${floor_id};
-      v->room_id = ${room_id};
-      v->device_id = ${device_id};
-      v->is_phase_a = ${is_phase_a};
-      v->main_fan = id(lueftung_fan);
-      v->direction_switch = id(fan_direction); 
-      return {v};
-    components:
-      - id: ventilation_ctrl
+ventilation_group:
+  id: ventilation_ctrl
+  floor_id: ${floor_id}
+  room_id: ${room_id}
+  device_id: ${device_id}
+  is_phase_a: ${is_phase_a}
+  main_fan: lueftung_fan
+  direction_switch: fan_direction
 
 # ---------------------------------------------------------
 # ESP-NOW COMMUNICATION
@@ -73,7 +72,8 @@ espnow:
   on_receive:
     then:
       - lambda: |-
-          ((esphome::VentilationController*)id(ventilation_ctrl))->on_packet_received(x);
+          std::vector<uint8_t> packet(data, data + size);
+          ((esphome::VentilationController*)id(ventilation_ctrl))->on_packet_received(packet);
 
 packet_transport:
   - platform: espnow
@@ -192,6 +192,7 @@ sensor:
     pin: GPIO1 # Pin D1
     name: "Lüfter Drehzahl"
     id: fan_rpm
+    use_pcnt: true # if fails use ISR instead of hardware PCNT (Legacy driver issue on C6)
     unit_of_measurement: 'RPM'
     update_interval: 1s # 1s Window for stable RPM calculation
     filters:
@@ -260,6 +261,55 @@ number:
                   id: lueftung_fan
                   speed: !lambda 'return x;'
 
+  - platform: template
+    name: "Durchlüften Dauer (min)"
+    id: vent_timer
+    min_value: 0
+    max_value: 120
+    step: 5
+    initial_value: 30
+    optimistic: true
+    set_action:
+      then:
+        - logger.log: "Timer updated"
+        - lambda: |-
+            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
+            uint32_t ms = (uint32_t)x * 60 * 1000;
+            // Update the duration but keep current mode
+            v->ventilation_duration_ms = ms;
+
+  - platform: template
+    name: "Zyklusdauer (eine Richtung)"
+    id: cycle_duration_config
+    icon: "mdi:timer-sand"
+    unit_of_measurement: "s"
+    min_value: 10
+    max_value: 300
+    step: 5
+    initial_value: 70
+    optimistic: true
+    set_action:
+      then:
+        - lambda: |-
+            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
+            v->set_cycle_duration((uint32_t)x * 1000);
+
+  - platform: template
+    name: "Sync Intervall"
+    id: sync_interval_config
+    icon: "mdi:sync"
+    unit_of_measurement: "min"
+    min_value: 1
+    max_value: 360 # 6 hours
+    step: 10
+    initial_value: 180 # 3 hours
+    optimistic: true
+    set_action:
+      then:
+        - lambda: |-
+            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
+            v->set_sync_interval((uint32_t)x * 60 * 1000);
+
 # ---------------------------------------------------------
 # AUTOMATIONS & SWITCHES
 # ---------------------------------------------------------
@@ -280,23 +330,7 @@ switch:
       - script.stop: fan_cycle_logic
       - fan.turn_off: lueftung_fan
 
-  # Manual Toggle for LED Animation
-  - platform: template
-    name: "LED Animation Switch"
-    id: led_animation_switch
-    optimistic: true
-    turn_on_action:
-      - logger.log: "LED Animation: ON"
-      - light.turn_on:
-          id: led_ring_physical
-          brightness: 100%
-      - delay: 100ms
-      - light.turn_on:
-          id: led_ring_physical
-          effect: "Plasma Ring"
-    turn_off_action:
-      - logger.log: "LED Animation: OFF"
-      - light.turn_off: led_ring_physical
+
 
   # Display Toggle (saves OLED life)
   - platform: template
@@ -415,56 +449,7 @@ select:
           }
           else v->set_mode(esphome::MODE_OFF);
 
-# Number for Timer
-number:
-  - platform: template
-    name: "Durchlüften Dauer (min)"
-    id: vent_timer
-    min_value: 0
-    max_value: 120
-    step: 5
-    initial_value: 30
-    optimistic: true
-    set_action:
-      then:
-        - logger.log: "Timer updated"
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            uint32_t ms = (uint32_t)x * 60 * 1000;
-            // Update the duration but keep current mode
-            v->ventilation_duration_ms = ms;
 
-  - platform: template
-    name: "Zyklusdauer (eine Richtung)"
-    id: cycle_duration_config
-    icon: "mdi:timer-sand"
-    unit_of_measurement: "s"
-    min_value: 10
-    max_value: 300
-    step: 5
-    initial_value: 70
-    optimistic: true
-    set_action:
-      then:
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_cycle_duration((uint32_t)x * 1000);
-
-  - platform: template
-    name: "Sync Intervall"
-    id: sync_interval_config
-    icon: "mdi:sync"
-    unit_of_measurement: "min"
-    min_value: 1
-    max_value: 360 # 6 hours
-    step: 10
-    initial_value: 180 # 3 hours
-    optimistic: true
-    set_action:
-      then:
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_sync_interval((uint32_t)x * 60 * 1000);
 
 # Interval to check for pending broadcasts
 interval:

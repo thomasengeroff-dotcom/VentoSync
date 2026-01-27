@@ -63,7 +63,15 @@ class VentilationController : public Component {
 
   // --- HARDWARE REFS ---
   fan::Fan *main_fan{nullptr};
-  Switch *direction_switch{nullptr}; // ON = IN, OFF = OUT
+  switch_::Switch *direction_switch{nullptr}; // ON = IN, OFF = OUT
+
+  // --- SETTERS for Codegen ---
+  void set_floor_id(uint8_t id) { floor_id = id; }
+  void set_room_id(uint8_t id) { room_id = id; }
+  void set_device_id(uint8_t id) { device_id = id; }
+  void set_is_phase_a(bool phase_a) { is_phase_a = phase_a; }
+  void set_main_fan(fan::Fan *fan) { main_fan = fan; }
+  void set_direction_switch(switch_::Switch *sw) { direction_switch = sw; }
 
   VentilationController() {}
 
