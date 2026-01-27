@@ -2,14 +2,14 @@ substitutions:
   device_name: esptest
   friendly_name: "ESPTest"
   min_fan_threshold: "10"
-  
+
   # VENTILATION CONFIG
   floor_id: "1"
-  room_id: "1" 
+  room_id: "1"
   device_id: "1"
   # Phase A = Starts with INTAKE (Rein). Phase B = Starts with EXHAUST (Raus).
   # Devices on same wall should have same phase.
-  is_phase_a: "true" 
+  is_phase_a: "true"
 
 # ---------------------------------------------------------
 # PACKAGES & INCLUDES
@@ -26,7 +26,7 @@ external_components:
 
 esphome:
   includes:
-    - display_render.h   # Custom C++ code for drawing the OLED interface
+    - display_render.h # Custom C++ code for drawing the OLED interface
     - automation_helpers.h # Helper functions logic
   on_boot:
     priority: 600
@@ -43,11 +43,11 @@ globals:
   # Main system power state
   - id: system_on
     type: bool
-    initial_value: 'true'
+    initial_value: "true"
   # Display state tracker (to prevent unnecessary I2C traffic when off)
   - id: display_awake
     type: bool
-    initial_value: 'false'
+    initial_value: "false"
 
 # ---------------------------------------------------------
 # VENTILATION COMPONENT (External)
@@ -67,8 +67,8 @@ ventilation_group:
 # Configures peer-to-peer communication with the Slave/Consumer device
 espnow:
   peers:
-    - "98:A3:16:85:96:70"  # Target MAC Address (Slave)
-    - "FF:FF:FF:FF:FF:FF"  # Broadcast for Discovery/Sync
+    - "98:A3:16:85:96:70" # Target MAC Address (Slave)
+    - "FF:FF:FF:FF:FF:FF" # Broadcast for Discovery/Sync
   on_receive:
     then:
       - lambda: |-
@@ -78,7 +78,7 @@ espnow:
 packet_transport:
   - platform: espnow
     # Encryption is currently disabled/commented out
-    # encryption: "HubSecret123" 
+    # encryption: "HubSecret123"
     peer_address: "98:A3:16:85:96:70"
     sensors:
       # Data sent over ESP-NOW to the other device
@@ -89,12 +89,12 @@ packet_transport:
 # I2C BUS CONFIGURATION
 # ---------------------------------------------------------
 i2c:
-  sda: GPIO22  # Pin D4 on XIAO ESP32C6
-  scl: GPIO23  # Pin D5 on XIAO ESP32C6
+  sda: GPIO22 # Pin D4 on XIAO ESP32C6
+  scl: GPIO23 # Pin D5 on XIAO ESP32C6
   scan: true
   id: bus_a
   frequency: 400kHz # High Speed I2C for smoother display updates
-  timeout: 50ms     # Increased timeout to prevent "software timeout" errors
+  timeout: 50ms # Increased timeout to prevent "software timeout" errors
 
 # Note: APDS9960 configuration is now in apds9960_config.yaml
 
@@ -106,8 +106,10 @@ bme68x_bsec2_i2c:
   address: 0x77
   model: bme680
   operating_age: 28d # Time for the sensor to reach stable calibration
-  sample_rate: LP    # Low Power mode (sampling every 3s)
+  sample_rate: LP # Low Power mode (sampling every 3s)
   supply_voltage: 3.3V
+  temperature_offset: 0.0 # Adjusted for room temperature
+  state_save_interval: 6h # Save state every 6 hours
 
 # ---------------------------------------------------------
 # FONTS & ICONS
@@ -142,7 +144,7 @@ display:
     model: "SSD1306 128x32"
     address: 0x3C
     i2c_id: bus_a
-    id: test_display 
+    id: test_display
     rotation: 0
     # Custom rendering lambda located in display_render.h
     lambda: |-
@@ -159,41 +161,52 @@ sensor:
     temperature:
       name: "BME680 Temperatur"
       id: temperature
+      accuracy_decimals: 1
+      filters:
+        - median:
+            window_size: 5
+            send_every: 5
     pressure:
       name: "BME680 Luftdruck"
       id: pressure
+      accuracy_decimals: 1
     humidity:
       name: "BME680 Luftfeuchtigkeit"
       id: humidity
+      accuracy_decimals: 1
     iaq:
       name: "BME680 IAQ"
       id: iaq
+      accuracy_decimals: 0
       # Traffic light logic sent via ESP-NOW when IAQ updates
       on_value:
         then:
           - espnow.send:
               address: "98:A3:16:85:96:70"
-              data: !lambda 'return get_iaq_traffic_light_data(x);'
+              data: !lambda |-
+                return get_iaq_traffic_light_data(x);
     co2_equivalent:
       name: "BME680 CO2 Äquivalent"
       id: co2_equivalent
-    
-    # Der "Breath VOC equivalent" (b-VOC) Sensorwert des BME680 ist ein berechneter Messwert 
-    # der Bosch Sensortec Environmental Cluster (BSEC) Software, der die Konzentration flüchtiger 
-    # organischer Verbindungen (VOCs) in der Atemluft schätzt. Er korreliert den Gaswiderstandssensor 
-    # mit typischen Ausatemgasen, um ein Maß für die Luftqualität in Innenräumen zu liefern. 
+      accuracy_decimals: 0
+
+    # Der "Breath VOC equivalent" (b-VOC) Sensorwert des BME680 ist ein berechneter Messwert
+    # der Bosch Sensortec Environmental Cluster (BSEC) Software, der die Konzentration flüchtiger
+    # organischer Verbindungen (VOCs) in der Atemluft schätzt. Er korreliert den Gaswiderstandssensor
+    # mit typischen Ausatemgasen, um ein Maß für die Luftqualität in Innenräumen zu liefern.
     # Anwendung: Dieser Wert hilft, die Belastung der Innenraumluft durch menschliche Ausatemluft zu beurteilen.
     breath_voc_equivalent:
       name: "BME680 Belastung durch Atemluft"
       id: breath_voc_equivalent
-      
+      accuracy_decimals: 2
+
   # Fan Tachometer (RPM) Reading
   - platform: pulse_counter
     pin: GPIO1 # Pin D1
     name: "Lüfter Drehzahl"
     id: fan_rpm
     use_pcnt: true # if fails use ISR instead of hardware PCNT (Legacy driver issue on C6)
-    unit_of_measurement: 'RPM'
+    unit_of_measurement: "RPM"
     update_interval: 1s # 1s Window for stable RPM calculation
     filters:
       - multiply: 0.5 # 2 pulses per revolution -> divide by 2
@@ -253,13 +266,14 @@ number:
       then:
         - if:
             condition:
-              lambda: 'return is_fan_slider_off(x);'
+              lambda: "return is_fan_slider_off(x);"
             then:
               - fan.turn_off: lueftung_fan
             else:
               - fan.turn_on:
                   id: lueftung_fan
-                  speed: !lambda 'return x;'
+                  speed: !lambda |-
+                    return x;
 
   - platform: template
     name: "Durchlüften Dauer (min)"
@@ -330,8 +344,6 @@ switch:
       - script.stop: fan_cycle_logic
       - fan.turn_off: lueftung_fan
 
-
-
   # Display Toggle (saves OLED life)
   - platform: template
     name: "Display Switch"
@@ -340,12 +352,12 @@ switch:
     turn_on_action:
       - globals.set:
           id: display_awake
-          value: 'true'
+          value: "true"
       - lambda: id(test_display).turn_on();
     turn_off_action:
       - globals.set:
           id: display_awake
-          value: 'false'
+          value: "false"
       - lambda: id(test_display).turn_off();
     lambda: |-
       return id(display_awake);
@@ -360,7 +372,7 @@ script:
     then:
       - while:
           condition:
-            lambda: 'return true;'
+            lambda: "return true;"
           then:
             # 1. Ramp Up 0 -> 100% in 5s
             - repeat:
@@ -368,26 +380,28 @@ script:
                 then:
                   - output.set_level:
                       id: fan_pwm_output
-                      level: !lambda 'return calculate_ramp_up(iteration);'
+                      level: !lambda |-
+                        return calculate_ramp_up(iteration);
                   - delay: 50ms
-                  
+
             # 2. Sync Fan State (ON full speed)
             - fan.turn_on:
                 id: lueftung_fan
                 speed: 100
-                
+
             # 3. Hold for 20s
             - delay: 20s
-            
+
             # 4. Ramp Down 100% -> 0% in 5s
             - repeat:
                 count: 100
                 then:
                   - output.set_level:
                       id: fan_pwm_output
-                      level: !lambda 'return calculate_ramp_down(iteration);'
+                      level: !lambda |-
+                        return calculate_ramp_down(iteration);
                   - delay: 50ms
-            
+
             # 5. Sync Fan State (OFF)
             - fan.turn_off: lueftung_fan
 
@@ -407,14 +421,14 @@ script:
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO21  # Pin D3 on XIAO ESP32C6
+      number: GPIO21 # Pin D3 on XIAO ESP32C6
       mode:
         input: true
-        pullup: true  # Capacitive sensors usually require pullup
+        pullup: true # Capacitive sensors usually require pullup
     name: "Button Display"
     id: touch_button
     filters:
-      - delayed_on: 50ms  # Debounce press
+      - delayed_on: 50ms # Debounce press
       - delayed_off: 50ms # Debounce release
     on_press:
       then:
@@ -423,7 +437,7 @@ binary_sensor:
     on_release:
       then:
         - logger.log: "Touch Button: RELEASED"
-        
+
 # ---------------------------------------------------------
 # VENTILATION CONTROL
 # ---------------------------------------------------------
@@ -449,16 +463,15 @@ select:
           }
           else v->set_mode(esphome::MODE_OFF);
 
-
-
 # Interval to check for pending broadcasts
 interval:
   - interval: 1s
     then:
       - if:
           condition:
-            lambda: 'return ((esphome::VentilationController*)id(ventilation_ctrl))->pending_broadcast;'
+            lambda: "return ((esphome::VentilationController*)id(ventilation_ctrl))->pending_broadcast;"
           then:
             - espnow.send:
                 address: "FF:FF:FF:FF:FF:FF"
-                data: !lambda 'return ((esphome::VentilationController*)id(ventilation_ctrl))->build_packet(esphome::MSG_SYNC);'
+                data: !lambda |-
+                  return ((esphome::VentilationController*)id(ventilation_ctrl))->build_packet(esphome::MSG_SYNC);

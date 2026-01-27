@@ -1,38 +1,155 @@
 substitutions:
-  # Standard update interval for APDS sensors - fast for responsiveness
-  apds_update_interval: 100ms
+  # Optimized update interval - balances responsiveness with I2C bus efficiency
+  # 500ms is fast enough for hand proximity detection while reducing bus traffic
+  apds_update_interval: 500ms
+
+  # Proximity threshold for display activation (0-255 range)
+  # ~15% sensitivity - adjust based on your mounting distance
+  prox_threshold: "38"
 
 apds9960:
   i2c_id: bus_a
   address: 0x39
   update_interval: ${apds_update_interval}
 
-# NOTE: Proximity and Color sensors must be DISABLED for Gesture Engine to work reliably on APDS9960
+  # PERFORMANCE TUNING
+  # Proximity gain: Lower gain (2x) for close-range detection saves power
+  # and reduces false triggers from ambient light
+  proximity_gain: 2x
+
+  # LED drive: 50mA instead of default 100mA saves power
+  # Still sufficient for proximity detection up to ~20cm
+  led_drive: 50mA
+
+  # Ambient light gain: Keep at 4x for balanced light sensing
+  ambient_light_gain: 4x
+
+  # Gesture settings (if you plan to use gestures in the future)
+  # gesture_led_drive: 100mA
+  # gesture_gain: 4x
+  # gesture_wait_time: 2.8ms
+
+# NOTE: Proximity and Color sensors can coexist with Gesture detection
+# However, enabling gestures may require disabling proximity for reliable operation
+# See: https://esphome.io/components/sensor/apds9960.html
+
 sensor:
-  # Proximity Channel
+  # Proximity Channel - Used for display wake-up
   - platform: apds9960
     type: PROXIMITY
     name: "APDS9960 Proximity"
     id: prox_value
+    # Accuracy: Proximity is 0-255, no decimals needed
+    accuracy_decimals: 0
+
     filters:
-      - delta: 2 # Log often but filter noise
+      # Delta filter: Only report changes > 5 to reduce noise
+      # Increased from 2 to reduce unnecessary updates
+      - delta: 5
+
+      # Throttle: Limit updates to max 2 per second even if value changes rapidly
+      # Prevents I2C bus flooding during rapid hand movements
+      - throttle: 500ms
+
+    # Optional: Expose to Home Assistant for monitoring/debugging
+    # Remove 'internal: true' if you want to see this in HA
+    # internal: true
+
     on_value:
       then:
-        - logger.log: 
-            format: "APDS Proximity: %.0f"
-            args: [ 'x' ]
+        # Conditional logging - only log significant proximity events
         - if:
             condition:
-              lambda: 'return x > 38;' # > 15% (38/255)
+              lambda: "return x > ${prox_threshold};"
+            then:
+              - logger.log:
+                  format: "APDS Proximity Detected: %.0f"
+                  args: ["x"]
+                  level: DEBUG # Changed to DEBUG to reduce log spam
+
+        # Display activation logic
+        - if:
+            condition:
+              lambda: "return x > ${prox_threshold};"
             then:
               - switch.turn_on: switch_display
               - script.execute: timeout_display
 
-  # Clear Channel
+  # Ambient Light (Clear Channel) - Optional, useful for adaptive brightness
+  # OPTION 1: Keep it if you want to use it for display brightness control
   - platform: apds9960
     type: CLEAR
-    name: "APDS9960 Clear"
+    name: "APDS9960 Ambient Light"
     id: apds_clear
+    accuracy_decimals: 0
     filters:
-      - delta: 5
+      # Larger delta since ambient light changes slowly
+      - delta: 10
+      # Throttle to once per 2 seconds - ambient light doesn't change rapidly
+      - throttle: 2s
 
+    # Make internal if not needed in Home Assistant
+    internal: true
+
+    # Optional: Use for adaptive display brightness
+    on_value:
+      then:
+        - lambda: |-
+            // Adjust display brightness based on ambient light
+            // Brighter room = brighter display
+            if (x > 100) {
+              id(test_display).set_contrast(255);
+            } else {
+              id(test_display).set_contrast(128);
+            }
+
+# ALTERNATIVE: Use binary sensor for cleaner on/off logic
+# Uncomment this section if you prefer binary sensor approach
+# binary_sensor:
+#   - platform: template
+#     name: "Proximity Detected"
+#     id: proximity_detected
+#     lambda: |-
+#       return id(prox_value).state > ${prox_threshold};
+#     on_press:
+#       then:
+#         - logger.log: "Hand detected - activating display"
+#         - switch.turn_on: switch_display
+#         - script.execute: timeout_display
+#     on_release:
+#       then:
+#         - logger.log: "Hand removed"
+
+# FUTURE: Gesture Detection (currently disabled)
+# Uncomment to enable gesture controls for your ventilation system
+# Note: May require disabling proximity sensor for reliable operation
+# binary_sensor:
+#   - platform: apds9960
+#     direction: UP
+#     name: "Gesture Up"
+#     on_press:
+#       then:
+#         - logger.log: "Swipe UP detected - increase fan speed"
+#         # Add your fan speed increase logic here
+#
+#   - platform: apds9960
+#     direction: DOWN
+#     name: "Gesture Down"
+#     on_press:
+#       then:
+#         - logger.log: "Swipe DOWN detected - decrease fan speed"
+#         # Add your fan speed decrease logic here
+#
+#   - platform: apds9960
+#     direction: LEFT
+#     name: "Gesture Left"
+#     on_press:
+#       then:
+#         - logger.log: "Swipe LEFT detected"
+#
+#   - platform: apds9960
+#     direction: RIGHT
+#     name: "Gesture Right"
+#     on_press:
+#       then:
+#         - logger.log: "Swipe RIGHT detected")

@@ -7,21 +7,21 @@
 inline std::string get_iaq_classification(float iaq_val) {
   int val = (int)iaq_val;
   if (val <= 50) {
-    return "Excellent";
-  } else if (val >= 51 && val <= 100) {
-    return "Good";
-  } else if (val >= 101 && val <= 150) {
-    return "Lightly polluted";
-  } else if (val >= 151 && val <= 200) {
-    return "Moderately polluted";
-  } else if (val >= 201 && val <= 250) {
-    return "Heavily polluted";
-  } else if (val >= 251 && val <= 350) {
-    return "Severely polluted";
-  } else if (val >= 351 && val <= 500) {
-    return "Extremely polluted";
+    return "Ausgezeichnet";
+  } else if (val <= 100) {
+    return "Gut";
+  } else if (val <= 150) {
+    return "Leicht verschmutzt";
+  } else if (val <= 200) {
+    return "Mäßig verschmutzt";
+  } else if (val <= 250) {
+    return "Stark verschmutzt";
+  } else if (val <= 350) {
+    return "Sehr stark verschmutzt";
+  } else if (val <= 500) {
+    return "Extrem verschmutzt";
   } else {
-    return "Error";
+    return "Fehler";
   }
 }
 
