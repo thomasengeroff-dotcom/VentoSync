@@ -51,6 +51,14 @@ globals:
   - id: display_awake
     type: bool
     initial_value: "false"
+  # Fan intensity level (1-10)
+  - id: fan_intensity_level
+    type: int
+    initial_value: "5" # Start at medium intensity
+  # Current operating mode index (0=WRG, 1=Durchlüften, 2=Aus)
+  - id: current_mode_index
+    type: int
+    initial_value: "0"
 
 # ---------------------------------------------------------
 # VENTILATION COMPONENT (External)
@@ -203,12 +211,96 @@ sensor:
       id: breath_voc_equivalent
       accuracy_decimals: 2
 
+  # ---------------------------------------------------------
+  # NTC TEMPERATURE SENSORS (Analog)
+  # ---------------------------------------------------------
+  # NTC Innen - Indoor air temperature measurement
+  - platform: resistance
+    id: ntc_innen_resistance
+    sensor: ntc_innen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Reference resistor in voltage divider
+    name: "NTC Innen Widerstand"
+    internal: true # Hide raw resistance value
+
+  - platform: ntc
+    sensor: ntc_innen_resistance
+    name: "Temperatur Zuluft (Innen)"
+    id: temp_zuluft
+    calibration:
+      b_constant: 3435 # Beta coefficient from datasheet
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - delta: 0.2 # Only report if changed by 0.2°C
+
+  - platform: adc
+    id: ntc_innen_source
+    pin: GPIO0 # Pin D0 - ADC capable
+    attenuation: 12db # For 0-3.3V range (updated from deprecated 11db)
+    update_interval: 10s
+    internal: true
+
+  # NTC Außen - Outdoor/exhaust air temperature measurement
+  - platform: resistance
+    id: ntc_aussen_resistance
+    sensor: ntc_aussen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Reference resistor in voltage divider
+    name: "NTC Außen Widerstand"
+    internal: true
+
+  - platform: ntc
+    sensor: ntc_aussen_resistance
+    name: "Temperatur Abluft (Außen)"
+    id: temp_abluft
+    calibration:
+      b_constant: 3435
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - delta: 0.2
+
+  - platform: adc
+    id: ntc_aussen_source
+    pin: GPIO1 # Pin D1 - ADC capable
+    attenuation: 12db # For 0-3.3V range (updated from deprecated 11db)
+    update_interval: 10s
+    internal: true
+
+  # ---------------------------------------------------------
+  # HEAT RECOVERY EFFICIENCY CALCULATION
+  # ---------------------------------------------------------
+  # Calculates the efficiency of heat recovery based on temperature difference
+  # Formula: Efficiency = (T_zuluft - T_außen) / (T_raum - T_außen) * 100%
+  - platform: template
+    name: "Wärmerückgewinnung Effizienz"
+    id: heat_recovery_efficiency
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:percent"
+    update_interval: 30s
+    lambda: |-
+      return calculate_heat_recovery_efficiency(
+        id(temperature).state,     // Room temperature from BME680
+        id(temp_zuluft).state,     // Supply air temperature
+        id(temp_abluft).state      // Exhaust air temperature
+      );
+
   # Fan Tachometer (RPM) Reading
   - platform: pulse_counter
-    pin: GPIO1 # Pin D1
+    pin: GPIO17 # Pin D7 (moved from D1 to free ADC for NTC)
     name: "Lüfter Drehzahl"
     id: fan_rpm
-    use_pcnt: true # if fails use ISR instead of hardware PCNT (Legacy driver issue on C6)
+    use_pcnt: true # Use hardware PCNT for efficient pulse counting (recommended for ESP32)
     unit_of_measurement: "RPM"
     update_interval: 1s # 1s Window for stable RPM calculation
     filters:
@@ -237,7 +329,7 @@ text_sensor:
 # ---------------------------------------------------------
 output:
   - platform: ledc
-    pin: GPIO0 # Pin D0
+    pin: GPIO16 # Pin D6 (moved from D0 to free ADC for NTC sensors)
     frequency: 25000 Hz # Standard PWM frequency for PC fans
     id: fan_pwm_output
     inverted: true # Inverted for NPN Transistor drive (High ESP = Base on = Collector Low)
@@ -326,6 +418,23 @@ number:
         - lambda: |-
             auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
             v->set_sync_interval((uint32_t)x * 60 * 1000);
+
+  - platform: template
+    name: "Lüfter Intensität"
+    id: fan_intensity_display
+    icon: "mdi:fan-speed-1"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: false
+    lambda: |-
+      return id(fan_intensity_level);
+    set_action:
+      then:
+        - lambda: |-
+            id(fan_intensity_level) = (int)x;
+            set_fan_intensity_level((int)x);
 
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION
@@ -443,27 +552,59 @@ script:
       - switch.turn_off: switch_display
 
 # ---------------------------------------------------------
-# TOUCH BUTTON (Input)
+# TOUCH BUTTONS (Input)
 # ---------------------------------------------------------
 binary_sensor:
+  # Touch Button 1 (Right) - Mode/Power Control
   - platform: gpio
     pin:
       number: GPIO21 # Pin D3 on XIAO ESP32C6
       mode:
         input: true
         pullup: true # Capacitive sensors usually require pullup
-    name: "Button Display"
-    id: touch_button
+    name: "Button Mode/Power"
+    id: button_right
     filters:
       - delayed_on: 50ms # Debounce press
       - delayed_off: 50ms # Debounce release
-    on_press:
+    on_click:
+      # Short press: Cycle modes
+      min_length: 50ms
+      max_length: 4900ms
       then:
-        - logger.log: "Touch Button: PRESSED"
-        - switch.toggle: switch_display
-    on_release:
+        - lambda: |-
+            // Cycle through modes: 0->1->2->0
+            id(current_mode_index) = (id(current_mode_index) + 1) % 3;
+            cycle_operating_mode(id(current_mode_index));
+    on_multi_click:
+      # Long press (>5s): System power toggle
+      - timing:
+          - ON for at least 5s
+        then:
+          - lambda: |-
+              toggle_system_power();
+
+  # Touch Button 2 (Left) - Fan Intensity Control
+  - platform: gpio
+    pin:
+      number: GPIO18 # Pin D10 on XIAO ESP32C6
+      mode:
+        input: true
+        pullup: true # Capacitive sensors usually require pullup
+    name: "Button Fan Intensity"
+    id: button_left
+    filters:
+      - delayed_on: 50ms # Debounce press
+      - delayed_off: 50ms # Debounce release
+    on_click:
+      min_length: 50ms
+      max_length: 2000ms
       then:
-        - logger.log: "Touch Button: RELEASED"
+        - lambda: |-
+            // Cycle through intensity levels 1-10
+            id(fan_intensity_level) = (id(fan_intensity_level) % 10) + 1;
+            set_fan_intensity_level(id(fan_intensity_level));
+            ESP_LOGI("button", "Fan intensity set to level %d", id(fan_intensity_level));
 
 # ---------------------------------------------------------
 # VENTILATION CONTROL

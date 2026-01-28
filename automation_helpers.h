@@ -65,3 +65,96 @@ inline std::vector<uint8_t> get_iaq_traffic_light_data(float iaq_val) {
 inline bool is_fan_slider_off(float x) {
   return x == 0;
 }
+
+// --- Heat Recovery Efficiency Calculation ---
+// Calculates the efficiency of heat recovery based on temperature difference
+// Formula: Efficiency = (T_zuluft - T_außen) / (T_raum - T_außen) * 100%
+// Returns efficiency percentage (0-100%) or NAN if calculation is not possible
+inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft, float t_aussen) {
+  // Only calculate if all sensors have valid readings
+  if (isnan(t_raum) || isnan(t_zuluft) || isnan(t_aussen)) {
+    return NAN;
+  }
+  
+  // Avoid division by zero
+  float delta_total = t_raum - t_aussen;
+  if (abs(delta_total) < 1.0) {
+    return 0.0;
+  }
+  
+  float delta_recovered = t_zuluft - t_aussen;
+  float efficiency = (delta_recovered / delta_total) * 100.0;
+  
+  // Clamp to reasonable range (0-100%)
+  if (efficiency < 0.0) return 0.0;
+  if (efficiency > 100.0) return 100.0;
+  
+  return efficiency;
+}
+
+// --- Fan Intensity Control ---
+// Converts intensity level (1-10) to PWM percentage (12%-100%)
+// Level 1 = 12% (minimum for fan startup)
+// Level 10 = 100% (maximum speed)
+inline float get_fan_speed_for_level(int level) {
+  if (level < 1) level = 1;
+  if (level > 10) level = 10;
+  
+  // Linear mapping: Level 1->12%, Level 10->100%
+  // Formula: speed = 12 + (level - 1) * (100 - 12) / 9
+  float speed = 12.0f + ((float)(level - 1) * 88.0f / 9.0f);
+  return speed;
+}
+
+// Sets fan to specified intensity level
+inline void set_fan_intensity_level(int level) {
+  float speed_percent = get_fan_speed_for_level(level);
+  
+  auto call = id(lueftung_fan).turn_on();
+  call.set_speed(static_cast<int>(speed_percent));
+  call.perform();
+  
+  ESP_LOGI("fan_control", "Intensity Level %d -> %.1f%% speed", level, speed_percent);
+}
+
+// --- Mode Cycling ---
+// Cycles through operating modes: 0=WRG, 1=Durchlüften, 2=Aus
+inline void cycle_operating_mode(int mode_index) {
+  auto *v = (esphome::VentilationController*)&id(ventilation_ctrl);
+  
+  switch(mode_index) {
+    case 0:  // Wärmerückgewinnung
+      v->set_mode(esphome::MODE_ECO_RECOVERY);
+      ESP_LOGI("mode", "Switched to: Wärmerückgewinnung");
+      break;
+    case 1:  // Durchlüften
+      v->set_mode(esphome::MODE_VENTILATION);
+      ESP_LOGI("mode", "Switched to: Durchlüften");
+      break;
+    case 2:  // Aus
+      v->set_mode(esphome::MODE_OFF);
+      id(lueftung_fan).turn_off();
+      ESP_LOGI("mode", "Switched to: Aus");
+      break;
+  }
+}
+
+// --- System Power Toggle ---
+// Toggles entire system on/off (fan, display, operations)
+inline void toggle_system_power() {
+  bool current_state = id(system_on);
+  id(system_on) = !current_state;
+  
+  if (id(system_on)) {
+    // Power ON
+    ESP_LOGI("system", "System POWER ON");
+    id(switch_display).turn_on();
+    // Restore previous mode
+    cycle_operating_mode(id(current_mode_index));
+  } else {
+    // Power OFF
+    ESP_LOGI("system", "System POWER OFF");
+    id(lueftung_fan).turn_off();
+    id(switch_display).turn_off();
+  }
+}

@@ -38,26 +38,61 @@ Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den 
 
 ---
 
-## 2. Pin-Belegung (Master)
+## 2. Offizielle XIAO ESP32C6 Pin-Map
+
+### Vollständige Pin-Übersicht (Seeed Studio)
+
+| XIAO Pin | Funktion | Chip Pin | Alternate Functions | Beschreibung |
+| :--- | :--- | :--- | :--- | :--- |
+| **5V** | VBUS | - | - | Power Input/Output |
+| **GND** | GND | - | - | Ground |
+| **3V3** | 3V3_OUT | - | - | Power Output |
+| **D0** | Analog | GPIO0 | LP_GPIO0 | GPIO, **ADC** |
+| **D1** | Analog | GPIO1 | LP_GPIO1 | GPIO, **ADC** |
+| **D2** | Analog | GPIO2 | LP_GPIO2 | GPIO, **ADC** |
+| **D3** | Digital | GPIO21 | SDIO_DATA1 | GPIO |
+| **D4** | SDA | GPIO22 | SDIO_DATA2 | GPIO, I2C Data |
+| **D5** | SCL | GPIO23 | SDIO_DATA3 | GPIO, I2C Clock |
+| **D6** | TX | GPIO16 | - | GPIO, UART Transmit |
+| **D7** | RX | GPIO17 | - | GPIO, UART Receive |
+| **D8** | SCK | GPIO19 | SDIO_CLK | GPIO, SPI Clock |
+| **D9** | MISO | GPIO20 | SDIO_DATA0 | GPIO, SPI Data |
+| **D10** | MOSI | GPIO18 | SDIO_CMD | GPIO, SPI Data |
+| **MTDO** | - | GPIO7 | - | JTAG |
+| **MTDI** | - | GPIO5 | - | JTAG, **ADC** |
+| **MTCK** | - | GPIO6 | - | JTAG, **ADC** |
+| **MTMS** | - | GPIO4 | - | JTAG, **ADC** |
+| **EN** | - | CHIP_PU | - | Reset |
+| **Boot** | - | GPIO9 | - | Enter Boot Mode |
+| **RF Switch Port** | - | GPIO14 | - | Switch onboard/UFL antenna |
+| **RF Switch Power** | - | GPIO3 | - | Power |
+| **Light** | - | GPIO15 | - | User Light |
+
+> ⚠️ **Wichtig**: Nur **D0, D1, D2** (GPIO0, GPIO1, GPIO2) sowie die JTAG-Pins (GPIO4, GPIO5, GPIO6, GPIO7) haben ADC-Funktionalität!
+
+---
+
+## 3. Projekt Pin-Belegung (Master)
 
 Dies ist die verbindliche Belegung für Firmware und PCB.
 
 | XIAO Pin | GPIO | Funktion | Anschluss-Details |
 | :--- | :--- | :--- | :--- |
-| **D0** | GPIO0 | **Fan PWM** | An Basis BC547 (via 1kΩ) |
-| **D1** | GPIO1 | **Fan Tacho** | Von Lüfter Pin 3 (mit 10k Pullup auf 3V3 & 3.3V Zener-Diode) |
+| **D0** | GPIO0 | **NTC Innen** | Analog In (Spannungsteiler 10k + Filter) - *ADC-fähig* |
+| **D1** | GPIO1 | **NTC Außen** | Analog In (Spannungsteiler 10k + Filter) - *ADC-fähig* |
 | **D2** | GPIO2 | **LED Data** | Zu WS2812 DIN (via 470Ω) |
-| **D3** | GPIO21 | **Touch 1** | Eingang von DEBO TOUCH (Display Toggle) |
+| **D3** | GPIO21 | **Touch Button 1 (Rechts)** | Mode/Power Control (DEBO TOUCH) |
 | **D4** | GPIO22 | **I2C SDA** | BME680, OLED, APDS-9960 (mit 4.7kΩ Pullup) |
 | **D5** | GPIO23 | **I2C SCL** | BME680, OLED, APDS-9960 (mit 4.7kΩ Pullup) |
-| **D6** | GPIO20 | *Reserve* | (Frei für Touch 2 auf PCB) |
-| **D7** | GPIO19 | *Reserve* | (Frei) |
-| **D8** | GPIO18 | *NTC Innen* | Analog In (Spannungsteiler 10k + Filter) - *Geplant* |
-| **D9** | GPIO17 | *NTC Außen* | Analog In (Spannungsteiler 10k + Filter) - *Geplant* |
+| **D6** | GPIO16 | **Fan PWM** | An Basis BC547 (via 1kΩ) |
+| **D7** | GPIO17 | **Fan Tacho** | Von Lüfter Pin 3 (mit 10k Pullup auf 3V3 & 3.3V Zener-Diode) |
+| **D8** | GPIO19 | *Reserve* | (Frei) |
+| **D9** | GPIO20 | *Reserve* | (Frei) |
+| **D10** | GPIO18 | **Touch Button 2 (Links)** | Fan Intensity Control (DEBO TOUCH) |
 
 ---
 
-## 3. Verkabelung & Prototyping (Breadboard)
+## 4. Verkabelung & Prototyping (Breadboard)
 
 ### A. Spannungsversorgung
 
@@ -76,10 +111,10 @@ Dies ist die verbindliche Belegung für Firmware und PCB.
 
 ### C. Lüfter Interface (12V / 3.3V Logic)
 
-* **PWM**: XIAO D0 -> 1kΩ Widerstand -> Basis BC547. Emitter an GND, Collector an Lüfter PWM (Blau).
-* **Tacho**: Lüfter Tacho (Grün) an XIAO D1.
-  * **Wichtig**: 10kΩ Pullup von D1 nach **3.3V** (damit das Signal sauber ist).
-  * **Schutz**: Zener-Diode 3.3V von D1 nach GND (Kathode an D1), um den Pin zu schützen.
+* **PWM**: XIAO D6 -> 1kΩ Widerstand -> Basis BC547. Emitter an GND, Collector an Lüfter PWM (Blau).
+* **Tacho**: Lüfter Tacho (Grün) an XIAO D7.
+  * **Wichtig**: 10kΩ Pullup von D7 nach **3.3V** (damit das Signal sauber ist).
+  * **Schutz**: Zener-Diode 3.3V von D7 nach GND (Kathode an D7), um den Pin zu schützen.
 
 ### D. LED Ring (5V Power, 3.3V Logic)
 
@@ -90,7 +125,7 @@ Dies ist die verbindliche Belegung für Firmware und PCB.
 
 ---
 
-## 4. PCB Design Spezifikation (EasyEDA)
+## 5. PCB Design Spezifikation (EasyEDA)
 
 Vorgaben für den Schaltplan (Schematic) und das Layout.
 

@@ -133,7 +133,7 @@ text_sensor:
                (int)id(config_floor_id).state,
                (int)id(config_room_id).state,
                (int)id(config_device_id).state,
-               id(config_phase).state.c_str());
+               id(config_phase).current_option());
       return std::string(buffer);
     update_interval: 60s
 
@@ -142,7 +142,7 @@ text_sensor:
 # ---------------------------------------------------------
 
 button:
-  # Reset to defaults
+  # Reset to defaultswarn
   - platform: template
     name: "Auf Standardwerte zurücksetzen"
     icon: "mdi:restore"
