@@ -1,6 +1,6 @@
 # 🌬️ Smarte Wohnraumlüftung mit Wärmerückgewinnung (ESP32-C6)
 
-Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses Projekt steuert einen reversierbaren Lüfter (Push-Pull) zur Wärmerückgewinnung, überwacht die Luftqualität (IAQ, CO2-Äquivalent), berechnet die effektive Wärmerückgewinnung und bietet ein intuitives User Interface mit OLED-Display, Annäherungssensor und Touch-Bedienung über zwei kapazitive Taster.
+Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses Projekt steuert einen reversierbaren Lüfter (Push-Pull) zur Wärmerückgewinnung, überwacht die Luftqualität (IAQ, CO2-Äquivalent), berechnet die effektive Wärmerückgewinnung und nutzt das originale **VentoMaxx Bedienpanel** für eine nahtlose Integration und intuitive Steuerung.
 
 > 💡 **Kompatibilität:** Die Steuerung funktioniert prinzipiell für jede dezentrale Wohnraumlüftung mit 12V PWM-Lüftern. Sie wurde jedoch **speziell als Ersatz für die VentoMaxx V-WRG Serie** entwickelt. Die Hardware (PCB-Layout/Größe und Bedienpanel) ist damit explizit für die VentoMaxx V-WRG Serie optimiert und muss für andere Hersteller ggf. angepasst werden.
 
@@ -44,9 +44,12 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 ### 🖥️ Human-Machine Interface (HMI)
 
-- 🚥 **LED Status-Panel**: Original VentoMaxx Bedienfeld mit 9 Status-LEDs (Modus, Stufe, Power).
-- 🔘 **Tastensteuerung**: Intuitive Bedienung über 3 physische Taster (Power, Modus, +/-).
-- 🔆 **Auto-Dimming**: (Optional) Helligkeitssteuerung der LEDs für Nachtbetrieb.
+- 🚥 **Original VentoMaxx Panel**: Nutzung des originalen Bedienfelds mit 9 LEDs und 3 Tastern.
+- 🔘 **Intuitive Steuerung**:
+  - **Power**: System Ein/Aus/Reset.
+  - **Modus**: Wechsel zwischen Wärmerückgewinnung (Winter) und Durchlüften (Sommer).
+  - **Stufe +**: 5 Lüfterstufen (zyklisch).
+- 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-5) und Status.
 
 ### 🏠 Integration
 
@@ -88,9 +91,9 @@ Diese Lösung wurde als smarter Ersatz für die herkömmliche [VentoMaxx V-WRG /
 | :------------------ | :----------------------------- | :------------------------------------------- |
 | **Konnektivität**   | Kabelgebunden / Inselbetrieb   | **WiFi 6 & ESP-NOW Mesh**                    |
 | **Smart Home**      | Nein (oder teure Zusatzmodule) | **Nativ Home Assistant (API)**               |
-| **Visualisierung**  | Einfache Status-LEDs           | **0.91" OLED mit Echtzeit-Graphen & Werten** |
+| **Visualisierung**  | Status-LEDs (Original Panel)   | **Status-LEDs + Home Assistant Dashboard**   |
 | **Sensorik**        | Optional CO2 (rudimentär)      | **BME680 (IAQ, VOC, Temp, Hum, Pressure)**   |
-| **Bedienung**       | Wandschalter / Fernbedienung   | **App, Touch, Gesten & Automatik**           |
+| **Bedienung**       | Wandschalter / Fernbedienung   | **Original Panel, App & Automatik**          |
 | **Synchronisierung**| Physisches Steuerkabel         | **Kabellos & Intelligent via ESP-NOW**       |
 | **Konfiguration**   | DIP-Schalter / Potentiometer   | **Dynamisch per Software (Floor/Room IDs)**  |
 | **Kosten**          | Hochpreisig (Industriestandard)| **Preiswert & Unbegrenzt erweiterbar**       |
@@ -120,33 +123,7 @@ Weitere Informationen finden Sie in der [offiziellen ESPHome Dokumentation](http
 
 ---
 
-## 🎮 Bedienkonzept: Dual Button Control
-
-Das System verfügt über zwei physische Touch-Buttons für die manuelle Steuerung ohne Home Assistant:
-
-### Rechter Button (Mode/Power)
-
-- **Kurz drücken**: Wechsel zwischen Betriebsmodi
-  - Wärmerückgewinnung → Durchlüften → Aus → (wiederholt)
-- **Lang drücken (>5s)**: System Ein/Aus
-  - Schaltet Lüfter, Display und alle Funktionen komplett aus/ein
-
-### Linker Button (Fan Intensity)
-
-- **Kurz drücken**: Wechsel zwischen Lüfter-Intensitätsstufen
-  - 10 Stufen: 1 (niedrig, 12%) bis 10 (maximum, 100%)
-  - Stufe 1 beginnt bei 12% um zuverlässigen Lüfterstart zu gewährleisten
-  - Lineare Skalierung zwischen den Stufen
-
-### Visuelle Rückmeldung
-
-- Aktuelle Intensitätsstufe wird auf dem OLED-Display angezeigt
-- Betriebsmodus wird ebenfalls visualisiert
-- Beide Werte sind auch in Home Assistant sichtbar
-
----
-
-## �🛠️ Hardware & Bill of Materials (BOM)
+## 🛠️ Hardware & Bill of Materials (BOM)
 
 ### Zentrale Einheit
 
@@ -160,17 +137,16 @@ Das System verfügt über zwei physische Touch-Buttons für die manuelle Steueru
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
-| **Lüfter** | 120mm PWM Lüfter (z.B. Arctic P12 PWM). *Geplant: ebm-papst AxiRev.* | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Lüfter** | **4412 FGM PR** (3-Pin, VarioPro) oder **AxiRev** (4-Pin). *Siehe Hardware-Setup-Readme.* | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **BME680** | Bosch Umweltsensor (Temp, Hum, Pressure, Gas/IAQ) | [BME68x BSEC2](https://esphome.io/components/sensor/bme68x_bsec2.html) |
-| **NTCs** | 2x NTC 10k *(Geplant für Zuluft/Abluft Messung)* | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
-| **APDS-9960** | Gesten- und Annäherungssensor | [APDS-9960](https://esphome.io/components/sensor/apds9960.html) |
+| **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
+| **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 
-### User Interface
+### 🖱️ User Interface
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
-| **Display** | 0.91" OLED (SSD1306, 128x32 I2C) | [SSD1306 OLED](https://esphome.io/components/display/ssd1306.html) |
-| **Touch Buttons** | 2x Kapazitiv (Rechts: Mode/Power, Links: Intensität) | [Binary Sensor](https://esphome.io/components/binary_sensor/index.html) |
+| **VentoMaxx Panel** | Original Panel (14-Pin FFC). 3 Taster, 9 LEDs. | - |
 
 ---
 
@@ -194,16 +170,14 @@ Das System basiert auf dem [Seeed XIAO ESP32C6](https://esphome.io/components/es
 | :--- | :--- | :--- | :--- |
 | **D0** | GPIO0 | [ADC Input](https://esphome.io/components/sensor/adc.html) | NTC Innen (Spannungsteiler) |
 | **D1** | GPIO1 | [ADC Input](https://esphome.io/components/sensor/adc.html) | NTC Außen (Spannungsteiler) |
-| **D2** | GPIO2 | LED Data | WS2812B Ring (via 470Ω) |
-| **D3** | GPIO21 | Touch Button | Display ON/OFF Toggle |
-| **D4** | GPIO22 | [I2C SDA](https://esphome.io/components/i2c.html) | BME680, OLED, APDS-9960 |
-| **D5** | GPIO23 | [I2C SCL](https://esphome.io/components/i2c.html) | BME680, OLED, APDS-9960 |
-| **D6** | GPIO16 | [PWM Output](https://esphome.io/components/output/ledc.html) | Fan PWM (via NPN-Transistor) |
-| **D7** | GPIO17 | [Pulse Counter](https://esphome.io/components/sensor/pulse_counter.html) | Lüfter Tacho Signal |
-| **D8** | GPIO19 | *frei* | |
-| **D9** | GPIO20 | *frei* | |
+| **D3** | GPIO21 | Input (Pullup) | **MCP23017 INTB** (Interrupt) |
+| **D4** | GPIO22 | [I2C SDA](https://esphome.io/components/i2c.html) | BME680, MCP23017 |
+| **D5** | GPIO23 | [I2C SCL](https://esphome.io/components/i2c.html) | BME680, MCP23017 |
+| **D6** | GPIO16 | [PWM Output](https://esphome.io/components/output/ledc.html) | Fan PWM (Universal: Direkt oder High-Side Mosfet) |
+| **D7** | GPIO17 | [Pulse Counter](https://esphome.io/components/sensor/pulse_counter.html) | Fan Tacho (Pullup 3V3!) |
+| **D8-D10** | - | Reserve | SPI / Frei |
 
-### Schematische Darstellung (Konzept)
+### 📊 Schematische Darstellung (Konzept)
 
 ```mermaid
 graph TD
@@ -211,16 +185,21 @@ graph TD
     PSU --> TRACO[Traco 5V Wandler]
     TRACO --> XIAO[ESP32C6]
 
-    subgraph I2C_Bus
-    XIAO -->|D4/D5| OLED
+    subgraph Digital_Bus_I2C
+    XIAO -->|D4/D5| MCP[MCP23017]
     XIAO -->|D4/D5| BME[BME680]
-    XIAO -->|D4/D5| GEST[APDS-9960]
+    MCP -->|14-Pin FFC| PANEL[VentoMaxx Bedienpanel]
     end
 
-    subgraph Analog_GPIO
-    XIAO -->|D0| TRANS[Transistor] --> FAN
-    FAN -->|Tacho D1| XIAO
-    XIAO -->|D3| TOUCH[Touch Sensor]
+    subgraph Power_Fan
+    XIAO -->|D6 PWM| FAN_CTRL[Universal Fan Interface]
+    FAN_CTRL -->|Variabel/PWM| FAN[Lüfter 12V]
+    FAN -->|Tacho D7| XIAO
+    end
+
+    subgraph Sensors
+    XIAO -->|ADC D0/D1| NTCS[NTC Sensoren]
+    MCP -->|INTB D3| XIAO
     end
 ```
 
@@ -270,20 +249,20 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 | :--- | :--- | :--- |
 | **Power (I/O)** | System Ein/Aus | • Kurz drücken: Standby Toggle<br>• Lang drücken (>5s): Hard Reset |
 | **Modus (M)** | Betriebsart wählen | • Kurz drücken: Wechselt zwischen *Wärmerückgewinnung* und *Durchlüften* |
-| **Stufe (+)** | Lüfterstärke | • Kurz drücken: Erhöht Stufe (1-5). Nach Max beginnt Zyklus bei 1. |
+| **Stufe (+)** | Lüfterstärke | • Kurz drücken: Zykliert durch 10 Geschwindigkeitsstufen (angezeigt über 5 LEDs). |
 
 #### Status-LEDs (Feedback)
 
 | LED Gruppe | LEDs | Anzeige |
 | :--- | :--- | :--- |
 | **Power** | 🟢 1x Grün | Leuchtet permanent, wenn System aktiv. Blinkt bei Fehler. |
-| **Master** | � 1x Grün | Leuchtet, wenn dies das Master-Gerät in einer Gruppe ist. |
-| **Modus** | � 2x Grün | **LED 1**: Wärmerückgewinnung aktiv<br>**LED 2**: Durchlüften (Sommer) aktiv |
+| **Master** | 🟢 1x Grün | Leuchtet, wenn dies das Master-Gerät in einer Gruppe ist. |
+| **Modus** | 🟢 2x Grün | **LED 1**: Wärmerückgewinnung aktiv<br>**LED 2**: Durchlüften (Sommer) aktiv |
 | **Intensität** | 🟢 5x Grün | Zeigt aktuelle Lüfterstufe 1 bis 5 (linear skaliert). |
 
 ---
 
-### � Steuerung über Home Assistant
+### 📱 Steuerung über Home Assistant
 
 Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am Panel werden sofort synchronisiert.
 
@@ -398,17 +377,6 @@ $$
 | **Keramikvolumen**        | Mehr Masse = mehr Speicher          | Größer ist besser|
 | **Außentemperatur**       | Kälter = höhere Effizienz möglich   | -               |
 
-### Visualisierung im Display
-
-```
-┌──────────────────────────────────────┐
-│ ↗ ████████░░  72%   🌡️ 21.5°C  IAQ 45│
-│                     💧 55%    ⚙️ 68% │ ← Effizienz
-└──────────────────────────────────────┘
-```
-
-> ⚙️ **Effizienz-Anzeige:** Wird unten rechts im Display angezeigt (geplant)
-
 ### Synchronisation mehrerer Geräte
 
 Bei Verwendung mehrerer Geräte im gleichen Raum:
@@ -438,7 +406,6 @@ Detaillierte technische Informationen zu Sensor-Optimierungen, ESPHome YAML Synt
 
 Diese Dokumentation enthält:
 
-- APDS9960 Sensor-Optimierung
 - ESPHome YAML Syntax Best Practices
 - I²C Bus Konfiguration
 - BME680 BSEC2 Konfiguration
@@ -453,9 +420,7 @@ Diese Dokumentation enthält:
 ESPHome-Wohnraumlueftung/
 ├── esp_wohnraumlueftung.yaml      # Hauptkonfiguration
 ├── esp32c6_common.yaml            # Gemeinsame ESP32-C6 Einstellungen
-├── apds9960_config.yaml           # APDS9960 Sensor (optimiert)
 ├── device_config.yaml             # Dynamische Gerätekonfiguration
-├── display_render.h               # Custom C++ Display-Rendering
 ├── automation_helpers.h           # Helper-Funktionen (IAQ, Rampen)
 ├── components/                    # Externe Komponenten
 │   └── ventilation_group/         # Lüftungssteuerung

@@ -19,7 +19,6 @@ substitutions:
 # Include common settings (WiFi, Logger, API) and device-specific configs
 packages:
   common: !include esp32c6_common.yaml
-  apds9960_pkg: !include apds9960_config.yaml
   device_config_pkg: !include device_config.yaml
 
 external_components:
@@ -29,15 +28,12 @@ external_components:
 
 esphome:
   includes:
-    - display_render.h # Custom C++ code for drawing the OLED interface
+    - automation_helpers.h # Helper functions logic
     - automation_helpers.h # Helper functions logic
   on_boot:
     priority: 600
     then:
-      # Briefly flash the display on boot to indicate life
-      - switch.turn_on: switch_display
-      - delay: 10s
-      - switch.turn_off: switch_display
+      - script.execute: update_leds
 
 # ---------------------------------------------------------
 # GLOBAL VARIABLES (State Memory)
@@ -47,10 +43,7 @@ globals:
   - id: system_on
     type: bool
     initial_value: "true"
-  # Display state tracker (to prevent unnecessary I2C traffic when off)
-  - id: display_awake
-    type: bool
-    initial_value: "false"
+
   # Fan intensity level (1-10)
   - id: fan_intensity_level
     type: int
@@ -107,7 +100,12 @@ i2c:
   frequency: 400kHz # High Speed I2C for smoother display updates
   timeout: 50ms # Increased timeout to prevent "software timeout" errors
 
-# Note: APDS9960 configuration is now in apds9960_config.yaml
+# ---------------------------------------------------------
+# MCP23017 I/O EXPANDER
+# ---------------------------------------------------------
+mcp23017:
+  - id: mcp_hub
+    address: 0x20
 
 # ---------------------------------------------------------
 # BME680 SENSOR (BSEC2)
@@ -148,20 +146,122 @@ font:
       - "\U000F0339" # Gauge (mdi-gauge - for pressure)
 
 # ---------------------------------------------------------
-# DISPLAY CONFIGURATION (SSD1306)
+# MCP23017 OUTPUTS (LEDs)
 # ---------------------------------------------------------
-display:
-  - platform: ssd1306_i2c
-    model: "SSD1306 128x32"
-    address: 0x3C
-    i2c_id: bus_a
-    id: test_display
-    rotation: 0
-    # Custom rendering lambda located in display_render.h
-    lambda: |-
-      draw_main_page(it, id(font_small), id(font_medium), id(icon_font), 
-                     id(fan_rpm), id(temperature), id(iaq), id(humidity), 
-                     id(breath_voc_equivalent), id(pressure));
+output:
+  # --- LEDS Port A ---
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 0
+      mode: OUTPUT
+    id: led_pwr
+    inverted: false
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 1
+      mode: OUTPUT
+    id: led_master
+    inverted: false
+  # Level LEDs (1-5)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 2
+      mode: OUTPUT
+    id: led_l1
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 3
+      mode: OUTPUT
+    id: led_l2
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 4
+      mode: OUTPUT
+    id: led_l3
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 5
+      mode: OUTPUT
+    id: led_l4
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 6
+      mode: OUTPUT
+    id: led_l5
+  # Mode LED WRG
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 7
+      mode: OUTPUT
+    id: led_wrg
+
+  # --- LEDS Port B ---
+  # Mode LED Ventilation
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 8
+      mode: OUTPUT
+    id: led_vent
+
+  # --- Fan PWM (Standard Output) ---
+  - platform: ledc
+    pin: GPIO16
+    frequency: 25000 Hz
+    id: fan_pwm_output
+    inverted: true
+    min_power: ${min_fan_threshold}%
+    zero_means_zero: true
+
+# ---------------------------------------------------------
+# LED LIGHTS (Internal Helper)
+# ---------------------------------------------------------
+light:
+  - platform: binary
+    output: led_pwr
+    id: status_led_power
+    internal: true
+  - platform: binary
+    output: led_master
+    id: status_led_master
+    internal: true
+  - platform: binary
+    output: led_wrg
+    id: status_led_mode_wrg
+    internal: true
+  - platform: binary
+    output: led_vent
+    id: status_led_mode_vent
+    internal: true
+  # Level LEDs
+  - platform: binary
+    output: led_l1
+    id: status_led_l1
+    internal: true
+  - platform: binary
+    output: led_l2
+    id: status_led_l2
+    internal: true
+  - platform: binary
+    output: led_l3
+    id: status_led_l3
+    internal: true
+  - platform: binary
+    output: led_l4
+    id: status_led_l4
+    internal: true
+  - platform: binary
+    output: led_l5
+    id: status_led_l5
+    internal: true
 
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
@@ -307,7 +407,7 @@ sensor:
       - multiply: 0.5 # 2 pulses per revolution -> divide by 2
     on_value:
       then:
-        - component.update: test_display # Force display update on RPM change
+        - script.execute: update_leds # Update LEDs on RPM change (optional feedback)
 
 # ---------------------------------------------------------
 # TEXT SENSORS (Status & Classification)
@@ -325,16 +425,16 @@ text_sensor:
       return get_iaq_classification(id(iaq).state);
 
 # ---------------------------------------------------------
-# FAN OUTPUT CONTROL (PWM)
+# # !alte! FAN OUTPUT CONTROL (PWM)
 # ---------------------------------------------------------
-output:
-  - platform: ledc
-    pin: GPIO16 # Pin D6 (moved from D0 to free ADC for NTC sensors)
-    frequency: 25000 Hz # Standard PWM frequency for PC fans
-    id: fan_pwm_output
-    inverted: true # Inverted for NPN Transistor drive (High ESP = Base on = Collector Low)
-    min_power: ${min_fan_threshold}%
-    zero_means_zero: true # Ensure 0% is truly off
+# output:
+#   - platform: ledc
+#     pin: GPIO16 # Pin D6 (moved from D0 to free ADC for NTC sensors)
+#     frequency: 25000 Hz # Standard PWM frequency for PC fans
+#     id: fan_pwm_output
+#     inverted: true # Inverted for NPN Transistor drive (High ESP = Base on = Collector Low)
+#     min_power: ${min_fan_threshold}%
+#     zero_means_zero: true # Ensure 0% is truly off
 
 fan:
   - platform: speed
@@ -435,6 +535,7 @@ number:
         - lambda: |-
             id(fan_intensity_level) = (int)x;
             set_fan_intensity_level((int)x);
+            id(update_leds).execute();
 
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION
@@ -459,6 +560,7 @@ select:
             v->set_mode(esphome::MODE_VENTILATION, duration);
           }
           else v->set_mode(esphome::MODE_OFF);
+          id(update_leds).execute();
 
 # ---------------------------------------------------------
 # AUTOMATIONS & SWITCHES
@@ -479,24 +581,6 @@ switch:
     turn_off_action:
       - script.stop: fan_cycle_logic
       - fan.turn_off: lueftung_fan
-
-  # Display Toggle (saves OLED life)
-  - platform: template
-    name: "Display Switch"
-    id: switch_display
-    optimistic: true
-    turn_on_action:
-      - globals.set:
-          id: display_awake
-          value: "true"
-      - lambda: id(test_display).turn_on();
-    turn_off_action:
-      - globals.set:
-          id: display_awake
-          value: "false"
-      - lambda: id(test_display).turn_off();
-    lambda: |-
-      return id(display_awake);
 
 # ---------------------------------------------------------
 # SCRIPTS (Complex Logic)
@@ -544,12 +628,12 @@ script:
             # 6. Pause before next cycle
             - delay: 100ms
 
-  # Auto-off timer for display
-  - id: timeout_display
+  # LED Logic Handler
+  - id: update_leds
     mode: restart
     then:
-      - delay: 5s
-      - switch.turn_off: switch_display
+      - lambda: |-
+          update_leds_logic();
 
 # ---------------------------------------------------------
 # TOUCH BUTTONS (Input)
@@ -558,52 +642,64 @@ binary_sensor:
   # Touch Button 1 (Right) - Mode/Power Control
   - platform: gpio
     pin:
-      number: GPIO21 # Pin D3 on XIAO ESP32C6
+      mcp23xxx: mcp_hub
+      number: 14 # GPB6 -> PIN 11 on FFC (Mode)
       mode:
         input: true
-        pullup: true # Capacitive sensors usually require pullup
-    name: "Button Mode/Power"
-    id: button_right
+        pullup: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Mode"
+    id: button_mode
     filters:
-      - delayed_on: 50ms # Debounce press
-      - delayed_off: 50ms # Debounce release
+      - delayed_on: 50ms
+      - delayed_off: 50ms
     on_click:
-      # Short press: Cycle modes
-      min_length: 50ms
-      max_length: 4900ms
       then:
         - lambda: |-
-            // Cycle through modes: 0->1->2->0
             id(current_mode_index) = (id(current_mode_index) + 1) % 3;
             cycle_operating_mode(id(current_mode_index));
-    on_multi_click:
-      # Long press (>5s): System power toggle
-      - timing:
-          - ON for at least 5s
-        then:
-          - lambda: |-
-              toggle_system_power();
+            id(update_leds).execute();
 
-  # Touch Button 2 (Left) - Fan Intensity Control
+  # Button Power (GPB5)
   - platform: gpio
     pin:
-      number: GPIO18 # Pin D10 on XIAO ESP32C6
+      mcp23xxx: mcp_hub
+      number: 13 # GPB5 -> PIN 10 on FFC (Power)
       mode:
         input: true
-        pullup: true # Capacitive sensors usually require pullup
-    name: "Button Fan Intensity"
-    id: button_left
+        pullup: true
+      inverted: true
+    name: "Button Power"
+    id: button_power
     filters:
-      - delayed_on: 50ms # Debounce press
-      - delayed_off: 50ms # Debounce release
+      - delayed_on: 50ms
+      - delayed_off: 50ms
+    on_multi_click:
+      - timing:
+          - ON for at least 1s
+        then:
+          - lambda: toggle_system_power(); id(update_leds).execute();
+
+  # Touch Button 2 (Left) - Fan Intensity Control (GPB7)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp_hub
+      number: 15 # GPB7 -> PIN 12 on FFC (Level)
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Button Fan Intensity"
+    id: button_level
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms
     on_click:
-      min_length: 50ms
-      max_length: 2000ms
       then:
         - lambda: |-
-            // Cycle through intensity levels 1-10
             id(fan_intensity_level) = (id(fan_intensity_level) % 10) + 1;
             set_fan_intensity_level(id(fan_intensity_level));
+            id(update_leds).execute();
             ESP_LOGI("button", "Fan intensity set to level %d", id(fan_intensity_level));
 
 # ---------------------------------------------------------

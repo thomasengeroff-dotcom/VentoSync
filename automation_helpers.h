@@ -140,7 +140,8 @@ inline void cycle_operating_mode(int mode_index) {
 }
 
 // --- System Power Toggle ---
-// Toggles entire system on/off (fan, display, operations)
+// --- System Power Toggle ---
+// Toggles entire system on/off (fan, operations)
 inline void toggle_system_power() {
   bool current_state = id(system_on);
   id(system_on) = !current_state;
@@ -148,13 +149,67 @@ inline void toggle_system_power() {
   if (id(system_on)) {
     // Power ON
     ESP_LOGI("system", "System POWER ON");
-    id(switch_display).turn_on();
     // Restore previous mode
     cycle_operating_mode(id(current_mode_index));
   } else {
     // Power OFF
     ESP_LOGI("system", "System POWER OFF");
     id(lueftung_fan).turn_off();
-    id(switch_display).turn_off();
+  }
+}
+
+// --- Status LED Update Logic ---
+// Updates the 5 LEDs based on system state and fan level
+// Mapped to MCP23017 outputs
+inline void update_leds_logic() {
+  // 1. Power LED (Always ON if system is ON)
+  if (id(system_on)) {
+    id(status_led_power).turn_on();
+  } else {
+     // Optional: Blink or Off? Let's keep it OFF for now
+    id(status_led_power).turn_off();
+  }
+
+  // 2. Mode LEDs
+  id(status_led_mode_wrg).turn_off();
+  id(status_led_mode_vent).turn_off();
+  
+  if (id(system_on)) {
+    if (id(selected_mode).state == "Wärmerückgewinnung") {
+      id(status_led_mode_wrg).turn_on();
+    } else if (id(selected_mode).state == "Durchlüften") {
+       id(status_led_mode_vent).turn_on();
+    }
+  }
+
+  // 3. Level LEDs (1-10 mapped to 5 LEDs)
+  // Reset all first
+  id(status_led_l1).turn_off();
+  id(status_led_l2).turn_off();
+  id(status_led_l3).turn_off();
+  id(status_led_l4).turn_off();
+  id(status_led_l5).turn_off();
+
+  if (!id(system_on) || id(selected_mode).state == "Aus") return;
+
+  int level = id(fan_intensity_level);
+  
+  // Mapping Logic (1-10 -> 5 LEDs)
+  if (level >= 10) {
+    id(status_led_l1).turn_on(); id(status_led_l2).turn_on();
+    id(status_led_l3).turn_on(); id(status_led_l4).turn_on();
+    id(status_led_l5).turn_on();
+  } else {
+     switch(level) {
+       case 1: id(status_led_l1).turn_on(); break;
+       case 2: id(status_led_l1).turn_on(); id(status_led_l2).turn_on(); break;
+       case 3: id(status_led_l2).turn_on(); break;
+       case 4: id(status_led_l2).turn_on(); id(status_led_l3).turn_on(); break;
+       case 5: id(status_led_l3).turn_on(); break;
+       case 6: id(status_led_l3).turn_on(); id(status_led_l4).turn_on(); break;
+       case 7: id(status_led_l4).turn_on(); break;
+       case 8: id(status_led_l4).turn_on(); id(status_led_l5).turn_on(); break;
+       case 9: id(status_led_l5).turn_on(); break;
+     }
   }
 }
