@@ -71,7 +71,7 @@ ventilation_group:
 # Configures peer-to-peer communication with the Slave/Consumer device
 espnow:
   peers:
-    - "98:A3:16:85:96:70" # Target MAC Address (Slave)
+    # - "98:A3:16:85:96:70" # Target MAC Address (Slave)
     - "FF:FF:FF:FF:FF:FF" # Broadcast for Discovery/Sync
   on_receive:
     then:
@@ -97,7 +97,7 @@ i2c:
   scl: GPIO23 # Pin D5 on XIAO ESP32C6
   scan: true
   id: bus_a
-  frequency: 400kHz # High Speed I2C for smoother display updates
+  frequency: 400kHz # Fast I2C Mode (400kHz)
   timeout: 50ms # Increased timeout to prevent "software timeout" errors
 
 # ---------------------------------------------------------
@@ -120,30 +120,30 @@ bme68x_bsec2_i2c:
   temperature_offset: 0.0 # Adjusted for room temperature
   state_save_interval: 6h # Save state every 6 hours
 
-# ---------------------------------------------------------
-# FONTS & ICONS
-# ---------------------------------------------------------
-font:
-  # Tiny text for units and labels (10px)
-  - file: "gfonts://Roboto"
-    id: font_small
-    size: 10
+# # ---------------------------------------------------------
+# # FONTS & ICONS
+# # ---------------------------------------------------------
+# font:
+#   # Tiny text for units and labels (10px)
+#   - file: "gfonts://Roboto"
+#     id: font_small
+#     size: 10
 
-  # Main text for measurement values (14px)
-  - file: "gfonts://Roboto"
-    id: font_medium
-    size: 14
+#   # Main text for measurement values (14px)
+#   - file: "gfonts://Roboto"
+#     id: font_medium
+#     size: 14
 
-  # Material Design Icons (must be present in config folder)
-  - file: "materialdesignicons-webfont.ttf"
-    id: icon_font
-    size: 14
-    glyphs:
-      - "\U000F050F" # Thermometer (mdi-thermometer)
-      - "\U000F058E" # Water drop (mdi-water-percent)
-      - "\U000F0210" # Fan (mdi-fan)
-      - "\U000F002F" # Air Filter/IAQ (mdi-air-filter)
-      - "\U000F0339" # Gauge (mdi-gauge - for pressure)
+#   # Material Design Icons (must be present in config folder)
+#   - file: "materialdesignicons-webfont.ttf"
+#     id: icon_font
+#     size: 14
+#     glyphs:
+#       - "\U000F050F" # Thermometer (mdi-thermometer)
+#       - "\U000F058E" # Water drop (mdi-water-percent)
+#       - "\U000F0210" # Fan (mdi-fan)
+#       - "\U000F002F" # Air Filter/IAQ (mdi-air-filter)
+#       - "\U000F0339" # Gauge (mdi-gauge - for pressure)
 
 # ---------------------------------------------------------
 # MCP23017 OUTPUTS (LEDs)

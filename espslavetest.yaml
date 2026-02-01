@@ -1,0 +1,236 @@
+substitutions:
+  device_name: espslavetest
+  friendly_name: "ESPSlaveTest"
+  min_fan_threshold: "10"
+
+  # VENTILATION CONFIG
+  floor_id: "1"
+  room_id: "1"
+  device_id: "2" # Slave Device ID
+  is_phase_a: "false" # Phase B (Gegenspieler)
+
+# Include common settings
+packages:
+  common: !include esp32c6_common.yaml
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esphome:
+  includes:
+    - automation_helpers.h
+  on_boot:
+    priority: 600
+    then:
+      - script.execute: update_leds
+
+# ---------------------------------------------------------
+# GLOBAL VARIABLES
+# ---------------------------------------------------------
+globals:
+  - id: system_on
+    type: bool
+    initial_value: "true"
+  - id: fan_intensity_level
+    type: int
+    initial_value: "5"
+  - id: current_mode_index
+    type: int
+    initial_value: "0"
+
+# ---------------------------------------------------------
+# VENTILATION COMPONENT
+# ---------------------------------------------------------
+ventilation_group:
+  id: ventilation_ctrl
+  floor_id: ${floor_id}
+  room_id: ${room_id}
+  device_id: ${device_id}
+  is_phase_a: ${is_phase_a}
+  main_fan: lueftung_fan
+  direction_switch: fan_direction
+
+# ---------------------------------------------------------
+# ESP-NOW
+# ---------------------------------------------------------
+espnow:
+  peers:
+    - "FF:FF:FF:FF:FF:FF"
+  on_receive:
+    then:
+      - lambda: |-
+          std::vector<uint8_t> packet(data, data + size);
+          // Check for IAQ Traffic Light Packet (1 Byte)
+          if (packet.size() == 1) {
+            uint8_t val = packet[0];
+            id(led_red).turn_off();
+            id(led_yellow).turn_off();
+            id(led_green).turn_off();
+            
+            if (val == 0x01) {      // Bad
+              id(led_red).turn_on(); 
+            } else if (val == 0x02) { // Medium
+              id(led_yellow).turn_on();
+            } else if (val == 0x03) { // Good
+              id(led_green).turn_on();
+            }
+          } 
+          // Check for Sync Packet (Larger)
+          else if (packet.size() > 5) {
+             ((esphome::VentilationController*)id(ventilation_ctrl))->on_packet_received(packet);
+          }
+
+# ---------------------------------------------------------
+# MOCK HARDWARE (Simulated)
+# ---------------------------------------------------------
+
+# 1. IAQ Traffic Light LEDs (Real Hardware on Slave)
+switch:
+  - platform: gpio
+    pin: GPIO0
+    name: "Ampel Rot"
+    id: led_red
+    inverted: false
+  - platform: gpio
+    pin: GPIO1
+    name: "Ampel Gelb"
+    id: led_yellow
+    inverted: false
+  - platform: gpio
+    pin: GPIO2
+    name: "Ampel Grün"
+    id: led_green
+    inverted: false
+
+  # 2. Dummy Fan Direction Switch (Required by Component)
+  - platform: template
+    name: "Lüfter Richtung Slave"
+    id: fan_direction
+    optimistic: true
+    turn_on_action:
+      - logger.log: "[Slave] Fan Direction: A (Rein)"
+    turn_off_action:
+      - logger.log: "[Slave] Fan Direction: B (Raus)"
+
+# 3. Dummy Fan (Required by Component)
+fan:
+  - platform: template
+    name: "Simulierter Lüfter"
+    id: lueftung_fan
+    speed_count: 100
+    on_turn_on:
+      - logger.log: "[Slave] Fan ON"
+    on_turn_off:
+      - logger.log: "[Slave] Fan OFF"
+    on_speed_set:
+      - logger.log:
+          format: "[Slave] Fan Speed set to %.1f%%"
+          args: ["x * 100.0"]
+
+# 4. Dummy Status LEDs (Required by automation_helpers.h)
+output:
+  - platform: template
+    id: out_mock_pwr
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_wrg
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_vent
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_l1
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_l2
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_l3
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_l4
+    type: binary
+    write_action: []
+  - platform: template
+    id: out_mock_l5
+    type: binary
+    write_action: []
+
+light:
+  - platform: binary
+    output: out_mock_pwr
+    name: "Dummy Power LED"
+    id: status_led_power
+    internal: true
+  - platform: binary
+    output: out_mock_wrg
+    id: status_led_mode_wrg
+    internal: true
+  - platform: binary
+    output: out_mock_vent
+    id: status_led_mode_vent
+    internal: true
+  - platform: binary
+    output: out_mock_l1
+    id: status_led_l1
+    internal: true
+  - platform: binary
+    output: out_mock_l2
+    id: status_led_l2
+    internal: true
+  - platform: binary
+    output: out_mock_l3
+    id: status_led_l3
+    internal: true
+  - platform: binary
+    output: out_mock_l4
+    id: status_led_l4
+    internal: true
+  - platform: binary
+    output: out_mock_l5
+    id: status_led_l5
+    internal: true
+
+# 5. Mode Selection (Required for logic)
+select:
+  - platform: template
+    name: "Lüftungsmodus Slave"
+    id: selected_mode
+    options:
+      - "Wärmerückgewinnung"
+      - "Durchlüften"
+      - "Aus"
+    initial_option: "Wärmerückgewinnung"
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
+          if (x == "Wärmerückgewinnung") v->set_mode(esphome::MODE_ECO_RECOVERY);
+          else if (x == "Durchlüften") {
+             v->set_mode(esphome::MODE_VENTILATION, 30000); // Default 30s for test
+          }
+          else v->set_mode(esphome::MODE_OFF);
+          id(update_leds).execute();
+
+# ---------------------------------------------------------
+# SCRIPTS
+# ---------------------------------------------------------
+script:
+  # Called by automation_helpers.h logic
+  - id: update_leds
+    mode: restart
+    then:
+      - lambda: |-
+          update_leds_logic();
+          // Optional: Log status for debugging
+          ESP_LOGD("host", "LEDs updated via Helper on Slave");
+
+captive_portal:
