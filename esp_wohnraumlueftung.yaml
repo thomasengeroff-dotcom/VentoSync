@@ -120,31 +120,6 @@ bme68x_bsec2_i2c:
   temperature_offset: 0.0 # Adjusted for room temperature
   state_save_interval: 6h # Save state every 6 hours
 
-# # ---------------------------------------------------------
-# # FONTS & ICONS
-# # ---------------------------------------------------------
-# font:
-#   # Tiny text for units and labels (10px)
-#   - file: "gfonts://Roboto"
-#     id: font_small
-#     size: 10
-
-#   # Main text for measurement values (14px)
-#   - file: "gfonts://Roboto"
-#     id: font_medium
-#     size: 14
-
-#   # Material Design Icons (must be present in config folder)
-#   - file: "materialdesignicons-webfont.ttf"
-#     id: icon_font
-#     size: 14
-#     glyphs:
-#       - "\U000F050F" # Thermometer (mdi-thermometer)
-#       - "\U000F058E" # Water drop (mdi-water-percent)
-#       - "\U000F0210" # Fan (mdi-fan)
-#       - "\U000F002F" # Air Filter/IAQ (mdi-air-filter)
-#       - "\U000F0339" # Gauge (mdi-gauge - for pressure)
-
 # ---------------------------------------------------------
 # MCP23017 OUTPUTS (LEDs)
 # ---------------------------------------------------------
@@ -636,10 +611,10 @@ script:
           update_leds_logic();
 
 # ---------------------------------------------------------
-# TOUCH BUTTONS (Input)
+# CONTROL PANEL BUTTONS (Input)
 # ---------------------------------------------------------
 binary_sensor:
-  # Touch Button 1 (Right) - Mode/Power Control
+  # Button Mode (Right) - Mode Control
   - platform: gpio
     pin:
       mcp23xxx: mcp_hub
@@ -651,8 +626,8 @@ binary_sensor:
     name: "Button Mode"
     id: button_mode
     filters:
-      - delayed_on: 50ms
-      - delayed_off: 50ms
+      - delayed_on: 25ms
+      - delayed_off: 25ms
     on_click:
       then:
         - lambda: |-
@@ -672,15 +647,15 @@ binary_sensor:
     name: "Button Power"
     id: button_power
     filters:
-      - delayed_on: 50ms
-      - delayed_off: 50ms
+      - delayed_on: 25ms
+      - delayed_off: 25ms
     on_multi_click:
       - timing:
           - ON for at least 1s
         then:
           - lambda: toggle_system_power(); id(update_leds).execute();
 
-  # Touch Button 2 (Left) - Fan Intensity Control (GPB7)
+  # Button Level (Left) - Fan Intensity Control (GPB7)
   - platform: gpio
     pin:
       mcp23xxx: mcp_hub
@@ -692,8 +667,8 @@ binary_sensor:
     name: "Button Fan Intensity"
     id: button_level
     filters:
-      - delayed_on: 50ms
-      - delayed_off: 50ms
+      - delayed_on: 25ms
+      - delayed_off: 25ms
     on_click:
       then:
         - lambda: |-
