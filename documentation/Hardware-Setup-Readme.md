@@ -3,7 +3,7 @@
 Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den Prototypen (Breadboard) und die Design-Vorgaben für das finale PCB (EasyEDA).
 
 > [!IMPORTANT]
-> **Pin-Referenz**: Die Pin-Belegung basiert auf der Nutzung des **Original VentoMaxx Bedienpanels** (14-Pin FFC), welches über einen **MCP23017 I/O Expander** via I²C angesteuert wird.
+> **Pin-Referenz**: Die Pin-Belegung basiert auf der direkten Ansteuerung der **Buttons via ESP32 GPIOs** und der **LEDs via PCA9685 I2C PWM Driver**. Das Front-Panel wird über einen 14-Pin FFC Connector angeschlossen.
 
 ---
 
@@ -14,7 +14,7 @@ Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den 
 * **Logic Power (MCU Supply)**: Recom R-78E5.0-0.5 oder Traco TSR 1-2450 (12V -> 5V)
   * *Versorgung*: Speist ausschließlich den XIAO ESP32C6 (via 5V Pin).
 * **Peripheral Power (3.3V Buck)**: **Diodes Inc. AP63203WU-7** (12V -> 3.3V, 2A)
-  * *Versorgung*: Speist alle Sensoren (BME680), I/O Expander und Bedienpanel.
+  * *Versorgung*: Speist alle Sensoren (BME680), PCA9685 PWM Driver und Front-Panel LEDs.
   * *Hinweis*: Der interne 3.3V LDO des ESP32 wird **nicht** genutzt (Pin open).
 * **Sicherung**: 1A Slow Blow (Träge)
 * **Varistor**: S10K275 (Überspannungsschutz Eingang)
@@ -41,9 +41,10 @@ Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den 
   * *Größe*: 126mm (Benötigt ggf. mechanische Anpassung).
   * *Interface*: **Universal-Interface im 4-Pin Mode** (Direktes PWM, Tacho, 12V Dauerplus).
   * *Vorteil*: Extrem leise Umschaltung und optimierte Strömungskennlinie für Pendellüfter.
-* **BME680**: Bosch Umweltsensor (I2C) - Temperatur, Feuchte, Druck, IAQ
-* **VentoMaxx Bedienpanel**: Original Panel mit 9 LEDs und 3 Tastern (14-Pin FFC Anschluss).
-* **I/O Expander**: **MCP23017** (I2C) - Zur Ansteuerung des Panels.
+* **BME680**: ⚠️ *NICHT IN BOM* - Bosch Umweltsensor (I2C) - Temperatur, Feuchte, Druck, IAQ --> kann extern angeschlossen werden oder jeder andere I2C Sensor verwendet werden.
+* **Front-Panel**: 9 LEDs (via PCA9685) und 3 Buttons (direkt an ESP32) über 14-Pin FFC Connector.
+* **LED Driver**: **PCA9685PW** (I2C, 0x40) - 16-Kanal PWM Driver für dimmbare LEDs.
+* **SCD41**: ⚠️ *NICHT IN BOM* - CO2 Sensor (I2C, 0x62) über 4-Pin Header H2. --> kann extern angeschlossen werden oder jeder andere I2C Sensor verwendet werden.
 * **NTC-Sensorik**: 2x 10kΩ NTC (Beta 3435)
   * *Beschaltung*: 10kΩ 0.1% Referenzwiderstand + 100nF Filter + 3.3V Zener/TVS
 
@@ -88,12 +89,14 @@ Status: **Final (06.02.2026)** - ✅ Verified
 | **D0** | GPIO0 | **NTC Innen** | Analog In (10k Spannungsteiler) |
 | **D1** | GPIO1 | **NTC Außen** | Analog In (10k Spannungsteiler) |
 | **D2** | GPIO2 | *Reserve* | (Frei / Debug LED) |
-| **D3** | GPIO21 | **MCP23017 INTB** | Interrupt von Port B (Taster). Pin 19. |
-| **D4** | GPIO22 | **I2C SDA** | BME680, MCP23017 (mit 4.7kΩ Pullup) |
-| **D5** | GPIO23 | **I2C SCL** | BME680, MCP23017 (mit 4.7kΩ Pullup) |
-| **D6** | GPIO16 | **Fan PWM** | An Basis BC547 |
-| **D7** | GPIO17 | **Fan Tacho** | Von Lüfter Pin 3 (mit Pullup & Zener) |
-| **D8-D10** | - | *Reserve* | SPI / Frei |
+| **D3** | GPIO21 | **PCA9685 OE** | Output Enable (Active Low, mit 10kΩ Pullup) |
+| **D4** | GPIO22 | **I2C SDA** | PCA9685, BME680⚠️, SCD41⚠️ (mit 4.7kΩ Pullup) |
+| **D5** | GPIO23 | **I2C SCL** | PCA9685, BME680⚠️, SCD41⚠️ (mit 4.7kΩ Pullup) |
+| **D6** | GPIO16 | **Fan PWM** | An Basis S8050 (NPN) |
+| **D7** | GPIO17 | **Fan Tacho** | Von Lüfter Pin 3 (mit Pullup & TVS) |
+| **D8** | GPIO19 | **Button Power** | Front-Panel (mit 10kΩ Pullup) |
+| **D9** | GPIO20 | **Button Mode** | Front-Panel (mit 10kΩ Pullup) |
+| **D10** | GPIO18 | **Button Level** | Front-Panel (mit 10kΩ Pullup) |
 
 ### C. Universal-Lüfter Interface (3-Pin & 4-Pin Support)
 
@@ -120,43 +123,52 @@ Damit du sowohl moderne 4-Pin PWM-Lüfter als auch ältere/spezielle 3-Pin Lüft
 >     * **Regelung**: Die Drehzahl ist weiterhin **voll regelbar**! (50% PWM ≈ 6V, 100% PWM = 12V).
 >     * *Werte*: z.B. 100µH - 330µH Spule + 100µF Elko. Damit läuft der 3-Pin Lüfter lautlos und analog.
 
-### B. MCP23017 Expander (Adresse 0x20)
+### B. PCA9685 PWM Driver (Adresse 0x40)
 
-Der Expander steuert das 14-Pin FFC Kabel des Panels.
+Der PCA9685 steuert die 9 LEDs des Front-Panels über PWM (dimmbar).
 
-| MCP Pin | Funktion | Panel Komponente |
-| :--- | :--- | :--- |
-| **GPA0** | OUTPUT | LED Power (On/Off) |
-| **GPA1** | OUTPUT | LED Master (Status) |
-| **GPA2** | OUTPUT | LED Intensität 1 |
-| **GPA3** | OUTPUT | LED Intensität 2 |
-| **GPA4** | OUTPUT | LED Intensität 3 |
-| **GPA5** | OUTPUT | LED Intensität 4 |
-| **GPA6** | OUTPUT | LED Intensität 5 |
-| **GPA7** | OUTPUT | LED Modus: Wärmerückgewinnung |
-| **GPB0** | OUTPUT | LED Modus: Durchlüften |
-| **GPB5** | INPUT_PULLUP | Taster: Power |
-| **GPB6** | INPUT_PULLUP | Taster: Modus |
-| **GPB7** | INPUT_PULLUP | Taster: Intensität |
+| PCA9685 Kanal | Funktion | Panel Komponente | Widerstand |
+| :--- | :--- | :--- | :--- |
+| **Channel 0** | PWM OUTPUT | LED Power (On/Off) | 470Ω (RN1) |
+| **Channel 1** | PWM OUTPUT | LED Master (Status) | 470Ω (RN1) |
+| **Channel 2** | PWM OUTPUT | LED Intensität 1 | 470Ω (RN1) |
+| **Channel 3** | PWM OUTPUT | LED Intensität 2 | 470Ω (RN1) |
+| **Channel 4** | PWM OUTPUT | LED Intensität 3 | 470Ω (RN2) |
+| **Channel 5** | PWM OUTPUT | LED Intensität 4 | 470Ω (RN2) |
+| **Channel 6** | PWM OUTPUT | LED Intensität 5 | 470Ω (RN2) |
+| **Channel 7** | PWM OUTPUT | LED Modus: WRG | 470Ω (RN2) |
+| **Channel 8** | PWM OUTPUT | LED Modus: Durchlüften | 10kΩ (RN3) |
+
+### C. Front-Panel Buttons (Direkt an ESP32)
+
+| ESP32 Pin | GPIO | Funktion | Beschaltung |
+| :--- | :--- | :--- | :--- |
+| **D8** | GPIO19 | Button Power | 10kΩ Pullup (RN3), Active Low |
+| **D9** | GPIO20 | Button Mode | 10kΩ Pullup (RN3), Active Low |
+| **D10** | GPIO18 | Button Level | 10kΩ Pullup (RN3), Active Low |
 
 ---
 
 ## 3. Verkabelung & Bedienpanel (FFC 14-Pin)
 
-Das VentoMaxx Panel wird über ein 14-Pin Flachbandkabel angeschlossen. Die Belegung muss auf dem PCB auf den I/O Expander geroutet werden.
+Das Front-Panel wird über ein 14-Pin Flachbandkabel (0.5mm Pitch) angeschlossen.
 
-**Logik-Annahme**:
+**Anschluss-Logik**:
 
-* **LEDs**: Common Cathode (oder Anode) -> *Muss geprüft werden!* (Planung geht von Standard-Logik aus).
-* **Taster**: Schalten gegen GND (Common Line).
+* **LEDs**: Angesteuert via PCA9685 PWM Outputs (Channels 0-8) mit 470Ω/10kΩ Vorwiderständen.
+* **Buttons**: Direkt an ESP32 GPIOs (D8, D9, D10) mit 10kΩ Pullups, schalten gegen GND.
+* **Connector**: FPC 0.5-14P (U17) - SHOU HAN FPC 0.5-14P LTH2.0
 
 ---
 
 ## 4. PCB Design Hinweise
 
-* **MCP23017**: Reset-Pin auf VCC (High) legen. Adress-Pins (A0, A1, A2) auf GND (Addr 0x20).
-* **FFC Connector**: Passenden 14-Pin FPC/FFC Connector (Pitch messen! Meist 1.0mm oder 0.5mm) einplanen.
-* **ESD Schutz**: Alle Leitungen zum FFC Connector sollten mit TVS-Dioden geschützt werden, da das Panel extern bedienbar ist.
+* **PCA9685**:
+  * OE Pin (Pin 23) an GPIO21 (D3) mit 10kΩ Pullup auf 3.3V
+  * 100nF Bypass-Kondensator direkt an VDD (Pin 28)
+  * 10µF Bulk-Kondensator auf 3.3V Rail
+* **FFC Connector**: 14-Pin FPC/FFC Connector (0.5mm Pitch) - U17
+* **ESD Schutz**: Alle Leitungen zum FFC Connector sind mit TVS-Dioden (PESD5V0S2BT) geschützt.
 
 ### AP63203 (12V -> 3.3V) Implementierung (Peripherie-Versorgung)
 
@@ -164,12 +176,12 @@ Der **AP63203WU-7** versorgt alle externen 3.3V Komponenten (Sensoren, MCP23017)
 
 **Power-Architektur:**
 
-* **ESP32**: Wird via **5V Pin** vom Recom/Traco Wandler (5V) versorgt.
-* **Peripherie**: Wird via **AP63203 (3.3V)** versorgt.
+* **ESP32**: Wird via **5V Pin** vom TSR 1-2450 Wandler (5V) versorgt.
+* **Peripherie**: Wird via **AP63203 (3.3V)** versorgt (PCA9685, LEDs, Sensoren⚠️).
 * **WICHTIG**:
   * Der 3.3V Pin des ESP32 bleibt **unbeschaltet** (NC).
   * **Ground (GND)** von 5V-Kreis und 3.3V-Kreis müssen verbunden sein!
-  * I2C Pullups müssen an die **3.3V (AP63203)** Rail angeschlossen werden (um die Sensoren zu schützen, da ESP32 3.3V tolerant ist).
+  * I2C Pullups (R1, R2 = 4.7kΩ) müssen an die **3.3V (AP63203)** Rail angeschlossen werden.
 
 **Komponenten-Werte (Schematic):**
 
