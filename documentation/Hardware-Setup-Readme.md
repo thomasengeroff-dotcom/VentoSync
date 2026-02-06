@@ -10,7 +10,8 @@ Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den 
 ### Zentrale Einheit & Power
 
 * **MCU**: Seeed Studio XIAO ESP32C6
-* **Netzteil (High Voltage)**: Recom RAC10-12SK/277 (230V AC -> 12V DC, 10W)
+* **Netzteil (High Voltage)**: XP Power ECE10US12 oder TRACO POWER TMPS 10-112 (230V AC -> 12V DC, 10W)
+  * *Hinweis*: Der XP Power ECE10US12 ist eine Alternative zum TRACO POWER TMPS 10-112. Grundriss und Pin-Belegung sind identisch.
 * **Logic Power (MCU Supply)**: Recom R-78E5.0-0.5 oder Traco TSR 1-2450 (12V -> 5V)
   * *Versorgung*: Speist ausschließlich den XIAO ESP32C6 (via 5V Pin).
 * **Peripheral Power (3.3V Buck)**: **Diodes Inc. AP63203WU-7** (12V -> 3.3V, 2A)
