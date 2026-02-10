@@ -759,8 +759,7 @@ script:
           int direction = id(fan_direction).state ? 1 : 0;
 
           // Apply speed and direction
-          auto call = id(set_fan_speed_and_direction);
-          call.execute(speed, direction);
+          id(set_fan_speed_and_direction).execute(speed, direction);
 
 # ---------------------------------------------------------
 # CONTROL PANEL BUTTONS (Input)
