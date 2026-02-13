@@ -15,6 +15,8 @@ Die Schaltung kombiniert zwei Steuerungsmethoden:
 
 ### B. 3-Pin Dual-GND Modus (VarioPro)
 
+Die Steuerung der Lüfter erfolgt über die GND-Leitungen. Dies wird im folgenden Blog detailliert beschrieben: <https://www.mikrocontroller.net/topic/412458>
+
 - **Dual Low-Side MOSFETs** schalten GND1 und GND2 getrennt
 - Lüfter bekommt variable Spannung (Jumper 2-3)
 - Richtungssteuerung durch Umschalten der aktiven GND-Leitung:

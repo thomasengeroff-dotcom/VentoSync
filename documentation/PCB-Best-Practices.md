@@ -6,10 +6,10 @@
 
 ## 1. Bypass / Decoupling Caps (ESP32-C6)
 
-**Status**: ✅ Umgesetzt — C13 (470µF / 16V) als Bulk-Cap am 5V Output.
+**Status**: ✅ Umgesetzt — C6 (470µF / 16V) als Bulk-Cap am 5V Output.
 
 > [!NOTE]
-> C13 (470µF Elko) ist ein **Bulk-Pufferkondensator** für WiFi-Peaks. Er deckt niedrige Frequenzen ab (µs–ms Bereich). Für hochfrequentes Rauschen (MHz-Bereich) wäre **zusätzlich** ein 100nF Kerko *direkt* an den Power-Pins des XIAO sinnvoll. Falls Board-Platz knapp ist: Das XIAO-Modul hat intern bereits HF-Caps — daher als **optional** einzustufen.
+> C6 (470µF Elko) ist ein **Bulk-Pufferkondensator** für WiFi-Peaks. Er deckt niedrige Frequenzen ab (µs–ms Bereich). Für hochfrequentes Rauschen (MHz-Bereich) wäre **zusätzlich** ein 100nF Kerko *direkt* an den Power-Pins des XIAO sinnvoll. Falls Board-Platz knapp ist: Das XIAO-Modul hat intern bereits HF-Caps — daher als **optional** einzustufen.
 --> wird nicht eingearbeitet.
 ---
 
@@ -43,7 +43,7 @@ GND ───────┘
 | Kondensator | Spannung | Bleeder | Verlustleistung | Entladezeit (auf <1V) |
 |:---|:---|:---|:---|:---|
 | **C1** (470µF / 25V) | 12V Rail | **47kΩ / 0805** | ~3mW | ~4.4s (5τ) |
-| **C13** (470µF / 16V) | 5V Rail | **47kΩ / 0805** | ~0.5mW | ~4.4s (5τ) |
+| **C6** (470µF / 16V) | 5V Rail | **47kΩ / 0805** | ~0.5mW | ~4.4s (5τ) |
 
 **Berechnung:**
 
@@ -59,14 +59,14 @@ Verlustleistung: P = V² / R = (12)² / 47000 = 3.06 mW ← vernachlässigbar
 
 ### 3.3 Umsetzung in EasyEDA Pro
 
-1. **Schaltplan**: Jeweils einen **47kΩ Widerstand (0805)** parallel zu C1 und C13 einzeichnen
+1. **Schaltplan**: Jeweils einen **47kΩ Widerstand (0805)** parallel zu C1 und C6 einzeichnen
 2. **PCB**: So nah wie möglich am jeweiligen Elko platzieren
 3. **Designator**: `R_B1` (12V Rail), `R_B2` (5V Rail)
 4. **BOM-Eintrag**: `47kΩ ±5% 0805 1/8W` — z.B. RC0805FR-0747KL
 
 > [!TIP]
 > 47kΩ ist ein guter Kompromiss: Schnell genug entladen (<1 Minute), aber nur ~3mW Dauerverlust im Betrieb. Kein messbarer Einfluss auf die Gesamteffizienz.
-**Status**: ✅ Umgesetzt für C1 und C13
+**Status**: ✅ Umgesetzt für C1 und C6
 ---
 
 ## 4. Trace-Breiten (Power-Pfade)
@@ -98,8 +98,8 @@ Verlustleistung: P = V² / R = (12)² / 47000 = 3.06 mW ← vernachlässigbar
 
 | Bauteil | Package | Grund | Anzahl Vias |
 |:---|:---|:---|:---|
-| **U37** (AP63203WU-7) | TSOT-26 | Buck-Converter, ~85% Effizienz, Wärme-Pad | 3–5 Vias |
-| **Q5** (PMV16XNR) | SOT-23 | Low-Side MOSFET, bis 1A Lüfterstrom | 2–3 Vias |
+| **U25 & U26** (AP63203WU-7) | TSOT-26 | Buck-Converter, ~85% Effizienz, Wärme-Pad | 3–5 Vias |
+| **Q3** (PMV16XNR) | SOT-23 | Low-Side MOSFET, bis 1A Lüfterstrom | 2–3 Vias |
 | **Q4** (PMV16XNR) | SOT-23 | Low-Side MOSFET, bis 1A Lüfterstrom | 2–3 Vias |
 | **Q1** (AO3401) | SOT-23 | P-MOSFET High-Side Switch | 2–3 Vias |
 
@@ -166,7 +166,7 @@ Verlustleistung: P = V² / R = (12)² / 47000 = 3.06 mW ← vernachlässigbar
         5 Vias im EP, 1mm Abstand
 ```
 
-**PMV16XNR (Q4/Q5):**
+**PMV16XNR (Q3/Q4):**
 
 ```
   Gate ─┐
@@ -176,7 +176,7 @@ Verlustleistung: P = V² / R = (12)² / 47000 = 3.06 mW ← vernachlässigbar
   Source┘
 ```
 
-**Status**: ✅ Umgesetzt für U37, Q4, Q5, Q1
+**Status**: ✅ Umgesetzt für U25, U26, Q3, Q4, Q1
 ---
 
 ## 6. I2C Routing — Analyse
@@ -356,11 +356,11 @@ GND ━━━━━━━━━━━━━━━━━━━━━━━━━�
 
 | # | Maßnahme | Priorität | Status |
 |:---|:---|:---|:---|
-| 1 | Bypass Caps ESP32 | ✅ Erledigt | C13 vorhanden (optional: 100nF ergänzen) |
+| 1 | Bypass Caps ESP32 | ✅ Erledigt | C6 vorhanden (optional: 100nF ergänzen) |
 | 2 | Galvanische Trennung | ✅ Erledigt | Slot + Warnung vorhanden |
-| 3 | Bleeder-Widerstände | 🔴 Offen | 2× 47kΩ (0805) an C1 und C13 |
+| 3 | Bleeder-Widerstände | ✅ Erledigt | 2× 47kΩ (0805) an C1 und C6 |
 | 4 | Trace-Breiten | 🟡 Prüfen | ≥0.5mm für 1A, ≥0.8mm für 12V-Haupt |
-| 5 | Thermal Vias | 🟡 Offen | AP63203: 5 Vias, Q4/Q5: 2–3 Vias |
+| 5 | Thermal Vias | ✅ Erledigt | U25/U26: 5 Vias, Q3/Q4/Q1: 2–3 Vias |
 | 6 | I2C Routing | ✅ OK | 15mm kein Buffer nötig |
 | 7 | Test Points | ✅ Fast komplett | 31 TPs, SDA TP fehlt, Nummern-Duplikate bereinigen |
 | 8 | Zero-Ohm Widerstände | 🟢 Optional | R0_FAN, R0_I2C, R0_3V3 empfohlen |

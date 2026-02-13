@@ -30,8 +30,10 @@ struct __attribute__((packed)) VentilationPacket {
   uint8_t device_id;
   uint8_t msg_type;     // MessageType
   uint8_t current_mode; // VentilationMode
+  uint8_t fan_intensity; // Fan Intensity (1-10)
   uint32_t timestamp_ms;// Sender's millis()
   uint32_t cycle_pos_ms;// Position in the global cycle
+  uint32_t remaining_duration_ms; // Remaining time for current mode (0=infinite)
   bool phase_state;     // Global phase (A or B)
 };
 
@@ -55,6 +57,7 @@ class VentilationController : public Component {
   VentilationMode current_mode = MODE_ECO_RECOVERY;
   bool global_phase = true; // true = Phase A, false = Phase B
   uint32_t ventilation_duration_ms = 0; // 0 = Infinite
+  uint8_t current_fan_intensity = 5; // Default to 5 (matches YAML global)
   
   // --- INTERNAL ---
   uint32_t last_sync_tx = 0;
@@ -163,8 +166,18 @@ class VentilationController : public Component {
       ESP_LOGI("vent", "Sync interval updated to %d ms", sync_interval_ms);
   }
 
+  void set_fan_intensity(uint8_t intensity) {
+      if (current_fan_intensity == intensity) return;
+      current_fan_intensity = intensity;
+      ESP_LOGI("vent", "Fan Intensity updated to %d", intensity);
+      pending_broadcast = true;
+  }
+
   void set_mode(VentilationMode mode, uint32_t duration = 0) {
-      if (current_mode == mode && ventilation_duration_ms == duration) return;
+      // If same mode and duration is mostly same, return? 
+      // But receiving sync might need to force update timer
+      bool changed = (current_mode != mode);
+      if (!changed && duration == ventilation_duration_ms) return;
       
       ESP_LOGI("vent", "Mode change: %d -> %d (Duration: %d ms)", current_mode, mode, duration);
       current_mode = mode;
@@ -184,31 +197,49 @@ class VentilationController : public Component {
       pending_broadcast = true; // Notify peers
   }
 
-  void on_packet_received(std::vector<uint8_t> data) {
-      if (data.size() != sizeof(VentilationPacket)) return;
+  bool on_packet_received(std::vector<uint8_t> data) {
+      if (data.size() != sizeof(VentilationPacket)) return false;
       VentilationPacket *pkt = (VentilationPacket*)data.data();
 
       // Filter
-      if (pkt->magic_header != 0x42) return;
-      if (pkt->floor_id != floor_id || pkt->room_id != room_id) return;
-      if (pkt->device_id == device_id) return; // Ignore self
+      if (pkt->magic_header != 0x42) return false;
+      if (pkt->floor_id != floor_id || pkt->room_id != room_id) return false;
+      if (pkt->device_id == device_id) return false; // Ignore self
+
+      bool changed = false;
 
       // Handle Sync
       if (pkt->msg_type == MSG_SYNC) {
           sync_time(pkt->cycle_pos_ms);
       }
       
-      // Handle Mode Sync
-      // Only accept mode changes from peers if we are in a different mode
-      // Logic could be stricter (Master only?), but for now simple mesh-like sync
-      if (pkt->current_mode != current_mode) {
-          ESP_LOGI("vent", "Syncing mode from peer: %d", pkt->current_mode);
-          set_mode((VentilationMode)pkt->current_mode, 0); // Slave doesn't inherit timer, just mode? Or should it?
-          // TODO: Improve timer sync if needed
+      // Handle Mode & Timer Sync
+      if (pkt->current_mode != current_mode || 
+         (pkt->current_mode == MODE_VENTILATION && abs((int)(pkt->remaining_duration_ms - get_remaining_duration())) > 2000)) {
+          
+          ESP_LOGI("vent", "Syncing mode from peer: %d (Duration: %d)", pkt->current_mode, pkt->remaining_duration_ms);
+          set_mode((VentilationMode)pkt->current_mode, pkt->remaining_duration_ms);
+          changed = true;
       }
+
+      // Handle Fan Intensity Sync
+      if (pkt->fan_intensity > 0 && pkt->fan_intensity <= 10 && pkt->fan_intensity != current_fan_intensity) {
+          ESP_LOGI("vent", "Syncing fan intensity from peer: %d", pkt->fan_intensity);
+          current_fan_intensity = pkt->fan_intensity;
+          changed = true;
+      }
+      
+      return changed;
   }
 
   // --- HELPERS ---
+  
+  uint32_t get_remaining_duration() {
+      if (ventilation_duration_ms == 0) return 0;
+      uint32_t elapsed = millis() - ventilation_start_time;
+      if (elapsed >= ventilation_duration_ms) return 0;
+      return ventilation_duration_ms - elapsed;
+  }
 
   void sync_time(uint32_t target_pos_ms) {
       uint32_t now = millis();
@@ -285,6 +316,8 @@ class VentilationController : public Component {
       pkt.device_id = device_id;
       pkt.msg_type = type;
       pkt.current_mode = current_mode;
+      pkt.remaining_duration_ms = get_remaining_duration();
+      pkt.fan_intensity = current_fan_intensity;
       pkt.timestamp_ms = millis();
       
       uint32_t period = cycle_duration_ms * 2;

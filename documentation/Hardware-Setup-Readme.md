@@ -12,18 +12,18 @@ Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den 
 * **MCU**: Seeed Studio XIAO ESP32C6
 * **Netzteil (High Voltage)**: XP Power ECE10US12 oder TRACO POWER TMPS 10-112 (230V AC -> 12V DC, 10W)
   * *Hinweis*: Der XP Power ECE10US12 ist eine Alternative zum TRACO POWER TMPS 10-112. Grundriss und Pin-Belegung sind identisch.
-* **Logic Power (MCU Supply)**: Recom R-78E5.0-0.5 oder Traco TSR 1-2450 (12V -> 5V)
-  * *Versorgung*: Speist ausschließlich den XIAO ESP32C6 (via 5V Pin).
+* **Logic Power (5V/MCU Supply)**: **Diodes Inc. AP63205WU-7** (12V -> 5V, 2A)
+  * *Versorgung*: Speist den XIAO ESP32C6 (via 5V Pin).
 * **Peripheral Power (3.3V Buck)**: **Diodes Inc. AP63203WU-7** (12V -> 3.3V, 2A)
   * *Versorgung*: Speist alle Sensoren (BME680), PCA9685 PWM Driver und Front-Panel LEDs.
   * *Hinweis*: Der interne 3.3V LDO des ESP32 wird **nicht** genutzt (Pin open).
 * **Sicherung**: 1A Slow Blow (Träge)
 * **Varistor**: S10K275 (Überspannungsschutz Eingang)
 * **Pufferung**:
-  * 470µF / 25V Elko (12V Rail)
-  * 10µF / 50V Elko (Eingang 5V DC/DC)
-  * **470µF / 16V Elko** (Ausgang 5V DC/DC) - *Wichtig für ESP32 WiFi Peaks!*
-  * 100nF Kerko (HF-Entstörung 5V Rail)
+  * 470µF / 25V Elko (12V Rail) - **C1**
+  * 10µF / 25V MLCC (Eingang 5V DC/DC) - **C16**
+  * **470µF / 16V Elko** (Ausgang 5V DC/DC) - **C6** - *Wichtig für ESP32 WiFi Peaks!*
+    * 100nF Kerko (HF-Entstörung 5V Rail) - **C2**
   * **AP63203 Beschaltung** (siehe unten bei PCB Design)
 
 ### Aktoren & Sensoren
@@ -55,27 +55,52 @@ Status: **Final (10.02.2026)** - ✅ Verified
 
 | Nr. | Menge | Wert / Bauteil | Designator | Footprint | Hersteller Part | Notiz |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| 1 | 1 | 470µF / 25V | C1 | Radial BD10 | KM477M025G13RR | Main 12V Buffer |
-| 2 | 1 | 10µF / 50V | C2 | 1206 | GRM31CR61H106MA12L | 5V Reg Input |
-| 3 | 5 | 100nF | C6, C7, C10, C22, **C25** | 0805 | CC0805KRX7R... | Bypass / HF (C25 für AP63203) |
-| 4 | 1 | 470µF / 16V | C13 | SMD BD6.3 | RVT1C471M0607 | 5V Output Buffer |
-| 5 | 1 | 10µF / 25V | C20 | **0603** | CL10A106MA8NRNC | AP63203 Input (Bias beachten) |
-| 6 | 2 | 22µF / 6.3V | C23, C24 | 0603 | CL10A226MQ8NRNC | AP63203 Output |
-| 7 | 1 | **100µF / 25V** | **C27** | **SMD 7343** | TAJE107M025RNJ | Fan Filter (Tantal, Low ESR) ✅ |
-| 8 | 1 | 10µF / 25V | C28 | 1210 | CL32B106KAJNNNE | Extra Buffer |
-| 9 | 1 | 470µH | L1 | SMD | ASPI-0804T-471M-T | Fan Filter |
-| 10 | 1 | 3.9µH | L2 | SMD | ANR4030T3R9M | AP63203 Inductor |
-| 11 | 1 | AP63203WU-7 | U37 | TSOT-26 | AP63203WU-7 | 3.3V Regulator |
-| ... | ... | ... | ... | ... | ... | ... |
+| 1 | 1 | 470µF / 25V | C1 | Radial BD10 | EEUFR1E471B | Main 12V Buffer |
+| 2 | 7 | 100nF / 50V | C2, C3, C4, C11, C14, C17, C20 | 0805 | CL21B104KBCNNNC | Bypass / HF / Input Caps |
+| 3 | 1 | 470µF / 16V | C6 | Radial BD8 | ERS1CM471F12OT | 5V Output Buffer |
+| 4 | 4 | 22µF / 6.3V | C12, C13, C18, C19 | 0603 | CL10A226MQ8NRNC | AP63203/AP63205 Output |
+| 5 | 1 | **100µF / 25V** | **C15** | **SMD 7343** | TAJE107M025RNJ | Fan Filter (Tantal, Low ESR) ✅ |
+| 6 | 2 | 10µF / 25V | C16, C21 | 1210 | CL32B106KAJNNNE | AP63203/AP63205 Input |
+| 7 | 3 | Diode | D1, D2, D3 | SOD-323 | B5819WS | Schottky (Fan Protect) |
+| 8 | 1 | Fuse Holder | FH1 | TH | 65800001009 | 5x20mm Fuse Holder |
+| 9 | 1 | Header 4P | H2 | 1.27mm | PZ127V-11-04-0720 | SCD41 / I2C Ext |
+| 10 | 1 | Header 3P | JP1 | 2.54mm | HX PH254... | Fan Voltage Select |
+| 11 | 2 | Header 3P | JP2, JP3 | 1.27mm | 1271WV-3P | Fan Mode Select |
+| 12 | 1 | 470µH | L1 | SMD | ASPI-0804T-471M-T | Fan Filter Inductor |
+| 13 | 2 | 3.9µH | L2, L3 | SMD 4x4 | ANR4030T3R9M | Buck Inductors (3.3V & 5V) |
+| 14 | 1 | PMOS | Q1 | SOT-23 | AO3401 | High-Side Switch |
+| 15 | 1 | NPN | Q2 | SOT-23 | S8050 | High-Side Driver |
+| 16 | 2 | NMOS | Q3, Q4 | SOT-23 | PMV16XNR | Low-Side Dual Switch |
+| 17 | 2 | 4.7kΩ | R1, R2 | 0603 | 0603WAF4701T5E | I2C Pullups |
+| 18 | 1 | 1kΩ | R3 | 0603 | RC0603FR-071KL | Base Resistor Q2 |
+| 19 | 3 | 10kΩ | R4, R5, R6 | 0603 | 10kΩ Resistors | NTC Pullup, Pullups |
+| 20 | 1 | 2.2kΩ | R7 | 0805 | 0805W8F2201T5E | Gate Pullup Q1 |
+| 21 | 1 | 470Ω | R8 | 0603 | 0603WAF4700T5E | LED Resistor |
+| 22 | 2 | 10kΩ | R9, R10 | 0402 | CRCW040210K0FKED | Gate Pulldown Q3/Q4 |
+| 23 | 2 | 4x 470Ω | RN1, RN2 | 0603 Array | 4D03WGJ0471T5E | LED Series Resistors |
+| 24 | 1 | 4x 10kΩ | RN3 | 0603 Array | 4D03WGJ0103T5E | Button Pullups |
+| 25 | 2 | 47kΩ | R_B1, R_B2 | 0805 | 0805W8F4702T5E | Bleeder Resistors AC |
+| 26 | 1 | Terminal | U1 | 5.08mm | DB128L-5.08-2P | AC Input |
+| 27 | 1 | Power Module | U2 | Module | TMPS 10-112 | 230V->12V AC/DC |
+| 28 | 10 | ESD Diode | U3-U5, U9-U14, U21 | SOT-23 | PESD5V0S2BT | Dataline Protection |
+| 29 | 2 | Header 7P | U6, U7 | 2.54mm | B254N02... | XIAO Sockets |
+| 30 | 1 | FPC Conn | U8 | SMD | FPC 0.5-14P LTH2.0 | Front Panel Connector |
+| 31 | 1 | LED Driver | U15 | TSSOP-28 | PCA9685PW | 16-Ch PWM |
+| 32 | 1 | 10kΩ | U16 | 0402 | FRC0402F1002TS | Resistor (Note: U-Desig??) |
+| 33 | 2 | Terminal | U17, U18 | 2.54mm | KF128-2.54-2P | NTC Connectors |
+| 34 | 2 | Terminal | U19, U20 | 2.54mm | KF128-2.54-4P | I2C/Fan Connectors |
+| 35 | 1 | 3.3V Buck | **U25** | SOT-26 | **AP63203WU-7** | 12V->3.3V DC/DC |
+| 36 | 1 | 5V Buck | **U26** | SOT-26 | **AP63205WU-7** | 12V->5V DC/DC |
+| 37 | 1 | Varistor | V1 | TH | S10K275 equiv | AC Protection (220pF cap equiv) |
 
 > [!TIP]
 > **Check-Ergebnis**:
 >
-> 1. **Sicherheit**: Das kritische C11 Problem ist gelöst. **C27 (100µF / 25V)** ist absolut sicher für die 12V Lüfter-Spannung. (Upgrade auf Tantal C7230).
-> 2. **Stabilität**: **C25 (100nF)** wurde parallel zu C20 ergänzt. Das ist sehr gut für das HF-Verhalten des Buck-Converters.
-> 3. **Hinweis zu C20**: Du nutzt `CL10A106MA8NRNC` (0603, 10µF, 25V).
->     * Das ist elektrisch sicher (Spannungsfestigkeit passt).
->     * *Physikalischer Effekt*: Bei 12V Bias hat ein 0603 MLCC nur noch ca. 20-30% seiner Kapazität (effektiv ~2-3µF). Da du aber C25 (HF) und C1 (470µF Bulk) hast, ist das in diesem Design **akzeptabel**.
+> 1. **Sicherheit**: Das kritische C11 Problem ist gelöst. **C15 (100µF / 25V)** ist absolut sicher für die 12V Lüfter-Spannung. (Upgrade auf Tantal C7230).
+> 2. **Stabilität**: **C2 (100nF)** wurde parallel zu C16/C21 ergänzt. Das ist sehr gut für das HF-Verhalten des Buck-Converters.
+> 3. **Hinweis zu C16/C21**: Du nutzt `CL32B106KAJNNNE` (1210, 10µF, 25V).
+>     * Das ist elektrisch sicher und physikalisch robust (1210 Bauform).
+>     * Da du **C2** (HF) und C1 (470µF Bulk) hast, ist das Design **valide**.
 >
 > **Freigabe: BOM ist valide.**
 
@@ -110,12 +135,12 @@ Das Board unterstützt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin Dual-GND (VarioP
 1. **Level Shifter Q3** (NPN **S8050**): GPIO16 → R3 (1kΩ) → Q3 Basis. Q3 Emitter → GND.
 2. **PMOS Q1** (AO3401): Q3 Collector → Q1 Gate + **R8 (2.2kΩ)** Pullup auf 12V. Q1 Source → 12V, Drain → PWM_12V_OUT.
 3. **D1 (B5819WS)**: Freilaufdiode Kathode → PWM_12V_OUT, Anode → GND.
-4. **LC-Filter**: PWM_12V_OUT → L1 (470µH) → DC_VAR_12V → C27 (100µF) → GND.
+4. **LC-Filter**: PWM_12V_OUT → L1 (470µH) → DC_VAR_12V → **C15 (100µF)** → GND.
 
 **Dual Low-Side Circuit (3-Pin Dual-GND Mode):**
 
-1. **Q5** (NMOS **PMV16XNR** SOT-23): Fan GND1 → Drain, Source → GND. Gate ← GPIO16 + R19 (10kΩ Pull-down).
-2. **Q4** (NMOS **PMV16XNR** SOT-23): Fan GND2 → Drain, Source → GND. Gate ← GPIO2 + R18 (10kΩ Pull-down).
+1. **Q4** (NMOS **PMV16XNR** SOT-23): Fan GND1 → Drain, Source → GND. Gate ← GPIO16 + R19 (10kΩ Pull-down).
+2. **Q3** (NMOS **PMV16XNR** SOT-23): Fan GND2 → Drain, Source → GND. Gate ← GPIO2 + R18 (10kΩ Pull-down).
 3. **D2 (B5819WS)**: Schutzdiode Kathode → Fan Pin 1, Anode → GND.
 4. **D3 (B5819WS)**: Schutzdiode Kathode → Fan Pin 4, Anode → GND.
 
@@ -124,13 +149,13 @@ Das Board unterstützt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin Dual-GND (VarioP
 | Jumper | Position 1-2 (4-Pin) | Position 2-3 (3-Pin) |
 | :--- | :--- | :--- |
 | **JP1** | Fan VCC ← Constant 12V | Fan VCC ← Variable (DC_VAR_12V) |
-| **JP2** | Fan Pin 1 ← GND | Fan Pin 1 ← Q5 Drain (GND1) |
-| **JP3** | Fan Pin 4 ← GPIO16 (PWM) | Fan Pin 4 ← Q4 Drain (GND2) |
+| **JP2** | Fan Pin 1 ← GND | Fan Pin 1 ← Q4 Drain (GND1) |
+| **JP3** | Fan Pin 4 ← GPIO16 (PWM) | Fan Pin 4 ← Q3 Drain (GND2) |
 
 > ⚠️ **Tacho-Signal & Geräusche (3-Pin Mode)**:
 >
 > 1. **RPM-Schwankung**: Betrifft nur das *Auslesen* der Drehzahl (Tacho). Für die Regelung unkritisch.
-> 2. **Spulenfiepen**: Der LC-Filter (L1 + C27) glättet das PWM-Signal zu einer sauberen Gleichspannung (Buck-Converter Prinzip) → lautloser Betrieb.
+> 2. **Spulenfiepen**: Der LC-Filter (L1 + **C15**) glättet das PWM-Signal zu einer sauberen Gleichspannung (Buck-Converter Prinzip) → lautloser Betrieb.
 
 ### B. PCA9685 PWM Driver (Adresse 0x40)
 
@@ -176,18 +201,18 @@ Das Front-Panel wird über ein 14-Pin Flachbandkabel (0.5mm Pitch) angeschlossen
 
 * **PCA9685**:
   * OE Pin (Pin 23) an GPIO21 (D3) mit 10kΩ Pullup auf 3.3V
-  * 100nF Bypass-Kondensator direkt an VDD (Pin 28)
+  * 100nF Bypass-Kondensator direkt an VDD (Pin 28) - **C4**
   * 10µF Bulk-Kondensator auf 3.3V Rail
 * **FFC Connector**: 14-Pin FPC/FFC Connector (0.5mm Pitch) - U17
 * **ESD Schutz**: Alle Leitungen zum FFC Connector sind mit TVS-Dioden (PESD5V0S2BT) geschützt.
 
-### AP63203 (12V -> 3.3V) Implementierung (Peripherie-Versorgung)
+### AP63203 (12V -> 3.3V) & AP63205 (12V -> 5V) Implementierung
 
-Der **AP63203WU-7** versorgt alle externen 3.3V Komponenten (Sensoren, MCP23017), während der ESP32 separat über 5V läuft.
+Der **AP63203WU-7** (**U25**) versorgt alle externen 3.3V Komponenten (Sensoren, MCP23017), während der **AP63205WU-7** (**U26**) den ESP32 mit 5V versorgt.
 
 **Power-Architektur:**
 
-* **ESP32**: Wird via **5V Pin** vom TSR 1-2450 Wandler (5V) versorgt.
+* **ESP32**: Wird via **5V Pin** vom **AP63205 (5V)** versorgt.
 * **Peripherie**: Wird via **AP63203 (3.3V)** versorgt (PCA9685, LEDs, Sensoren⚠️).
 * **WICHTIG**:
   * Der 3.3V Pin des ESP32 bleibt **unbeschaltet** (NC).
@@ -196,19 +221,18 @@ Der **AP63203WU-7** versorgt alle externen 3.3V Komponenten (Sensoren, MCP23017)
 
 **Komponenten-Werte (Schematic):**
 
-* **U1**: Diodes Inc. AP63203WU-7 (3.3V Fixed, 2A Synch Buck)
+* **U25 / U26**: Diodes Inc. AP63203WU-7 (3.3V) / AP63205WU-7 (5V)
 * **C_IN (Eingang)**:
-  * 1x **10µF** / 25V (oder 35V) MLCC (X7R, 1206) - Nahe an VIN/GND Pins!
-  * 1x **100nF** (0.1µF) / 50V MLCC (0603) - HF-Entkopplung.
-* **L1 (Spule)**:
-  * **3.9µH** (Empfohlen laut Datasheet Table 2 für 3.3V Output).
-  * *Alternativ*: 4.7µH möglich (SparkFun nutzt dies), aber 3.9µH ist das Optimum für maximale Effizienz/Stabilität.
+  * 1x **10µF** / 25V MLCC (1210, **C16 / C21**) - Nahe an VIN/GND Pins!
+  * 1x **100nF** MLCC (0805, **C2 / C14**) - HF-Entkopplung.
+* **L1 / L2 (Spule)**:
+  * **3.9µH** (L2, L3)
   * *Rating*: Sättigungsstrom (Isat) > 2.5A. DCR < 50mΩ.
 * **C_OUT (Ausgang)**:
-  * 2x **22µF** / 10V (oder 6.3V) MLCC (X7R, 0805/1206).
+  * 2x **22µF** / 6.3V MLCC (0603, **C12, C13 / C18, C19**).
   * *Wichtig*: Keramik-Kondensatoren nutzen (Low ESR).
 * **C_BOOT**:
-  * 1x **100nF** (0.1µF) / 16V MLCC (0603) zwischen BST und SW Pin.
+  * 1x **100nF** MLCC (0805, **C17 / C11**) zwischen BST und SW Pin.
 
 **Layout-Tipps:**
 

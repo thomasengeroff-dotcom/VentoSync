@@ -87,7 +87,7 @@ espnow:
     then:
       - lambda: |-
           std::vector<uint8_t> packet(data, data + size);
-          ((esphome::VentilationController*)id(ventilation_ctrl))->on_packet_received(packet);
+          handle_espnow_receive(packet);
 
 # packet_transport:
 #   - platform: espnow
@@ -502,12 +502,8 @@ number:
     optimistic: true
     set_action:
       then:
-        - logger.log: "Timer updated"
         - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            uint32_t ms = (uint32_t)x * 60 * 1000;
-            // Update the duration but keep current mode
-            v->ventilation_duration_ms = ms;
+            set_ventilation_timer(x);
 
   - platform: template
     name: "Zyklusdauer (eine Richtung)"
@@ -522,8 +518,7 @@ number:
     set_action:
       then:
         - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_cycle_duration((uint32_t)x * 1000);
+            set_cycle_duration_handler(x);
 
   - platform: template
     name: "Sync Intervall"
@@ -538,8 +533,7 @@ number:
     set_action:
       then:
         - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_sync_interval((uint32_t)x * 60 * 1000);
+            set_sync_interval_handler(x);
 
   - platform: template
     name: "Lüfter Intensität"
@@ -555,9 +549,7 @@ number:
     set_action:
       then:
         - lambda: |-
-            id(fan_intensity_level) = (int)x;
-            set_fan_intensity_level((int)x);
-            id(update_leds).execute();
+            set_fan_intensity_slider(x);
 
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION
@@ -575,19 +567,7 @@ select:
     initial_option: "Wärmerückgewinnung"
     set_action:
       - lambda: |-
-          auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-          if (x == "Wärmerückgewinnung") {
-            v->set_mode(esphome::MODE_ECO_RECOVERY);
-          } else if (x == "Stoßlüftung") {
-            v->set_mode(esphome::MODE_STOSSLUEFTUNG);
-          } else if (x == "Durchlüften") {
-            // Use the configured timer duration (0 = Infinite)
-            uint32_t duration = (uint32_t)(id(vent_timer).state * 60 * 1000);
-            v->set_mode(esphome::MODE_VENTILATION, duration);
-          } else if (x == "Aus") {
-            v->set_mode(esphome::MODE_OFF);
-          }
-          id(update_leds).execute();
+          set_operating_mode_select(x.c_str());
 
   # Fan Control Mode (NEW)
   - platform: template
@@ -700,7 +680,7 @@ script:
       direction: int # 0 = Direction A, 1 = Direction B
     then:
       - lambda: |-
-          std::string mode = id(fan_mode_select).state;
+          std::string mode = id(fan_mode_select).current_option();
 
           if (mode == "4-Pin PWM") {
             // 4-Pin Mode (AxiRev): Use PWM duty cycle for speed AND direction
@@ -781,9 +761,7 @@ binary_sensor:
     on_click:
       then:
         - lambda: |-
-            id(current_mode_index) = (id(current_mode_index) + 1) % 4;
-            cycle_operating_mode(id(current_mode_index));
-            id(update_leds).execute();
+            handle_button_mode_click();
 
   # Button Power (Left) - On/Off (D8 / GPIO19)
   - platform: gpio
@@ -801,22 +779,7 @@ binary_sensor:
     on_click:
       then:
         - lambda: |-
-            id(ventilation_enabled) = !id(ventilation_enabled);
-            if (id(ventilation_enabled)) {
-              // Power ON: Restore previous mode and fan speed
-              ESP_LOGI("power", "System ON - restoring mode %d", id(current_mode_index));
-              cycle_operating_mode(id(current_mode_index));
-              id(fan_speed_update).execute();
-            } else {
-              // Power OFF: Stop fan and set mode to OFF
-              ESP_LOGI("power", "System OFF");
-              auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-              v->set_mode(esphome::MODE_OFF);
-              id(lueftung_fan).turn_off();
-              id(fan_pwm_primary).set_level(0.0);
-              id(fan_pwm_secondary).set_level(0.0);
-            }
-            id(update_leds).execute();
+            handle_button_power_click();
 
   # Button Level (Middle) - Speed Level (D10 / GPIO18)
   - platform: gpio
@@ -838,19 +801,12 @@ binary_sensor:
           - OFF for at least 0.1s
         then:
           - lambda: |-
-              if (!id(ventilation_enabled)) return;  // Ignore if system is off
-              int level = id(fan_intensity_level);
-              level = (level % 10) + 1;  // 1→2→...→10→1
-              id(fan_intensity_level) = level;
-              set_fan_intensity_level(level);
-              id(fan_speed_update).execute();
-              id(update_leds).execute();
-              ESP_LOGI("button", "Intensity level: %d", level);
+              handle_button_level_click();
       # Long press (≥1s): Toggle system power
       - timing:
           - ON for at least 1s
         then:
-          - lambda: toggle_system_power(); id(update_leds).execute();
+          - lambda: handle_button_power_click();
 
 # ---------------------------------------------------------
 # VENTILATION CONTROL
