@@ -2,6 +2,11 @@
 
 ## 2026-02-15 — Compilation Fixes, Integration Tests & Code Documentation
 
+### 🔧 Hardware Changes (BOM V2)
+
+- **C22, C23 (NEU)**: 22 µF / 25 V MLCC (CL21A226MAQNNNE, LCSC C45783) — VIN-Eingangskondensatoren für AP63203 (U25) und AP63205 (U26) Buck-Converter ergänzt.
+- **L1**: Von ASPI-0804T-471M (470 µH / 500 mA) auf **SLH1207S221MTT** (220 µH / 1.16 A / Isat 2.36 A, LCSC C182174) aufgerüstet — geschirmte SMD-Spule, verkraftet 920 mA Anlaufstrom des VarioPro bei Richtungswechsel alle 70 s.
+
 ### 🐛 Bug Fixes
 
 #### Main Project Compilation (`esp_wohnraumlueftung.yaml`)

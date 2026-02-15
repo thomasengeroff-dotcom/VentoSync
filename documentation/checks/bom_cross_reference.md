@@ -89,7 +89,7 @@ The following components are mentioned in `Hardware-Setup-Readme.md` but are **N
 - ✅ **C23, C24** (22µF/6.3V) - AP63203 output
 - ✅ **C25, C6, C7, C10, C22** (100nF) - Bypass caps
 - ✅ **C27** (100µF/25V) - Fan filter cap
-- ✅ **L1** (470µH) - Fan LC filter inductor
+- ✅ **L1** (220µH) - Fan LC filter inductor (SLH1207S221MTT)
 - ✅ **L2** (3.9µH) - AP63203 inductor
 - ✅ **R1, R2** (4.7kΩ) - I2C pullups
 - ✅ **R3** (1kΩ) - Gate resistor
@@ -136,7 +136,7 @@ The following components are mentioned in `Hardware-Setup-Readme.md` but are **N
 
 ### If you need CO2 monitoring
 
-2. **Order SCD41** sensor
+1. **Order SCD41** sensor
    - Connect to H2 header (4-pin, 1.27mm)
    - I2C address 0x62
    - Update ESPHome YAML to enable SCD4x component

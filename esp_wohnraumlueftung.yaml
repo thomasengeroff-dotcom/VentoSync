@@ -194,7 +194,7 @@ output:
   #   Q3 Collector -> Q1 Gate (PMOS AO3401) + R8 (2.2kΩ) Pullup to 12V
   #   Q1 Source: +12V, Q1 Drain: PWM_12V_OUT
   #   D1 (B5819WS): Flyback diode at PWM_12V_OUT (Cathode -> Drain, Anode -> GND)
-  #   PWM_12V_OUT -> L1 (470µH) -> DC_VAR_12V -> C27 (100µF) -> GND
+  #   PWM_12V_OUT -> L1 (220µH) -> DC_VAR_12V -> C27 (100µF) -> GND
   #
   # Hardware: Dual Low-Side Circuit (3-Pin Dual-GND Mode)
   #   GPIO16 -> Gate Q5 (NMOS PMV16XNR) + R19 (10kΩ) pull-down to GND

@@ -55,7 +55,7 @@ Die Steuerung der Lüfter erfolgt über die GND-Leitungen. Dies wird im folgende
 
 | Bauteil | Symbol | Wert/Typ | Bauform | Funktion |
 | :--- | :--- | :--- | :--- | :--- |
-| **L1** | Inductor | **470µH** (>500mA) | SMD/THT | LC-Filter Spule (Glättung für 3-Pin). |
+| **L1** | Inductor | **220µH** (>1A, SLH1207S221MTT) | SMD | LC-Filter Spule (Glättung für 3-Pin). |
 | **C27** | Capacitor | **100µF** / KEMET Tantal | SMD 7343 | LC-Filter Kondensator (LCSC C7230). |
 
 ---
@@ -88,7 +88,7 @@ Source Q1 ──── +12V
                                   │
                                  GND (D1 Anode)
 
-PWM_12V_OUT ──── L1 (470µH) ──── DC_VAR_12V ──── C27 (100µF) ─── GND
+PWM_12V_OUT ──── L1 (220µH) ──── DC_VAR_12V ──── C27 (100µF) ─── GND
 
 ```
 

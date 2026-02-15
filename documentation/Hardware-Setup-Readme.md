@@ -66,7 +66,7 @@ Status: **Final (10.02.2026)** - ✅ Verified
 | 9 | 1 | Header 4P | H2 | 1.27mm | PZ127V-11-04-0720 | SCD41 / I2C Ext |
 | 10 | 1 | Header 3P | JP1 | 2.54mm | HX PH254... | Fan Voltage Select |
 | 11 | 2 | Header 3P | JP2, JP3 | 1.27mm | 1271WV-3P | Fan Mode Select |
-| 12 | 1 | 470µH | L1 | SMD | ASPI-0804T-471M-T | Fan Filter Inductor |
+| 12 | 1 | 220µH | L1 | SMD 12x12 | SLH1207S221MTT | Fan Filter Inductor |
 | 13 | 2 | 3.9µH | L2, L3 | SMD 4x4 | ANR4030T3R9M | Buck Inductors (3.3V & 5V) |
 | 14 | 1 | PMOS | Q1 | SOT-23 | AO3401 | High-Side Switch |
 | 15 | 1 | NPN | Q2 | SOT-23 | S8050 | High-Side Driver |
@@ -92,6 +92,7 @@ Status: **Final (10.02.2026)** - ✅ Verified
 | 35 | 1 | 3.3V Buck | **U25** | SOT-26 | **AP63203WU-7** | 12V->3.3V DC/DC |
 | 36 | 1 | 5V Buck | **U26** | SOT-26 | **AP63205WU-7** | 12V->5V DC/DC |
 | 37 | 1 | Varistor | V1 | TH | S10K275 equiv | AC Protection (220pF cap equiv) |
+| 38 | 2 | 22µF / 25V | C22, C23 | 1206 | CL21A226MAQNNNE | Buck VIN Input Caps |
 
 > [!TIP]
 > **Check-Ergebnis**:
@@ -135,7 +136,7 @@ Das Board unterstützt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin Dual-GND (VarioP
 1. **Level Shifter Q3** (NPN **S8050**): GPIO16 → R3 (1kΩ) → Q3 Basis. Q3 Emitter → GND.
 2. **PMOS Q1** (AO3401): Q3 Collector → Q1 Gate + **R8 (2.2kΩ)** Pullup auf 12V. Q1 Source → 12V, Drain → PWM_12V_OUT.
 3. **D1 (B5819WS)**: Freilaufdiode Kathode → PWM_12V_OUT, Anode → GND.
-4. **LC-Filter**: PWM_12V_OUT → L1 (470µH) → DC_VAR_12V → **C15 (100µF)** → GND.
+4. **LC-Filter**: PWM_12V_OUT → L1 (220µH) → DC_VAR_12V → **C15 (100µF)** → GND.
 
 **Dual Low-Side Circuit (3-Pin Dual-GND Mode):**
 
@@ -223,7 +224,8 @@ Der **AP63203WU-7** (**U25**) versorgt alle externen 3.3V Komponenten (Sensoren,
 
 * **U25 / U26**: Diodes Inc. AP63203WU-7 (3.3V) / AP63205WU-7 (5V)
 * **C_IN (Eingang)**:
-  * 1x **10µF** / 25V MLCC (1210, **C16 / C21**) - Nahe an VIN/GND Pins!
+  * 1x **22µF** / 25V MLCC (1206, **C22 / C23**) - Direkt am VIN-Pin! (Review-Ergebnis)
+  * 1x **10µF** / 25V MLCC (1210, **C16 / C21**) - Nahe an VIN/GND Pins.
   * 1x **100nF** MLCC (0805, **C2 / C14**) - HF-Entkopplung.
 * **L1 / L2 (Spule)**:
   * **3.9µH** (L2, L3)
