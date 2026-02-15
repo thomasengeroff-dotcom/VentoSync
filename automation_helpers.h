@@ -17,6 +17,7 @@
 #include "esphome/components/template/number/template_number.h"
 #include "esphome/components/template/switch/template_switch.h"
 #include "esphome/components/fan/fan.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/components/output/float_output.h"
 #include "esphome/components/light/light_state.h"
 // Custom Component Header
@@ -32,6 +33,9 @@ extern esphome::globals::GlobalsComponent<bool> *system_on;            ///< Mast
 extern esphome::globals::GlobalsComponent<bool> *ventilation_enabled;   ///< Ventilation enabled flag.
 extern esphome::globals::GlobalsComponent<int> *current_mode_index;     ///< Active mode index (0–3).
 extern esphome::globals::GlobalsComponent<int> *fan_intensity_level;    ///< Fan intensity (1–10).
+extern esphome::globals::RestoringGlobalsComponent<bool> *co2_auto_enabled;      ///< CO2 auto-control enabled flag.
+extern esphome::globals::RestoringGlobalsComponent<int> *co2_min_fan_level;      ///< Min fan level for CO2 control (moisture protection).
+extern esphome::globals::RestoringGlobalsComponent<int> *co2_max_fan_level;      ///< Max fan level for CO2 control (noise limit).
 /// @}
 
 /// @name Template UI components
@@ -41,6 +45,7 @@ extern esphome::template_::TemplateSelect *fan_mode_select;     ///< Fan hardwar
 extern esphome::template_::TemplateNumber *vent_timer;          ///< Ventilation timer (minutes).
 extern esphome::template_::TemplateNumber *fan_intensity_display; ///< Fan intensity display number.
 extern esphome::template_::TemplateSwitch *fan_direction;       ///< Manual direction override switch.
+extern esphome::template_::TemplateSwitch *co2_auto_switch;     ///< CO2 auto-control on/off switch.
 /// @}
 
 /// @name Scripts
@@ -55,6 +60,11 @@ extern esphome::script::SingleScript<float, int> *set_fan_speed_and_direction; /
 extern esphome::speed::SpeedFan *lueftung_fan;       ///< Main fan (speed platform).
 extern esphome::ledc::LEDCOutput *fan_pwm_primary;   ///< Primary PWM output (GPIO19).
 extern esphome::ledc::LEDCOutput *fan_pwm_secondary;  ///< Secondary PWM output (GPIO18).
+/// @}
+
+/// @name Sensors
+/// @{
+extern esphome::sensor::Sensor *co2_sensor;          ///< SCD41 CO2 sensor.
 /// @}
 
 /// @name Status LEDs (monochromatic light components)
@@ -80,12 +90,127 @@ inline std::string get_iaq_classification(float iaq_val) {
   return VentilationLogic::get_iaq_classification(iaq_val);
 }
 
+/// @brief Returns a human-readable German CO2 classification.
+inline std::string get_co2_classification(float co2_ppm) {
+  return VentilationLogic::get_co2_classification(co2_ppm);
+}
+
+/// @brief Calculates CO2-based fan level with hysteresis.
+inline int get_co2_fan_level(float co2_ppm, int current_level, int min_level, int max_level) {
+  return VentilationLogic::get_co2_fan_level(co2_ppm, current_level, min_level, max_level);
+}
+
+/// @brief Applies CO2-based auto-control if enabled and SCD41 is connected.
+/// Checks sensor availability (NaN = not connected), calculates target level,
+/// and applies it only if it differs from the current level (gradual change).
+inline void apply_co2_auto_control() {
+    // Guard: CO2 auto-control must be enabled
+    if (!co2_auto_enabled->value()) return;
+
+    // Guard: System must be on
+    if (!ventilation_enabled->value()) return;
+
+    // Guard: SCD41 sensor must be connected (state is NaN when absent)
+    if (co2_sensor == nullptr) return;
+    float co2_ppm = co2_sensor->state;
+    if (std::isnan(co2_ppm)) {
+        ESP_LOGD("co2_auto", "SCD41 not connected — CO2 auto-control inactive");
+        return;
+    }
+
+    int current_level = fan_intensity_level->value();
+    int min_level = co2_min_fan_level->value();
+    int max_level = co2_max_fan_level->value();
+
+    int target_level = VentilationLogic::get_co2_fan_level(co2_ppm, current_level, min_level, max_level);
+
+    if (target_level != current_level) {
+        ESP_LOGI("co2_auto", "CO2=%.0f ppm → Fan %d→%d (min=%d, max=%d)",
+                 co2_ppm, current_level, target_level, min_level, max_level);
+        fan_intensity_level->value() = target_level;
+        fan_intensity_display->publish_state(target_level);
+        ventilation_ctrl->set_fan_intensity(target_level);
+        fan_speed_update->execute();
+        update_leds->execute();
+    }
+}
+
 
 /// @brief Returns an IAQ traffic-light RGB vector for ESP-NOW visualization.
 inline std::vector<uint8_t> get_iaq_traffic_light_data(float iaq_val) {
   return VentilationLogic::get_iaq_traffic_light_data(iaq_val);
 }
 
+/// @brief Sets fan PWM based on mode (4-pin/3-pin), speed, and direction.
+/// Handles specific logic for AxiRev (PWM direction) vs VarioPro (Dual-GND switching).
+/// @param speed      Target speed duty cycle (0.0 to 1.0).
+/// @param direction  Target direction (0 = Direction A/In, 1 = Direction B/Out).
+inline void set_fan_logic(float speed, int direction) {
+    if (fan_mode_select == nullptr || fan_pwm_primary == nullptr || fan_pwm_secondary == nullptr) {
+        return; // Safety guard
+    }
+
+    std::string mode = fan_mode_select->state;
+
+    if (mode == "4-Pin PWM") {
+        // 4-Pin Mode (AxiRev): Use PWM duty cycle for speed AND direction
+        // AxiRev Specification:
+        // - 0-49% Duty: Direction A (intake), speed increases with PWM
+        // - 50% Duty: Neutral (stopped)
+        // - 51-100% Duty: Direction B (exhaust), speed increases with PWM
+        
+        float axirev_duty;
+        
+        if (direction == 0) {
+            // Direction A: Map speed to 0-49% range
+            // speed 0.0 -> 0%, speed 1.0 -> 49%
+            axirev_duty = speed * 0.49f;
+        } else {
+            // Direction B: Map speed to 51-100% range
+            // speed 0.0 -> 51%, speed 1.0 -> 100%
+            axirev_duty = 0.51f + (speed * 0.49f);
+        }
+        
+        fan_pwm_primary->set_level(axirev_duty);
+        fan_pwm_secondary->set_level(0.0);  // Ensure GND2 is OFF
+        
+    } else if (mode == "3-Pin Dual-GND") {
+        // 3-Pin Dual-GND Mode: Switch between GND1 and GND2
+        
+        // Map speed to VarioPro voltage range (7V-12V = 58%-100%)
+        float variopro_duty = 0.58f + speed * 0.42f;
+        
+        if (direction == 0) {
+            // Direction A: Activate GND1, deactivate GND2
+            fan_pwm_secondary->set_level(0.0);
+            delayMicroseconds(100);  // 100µs safety delay for MOSFET switching
+            fan_pwm_primary->set_level(variopro_duty);
+        } else {
+            // Direction B: Activate GND2, deactivate GND1
+            fan_pwm_primary->set_level(0.0);
+            delayMicroseconds(100);  // 100µs safety delay for MOSFET switching
+            fan_pwm_secondary->set_level(variopro_duty);
+        }
+    }
+}
+
+/// @brief Updates fan speed and direction based on intensity and mode.
+/// Calculates PWM using fan_intensity_level and fan_direction.
+inline void update_fan_logic() {
+    if (fan_intensity_level == nullptr || fan_direction == nullptr) return;
+
+    int intensity = fan_intensity_level->value();
+    
+    // Convert intensity (1-10) to speed (0.0-1.0)
+    float speed = (intensity - 1.0f) / 9.0f;
+    if (speed < 0.0f) speed = 0.0f;
+    if (speed > 1.0f) speed = 1.0f;
+
+    // Get direction from fan_direction switch
+    int direction = fan_direction->state ? 1 : 0;
+
+    set_fan_logic(speed, direction);
+}
 
 /// @brief Calculates heat-recovery efficiency as a percentage.
 inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft, float t_aussen) {

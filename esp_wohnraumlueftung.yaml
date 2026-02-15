@@ -68,6 +68,24 @@ globals:
     type: int
     initial_value: "0"
 
+  # CO2 auto-control enabled (only functional when SCD41 is connected)
+  - id: co2_auto_enabled
+    type: bool
+    initial_value: "false"
+    restore_value: true
+
+  # CO2 auto-control: min fan level (moisture protection / DIN 1946-6 Feuchteschutz)
+  - id: co2_min_fan_level
+    type: int
+    initial_value: "2"
+    restore_value: true
+
+  # CO2 auto-control: max fan level (noise control)
+  - id: co2_max_fan_level
+    type: int
+    initial_value: "7"
+    restore_value: true
+
 # ---------------------------------------------------------
 # VENTILATION COMPONENT (External)
 # ---------------------------------------------------------
@@ -466,6 +484,15 @@ text_sensor:
     lambda: |-
       return get_iaq_classification(id(iaq).state);
 
+  # Human-readable CO2 classification (Ausgezeichnet, Gut, etc.)
+  - platform: template
+    name: "CO2 Bewertung"
+    id: co2_classification
+    icon: "mdi:molecule-co2"
+    update_interval: 30s
+    lambda: |-
+      return get_co2_classification(id(co2_sensor).state);
+
 fan:
   - platform: speed
     output: fan_pwm_primary # Changed from fan_pwm_output
@@ -559,6 +586,40 @@ number:
         - lambda: |-
             set_fan_intensity_slider(x);
 
+  # CO2 Auto-Control: Min Fan Level (moisture protection)
+  - platform: template
+    name: "CO2 Min Lüfterstufe"
+    id: co2_min_level_slider
+    icon: "mdi:water-percent"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: true
+    initial_value: 2
+    set_action:
+      then:
+        - lambda: |-
+            id(co2_min_fan_level) = (int)x;
+            ESP_LOGI("co2_auto", "Min fan level set to %d", (int)x);
+
+  # CO2 Auto-Control: Max Fan Level (noise limiter)
+  - platform: template
+    name: "CO2 Max Lüfterstufe"
+    id: co2_max_level_slider
+    icon: "mdi:volume-off"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: true
+    initial_value: 7
+    set_action:
+      then:
+        - lambda: |-
+            id(co2_max_fan_level) = (int)x;
+            ESP_LOGI("co2_auto", "Max fan level set to %d", (int)x);
+
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION
 # ---------------------------------------------------------
@@ -630,6 +691,27 @@ switch:
       - script.stop: fan_cycle_logic
       - fan.turn_off: lueftung_fan
 
+  # CO2-based adaptive fan control (on/off)
+  - platform: template
+    name: "CO2 Automatik"
+    id: co2_auto_switch
+    icon: "mdi:molecule-co2"
+    optimistic: false
+    lambda: |-
+      return id(co2_auto_enabled);
+    turn_on_action:
+      - lambda: |-
+          if (std::isnan(id(co2_sensor).state)) {
+            ESP_LOGW("co2_auto", "SCD41 nicht angeschlossen — CO2 Automatik kann nicht aktiviert werden");
+          } else {
+            id(co2_auto_enabled) = true;
+            ESP_LOGI("co2_auto", "CO2 Automatik aktiviert");
+          }
+    turn_off_action:
+      - lambda: |-
+          id(co2_auto_enabled) = false;
+          ESP_LOGI("co2_auto", "CO2 Automatik deaktiviert");
+
 # ---------------------------------------------------------
 # SCRIPTS (Complex Logic)
 # ---------------------------------------------------------
@@ -690,66 +772,13 @@ script:
       direction: int # 0 = Direction A, 1 = Direction B
     then:
       - lambda: |-
-          std::string mode = id(fan_mode_select).current_option();
-
-          if (mode == "4-Pin PWM") {
-            // 4-Pin Mode (AxiRev): Use PWM duty cycle for speed AND direction
-            // AxiRev Specification:
-            // - 0-49% Duty: Direction A (intake), speed increases with PWM
-            // - 50% Duty: Neutral (stopped)
-            // - 51-100% Duty: Direction B (exhaust), speed increases with PWM
-            
-            float axirev_duty;
-            
-            if (direction == 0) {
-              // Direction A: Map speed to 0-49% range
-              // speed 0.0 -> 0%, speed 1.0 -> 49%
-              axirev_duty = speed * 0.49f;
-            } else {
-              // Direction B: Map speed to 51-100% range
-              // speed 0.0 -> 51%, speed 1.0 -> 100%
-              axirev_duty = 0.51f + (speed * 0.49f);
-            }
-            
-            id(fan_pwm_primary).set_level(axirev_duty);
-            id(fan_pwm_secondary).set_level(0.0);  // Ensure GND2 is OFF
-            
-          } else if (mode == "3-Pin Dual-GND") {
-            // 3-Pin Dual-GND Mode: Switch between GND1 and GND2
-            
-            // Map speed to VarioPro voltage range (7V-12V = 58%-100%)
-            float variopro_duty = 0.58f + speed * 0.42f;
-            
-            if (direction == 0) {
-              // Direction A: Activate GND1, deactivate GND2
-              id(fan_pwm_secondary).set_level(0.0);
-              delayMicroseconds(100);  // 100µs safety delay for MOSFET switching
-              id(fan_pwm_primary).set_level(variopro_duty);
-            } else {
-              // Direction B: Activate GND2, deactivate GND1
-              id(fan_pwm_primary).set_level(0.0);
-              delayMicroseconds(100);  // 100µs safety delay for MOSFET switching
-              id(fan_pwm_secondary).set_level(variopro_duty);
-            }
-          }
+          set_fan_logic(speed, direction);
 
   # Fan Speed Update (called when intensity or mode changes)
   - id: fan_speed_update
     mode: restart
     then:
-      - lambda: |-
-          int intensity = id(fan_intensity_level);
-
-          // Convert intensity (1-10) to speed (0.0-1.0)
-          float speed = (intensity - 1) / 9.0f;  // 1->0.0, 10->1.0
-          if (speed < 0.0f) speed = 0.0f;
-          if (speed > 1.0f) speed = 1.0f;
-
-          // Get direction from fan_direction switch
-          int direction = id(fan_direction).state ? 1 : 0;
-
-          // Apply speed and direction
-          id(set_fan_speed_and_direction).execute(speed, direction);
+      - lambda: update_fan_logic();
 
 # ---------------------------------------------------------
 # CONTROL PANEL BUTTONS (Input)
@@ -834,3 +863,9 @@ interval:
                 address: "FF:FF:FF:FF:FF:FF"
                 data: !lambda |-
                   return ((esphome::VentilationController*)id(ventilation_ctrl))->build_packet(esphome::MSG_SYNC);
+
+  # CO2 Auto-Control: Check CO2 level and adjust fan every 30s
+  - interval: 30s
+    then:
+      - lambda: |-
+          apply_co2_auto_control();

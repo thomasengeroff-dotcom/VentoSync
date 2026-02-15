@@ -1,8 +1,8 @@
-# 🌬️ Smarte Wohnraumlüftung mit Wärmerückgewinnung (ESP32-C6)
+# 🌬️ Smarte dezentrale Wohnraumlüftung mit Wärmerückgewinnung auf Basis von ESP32-C6 und ESPHome
 
-Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses Projekt steuert einen reversierbaren Lüfter (Push-Pull) zur Wärmerückgewinnung, überwacht die Luftqualität (IAQ, CO2-Äquivalent), berechnet die effektive Wärmerückgewinnung und nutzt das originale **VentoMaxx Bedienpanel** für eine nahtlose Integration und intuitive Steuerung.
+Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses Projekt erstezt die Steuerung der VentoMaxx V-WRG Serie mittels eines eigens dafür entwickelten PCB und steuert damit einen reversierbaren 12V Lüfter (Push-Pull) zur Wärmerückgewinnung, überwacht die Luftqualität (CO2, Feuchte und Temperatur), berechnet die effektive Wärmerückgewinnung und nutzt das **originale VentoMaxx Bedienpanel** für eine nahtlose Integration und intuitive Steuerung.
 
-> 💡 **Kompatibilität:** Die Steuerung funktioniert prinzipiell für jede dezentrale Wohnraumlüftung mit 12V PWM-Lüftern. Sie wurde jedoch **speziell als Ersatz für die VentoMaxx V-WRG Serie** entwickelt. Die Hardware (PCB-Layout/Größe und Bedienpanel) ist damit explizit für die VentoMaxx V-WRG Serie optimiert und muss für andere Hersteller ggf. angepasst werden.
+> 💡 **Kompatibilität:** Die Steuerung funktioniert prinzipiell für jede dezentrale Wohnraumlüftung mit 12V Lüftern (3-PIN oder 4-PIN PWM). Sie wurde jedoch **speziell als Ersatz für die VentoMaxx V-WRG Serie** entwickelt. Die Hardware (PCB-Layout/Größe und Bedienpanel) ist damit explizit für die VentoMaxx V-WRG Serie optimiert und muss für andere Hersteller ggf. angepasst werden. Das PCB ist so konzipiert, dass es in das Gehäuse der VentoMaxx V-WRG Serie passt und die vorhandenen Befestigungspunkte nutzt.
 
 [![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue)](https://esphome.io/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-green)](https://www.home-assistant.io/)
@@ -41,30 +41,33 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels Sensirion SCD41.
 - 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
-- 📊 **Automatische Intensitätsregelung**: Das System erhöht die Lüfterleistung automatisch bei steigendem CO2-Gehalt für optimale Raumluftqualität.
+- 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt für optimale Raumluftqualität erhöhen.
 - 🏎️ **Closed-Loop Drehzahlüberwachung**: Kontinuierliches Monitoring der Lüfterdrehzahl via Tacho-Signal für konstanten Volumenstrom und Fehlererkennung.
 
 ### 🖥️ Human-Machine Interface (HMI)
 
-- 🚥 **Original VentoMaxx Panel**: Nutzung des originalen Bedienfelds mit 9 LEDs und 3 Tastern.
+- 🚥 **Original VentoMaxx Panel**: Nutzung des originalen Bedienfelds mit 9 LEDs und 3 Tastern mit überwiegend identischer Funktionalität bzw. Bedienung wie beim Original.
 - 🔘 **Intuitive Steuerung**:
   - **Power**: System Ein/Aus/Reset.
-  - **Modus**: Wechsel zwischen Wärmerückgewinnung (Winter) und Durchlüften (Sommer).
+  - **Modus**: Wechsel zwischen Wärmerückgewinnung (Winter), Querlüftung (Sommer) und dynamischer Lüftung basierend auf CO2-Gehalt und Feuchte.
   - **Stufe +**: 5 Lüfterstufen (zyklisch).
 - 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-5) und Status.
+  - Master Led wird derzeit nicht genutzt. Kann aber für zukünftige Funktionen genutzt werden zB. für die Anzeige von Fehlern oder Warnungen.
 
 ### 🏠 Integration
 
-**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über Ihr Smart Home System.
+**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über Ihr Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
 
-### �️ Roadmap & Zukünftige Erweiterungen
+### ️ Roadmap & Zukünftige Erweiterungen
 
 Die Firmware ist für folgende "Advanced Automation"-Funktionen vorbereitet (Implementierung folgt):
 
-- **🤖 Adaptive CO2-Regelung**:
-  - Dynamische Anpassung der Lüfterleistung basierend auf Echtzeit-CO2-Werten (ppm).
-  - Granulare Konfiguration von Schwellenwerten (z.B. 800/1000/1400 ppm), Reaktionskurven und Maximalbegrenzungen (Noise Control).
-  - Lokal und remote aktivierbar.
+- **🤖 Adaptive CO2-Regelung** ✅ *Implementiert*:
+  - Dynamische Anpassung der Lüfterleistung basierend auf Echtzeit-CO2-Werten (ppm) vom SCD41 Sensor.
+  - 6-stufige Schwellwerte nach DIN EN 13779 / Umweltbundesamt (600/800/1000/1200/1400 ppm) mit 100 ppm Hysterese.
+  - Konfigurierbarer **Max-Level** (Noise Control) begrenzt die Lüfterdrehzahl auch bei hohen CO2-Werten.
+  - Nur aktiv wenn SCD41 angeschlossen ist — automatische Erkennung. Lokal und remote aktivierbar.
+  - Siehe [📄 CO2 Automatik Dokumentation](documentation/CO2-Automatik.md) für Details.
 
 - **🌙 Intelligenter Nachtmodus**:
   - Zeitgesteuerte Drosselung der Lüfterleistung zur Geräuschminimierung in Ruhephasen.
@@ -80,6 +83,9 @@ Die Firmware ist für folgende "Advanced Automation"-Funktionen vorbereitet (Imp
   - Intelligente Hysterese-Steuerung zur Vermeidung von "Rapid Cycling".
   - Lokal und remote aktivierbar.
   - Zielwert für maximale Luftfeuchtigkeit konfigurierbar.
+
+- **Unterdruckwächter**:
+  - Zum Differenzdruckausgleich bei gleichzeitigem Betrieb von Kamin-/Holzofen und Lüftungsanlage. Erweiterung der Hardware durch einen potentialfreien Kontakt, an welchem der Unterdruckwächter angeschlossen wird.
 
 ### 🔧 Aktuelle technische Verbesserungen
 
@@ -101,7 +107,9 @@ Die Firmware ist für folgende "Advanced Automation"-Funktionen vorbereitet (Imp
 
 ## 🔄 Vergleich mit VentoMaxx V-WRG
 
-Diese Lösung wurde als smarter Ersatz für die herkömmliche [VentoMaxx V-WRG / WRG PLUS](https://www.ventomaxx.de/dezentrale-lueftung-produktuebersicht/aktive-luefter-mit-waermerueckgewinnung/) Steuerung entwickelt. Während die originale VentoMaxx-Lösung keine Integration in ein Smart Home System ermöglicht, bietet dieser ESPHome-Ansatz ein völlig neues Level an Flexibilität und Integrität. Da hier diese Lösung auf ESPHome basiert, kann sie mit jeder Home Assistant Version verwendet werden und bietet eine native Integration in Home Assistant.
+Diese Lösung wurde als smarter Ersatz für die herkömmliche [VentoMaxx V-WRG / WRG PLUS](https://www.ventomaxx.de/dezentrale-lueftung-produktuebersicht/aktive-luefter-mit-waermerueckgewinnung/) Steuerung entwickelt. Einen detaillierten Funktionsvergleich finden Sie in **[Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md)**.
+
+Während die originale VentoMaxx-Lösung keine Integration in ein Smart Home System ermöglicht, bietet dieser ESPHome-Ansatz ein völlig neues Level an Flexibilität und Integrität. Da hier diese Lösung auf ESPHome basiert, kann sie mit jeder Home Assistant Version verwendet werden und bietet eine native Integration in Home Assistant.
 
 ### Funktionsvergleich
 
