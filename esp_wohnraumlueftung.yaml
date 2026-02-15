@@ -1,3 +1,8 @@
+# ---------------------------------------------------------
+# This device is the master device that controls the ventilation
+# and can be used to control the ventilation from Home Assistant.
+# If there are several of these devices, they can communicate with each other via ESP-NOW.
+# ---------------------------------------------------------
 substitutions:
   device_name: esptest
   friendly_name: "ESPTest"
@@ -74,6 +79,9 @@ ventilation_group:
   is_phase_a: ${is_phase_a}
   main_fan: lueftung_fan
   direction_switch: fan_direction
+
+# Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
+ventilation_logic:
 
 # ---------------------------------------------------------
 # ESP-NOW COMMUNICATION

@@ -1,0 +1,303 @@
+substitutions:
+  device_name: integration-test
+  friendly_name: "Integration Test Runner"
+
+packages:
+  common: !include esp32c6_common.yaml
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esphome:
+  includes:
+    - automation_helpers.h
+  on_boot:
+    priority: 500
+    then:
+      - logger.log: "Waiting for boot..."
+      - delay: 5s
+      - script.execute: run_all_tests
+
+# ---------------------------------------------------------
+# GLOBALS (required by automation_helpers.h)
+# ---------------------------------------------------------
+globals:
+  - id: system_on
+    type: bool
+    initial_value: "true"
+  - id: ventilation_enabled
+    type: bool
+    initial_value: "true"
+  - id: fan_intensity_level
+    type: int
+    initial_value: "5"
+  - id: current_mode_index
+    type: int
+    initial_value: "0"
+  # Unused but may be referenced
+  - id: operating_mode
+    type: int
+    initial_value: "0"
+
+# ---------------------------------------------------------
+# MOCK OUTPUTS (required by automation_helpers.h externs)
+# ---------------------------------------------------------
+output:
+  # Template outputs for mock LEDs
+  - platform: template
+    type: float
+    id: mock_out_pwr
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_master
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_l1
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_l2
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_l3
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_l4
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_l5
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_wrg
+    write_action: []
+  - platform: template
+    type: float
+    id: mock_out_vent
+    write_action: []
+  # Fan PWM outputs — LEDC required by automation_helpers.h extern type
+  - platform: ledc
+    pin: GPIO19
+    frequency: 28000 Hz
+    id: fan_pwm_primary
+    zero_means_zero: true
+  - platform: ledc
+    pin: GPIO18
+    frequency: 28000 Hz
+    id: fan_pwm_secondary
+    zero_means_zero: true
+
+# ---------------------------------------------------------
+# MOCK LIGHTS (required by automation_helpers.h externs)
+# ---------------------------------------------------------
+light:
+  - platform: monochromatic
+    output: mock_out_pwr
+    id: status_led_power
+    internal: true
+  - platform: monochromatic
+    output: mock_out_master
+    id: status_led_master
+    internal: true
+  - platform: monochromatic
+    output: mock_out_wrg
+    id: status_led_mode_wrg
+    internal: true
+  - platform: monochromatic
+    output: mock_out_vent
+    id: status_led_mode_vent
+    internal: true
+  - platform: monochromatic
+    output: mock_out_l1
+    id: status_led_l1
+    internal: true
+  - platform: monochromatic
+    output: mock_out_l2
+    id: status_led_l2
+    internal: true
+  - platform: monochromatic
+    output: mock_out_l3
+    id: status_led_l3
+    internal: true
+  - platform: monochromatic
+    output: mock_out_l4
+    id: status_led_l4
+    internal: true
+  - platform: monochromatic
+    output: mock_out_l5
+    id: status_led_l5
+    internal: true
+
+# ---------------------------------------------------------
+# MOCK FAN (speed platform, required extern: lueftung_fan)
+# ---------------------------------------------------------
+fan:
+  - platform: speed
+    output: fan_pwm_primary
+    name: "Mock Fan"
+    id: lueftung_fan
+    speed_count: 100
+
+# ---------------------------------------------------------
+# MOCK DIRECTION SWITCH (required extern: fan_direction)
+# ---------------------------------------------------------
+switch:
+  - platform: template
+    name: "Mock Direction"
+    id: fan_direction
+    optimistic: true
+
+# ---------------------------------------------------------
+# MOCK SELECTS (required externs: selected_mode, fan_mode_select)
+# ---------------------------------------------------------
+select:
+  - platform: template
+    name: "Mock Mode Select"
+    id: selected_mode
+    options:
+      - "Wärmerückgewinnung"
+      - "Stoßlüftung"
+      - "Durchlüften"
+      - "Aus"
+    initial_option: "Wärmerückgewinnung"
+    optimistic: true
+
+  - platform: template
+    name: "Mock Fan Mode Select"
+    id: fan_mode_select
+    options:
+      - "4-Pin PWM"
+      - "3-Pin Dual-GND"
+    initial_option: "4-Pin PWM"
+    optimistic: true
+
+# ---------------------------------------------------------
+# MOCK NUMBERS (required externs: vent_timer, fan_intensity_display)
+# ---------------------------------------------------------
+number:
+  - platform: template
+    id: vent_timer
+    min_value: 0
+    max_value: 120
+    step: 5
+    initial_value: 30
+    optimistic: true
+
+  - platform: template
+    id: fan_intensity_display
+    min_value: 1
+    max_value: 10
+    step: 1
+    optimistic: true
+
+# ---------------------------------------------------------
+# MOCK BUTTONS (test triggers)
+# ---------------------------------------------------------
+button:
+  - platform: template
+    name: "Test Button Level"
+    id: btn_level
+    on_press:
+      - lambda: handle_button_level_click();
+
+  - platform: template
+    name: "Test Button Mode"
+    id: btn_mode
+    on_press:
+      - lambda: handle_button_mode_click();
+
+# ---------------------------------------------------------
+# SYSTEM UNDER TEST
+# ---------------------------------------------------------
+ventilation_group:
+  id: ventilation_ctrl
+  floor_id: 1
+  room_id: 1
+  device_id: 99
+  is_phase_a: true
+  main_fan: lueftung_fan
+  direction_switch: fan_direction
+
+ventilation_logic:
+
+# ---------------------------------------------------------
+# SCRIPTS (must match automation_helpers.h extern types)
+# ---------------------------------------------------------
+script:
+  # RestartScript<> — mode: restart
+  - id: update_leds
+    mode: restart
+    then: []
+
+  # RestartScript<> — mode: restart
+  - id: fan_speed_update
+    mode: restart
+    then: []
+
+  # SingleScript<float, int> — mode: single with parameters
+  - id: set_fan_speed_and_direction
+    parameters:
+      speed: float
+      direction: int
+    then: []
+
+  # --- TEST RUNNER ---
+  - id: run_all_tests
+    then:
+      - logger.log: "=== STARTING INTEGRATION TESTS ==="
+      - script.execute: test_hw_fan_control
+      - delay: 2000ms
+      - script.execute: test_button_logic
+      - delay: 2000ms
+      - logger.log: "=== TESTS COMPLETED ==="
+
+  - id: test_hw_fan_control
+    then:
+      - logger.log: "TEST: Hardware Fan Control"
+      - lambda: |-
+          // 1. Set mode OFF
+          id(ventilation_ctrl).set_mode(esphome::MODE_OFF);
+      - delay: 100ms
+      - lambda: |-
+          if (id(lueftung_fan).state) {
+            ESP_LOGE("test", "[FAIL] Fan should be OFF");
+          } else {
+            ESP_LOGI("test", "[PASS] Fan is OFF");
+          }
+
+          // 2. Set mode VENTILATION (should be ON)
+          id(ventilation_ctrl).set_mode(esphome::MODE_VENTILATION);
+      - delay: 100ms
+      - lambda: |-
+          if (!id(lueftung_fan).state) {
+            ESP_LOGE("test", "[FAIL] Fan should be ON");
+          } else {
+            ESP_LOGI("test", "[PASS] Fan is ON");
+          }
+
+  - id: test_button_logic
+    then:
+      - logger.log: "TEST: Button Logic via Automation Helpers"
+      - lambda: |-
+          // Setup: Ensure system is ON
+          id(ventilation_enabled) = true;
+          id(fan_intensity_level) = 1;
+          id(current_mode_index) = 0; // Eco Recovery
+      - delay: 100ms
+      # Test Level Cycling
+      - lambda: id(btn_level).press();
+      - delay: 100ms
+      - lambda: |-
+          // Level 1 -> 2
+          if (id(fan_intensity_level) == 2) {
+             ESP_LOGI("test", "[PASS] Button increased level to 2");
+          } else {
+             ESP_LOGE("test", "[FAIL] Expected level 2, got %d", id(fan_intensity_level));
+          }

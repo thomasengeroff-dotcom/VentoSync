@@ -1,3 +1,7 @@
+# ---------------------------------------------------------
+# This device is a slave device that is controlled by the master device
+# just for testing purposes.
+# ---------------------------------------------------------
 substitutions:
   device_name: espslavetest
   friendly_name: "ESPSlaveTest"

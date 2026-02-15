@@ -1,0 +1,53 @@
+INFO ESPHome 2025.12.7
+INFO Reading configuration esp_wohnraumlueftung.yaml...
+INFO Detected timezone 'Europe/Berlin'
+INFO Generating C++ source...
+INFO Compiling app... Build path: C:\Users\thomas.engeroff\Documents\ESPHome-Projekte\ESPHome-Wohnraumlueftung\.esphome\build\esptest
+Processing esptest (board: esp32-c6-devkitc-1; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.31-2/platform-espressif32.zip)
+--------------------------------------------------------------------------------
+HARDWARE: ESP32C6 160MHz, 320KB RAM, 4MB Flash
+ - contrib-piohome @ 3.4.4 
+ - framework-espidf @ 3.50501.0 (5.5.1) 
+ - tool-cmake @ 4.0.3 
+ - tool-esp-rom-elfs @ 2024.10.11 
+ - tool-esptoolpy @ 5.1.0 
+ - tool-mklittlefs @ 3.2.0 
+ - tool-ninja @ 1.13.1 
+ - tool-scons @ 4.40801.0 (4.8.1) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119
+Reading CMake configuration...
+Dependency Graph
+|-- noise-c @ 0.1.10
+|-- ArduinoJson @ 7.4.2
+|-- BME68x Sensor library @ 1.3.40408+sha.4f37df6
+|-- bsec2 @ 1.10.2610+sha.0dac6ea
+Compiling .pioenvs\esptest\src\main.cpp.o
+In file included from src/esphome/components/pulse_counter/pulse_counter_sensor.h:10,
+                 from src/esphome\components\pulse_counter\automation.h:5,
+                 from src/esphome.h:90,
+                 from src/main.cpp:3:
+C:/Users/thomas.engeroff/.platformio/packages/framework-espidf/components/driver/deprecated/driver/pcnt.h:15:2: warning: #warning "legacy pcnt driver is deprecated, please migrate to use driver/pulse_cnt.h" [-Wcpp]
+   15 | #warning "legacy pcnt driver is deprecated, please migrate to use driver/pulse_cnt.h"
+      |  ^~~~~~~
+Linking .pioenvs\esptest\firmware.elf
+Firmware metrics can not be shown. Set the terminal codepage to "utf-8"
+RAM:   [=         ]  12.0% (used 39312 bytes from 327680 bytes)
+Flash: [=======   ]  67.6% (used 1240972 bytes from 1835008 bytes)
+Building .pioenvs\esptest\firmware.bin
+Creating ESP32C6 image...
+Successfully created ESP32C6 image.
+merge_factory_bin([".pioenvs\esptest\firmware.bin"], [".pioenvs\esptest\firmware.elf"])
+Info: bootloader.bin not found - skipping
+Info: partition-table.bin not found - skipping
+Info: ota_data_initial.bin not found - skipping
+Info: esptest.bin not found - skipping
+Using FLASH_EXTRA_IMAGES from PlatformIO environment
+Merging binaries into C:\Users\thomas.engeroff\Documents\ESPHome-Projekte\ESPHome-Wohnraumlueftung\.esphome\build\esptest\.pioenvs\esptest\firmware.factory.bin
+Merging binaries with esptool
+SHA digest in image updated.
+Wrote 0x13f120 bytes to file 'C:\Users\thomas.engeroff\Documents\ESPHome-Projekte\ESPHome-Wohnraumlueftung\.esphome\build\esptest\.pioenvs\esptest\firmware.factory.bin', ready to flash to offset 0x0.
+Successfully created C:\Users\thomas.engeroff\Documents\ESPHome-Projekte\ESPHome-Wohnraumlueftung\.esphome\build\esptest\.pioenvs\esptest\firmware.factory.bin
+esp32_copy_ota_bin([".pioenvs\esptest\firmware.bin"], [".pioenvs\esptest\firmware.elf"])
+Copied firmware to C:\Users\thomas.engeroff\Documents\ESPHome-Projekte\ESPHome-Wohnraumlueftung\.esphome\build\esptest\.pioenvs\esptest/firmware.ota.bin
+========================= [SUCCESS] Took 44.09 seconds =========================
+INFO Successfully compiled program.

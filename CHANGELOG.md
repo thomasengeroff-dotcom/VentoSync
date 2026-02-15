@@ -1,5 +1,127 @@
 # 📋 Changelog - ESPHome Wohnraumlüftung
 
+## 2026-02-15 — Compilation Fixes, Integration Tests & Code Documentation
+
+### 🐛 Bug Fixes
+
+#### Main Project Compilation (`esp_wohnraumlueftung.yaml`)
+
+- **`ventilation_logic` Component**: Added `ventilation_logic:` to YAML — component war registriert aber der Include fehlte, Build schlug fehl.
+- **`automation_helpers.h` Access Corrections**:
+  - `v->current_mode` → `v->state_machine.current_mode` (3 Stellen)
+  - `v->ventilation_duration_ms` → `v->state_machine.ventilation_duration_ms` (1 Stelle)
+- **`ventilation_group.h`**: Entfernte fehlerhafte `current_mode()` Getter-Methode (API-Konflikt).
+
+#### Integration Test Compilation (`integration_test.yaml`)
+
+- **Vollständig neu geschrieben** — alle `extern`-Deklarationen aus `automation_helpers.h` werden jetzt korrekt gemockt:
+  - **9 Status-LEDs** (`status_led_l1`–`l5`, `power`, `master`, `mode_wrg`, `mode_vent`) → `monochromatic` + `template float` Outputs
+  - **Fan PWM** (`fan_pwm_primary`, `fan_pwm_secondary`) → `ledc` Outputs (GPIO19/18)
+  - **Speed Fan** → `lueftung_fan` (ID korrigiert von `mock_fan`)
+  - **Selects** → `selected_mode` + `fan_mode_select` mit korrekten Optionen
+  - **Numbers** → `vent_timer` + `fan_intensity_display`
+  - **Switch** → `fan_direction` (ID korrigiert von `mock_direction`)
+  - **Scripts** → `update_leds`, `fan_speed_update` mit `mode: restart`; `set_fan_speed_and_direction` mit `parameters: float, int`
+- **Globals-Zugriff**: `id(x)->value() = wert` → `id(x) = wert` (5 Stellen)
+
+### 📚 Code Documentation
+
+Doxygen-Style `/// @brief` / `@param` / `@return` Kommentare zu **allen** C++/H-Dateien hinzugefügt:
+
+| Datei | Kommentierte Elemente |
+|-------|----------------------|
+| `ventilation_state_machine.h` | File-doc, Enum-Werte, Struct-Felder, Klasse, Members, Methoden |
+| `ventilation_state_machine.cpp` | Alle 8 Methoden |
+| `ventilation_group.h` | File-doc, `MessageType`, `VentilationPacket`, `VentilationController` (Felder, Setter, Methoden) |
+| `ventilation_logic.h` | File-doc, Klasse, alle 7 statischen Methoden |
+| `ventilation_logic.cpp` | Alle 7 Methoden |
+| `automation_helpers.h` | File-doc, alle `extern`-Gruppen (`@name`), alle 14 inline-Funktionen |
+
+### 🧪 Unit Tests (SimpleTest Runner)
+
+Neues natives C++ Test-Framework ohne ESPHome-Abhängigkeit aufgesetzt (`tests/simple_test_runner.cpp`):
+
+- **Test-Infrastruktur**: Eigenes `TEST_ASSERT` Makro, kompiliert mit `g++` direkt auf dem Host
+- **`run_tests.bat`**: Build + Run Skript für Windows
+
+#### Tests (5 Testfälle, alle ✅ PASS)
+
+| Test | Prüft |
+| ---- | ----- |
+| `test_iaq_classification` | IAQ-Werte → deutsche Klassifikation (Ausgezeichnet…Gesundheitsgefährdend) |
+| `test_heat_recovery` | WRG-Effizienz-Berechnung + Division-by-Zero-Schutz |
+| `test_fan_logic` | Slider-Off-Schwelle + Level-Cycling 1→10→1 |
+| `test_stosslueftung_cycle` | 15 min ON → 105 min OFF → Direction-Flip |
+| `test_phase_logic` | Phase A/B Wechsel mit 1 s Zyklusdauer |
+
+### 📁 File Changes
+
+#### New Files
+
+- `tests/simple_test_runner.cpp` — 5 native Unit Tests für `VentilationLogic` + `VentilationStateMachine`
+- `tests/run_tests.bat` — Build & Run Skript
+- `tests/README.md` — Testdokumentation
+
+#### Modified Files
+
+- `esp_wohnraumlueftung.yaml` — `ventilation_logic:` Component hinzugefügt
+- `automation_helpers.h` — Access-Path Korrekturen + Doxygen-Kommentare
+- `components/ventilation_group/ventilation_group.h` — Getter entfernt + Doxygen-Kommentare
+- `components/ventilation_group/ventilation_state_machine.h` — Doxygen-Kommentare
+- `components/ventilation_group/ventilation_state_machine.cpp` — Doxygen-Kommentare
+- `components/ventilation_logic/ventilation_logic.h` — Doxygen-Kommentare
+- `components/ventilation_logic/ventilation_logic.cpp` — Doxygen-Kommentare
+
+#### Rewritten Files
+
+- `integration_test.yaml` — Komplett neu geschrieben mit vollständigen Mock-Komponenten
+
+### ✅ Compilation Status
+
+| YAML | Status | Build-Zeit |
+|------|--------|-----------|
+| `esp_wohnraumlueftung.yaml` | ✅ SUCCESS | ~70 s |
+| `integration_test.yaml` | ✅ SUCCESS | ~355 s |
+
+---
+
+## 2026-02-14 - Hardware Pinout & Safety Update
+
+### ✨ Hardware Changes
+
+#### Pinout Update (Verified)
+
+- **Layout korrigiert**: Pin-Mapping an finales Board-Layout angepasst (basierend auf Hardware Verification Report)
+  - **Buttons**: Power (D6/GPIO16), Mode (D9/GPIO20), Level (D2/GPIO2).
+  - **Fan PWM**: Primary (D8/GPIO19), Secondary (D10/GPIO18).
+  - **NTCs**: ADC Swapped (Out=D0, In=D1).
+- **Logger**: Umzug auf `USB_SERIAL_JTAG` (GPIO16/17 jetzt für Buttons/Tacho frei).
+
+#### Circuit Safety (Critical)
+
+- **Q1 MOSFET**: **DMP3098L** (Vgs ±20V) ist jetzt Pflicht-Bauteil.
+- **AO3401 Warnung**: Entfernt, da Bauteil durch DMP3098L ersetzt wurde (keine Vgs-Probleme mehr).
+- **R_GS**: Widerstand ersatzlos gestrichen (nicht mehr nötig).
+
+### 📚 Documentation Updates
+
+- `Anleitung-Fan-Circuit.md`:
+  - Q1 auf DMP3098L aktualisiert.
+  - Vgs Warnung entfernt.
+  - Schaltplan und Stückliste bereinigt.
+- `Hardware-Setup-Readme.md`:
+  - Neue Pin-Tabelle (D0-D10) eingepflegt.
+- `PCB-Best-Practices.md`:
+  - Neue Regel für **Teardrops** hinzugefügt (Mechanische Stabilität).
+  - Tacho-Filter Hinweis ergänzt.
+
+### 📁 File Changes
+
+- `esp_wohnraumlueftung.yaml`: GPIO-Assignment und Logger-Config angepasst.
+- `esp32c6_common.yaml`: Logger auf `USB_SERIAL_JTAG` umgestellt.
+
+---
+
 ## 2026-02-10 - Hybrid Fan Interface & Documentation Update
 
 ### ✨ Hardware Changes
