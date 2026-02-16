@@ -19,11 +19,20 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - 30s Regelintervall via `interval` Automation.
   - Dokumentation: `documentation/CO2-Automatik.md`.
   - **Unit Tests**: CO2-Logic Test Cases (`test_co2_logic`) hinzugefügt (Klassifikation, Schwellwerte, Hysterese, Min/Max-Clamping).
+- **NTC Temperatursensoren (Analog)**:
+  - Integration von NTC-Sensoren via ADC (GPIO4 am Slave / GPIO0/1 am Master).
+  - Optimiertes Sampling: 1000ms Intervall mit Median- (Window 5) und Delta-Filter (0.2°C) für stabile Messwerte.
+  - Korrekte `UPSTREAM`/`DOWNSTREAM` Konfiguration je nach Hardware-Setup.
+  - Deprecation Fix: `attenuation` von 11db auf 12db aktualisiert.
+- **AI-Lüftungssteuerung (Konzept)**:
+  - Initiales Konzeptdokument (`documentation/KI-gestützte-Lüftungssteuerung.md`) erstellt.
+  - Ansätze für lokale Datenaufzeichnung, externe Wetterdaten und proaktive Regelung (Sommer-Hitzeschutz, Entfeuchtung).
 
 ### Changed
 
 - **Refactoring**: komplette Fan-Logik (`set_fan_speed_and_direction`, `fan_speed_update`) aus YAML-Lambdas in C++ Helper-Funktionen (`set_fan_logic`, `update_fan_logic`) in `automation_helpers.h` ausgelagert.
 - **Cleanup**: `esp_wohnraumlueftung.yaml` bereinigt und Inline-Logik durch einfache Funktionsaufrufe ersetzt.
+- **Readme**: Update mit Verweis auf KI-Lüftungskonzept.
 
 ### Fixed
 

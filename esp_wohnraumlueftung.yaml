@@ -402,7 +402,7 @@ sensor:
     id: ntc_innen_source
     pin: GPIO1 # Pin D1 - ADC capable (Updated)
     attenuation: 12db # For 0-3.3V range (updated from deprecated 11db)
-    update_interval: 10s
+    update_interval: 1000ms
     internal: true
 
   # NTC Außen - Outdoor/exhaust air temperature measurement
@@ -433,7 +433,7 @@ sensor:
     id: ntc_aussen_source
     pin: GPIO0 # Pin D0 - ADC capable (Updated)
     attenuation: 12db # For 0-3.3V range (updated from deprecated 11db)
-    update_interval: 10s
+    update_interval: 1000ms
     internal: true
 
   # ---------------------------------------------------------

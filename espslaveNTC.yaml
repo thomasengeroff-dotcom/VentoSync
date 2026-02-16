@@ -1,0 +1,226 @@
+# ---------------------------------------------------------
+# This device is a slave device that is controlled by the master device
+# just for testing purposes.
+# It contains the three led traffic light and the ntc sensor.
+# The main reason for this device is to test the NTC sensor.
+# ---------------------------------------------------------
+esphome:
+  name: espslaventc
+  friendly_name: ESPSlaveNTC
+  platformio_options:
+    board_build.flash_mode: dio
+    build_type: debug # Einkommentieren für schnelleres Kompilieren (aber größere und langsamere Firmware)
+
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: esp32c6
+  framework:
+    type: esp-idf # C6 läuft oft stabiler mit IDF als mit Arduino aktuell
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "KO8uDxKiHXOwURP1/lGMg3bXMjQPneZlZxRL0Tp2ZL4="
+
+ota:
+  - platform: esphome
+    password: "6e8eb193dc4126ea5d77b966fd27b921"
+
+wifi:
+  # ssid: !secret wifi_ssid
+  # password: !secret wifi_password
+  ssid: SpeedyX_IoT
+  password: Volvo!TE%2021Sab
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esptest Fallback Hotspot"
+    password: "2o3QonHKlsIl"
+
+# ---------------------------------------------------------
+# ESP-NOW Configuration
+# ---------------------------------------------------------
+# Das Protokoll aktivieren
+espnow:
+  # on_receive logic for debugging raw packets if needed:
+  # on_receive:
+  #   - logger.log:
+  #       format: "Sent to %s from %s: %s RSSI: %ddBm"
+  #       args:
+  #         - format_mac_address_pretty(info.des_addr).c_str()
+  #         - format_mac_address_pretty(info.src_addr).c_str()
+  #         - data
+  #         - info.rx_ctrl->rssi
+  peers:
+    - "98:A3:16:85:9A:D8" # Provider mac address (Master)
+  on_receive:
+    address: "98:A3:16:85:9A:D8"
+    then:
+      - if:
+          condition:
+            lambda: "return size > 0 && data[0] == 0x01;"
+          then:
+            - switch.turn_on: led_red
+            - switch.turn_off: led_yellow
+            - switch.turn_off: led_green
+            - logger.log: "Received ON signal - Red"
+      - if:
+          condition:
+            lambda: "return size > 0 && data[0] == 0x02;"
+          then:
+            - switch.turn_off: led_red
+            - switch.turn_on: led_yellow
+            - switch.turn_off: led_green
+            - logger.log: "Received ON signal - Yellow"
+      - if:
+          condition:
+            lambda: "return size > 0 && data[0] == 0x03;"
+          then:
+            - switch.turn_off: led_red
+            - switch.turn_off: led_yellow
+            - switch.turn_on: led_green
+            - logger.log: "Received ON signal - Green"
+
+# ---------------------------------------------------------
+# Packet Transport Configuration
+# ---------------------------------------------------------
+packet_transport:
+  - platform: espnow
+    update_interval: 1s
+    providers:
+      - name: "iaq-sensor" # Provider device name
+      - name: "temperature-sensor"
+#   encryption: "HubSecret123"
+
+# ---------------------------------------------------------
+# SENSORS
+# ---------------------------------------------------------
+sensor:
+  # 1. Packet Transport Sensors (receiving data from Master)
+  - platform: packet_transport
+    id: local_iaq
+    provider: iaq-sensor
+    remote_id: iaq
+    internal: false
+    name: "RemoteIAQ"
+    on_value:
+      then:
+        - lambda: |-
+            if (x <= 50) {
+              // Gut (0-50): Grün an, Rest aus
+              id(led_green).turn_on();
+              id(led_yellow).turn_off();
+              id(led_red).turn_off();
+            } else if (x > 50 && x <= 150) {
+              // Mittel (51-150): Gelb an, Rest aus
+              id(led_green).turn_off();
+              id(led_yellow).turn_on();
+              id(led_red).turn_off();
+            } else {
+              // Schlecht (>150): Rot an, Rest aus
+              id(led_green).turn_off();
+              id(led_yellow).turn_off();
+              id(led_red).turn_on();
+            }
+
+  - platform: packet_transport
+    provider: temperature-sensor
+    id: local_temperature
+    remote_id: temperature
+    internal: false
+    name: "RemoteTemp"
+
+  # 2. NTC Temperature Sensor Configuration
+  # This setup uses a voltage divider to measure temperature.
+
+  # Step 1: ADC Sensor
+  # Measures the voltage at GPIO0 (connected to the NTC divider point)
+  - platform: adc
+    pin: GPIO0
+    id: ntc_source_volts
+    update_interval: 350ms # wird runtergesetzt durch Filter
+    attenuation: 12db # 11db attenuation allows max voltage measurement (usually up to 2.5-3.3V)
+
+  # Step 2: Resistance Sensor
+  # Calculates the resistance of the NTC thermistor based on the measured voltage.
+  # Configuration: UPSTREAM means the circuit is: VCC -> NTC -> GPIO -> Fixed Resistor -> GND
+  # Configuration: DOWNSTREAM means the circuit is: VCC -> Fixed Resistor -> GPIO -> NTC -> GND
+  - platform: resistance
+    sensor: ntc_source_volts
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Value of the fixed pull-down resistor
+    name: NTC Resistance
+    id: ntc_res_sensor
+    internal: true # Only needed internally for the calculation
+
+  # Step 3: NTC Platform
+  # Converts the calculated resistance into a temperature value using the Beta method.
+  - platform: ntc
+    sensor: ntc_res_sensor
+    name: NTC Temperature
+    calibration:
+      b_constant: 3435 # Beta Constant specific to the NTC thermistor used (e.g., 3435 or 3950)
+      reference_temperature: 25°C # Standard reference temperature
+      reference_resistance: 10kOhm # Resistance of the NTC at the reference temperature
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - delta: 0.2
+
+# ---------------------------------------------------------
+# TEXT SENSORS
+# ---------------------------------------------------------
+text_sensor:
+  - platform: template
+    name: "BME68x IAQ Classification"
+    lambda: |-
+      if (int(id(local_iaq).state) <= 50) {
+        return {"Excellent"};
+      } else if (int(id(local_iaq).state) >= 51 && int(id(local_iaq).state) <= 100) {
+        return {"Good"};
+      } else if (int(id(local_iaq).state) >= 101 && int(id(local_iaq).state) <= 150) {
+        return {"Lightly polluted"};
+      } else if (int(id(local_iaq).state) >= 151 && int(id(local_iaq).state) <= 200) {
+        return {"Moderately polluted"};
+      } else if (int(id(local_iaq).state) >= 201 && int(id(local_iaq).state) <= 250) {
+        return {"Heavily polluted"};
+      } else if (int(id(local_iaq).state) >= 251 && int(id(local_iaq).state) <= 350) {
+        return {"Severely polluted"};
+      } else if (int(id(local_iaq).state) >= 351 && int(id(local_iaq).state) <= 500) {
+        return {"Extremely polluted"};
+      } else {
+        return {"Error"};
+      }
+
+# ---------------------------------------------------------
+# SENSOR & AKTOR (Switches/LEDs)
+# ---------------------------------------------------------
+switch:
+  - platform: gpio
+    pin: GPIO20
+    name: "Ampel Rot"
+    id: led_red
+    inverted: false
+
+  - platform: gpio
+    pin: GPIO19
+    name: "Ampel Gelb"
+    id: led_yellow
+    inverted: false
+
+  - platform: gpio
+    pin: GPIO17
+    name: "Ampel Grün"
+    id: led_green
+    inverted: false
+
+# ---------------------------------------------------------
+# CAPTIVE PORTAL
+# ---------------------------------------------------------
+# The captive portal component in ESPHome is a fallback mechanism for when connecting to the configured WiFi fails.
+captive_portal:

@@ -87,6 +87,9 @@ Die Firmware ist für folgende "Advanced Automation"-Funktionen vorbereitet (Imp
 - **Unterdruckwächter**:
   - Zum Differenzdruckausgleich bei gleichzeitigem Betrieb von Kamin-/Holzofen und Lüftungsanlage. Erweiterung der Hardware durch einen potentialfreien Kontakt, an welchem der Unterdruckwächter angeschlossen wird.
 
+- **KI-gestützte Lüftungssteuerung**:
+  - Proaktive KI-gestützte Lüftungssteuerung basierend auf historischen Daten und externen Prognosen (Wetter, CO2, Feuchte). Siehe [📄 KI-gestützte Lüftungssteuerung](documentation/KI-gestützte-Lüftungssteuerung.md) für Details.
+  
 ### 🔧 Aktuelle technische Verbesserungen
 
 - **Hardware-Upgrade: SCD41 CO2-Sensor (Februar 2026)**:
