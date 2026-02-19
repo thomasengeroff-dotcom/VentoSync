@@ -23,15 +23,24 @@ Der MCP23017 wird an den bestehenden I2C-Bus angeschlossen.
   * **GND:** GND
   * **Adresse:** `0x20` (Standard, alle Adress-Pins A0-A2 auf GND)
 
+#### Anschluss-Details (QFN-28 Gehäuse)
+
+* **RESET:** Muss auf **3.3V (HIGH)** gezogen werden. (Z.B. über 10kOhm Pullup oder direkt). Wenn er LOW ist, resettet der Chip.
+* **EP (Exposed Pad) / VSS:** Die Metallfläche unten am Chip **MUSS auf GND** verbunden werden (Wärme & Stabilität).
+* **INTA / INTB:** (Interrupt A/B). Diese Ausgänge melden, wenn sich ein Eingang ändert.
+  * *Da wir keine freien Pins am ESP32 mehr haben:* **Offen lassen (NC)**. ESPHome pollt den Chip regelmäßig über I2C.
+* **NC (Not Connected):** Diese Pins haben keine Funktion. Einfach **frei lassen** (nicht anschließen).
+
 ### B. Pin-Umzug (Rewiring)
 
 Die Taster wandern auf den Expander, um native GPIOs für UART freizugeben.
 
-| Komponente | Alter Pin (ESP32-C6) | Neuer Pin (MCP23017) | Grund |
+| Komponente | Alter Pin (ESP32-C6) | Neuer Pin / Hinweise | Grund |
 | :--- | :--- | :--- | :--- |
-| **Button Power** | GPIO16 | **GPA0** (Pin 21) | Taster unkritisch, UART benötigt GPIO16 (TX) |
-| **Button Mode** | GPIO20 | **GPA1** (Pin 22) | Taster unkritisch, Pin für PIR frei machen |
-| **Button Level** | GPIO2 | **GPA2** (Pin 23) | Taster unkritisch, UART benötigt GPIO2 (RX) |
+| **Button Power** | GPIO16 | **MCP GPA0** (Pin 21) | Native UART TX (GPIO16) wird für Radar benötigt. |
+| **Button Mode** | GPIO20 | **MCP GPA1** (Pin 22) | Pin frei für spätere Erweiterung (PIR). |
+| **Button Level** | GPIO2 | **MCP GPA2** (Pin 23) | Pin wird frei für **Fan RPM** (siehe unten). |
+| **Fan RPM** | GPIO17 | **GPIO2** | Native UART RX (GPIO17) wird für Radar benötigt. Pulse Counter läuft auch auf GPIO2. |
 
 *Hinweis: Die Taster schalten gegen GND. Interne Pullups des MCP23017 aktivieren.*
 
@@ -40,15 +49,16 @@ Die Taster wandern auf den Expander, um native GPIOs für UART freizugeben.
 #### 1. HLK-LD2450 (Radar)
 
 Benötigt UART (Serial). **Achtung: 5V Versorgung empfohlen! Logic Level ist 3.3V kompatibel.**
+Wir nutzen jetzt die **Hardware-UART Pins** des ESP32-C6 (UART0).
 
 | HLK-LD2450 Pin | Anschluss an ESP32-C6 | Funktion |
 | :--- | :--- | :--- |
 | **VCC** | **5V** (VBUS/5V Pin) | **WICHTIG:** 5V für stabile Funktion |
 | **GND** | GND | Masse |
-| **TX** | **GPIO2** (RX)* | Sendet Daten an ESP (ehemals Button Level) |
-| **RX** | **GPIO16** (TX)* | Empfängt Konfig vom ESP (ehemals Button Power) |
+| **TX** | **GPIO17** (RX0) | Sendet Daten an ESP (ehemals Fan RPM) |
+| **RX** | **GPIO16** (TX0) | Empfängt Konfig vom ESP (ehemals Button Power) |
 
-*\*Kreuzung beachten: TX -> RX und RX -> TX*
+*\*Kreuzung beachten: Sensor TX an ESP RX, Sensor RX an ESP TX*
 
 #### 2. AM312 (PIR) - *OPTIONAL / EXTERN*
 
@@ -68,10 +78,9 @@ Um für künftige Projekte oder externe Sensoren gerüstet zu sein, sollen auf d
     * Pins: SDA (GPIO22), SCL (GPIO23), 3.3V, GND
     * Zweck: Anschluss weiterer Sensoren (z.B. Display, weitere Umweltsensoren).
 2. **Zusätzlicher UART Port (External UART):**
-    * Pins: RX/TX (frei wählbar oder shared falls möglich, besser dediziert wenn Pins frei werden durch MCP-Nutzung), 3.3V, GND.
-    * *Hinweis:* Da wir GPIO16/GPIO2 für das Radar nutzen, sind die Hardware-UARTs belegt. Ein weiterer Hardware-UART Port ist beim ESP32-C6 knapp.
-    * **Lösung:** Wir führen die Pins **GPIO20** (PIR Option) und einen weiteren Pin (falls durch Optimierung frei) auf einen Header, um ggf. Software-Serial oder einen alternativen Bus nutzen zu können.
-    * *Alternativ:* Ein zweiter MCP23017 oder freie Pins des ersten MCP23017 auf einen Header legen für langsame Signale.
+    * Pins: **GPIO20** (Shared mit PIR Option) und/oder freie MCP-Pins.
+    * *Hinweis:* Da wir GPIO16/17 für das Radar nutzen, sind die dedizierten Hardware-UARTs belegt.
+    * *Lösung:* Header für GPIO20 vorsehen. Falls PIR nicht genutzt wird, ist hier ein Pin frei für Software-Serial RX oder TX.
 
 ### E. Überlegung: BMP388 / BMP390 Drucksensor (Onboard)
 
@@ -81,6 +90,25 @@ Als weitere Option soll direkt auf dem PCB ein Footprint für einen hochpräzise
 * **Adresse:** `0x76` (SDO auf GND) oder `0x77` (SDO auf VCC - Konflikt mit BME680 prüfen!). **Wichtig:** BME680 hat meist 0x77. BMP390 muss auf **0x76** konfiguriert werden.
 * **Anschluss:** I2C (parallel zu BME680/SCD41).
 * **Adresse:** `0x76` (SDO auf GND) oder `0x77` (SDO auf VCC - Konflikt mit BME680 prüfen!). **Wichtig:** BME680 hat meist 0x77. BMP390 muss auf **0x76** konfiguriert werden.
+
+#### Anschluss-Details (LGA-10 Package) für Adresse 0x76
+
+Bei einem nackten Chip (LGA-10) auf dem PCB:
+
+| Pin Nr. | Name | Funktion | Anschluss |
+| :--- | :--- | :--- | :--- |
+| **1** | **VDDIO** | Interface Voltage | 3.3V |
+| **2** | **SCK** | I2C Clock | SCL (GPIO23) |
+| **3** | **VSS** | Ground | GND |
+| **4** | **SDI** | I2C Data | SDA (GPIO22) |
+| **5** | **SDO** | Address Select | **GND** (für Adr. 0x76) |
+| **6** | **CSB** | Chip Select | **3.3V (VDDIO)** (High = I2C Mode) |
+| **7** | **INT** | Interrupt | NC (oder an GPIO falls benötigt) |
+| **8** | **VDD** | Analog Voltage | 3.3V |
+| **9** | **VSS** | Ground | GND |
+| **10** | **VSS** | Ground | GND |
+
+*Hinweis: Pullup-Widerstände für SCL/SDA sind für den I2C-Bus generell nötig (4.7k oder 10k).*
 
 **Mögliche Anwendungsfälle:**
 
@@ -128,6 +156,23 @@ Für den Schlafzimmer-Betrieb (LED-Dimmung).
     2. **Sleep-Mode:** Automatische Erkennung "Nachtruhe" -> Lüfter fährt auf flüsterleise Stufe runter.
 * **Anschluss:** I2C.
   * *Montage:* Benötigt Lichtöffnung im Gehäuse oder Lichtleiter.
+
+### I. I2C Adress-Map (Konfliktprüfung)
+
+Damit alle Geräte am Bus funktionieren, müssen die Adressen eindeutig sein.
+
+| Gerät | Adresse (Hex) | Status/Notiz |
+| :--- | :--- | :--- |
+| **MCP23017** | `0x20` | **OK.** Standard (A0/A1/A2 = GND). |
+| **BH1750** (Lux) | `0x23` | *Optional.* Standard (ADDR = GND). |
+| **SDP810** (Diff.Druck) | `0x25` | *Optional.* Standard. |
+| **PCA9685** | `0x40` | **OK.** Standard (A0-A5 = GND). |
+| **SCD41** (CO2) | `0x62` | **OK.** Fixe Adresse. |
+| **SEN54 / SEN55** | `0x69` | *Optional.* Fixe Adresse. |
+| **BMP390** (Druck) | **`0x76`** | **WICHTIG:** SDO auf GND legen! |
+| **BME680** (IAQ) | `0x77` | **OK.** Standard (SDO auf VCC oder offen). |
+
+**Fazit:** Keine Konflikte, wenn beim **BMP390 Pin SDO auf GND** gelegt wird. Der BME680 darf dann auf 0x77 bleiben.
 
 ---
 
@@ -197,8 +242,8 @@ UART und Komponente hinzufügen.
 ```yaml
 uart:
   id: uart_radar
-  tx_pin: GPIO16 # An Sensor RX
-  rx_pin: GPIO2  # An Sensor TX
+  tx_pin: GPIO16 # ESP TX -> Sensor RX
+  rx_pin: GPIO17 # ESP RX -> Sensor TX
   baud_rate: 256000
   parity: NONE
   stop_bits: 1
@@ -206,16 +251,21 @@ uart:
 ld2450:
   uart_id: uart_radar
   id: radar_sensor
-
-binary_sensor:
-  - platform: ld2450
-    ld2450_id: radar_sensor
-    has_target:
-      name: "Radar Anwesenheit"
-    # Optional: Zone detection triggers
 ```
 
-### D. AM312 Konfiguration
+### D. Fan RPM Anpassung (Wichtig!)
+
+Da GPIO17 jetzt für UART genutzt wird, muss der Lüfter-Tacho auf GPIO2 umziehen.
+
+```yaml
+sensor:
+  - platform: pulse_counter
+    pin: GPIO2 # Moved from GPIO17
+    name: "Lüfter Drehzahl"
+    # ... rest configuration check ...
+```
+
+### E. AM312 Konfiguration
 
 ```yaml
 binary_sensor:
