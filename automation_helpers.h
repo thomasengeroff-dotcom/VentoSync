@@ -41,10 +41,8 @@ extern esphome::globals::RestoringGlobalsComponent<int> *co2_max_fan_level;     
 /// @name Template UI components
 /// @{
 extern esphome::template_::TemplateSelect *selected_mode;       ///< Mode selector (WRG/Stoß/Durchlüften/Aus).
-extern esphome::template_::TemplateSelect *fan_mode_select;     ///< Fan hardware mode (4-Pin / 3-Pin).
 extern esphome::template_::TemplateNumber *vent_timer;          ///< Ventilation timer (minutes).
 extern esphome::template_::TemplateNumber *fan_intensity_display; ///< Fan intensity display number.
-extern esphome::template_::TemplateSwitch *fan_direction;       ///< Manual direction override switch.
 extern esphome::template_::TemplateSwitch *co2_auto_switch;     ///< CO2 auto-control on/off switch.
 /// @}
 
@@ -59,7 +57,6 @@ extern esphome::script::SingleScript<float, int> *set_fan_speed_and_direction; /
 /// @{
 extern esphome::speed::SpeedFan *lueftung_fan;       ///< Main fan (speed platform).
 extern esphome::ledc::LEDCOutput *fan_pwm_primary;   ///< Primary PWM output (GPIO19).
-extern esphome::ledc::LEDCOutput *fan_pwm_secondary;  ///< Secondary PWM output (GPIO18).
 /// @}
 
 /// @name Sensors
@@ -142,62 +139,23 @@ inline std::vector<uint8_t> get_iaq_traffic_light_data(float iaq_val) {
 }
 
 /// @brief Sets fan PWM based on mode (4-pin/3-pin), speed, and direction.
-/// Handles specific logic for AxiRev (PWM direction) vs VarioPro (Dual-GND switching).
+/// Handles specific logic for 4-pin PWM.
 /// @param speed      Target speed duty cycle (0.0 to 1.0).
 /// @param direction  Target direction (0 = Direction A/In, 1 = Direction B/Out).
 inline void set_fan_logic(float speed, int direction) {
-    if (fan_mode_select == nullptr || fan_pwm_primary == nullptr || fan_pwm_secondary == nullptr) {
+    if (fan_pwm_primary == nullptr) {
         return; // Safety guard
     }
 
-    std::string mode = fan_mode_select->state;
-
-    if (mode == "4-Pin PWM") {
-        // 4-Pin Mode (AxiRev): Use PWM duty cycle for speed AND direction
-        // AxiRev Specification:
-        // - 0-49% Duty: Direction A (intake), speed increases with PWM
-        // - 50% Duty: Neutral (stopped)
-        // - 51-100% Duty: Direction B (exhaust), speed increases with PWM
-        
-        float axirev_duty;
-        
-        if (direction == 0) {
-            // Direction A: Map speed to 0-49% range
-            // speed 0.0 -> 0%, speed 1.0 -> 49%
-            axirev_duty = speed * 0.49f;
-        } else {
-            // Direction B: Map speed to 51-100% range
-            // speed 0.0 -> 51%, speed 1.0 -> 100%
-            axirev_duty = 0.51f + (speed * 0.49f);
-        }
-        
-        fan_pwm_primary->set_level(axirev_duty);
-        fan_pwm_secondary->set_level(0.0);  // Ensure GND2 is OFF
-        
-    } else if (mode == "3-Pin Dual-GND") {
-        // 3-Pin Dual-GND Mode: Switch between GND1 and GND2
-        
-        // Map speed to VarioPro voltage range (7V-12V = 58%-100%)
-        float variopro_duty = 0.58f + speed * 0.42f;
-        
-        if (direction == 0) {
-            // Direction A: Activate GND1, deactivate GND2
-            fan_pwm_secondary->set_level(0.0);
-            delayMicroseconds(100);  // 100µs safety delay for MOSFET switching
-            fan_pwm_primary->set_level(variopro_duty);
-        } else {
-            // Direction B: Activate GND2, deactivate GND1
-            fan_pwm_primary->set_level(0.0);
-            delayMicroseconds(100);  // 100µs safety delay for MOSFET switching
-            fan_pwm_secondary->set_level(variopro_duty);
-        }
-    }
+    // Single-PWM Mode (Simplification for direct MOSFET drive)
+    // Directly map speed (0.0 to 1.0) to PWM duty cycle
+    fan_pwm_primary->set_level(speed);
 }
 
 /// @brief Updates fan speed and direction based on intensity and mode.
 /// Calculates PWM using fan_intensity_level and fan_direction.
 inline void update_fan_logic() {
-    if (fan_intensity_level == nullptr || fan_direction == nullptr) return;
+    if (fan_intensity_level == nullptr) return;
 
     int intensity = fan_intensity_level->value();
     
@@ -206,8 +164,8 @@ inline void update_fan_logic() {
     if (speed < 0.0f) speed = 0.0f;
     if (speed > 1.0f) speed = 1.0f;
 
-    // Get direction from fan_direction switch
-    int direction = fan_direction->state ? 1 : 0;
+    // Single PWM hardware assumes direction is fixed or handled mechanically/elsewhere
+    int direction = 0;
 
     set_fan_logic(speed, direction);
 }
@@ -439,7 +397,6 @@ inline void handle_button_power_click() {
         v->set_mode(esphome::MODE_OFF);
         lueftung_fan->turn_off();
         fan_pwm_primary->set_level(0.0);
-        fan_pwm_secondary->set_level(0.0);
     }
     update_leds->execute();
 }

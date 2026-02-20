@@ -30,6 +30,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Changed
 
+- **Lüfterkompatibilität**: Vollständige Entfernung der obsoleten "3-Pin Dual-GND" (VarioPro) Lüftersteuerung aus dem ESPHome-Code und der Dokumentation. Das System unterstützt nun ausschließlich "4-Pin PWM" Lüfter (AxiRev) sowie "3-Pin PWM" Lüfter (ohne Tacho-Signal).
+- **GPIO Pin-Mapping**: Korrektur der Hardware-Zuweisungen (physische D-Pins zu internen GPIO-Pins) für das Seeed Studio XIAO ESP32C6 Board in `esp_wohnraumlueftung.yaml` (betrifft I2C, Fan PWM, Tacho, NTCs).
+- **Fan Logic Update**: C++ Helper (`automation_helpers.h`) vereinfacht durch Entfernung der Dual-GND Logik und alter Variablen (`fan_mode_select`, `fan_direction`).
+- **Dokumentations-Update**: Umfangreiche Aktualisierung von `Readme.md`, `Hardware-Setup-Readme.md`, `Anleitung-Fan-Circuit.md` und `Technical-Details.md` passend zu den neuen Lüfter-Spezifikationen und Pin-Belegungen.
 - **Refactoring**: komplette Fan-Logik (`set_fan_speed_and_direction`, `fan_speed_update`) aus YAML-Lambdas in C++ Helper-Funktionen (`set_fan_logic`, `update_fan_logic`) in `automation_helpers.h` ausgelagert.
 
 ### Verified
@@ -101,14 +105,14 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Added
 
-- **Hybrid Fan Control Interface**: Board unterstützt jetzt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin Dual-GND (VarioPro) Lüfter.
+- **Universal Fan Interface**: Board unterstützt 3-Pin oder 4-Pin PWM Lüfter.
 - **Neue Komponenten**: Q4/Q5 (PMV16XNR), D1–D3 (B5819WS), R18/R19 (10kΩ), JP1 (VCC Moduswahl), JP2/JP3 (Pin-Moduswahl).
 - GPIO2 als Fan PWM Secondary (Low-Side GND2 via Q4).
 - `Anleitung-Fan-Circuit.md`, `Technical-Details.md`: Neue Dokumentation zum Hybrid Fan Interface.
 
 ### Fixed
 
-- D1 Freilaufdiode an PWM_12V_OUT fehlte — ohne diese wird Q1 im 3-Pin Modus durch induktive Spannungsspitzen zerstört.
+- D1 Freilaufdiode an PWM_12V_OUT fehlte — ohne diese wird Q1 durch induktive Spannungsspitzen zerstört.
 - R8: Dokumentation korrigiert (2.2kΩ / 0805, nicht 10kΩ / 0603).
 - R3: Beschreibung korrigiert („für Q3" statt „für Q2").
 - D1 (SS14) in Schaltplan → korrigiert zu D1 (B5819WS).

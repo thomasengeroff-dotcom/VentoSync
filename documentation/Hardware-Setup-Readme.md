@@ -123,11 +123,10 @@ Status: **Final (10.02.2026)** - ✅ Verified
 | **D7** | GPIO17 | **Fan Tacho** | Input | ⚠️ Check | Default UART0 RX. **Logger must be moved to USB-C!** |
 | **D8** | GPIO19 | **Fan PWM Primary** | Output | ✅ OK | General GPIO. Safe for PWM. |
 | **D9** | GPIO20 | **Button Mode** | Input | ✅ OK | General GPIO. Safe for Input. |
-| **D10** | GPIO18 | **Fan PWM Secondary** | Output | ✅ OK | General GPIO / LS_GND2. Safe for Output. |
 
 ### C. Universal-Lüfter Interface (3-Pin & 4-Pin Support)
 
-Das Board unterstützt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin Dual-GND (VarioPro) Lüfter. Die Umschaltung erfolgt über 3 Jumper-Blöcke.
+Das Board unterstützt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin PWM (VarioPro) Lüfter.
 
 **Detaillierte Schaltpläne und BOM**: Siehe [Anleitung-Fan-Circuit.md](Anleitung-Fan-Circuit.md)
 
@@ -137,26 +136,6 @@ Das Board unterstützt sowohl 4-Pin PWM (AxiRev) als auch 3-Pin Dual-GND (VarioP
 2. **PMOS Q1** (AO3401): Q3 Collector → Q1 Gate + **R8 (2.2kΩ)** Pullup auf 12V. Q1 Source → 12V, Drain → PWM_12V_OUT.
 3. **D1 (B5819WS)**: Freilaufdiode Kathode → PWM_12V_OUT, Anode → GND.
 4. **LC-Filter**: PWM_12V_OUT → L1 (220µH) → DC_VAR_12V → **C15 (100µF)** → GND.
-
-**Dual Low-Side Circuit (3-Pin Dual-GND Mode):**
-
-1. **Q4** (NMOS **PMV16XNR** SOT-23): Fan GND1 → Drain, Source → GND. Gate ← GPIO16 + R19 (10kΩ Pull-down).
-2. **Q3** (NMOS **PMV16XNR** SOT-23): Fan GND2 → Drain, Source → GND. Gate ← GPIO2 + R18 (10kΩ Pull-down).
-3. **D2 (B5819WS)**: Schutzdiode Kathode → Fan Pin 1, Anode → GND.
-4. **D3 (B5819WS)**: Schutzdiode Kathode → Fan Pin 4, Anode → GND.
-
-**Jumper-Konfiguration:**
-
-| Jumper | Position 1-2 (4-Pin) | Position 2-3 (3-Pin) |
-| :--- | :--- | :--- |
-| **JP1** | Fan VCC ← Constant 12V | Fan VCC ← Variable (DC_VAR_12V) |
-| **JP2** | Fan Pin 1 ← GND | Fan Pin 1 ← Q4 Drain (GND1) |
-| **JP3** | Fan Pin 4 ← GPIO16 (PWM) | Fan Pin 4 ← Q3 Drain (GND2) |
-
-> ⚠️ **Tacho-Signal & Geräusche (3-Pin Mode)**:
->
-> 1. **RPM-Schwankung**: Betrifft nur das *Auslesen* der Drehzahl (Tacho). Für die Regelung unkritisch.
-> 2. **Spulenfiepen**: Der LC-Filter (L1 + **C15**) glättet das PWM-Signal zu einer sauberen Gleichspannung (Buck-Converter Prinzip) → lautloser Betrieb.
 
 ### B. PCA9685 PWM Driver (Adresse 0x40)
 

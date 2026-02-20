@@ -88,11 +88,6 @@ output:
     frequency: 28000 Hz
     id: fan_pwm_primary
     zero_means_zero: true
-  - platform: ledc
-    pin: GPIO18
-    frequency: 28000 Hz
-    id: fan_pwm_secondary
-    zero_means_zero: true
 
 # ---------------------------------------------------------
 # MOCK LIGHTS (required by automation_helpers.h externs)
@@ -167,15 +162,6 @@ select:
       - "Durchlüften"
       - "Aus"
     initial_option: "Wärmerückgewinnung"
-    optimistic: true
-
-  - platform: template
-    name: "Mock Fan Mode Select"
-    id: fan_mode_select
-    options:
-      - "4-Pin PWM"
-      - "3-Pin Dual-GND"
-    initial_option: "4-Pin PWM"
     optimistic: true
 
 # ---------------------------------------------------------

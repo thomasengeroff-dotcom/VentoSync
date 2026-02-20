@@ -137,6 +137,13 @@ i2c:
   timeout: 50ms # Increased timeout to prevent "software timeout" errors
 
 # ---------------------------------------------------------
+# MCP23017 I/O EXPANDER
+# ---------------------------------------------------------
+mcp23017:
+  - id: mcp23017_hub
+    address: 0x20
+
+# ---------------------------------------------------------
 # PCA9685 I/O EXPANDER (LED Driver)
 # ---------------------------------------------------------
 pca9685:
@@ -158,84 +165,59 @@ bme68x_bsec2_i2c:
   state_save_interval: 6h # Save state every 6 hours
 
 # ---------------------------------------------------------
-# PCA9685 OUTPUTS (LEDs)
+# PCA9685 OUTPUTS (LEDs) & GPIO OUTPUTS
 # ---------------------------------------------------------
 output:
-  # --- LEDS Port A (Channels 6-15) ---
+  # --- LEDS Port A (Channels 0-11) ---
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 6
+    channel: 8 # LED_PWRV
     id: out_led_pwr
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 7
+    channel: 7 # LED_MSTV
     id: out_led_master
 
-  # Level LEDs (Channels 8-12)
+  # Level LEDs
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 8
+    channel: 0 # LED_L1V
     id: out_led_l1
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 9
+    channel: 9 # LED_L2V
     id: out_led_l2
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 10
+    channel: 3 # LED_L3V
     id: out_led_l3
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 11
+    channel: 11 # LED_L4V
     id: out_led_l4
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 12
+    channel: 5 # LED_L5V
     id: out_led_l5
 
-  # Mode LED WRG (Channel 13)
+  # Mode LED WRG
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 13
+    channel: 13 # LED_WRGV
     id: out_led_wrg
 
-  # --- LEDS Port B (Channel 15) ---
+  # --- LEDS Port B ---
   # Mode LED Ventilation
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 15
+    channel: 15 # LED_VENV
     id: out_led_vent
 
   # --- Fan PWM (Standard Output) ---
-  # Hardware: High-Side Circuit (4-Pin Mode)
-  #   GPIO16 -> R3 (1kΩ) -> Q3 Base (NPN S8050)
-  #   Q3 Collector -> Q1 Gate (PMOS AO3401) + R8 (2.2kΩ) Pullup to 12V
-  #   Q1 Source: +12V, Q1 Drain: PWM_12V_OUT
-  #   D1 (B5819WS): Flyback diode at PWM_12V_OUT (Cathode -> Drain, Anode -> GND)
-  #   PWM_12V_OUT -> L1 (220µH) -> DC_VAR_12V -> C27 (100µF) -> GND
-  #
-  # Hardware: Dual Low-Side Circuit (3-Pin Dual-GND Mode)
-  #   GPIO16 -> Gate Q5 (NMOS PMV16XNR) + R19 (10kΩ) pull-down to GND
-  #   Q5 controls Fan GND1, D2 (B5819WS) protection at Fan Pin 1
-  #
-  # Primary PWM (GPIO16)
-  # - 4-Pin Mode: PWM signal via Q3/Q1 high-side circuit to fan PWM pin
-  # - 3-Pin Dual-GND Mode: Controls GND1 via low-side MOSFET Q5
   - platform: ledc
-    pin: GPIO19 # Pin D8 (Updated)
-    frequency: 28000 Hz # Changed from 25kHz to 28kHz for silent operation
+    pin: GPIO19 # Pin D8
+    frequency: 2000Hz # 28kHz for silent operation
     id: fan_pwm_primary
-    inverted: false # Changed: no inversion needed for low-side MOSFETs
-    min_power: 0%
-    zero_means_zero: true
-
-  # Secondary PWM (GPIO18) - Only for 3-Pin Dual-GND Mode
-  # GPIO18 -> Gate Q4 (NMOS PMV16XNR) + R18 (10kΩ) pull-down to GND
-  # Q4 controls Fan GND2, D3 (B5819WS) protection at Fan Pin 4
-  - platform: ledc
-    pin: GPIO18 # Pin D10 (Updated)
-    frequency: 28000 Hz
-    id: fan_pwm_secondary
     inverted: false
     min_power: 0%
     zero_means_zero: true
@@ -409,8 +391,8 @@ sensor:
 
   - platform: adc
     id: ntc_innen_source
-    pin: GPIO1 # Pin D1 - ADC capable (Updated)
-    attenuation: 12db # For 0-3.3V range (updated from deprecated 11db)
+    pin: GPIO1 # Pin D1
+    attenuation: 12db # For 0-3.3V range
     update_interval: 1000ms
     internal: true
 
@@ -440,8 +422,8 @@ sensor:
 
   - platform: adc
     id: ntc_aussen_source
-    pin: GPIO0 # Pin D0 - ADC capable (Updated)
-    attenuation: 12db # For 0-3.3V range (updated from deprecated 11db)
+    pin: GPIO0 # Pin D0
+    attenuation: 12db # For 0-3.3V range
     update_interval: 1000ms
     internal: true
 
@@ -466,7 +448,7 @@ sensor:
 
   # Fan Tachometer (RPM) Reading
   - platform: pulse_counter
-    pin: GPIO17 # Pin D7 (moved from D1 to free ADC for NTC)
+    pin: GPIO20 # Pin D9
     name: "Lüfter Drehzahl"
     id: fan_rpm
     use_pcnt: true # Use hardware PCNT for efficient pulse counting (recommended for ESP32)
@@ -647,32 +629,25 @@ select:
       - lambda: |-
           set_operating_mode_select(x.c_str());
 
-  # Fan Control Mode (NEW)
-  - platform: template
-    name: "Fan Control Mode"
-    id: fan_mode_select
-    options:
-      - "4-Pin PWM"
-      - "3-Pin Dual-GND"
-    initial_option: "4-Pin PWM"
-    optimistic: true
-    on_value:
-      then:
-        - logger.log:
-            format: "Fan control mode changed to: %s"
-            args: ["x.c_str()"]
-        - script.execute: fan_speed_update
-
 # ---------------------------------------------------------
 # AUTOMATIONS & SWITCHES
 # ---------------------------------------------------------
 switch:
+  # MCP23017 Reset (Active Low)
+  # This switch keeps the MCP23017 out of reset state
+  - platform: gpio
+    pin: GPIO2 # Pin D2
+    name: "MCP23017 Reset"
+    id: mcp23017_reset
+    restore_mode: ALWAYS_ON
+    internal: true
+
   # PCA9685 Output Enable (Active Low)
   # This switch controls the power to the PCA9685 driver
   # LEDs are off until the switch is turned on
   - platform: gpio
     pin:
-      number: GPIO21
+      number: GPIO21 # Pin D3
       inverted: true
     name: "PCA9685 Output Enable"
     id: pca9685_oe
@@ -793,31 +768,13 @@ script:
 # CONTROL PANEL BUTTONS (Input)
 # ---------------------------------------------------------
 binary_sensor:
-  # Button Mode (Right) - Mode Control (D9 / GPIO20)
+  # Button Power (Left) - On/Off (MCP23017 GPA0)
   - platform: gpio
     pin:
-      number: GPIO20
+      mcp23xxx: mcp23017_hub
+      number: 0 # GPA0
       mode:
         input: true
-        # Internal Pullup removed (External 10k used)
-      inverted: true # Pressed = Low -> Inverted = ON
-    name: "Button Mode"
-    id: button_mode
-    filters:
-      - delayed_on: 25ms
-      - delayed_off: 25ms
-    on_click:
-      then:
-        - lambda: |-
-            handle_button_mode_click();
-
-  # Button Power (Left) - On/Off (D6 / GPIO16)
-  - platform: gpio
-    pin:
-      number: GPIO16 # Updated from GPIO19
-      mode:
-        input: true
-        # Internal Pullup removed (External 10k used)
       inverted: true # Pressed = Low -> Inverted = ON
     name: "Button Power"
     id: button_power
@@ -829,13 +786,31 @@ binary_sensor:
         - lambda: |-
             handle_button_power_click();
 
-  # Button Level (Middle) - Speed Level (D2 / GPIO2)
+  # Button Mode (Right) - Mode Control (MCP23017 GPA1)
   - platform: gpio
     pin:
-      number: GPIO2 # Updated from GPIO18
+      mcp23xxx: mcp23017_hub
+      number: 1 # GPA1
       mode:
         input: true
-        # Internal Pullup removed (External 10k used)
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Mode"
+    id: button_mode
+    filters:
+      - delayed_on: 25ms
+      - delayed_off: 25ms
+    on_click:
+      then:
+        - lambda: |-
+            handle_button_mode_click();
+
+  # Button Level (Middle) - Speed Level (MCP23017 GPA2)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 2 # GPA2
+      mode:
+        input: true
       inverted: true # Pressed = Low -> Inverted = ON
     name: "Button Fan Intensity"
     id: button_level

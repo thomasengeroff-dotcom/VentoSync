@@ -4,11 +4,9 @@ Diese Anleitung beschreibt die Schaltung für eine **universelle Lüftersteuerun
 
 ## 🛠️ Funktionsprinzip: Open-Drain PWM
 
-Die Steuerung basiert auf einem simplen **Open-Drain PWM-Treiber**.
-Dies ist die robusteste Methode, da sie für beide Lüftertypen funktioniert:
+Die Steuerung basiert auf einem simplen **Open-Drain PWM-Treiber**:
 
 - **4-Pin PWM-Lüfter**: Der PWM-Eingang (Pin 4) wird vom MOSFET auf GND gezogen. Der interne Pull-Up im Lüfter sorgt für das High-Signal.
-- **3-Pin Ventomaxx (VarioPro)**: Der Steuer-Eingang (Pin 3/Mitte) wird vom MOSFET auf GND gezogen. Auch hier sorgt ein interner Pull-Up (oder die interne Logik) für das Signal.
 
 > ✅ **Verifiziert**: Diese Logik wurde mit `espslaveNTC.yaml` und 2kHz PWM erfolgreich getestet.
 

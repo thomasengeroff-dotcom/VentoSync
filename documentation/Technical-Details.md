@@ -136,41 +136,28 @@ espnow:
 
 ## Lüftersteuerung
 
-Das Board unterstützt **4-Pin PWM** und **3-Pin Dual-GND** Lüfter über ein Universal-Interface.
+Das Board unterstützt **3-PIN oder 4-Pin PWM** Lüfter über ein Universal-Interface.
 Detaillierte Schaltpläne: Siehe [Anleitung-Fan-Circuit.md](Anleitung-Fan-Circuit.md)
 
 **PWM-Konfiguration:**
 
 ```yaml
 output:
-  # Primary PWM (GPIO16)
-  # 4-Pin Mode: PWM via Q3/Q1 High-Side | 3-Pin Mode: GND1 via Q5
+  # PWM Output (GPIO16)
   - platform: ledc
     pin: GPIO16
-    frequency: 28000 Hz        # 28kHz für leisen Betrieb
+    frequency: 2000 Hz        # 28kHz für leisen Betrieb
     inverted: false             # Low-Side MOSFETs: kein Invertieren
     min_power: 0%
     zero_means_zero: true       # 0% = wirklich AUS
     id: fan_pwm_primary
-
-  # Secondary PWM (GPIO2) - nur 3-Pin Dual-GND Mode
-  # Controls GND2 via low-side MOSFET Q4
-  - platform: ledc
-    pin: GPIO2
-    frequency: 28000 Hz
-    inverted: false
-    min_power: 0%
-    zero_means_zero: true
-    id: fan_pwm_secondary
 ```
 
 **Betriebsmodus-Logik:**
 
-| Modus | GPIO16 | GPIO2 | VCC |
-| :--- | :--- | :--- | :--- |
-| **4-Pin PWM** | PWM an Fan Pin 4 | Inaktiv (0%) | Constant 12V |
-| **3-Pin Richtung A** | PWM → Q5 (GND1) | 0% | Variable |
-| **3-Pin Richtung B** | 0% | PWM → Q4 (GND2) | Variable |
+| Modus | GPIO16 | VCC |
+| :--- | :--- | :--- |
+| **4-Pin PWM** | PWM an Fan Pin 4 | Constant 12V |
 
 **Automatischer Zyklus (Betriebsprogramme):**
 
