@@ -168,7 +168,7 @@ output:
   # Level LEDs
   - platform: pca9685
     pca9685_id: pwm_hub
-    channel: 0 # LED_L1V
+    channel: 1 # LED_L1V
     id: out_led_l1
   - platform: pca9685
     pca9685_id: pwm_hub
