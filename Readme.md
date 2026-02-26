@@ -64,6 +64,9 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 **Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über Ihr Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
 
+**Intuitive Gruppensteuerung**: Durch das "Group-Controller" Konzept via ESP-NOW können mehrere Geräte in einem Raum als eine einzige visuelle Einheit im Home Assistant Dashboard (z.B. mittels Mushroom Cards) abgebildet werden. Dies reduziert den WLAN-Traffic, erhöht die Stabilität und macht die Bedienung extrem einfach (hoher WAF).
+👉 *Details, Konzept und YAML-Beispiele für ESPHome und das HA Dashboard finden Sie im Ordner [ha_integration_example](ha_integration_example/).*
+
 ### ️ Roadmap & Zukünftige Erweiterungen
 
 Die Firmware ist für folgende "Advanced Automation"-Funktionen vorbereitet (Implementierung folgt):

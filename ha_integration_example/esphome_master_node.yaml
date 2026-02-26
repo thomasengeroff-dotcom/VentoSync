@@ -1,0 +1,101 @@
+# ----------------------------------------------------------------------------------
+# BEISPIEL: ESPHome Konfiguration für den Gruppen-Controller (Lead-Node)
+# Diese Entitäten präsentieren die GESAMTE Raumgruppe gegenüber Home Assistant.
+# Sie sind das "Gesicht" des Raumes und rufen intern eure ESP-NOW C++ Logik auf.
+# ----------------------------------------------------------------------------------
+
+# 1. Der virtuelle "Raum-Lüfter"
+fan:
+  - platform: template
+    name: "Wohnzimmer Lüftungsgruppe"
+    id: group_fan
+    speed_count: 5 # Annahme: 5 Lüfterstufen gibt es in der Gruppe
+
+    # Aktion: Home Assistant möchte die Gruppe EINSCHALTEN
+    turn_on_action:
+      - logger.log: "HA: Gruppen-Lüfter EINGESCHALTET"
+
+      # 1. Status an Home Assistant zurückmelden (für die UI)
+      - fan.turn_on: group_fan
+
+      # 2. ESP-NOW Broadcast über eine custom C++ Lambda auslösen
+      # (Setzt voraus, dass ihr in der ventilation_group.h eine entsprechende Methode habt)
+      # - lambda: 'ventilation_group->broadcast_command(CMD_TURN_ON);'
+
+    # Aktion: Home Assistant möchte die Gruppe AUSSCHALTEN
+    turn_off_action:
+      - logger.log: "HA: Gruppen-Lüfter AUSGESCHALTET"
+      - fan.turn_off: group_fan
+
+      # HIER EINFÜGEN: ESP-NOW Broadcast
+      # - lambda: 'ventilation_group->broadcast_command(CMD_TURN_OFF);'
+
+    # Aktion: Home Assistant gibt eine prozentuale Stufe/Geschwindigkeit vor
+    set_speed_action:
+      - logger.log:
+          format: "HA: Stufe auf %d angefordert"
+          args: ["speed"]
+
+      # 1. Den echten Zustand der virtuellen Entität aktualisieren, damit
+      #    Home Assistant den Regler grafisch richtig anzeigt.
+      - fan.turn_on:
+          id: group_fan
+          speed: !lambda "return speed;"
+
+      # 2. HIER EINFÜGEN: ESP-NOW Broadcast für die Geschwindigkeit
+      # - lambda: 'ventilation_group->broadcast_speed(speed);'
+
+# 2. Virtuelle Modus-Auswahl für den gesamten Raum
+select:
+  - platform: template
+    name: "Wohnzimmer Lüftungsmodus"
+    id: group_mode
+    icon: "mdi:hvac"
+    options:
+      - "Auto (CO2-gesteuert)"
+      - "Manuell (Konstant)"
+      - "Sommer (Querlüftung)"
+    initial_option: "Auto (CO2-gesteuert)"
+    optimistic: true # Signalisiert HA sofort, dass die Wahl akzeptiert wurde
+    set_action:
+      - logger.log:
+          format: "HA: Modus der Gruppe geändert auf: %s"
+          args: ["x.c_str()"]
+      # HIER EINFÜGEN: ESP-NOW Broadcast für neuen Modus
+      # Die Variable `x` (String) enthält hier die gewählte Option
+      # - lambda: 'ventilation_group->broadcast_mode(x);'
+
+# 3. Aggregierte Sensoren (Zusammenfassung der Raum-Daten für HA)
+sensor:
+  - platform: template
+    name: "Wohnzimmer Umgebung CO2 (Maximalwert)"
+    id: group_max_co2
+    unit_of_measurement: "ppm"
+    device_class: carbon_dioxide
+    state_class: measurement
+    icon: "mdi:molecule-co2"
+    update_interval: 60s
+    lambda: |-
+      // Beispiel-Logik: Wir wollen, dass die Lüftungsgruppe den "schlechtesten" Raumwert
+      // an Home Assistant meldet.
+      // Eure ESP-NOW Logik (ventilation_group.h) müsste die Remote-Werte cachen.
+
+      float local_co2 = id(sensor_co2_lokal).state;
+      // float remote_co2 = ventilation_group->get_peer_co2_value();
+      float remote_co2 = 850.0; // Dummy Wert für dieses Beispiel
+
+      if (!isnan(local_co2) && !isnan(remote_co2)) {
+         return std::max(local_co2, remote_co2);
+      } else if (!isnan(local_co2)) {
+         return local_co2;
+      } else {
+         return remote_co2;
+      }
+
+  # Optionale echte Hardware:
+  # Wenn ihr einen SCD41 o.ä. lokal angeschlossen habt, diesen für HA verstecken,
+  # damit er nicht das Dashboard vollspammt. Er dient nur zur internen Berechnung.
+  # - platform: scd4x
+  #   co2:
+  #     id: sensor_co2_lokal
+  #     internal: true # <--- HA ignoriert diesen Sensor

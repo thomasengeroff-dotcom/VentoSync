@@ -1,0 +1,84 @@
+# ----------------------------------------------------------------------------------
+# BEISPIEL: Home Assistant UI Konfiguration (Lovelace Dashboard)
+#
+# Voraussetzung: Die "Mushroom Cards" aus dem HACS Store sind in HA installiert.
+# (https://github.com/piitaya/lovelace-mushroom)
+#
+# Dieses Stück YAML stellt das "Wohnzimmer" Panel dar und wird z.B. als
+# manuelle Karte in ein existierendes Dashboard eingefügt.
+# ----------------------------------------------------------------------------------
+
+type: custom:layout-card
+layout_type: masonry
+cards:
+  - type: custom:mushroom-template-card
+    # Optionaler Titel-Bereich für den Raum
+    primary: "Wohnzimmer Klima"
+    secondary: ""
+    icon: mdi:sofa
+    icon_color: grey
+    fill_container: false
+
+  # Dies formatiert die folgenden Karten als kompakten, vertikalen Block
+  - type: vertical-stack
+    cards:
+      # ------ KOPFBEREICH: Der Haupt-Lüfter für den gesamten Raum ------
+      - type: custom:mushroom-fan-card
+        # Die Template-Entität aus dem ESPHome-Lead-Node
+        entity: fan.wohnzimmer_luftungsgruppe
+        name: Belüftungsanlage
+        icon_animation: true
+        show_percentage_control: true
+        show_oscillate_control: false
+        collapsible_controls: false
+        layout: horizontal
+
+        # Cleveres Extra: Ein farbiges Abzeichen (Badge) am Ventilator-Icon,
+        # das sofort auf schlechte Luft hinweist (CO2 Schwellwerte).
+        badge_icon: >-
+          {% if states('sensor.wohnzimmer_umgebung_co2_maximalwert') | float(0) > 1200 %}
+            mdi:alert-circle
+          {% elif states('sensor.wohnzimmer_umgebung_co2_maximalwert') | float(0) > 800 %}
+            mdi:alert
+          {% else %}
+            none
+          {% endif %}
+        badge_color: >-
+          {% if states('sensor.wohnzimmer_umgebung_co2_maximalwert') | float(0) > 1200 %}
+            red
+          {% elif states('sensor.wohnzimmer_umgebung_co2_maximalwert') | float(0) > 800 %}
+            orange
+          {% else %}
+            none
+          {% endif %}
+
+      # ------ DETAILS: Modus und Aggregierte Sensorwerte ------
+      - type: custom:mushroom-chips-card
+        alignment: center
+        chips:
+          # Chip für das Dropdown-Menü (Modus Auswahl)
+          - type: template
+            content: "{{ states('select.wohnzimmer_luftungsmodus') }}"
+            icon: mdi:autorenew
+            icon_color: blue
+            tap_action:
+              action: more-info
+            entity: select.wohnzimmer_luftungsmodus
+
+          # Chip für den summierten Raum-CO2 Wert
+          # Verfärbt sich je nach Luftqualität
+          - type: entity
+            entity: sensor.wohnzimmer_umgebung_co2_maximalwert
+            icon_color: >-
+              {% if states('sensor.wohnzimmer_umgebung_co2_maximalwert') | float(0) > 1200 %}
+                red
+              {% elif states('sensor.wohnzimmer_umgebung_co2_maximalwert') | float(0) > 800 %}
+                orange
+              {% else %}
+                green
+              {% endif %}
+
+          # (Beispielhafter) Chip für die aggregierte Raum-Temperatur
+          # - type: entity
+          #   entity: sensor.wohnzimmer_temperatur_durchschnitt
+          #   icon_color: amber
