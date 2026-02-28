@@ -235,27 +235,111 @@ switch:
     id: led_green
     inverted: false
 
+  # --------------------
+  # VentoMaxx Panel LEDs
+  # --------------------
+
+  # Status LEDs
   - platform: gpio
-    name: "MCP23017 Pin A0"
+    name: "Status LED Power"
+    id: status_led_power
     pin:
       mcp23xxx: mcp23017_hub
-      # Use pin A0
-      number: 0
+      number: 8 # GPB0
       mode:
         output: true
-      inverted: false
+    inverted: false
+    internal: false # Auf false gesetzt, damit sie zum Testen in HA erscheinen
 
-  # MCP23017 Pin Test - DISABLED due to linker error on ESP32-C6/ESP-IDF
-  # "undefined reference to pin_interrupt_mode"
-  # Uncomment when supported or patch available
-#   - platform: gpio
-#     pin:
-#       mcp23xxx: mcp23017_hub
-#       number: 0
-#       mode:
-#         output: true
-#     name: "MCP23017 LED PIN A0"
-#     id: mcp_led_test
+  - platform: gpio
+    name: "Status LED Master"
+    id: status_led_master
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 9 # GPB1
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  # Level LEDs (1-5)
+  - platform: gpio
+    name: "Status LED L1"
+    id: status_led_l1
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 10 # GPB2
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  - platform: gpio
+    name: "Status LED L2"
+    id: status_led_l2
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 11 # GPB3
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  - platform: gpio
+    name: "Status LED L3"
+    id: status_led_l3
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 12 # GPB4
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  - platform: gpio
+    name: "Status LED L4"
+    id: status_led_l4
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 13 # GPB5
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  - platform: gpio
+    name: "Status LED L5"
+    id: status_led_l5
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 14 # GPB6
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  # Mode LEDs
+  - platform: gpio
+    name: "Status LED Mode WRG"
+    id: status_led_mode_wrg
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 15 # GPB7
+      mode:
+        output: true
+    inverted: false
+    internal: false
+
+  - platform: gpio
+    name: "Status LED Mode Vent"
+    id: status_led_mode_vent
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 3 # GPA3
+      mode:
+        output: true
+    inverted: false
+    internal: false
 
 # ---------------------------------------------------------
 # I2C Configuration
@@ -305,9 +389,11 @@ number:
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO1
+      mcp23xxx: mcp23017_hub
+      number: 0 # GPA0
       mode:
         input: true
+        pullup: true
       inverted: true
     name: "Button On/Off"
     id: button_on_off
@@ -316,9 +402,11 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO2
+      mcp23xxx: mcp23017_hub
+      number: 1 # GPA1
       mode:
         input: true
+        pullup: true
       inverted: true
     name: "Button Mode"
     id: button_mode
@@ -327,9 +415,11 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO3
+      mcp23xxx: mcp23017_hub
+      number: 2 # GPA2
       mode:
         input: true
+        pullup: true
       inverted: true
     name: "Button Level"
     id: button_level

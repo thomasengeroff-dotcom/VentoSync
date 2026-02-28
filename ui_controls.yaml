@@ -1,0 +1,258 @@
+# ---------------------------------------------------------
+# LED LIGHTS (Monochromatic for Dimming)
+# ---------------------------------------------------------
+light:
+  - platform: monochromatic
+    output: out_led_pwr
+    name: "Status LED Power"
+    id: status_led_power
+    internal: true
+    default_transition_length: 0.5s # nice fading effect
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_master
+    name: "Status LED Master"
+    id: status_led_master
+    internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_wrg
+    name: "Status LED Mode WRG"
+    id: status_led_mode_wrg # ID expected by automation_helpers.h
+    internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_vent
+    name: "Status LED Mode Vent"
+    id: status_led_mode_vent # Automation helper expects this ID
+    internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+
+  # Level LEDs
+  - platform: monochromatic
+    output: out_led_l1
+    id: status_led_l1
+    internal: true
+    default_transition_length: 0.2s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l2
+    id: status_led_l2
+    internal: true
+    default_transition_length: 0.2s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l3
+    id: status_led_l3
+    internal: true
+    default_transition_length: 0.2s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l4
+    id: status_led_l4
+    internal: true
+    default_transition_length: 0.2s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l5
+    id: status_led_l5
+    internal: true
+    default_transition_length: 0.2s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+
+# ---------------------------------------------------------
+# UI CONTROLS (Home Assistant)
+# ---------------------------------------------------------
+number:
+  # Manual Speed Slider
+  - platform: template
+    name: "Lüfter Geschwindigkeit"
+    id: test_speed_slider
+    icon: "mdi:fan-speed-3"
+    min_value: 0
+    max_value: 100
+    step: 1
+    mode: slider
+    optimistic: true
+    set_action:
+      then:
+        - if:
+            condition:
+              lambda: "return is_fan_slider_off(x);"
+            then:
+              - fan.turn_off: lueftung_fan
+            else:
+              - fan.turn_on:
+                  id: lueftung_fan
+                  speed: !lambda |-
+                    return x;
+
+  - platform: template
+    name: "Durchlüften Dauer (min)"
+    id: vent_timer
+    min_value: 0
+    max_value: 120
+    step: 5
+    initial_value: 30
+    optimistic: true
+    set_action:
+      then:
+        - lambda: |-
+            set_ventilation_timer(x);
+
+  - platform: template
+    name: "Zyklusdauer (eine Richtung)"
+    id: cycle_duration_config
+    icon: "mdi:timer-sand"
+    unit_of_measurement: "s"
+    min_value: 10
+    max_value: 300
+    step: 5
+    initial_value: 70
+    optimistic: true
+    set_action:
+      then:
+        - lambda: |-
+            set_cycle_duration_handler(x);
+
+  - platform: template
+    name: "Sync Intervall"
+    id: sync_interval_config
+    icon: "mdi:sync"
+    unit_of_measurement: "min"
+    min_value: 1
+    max_value: 360 # 6 hours
+    step: 10
+    initial_value: 180 # 3 hours
+    optimistic: true
+    set_action:
+      then:
+        - lambda: |-
+            set_sync_interval_handler(x);
+
+  - platform: template
+    name: "Lüfter Intensität"
+    id: fan_intensity_display
+    icon: "mdi:fan-speed-1"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: false
+    lambda: |-
+      return id(fan_intensity_level);
+    set_action:
+      then:
+        - lambda: |-
+            set_fan_intensity_slider(x);
+
+  # CO2 Auto-Control: Min Fan Level (moisture protection)
+  - platform: template
+    name: "CO2 Min Lüfterstufe"
+    id: co2_min_level_slider
+    icon: "mdi:water-percent"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: true
+    initial_value: 2
+    set_action:
+      then:
+        - lambda: |-
+            id(co2_min_fan_level) = (int)x;
+            ESP_LOGI("co2_auto", "Min fan level set to %d", (int)x);
+
+  # CO2 Auto-Control: Max Fan Level (noise limiter)
+  - platform: template
+    name: "CO2 Max Lüfterstufe"
+    id: co2_max_level_slider
+    icon: "mdi:volume-off"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: true
+    initial_value: 7
+    set_action:
+      then:
+        - lambda: |-
+            id(co2_max_fan_level) = (int)x;
+            ESP_LOGI("co2_auto", "Max fan level set to %d", (int)x);
+
+  # Automatik CO2 Grenzwert
+  - platform: template
+    name: "Automatik: CO2 Grenzwert"
+    id: auto_co2_threshold
+    icon: "mdi:molecule-co2"
+    min_value: 400
+    max_value: 2000
+    step: 50
+    unit_of_measurement: "ppm"
+    lambda: "return id(auto_co2_threshold_val);"
+    set_action:
+      - lambda: |-
+          id(auto_co2_threshold_val) = (int)x;
+          id(auto_co2_threshold).publish_state(x);
+          auto call = id(pid_co2).make_call();
+          call.set_target_temperature(x);
+          call.perform();
+
+  # Automatik Feuchte Grenzwert
+  - platform: template
+    name: "Automatik: Feuchte Grenzwert"
+    id: auto_humidity_threshold
+    icon: "mdi:water-percent"
+    min_value: 40
+    max_value: 100
+    step: 5
+    unit_of_measurement: "%"
+    lambda: "return id(auto_humidity_threshold_val);"
+    set_action:
+      - lambda: |-
+          id(auto_humidity_threshold_val) = (int)x;
+          id(auto_humidity_threshold).publish_state(x);
+          auto call = id(pid_humidity).make_call();
+          call.set_target_temperature(x);
+          call.perform();
+
+# ---------------------------------------------------------
+# VENTILATION MODE SELECTION
+# ---------------------------------------------------------
+select:
+  # Lüftungsmodus (existing)
+  - platform: template
+    name: "Lüftungsmodus"
+    id: selected_mode
+    options:
+      - "Wärmerückgewinnung"
+      - "Stoßlüftung"
+      - "Durchlüften"
+      - "Automatik"
+      - "Aus"
+    initial_option: "Wärmerückgewinnung"
+    set_action:
+      - lambda: |-
+          set_operating_mode_select(x.c_str());
+
+  # Automatik: Verhalten bei Anwesenheit
+  - platform: template
+    name: "Automatik: Bei Anwesenheit"
+    id: auto_presence_behavior
+    icon: "mdi:account"
+    options:
+      - "Intensität erhöhen"
+      - "Intensität senken"
+      - "Ignorieren"
+    lambda: |-
+      if (id(auto_presence_behavior_val) == 0) return std::string("Intensität erhöhen");
+      if (id(auto_presence_behavior_val) == 1) return std::string("Intensität senken");
+      return std::string("Ignorieren");
+    set_action:
+      - lambda: |-
+          if (x == "Intensität erhöhen") id(auto_presence_behavior_val) = 0;
+          else if (x == "Intensität senken") id(auto_presence_behavior_val) = 1;
+          else id(auto_presence_behavior_val) = 2;

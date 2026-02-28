@@ -1,0 +1,170 @@
+# ---------------------------------------------------------
+# SENSORS CONFIGURATION
+# ---------------------------------------------------------
+sensor:
+  # BMP390 Environmental Data (Temperature & Pressure)
+  - platform: bmp3xx_i2c
+    temperature:
+      name: "BMP390 Temperatur"
+      id: temperature
+      accuracy_decimals: 1
+      oversampling: 16x
+      filters:
+        - median:
+            window_size: 5
+            send_every: 5
+    pressure:
+      name: "BMP390 Luftdruck"
+      id: pressure
+      accuracy_decimals: 1
+      oversampling: 16x
+    address: 0x76
+    update_interval: 60s
+    iir_filter: 2x
+
+  # Home Assistant Daten (Automatik)
+  - platform: homeassistant
+    name: "Außenluftfeuchtigkeit"
+    id: outdoor_humidity
+    entity_id: sensor.outdoor_humidity
+    internal: true
+
+  # ---------------------------------------------------------
+  # SCD41 CO2 SENSOR (Optional)
+  # ---------------------------------------------------------
+  # Will show as "unavailable" until sensor is connected to H2 header
+  - platform: scd4x
+    co2:
+      name: "CO2"
+      id: co2_sensor
+      accuracy_decimals: 0
+      filters:
+        - median:
+            window_size: 5
+            send_every: 3
+    temperature_offset: 4.0 # Optional: Standardwert ist 4.0 °C
+    altitude_compensation: 250m # Ersetze 250m durch Wohnort-Höhe
+    automatic_self_calibration: true
+    temperature:
+      name: "SCD41 Temperatur"
+      id: scd41_temperature
+      accuracy_decimals: 1
+    humidity:
+      name: "SCD41 Luftfeuchtigkeit"
+      id: scd41_humidity
+      accuracy_decimals: 1
+
+  # ---------------------------------------------------------
+  # NTC TEMPERATURE SENSORS (Analog)
+  # ---------------------------------------------------------
+  # NTC Innen - Indoor air temperature measurement
+  - platform: resistance
+    id: ntc_innen_resistance
+    sensor: ntc_innen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Reference resistor in voltage divider
+    name: "NTC Innen Widerstand"
+    internal: true # Hide raw resistance value
+
+  - platform: ntc
+    sensor: ntc_innen_resistance
+    name: "Temperatur Zuluft (Innen)"
+    id: temp_zuluft
+    calibration:
+      b_constant: 3435 # Beta coefficient from datasheet
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - delta: 0.2 # Only report if changed by 0.2°C
+      - lambda: |-
+          return filter_ntc_stable(0, x);
+
+  - platform: adc
+    id: ntc_innen_source
+    pin: GPIO1 # Pin D1
+    attenuation: 12db # For 0-3.3V range
+    update_interval: 1000ms
+    internal: true
+
+  # NTC Außen - Outdoor/exhaust air temperature measurement
+  - platform: resistance
+    id: ntc_aussen_resistance
+    sensor: ntc_aussen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Reference resistor in voltage divider
+    name: "NTC Außen Widerstand"
+    internal: true
+
+  - platform: ntc
+    sensor: ntc_aussen_resistance
+    name: "Temperatur Abluft (Außen)"
+    id: temp_abluft
+    calibration:
+      b_constant: 3435
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - delta: 0.2
+      - lambda: |-
+          return filter_ntc_stable(1, x);
+
+  - platform: adc
+    id: ntc_aussen_source
+    pin: GPIO0 # Pin D0
+    attenuation: 12db # For 0-3.3V range
+    update_interval: 1000ms
+    internal: true
+
+  # ---------------------------------------------------------
+  # HEAT RECOVERY EFFICIENCY CALCULATION
+  # ---------------------------------------------------------
+  # Calculates the efficiency of heat recovery based on temperature difference
+  # Formula: Efficiency = (T_zuluft - T_außen) / (T_raum - T_außen) * 100%
+  - platform: template
+    name: "Wärmerückgewinnung Effizienz"
+    id: heat_recovery_efficiency
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:percent"
+    update_interval: 30s
+    lambda: |-
+      return calculate_heat_recovery_efficiency(
+        id(temperature).state,     // Room temperature from BMP390
+        id(temp_zuluft).state,     // Supply air temperature
+        id(temp_abluft).state      // Exhaust air temperature
+      );
+
+  # Fan Tachometer (RPM) Reading
+  - platform: pulse_counter
+    pin: GPIO20 # Pin D9
+    name: "Lüfter Drehzahl"
+    id: fan_rpm
+    use_pcnt: true # Use hardware PCNT for efficient pulse counting (recommended for ESP32)
+    unit_of_measurement: "RPM"
+    update_interval: 1s # 1s Window for stable RPM calculation
+    filters:
+      - multiply: 0.5 # 2 pulses per revolution -> divide by 2
+    on_value:
+      then:
+        - script.execute: update_leds # Update LEDs on RPM change (optional feedback)
+
+# ---------------------------------------------------------
+# TEXT SENSORS (Status & Classification)
+# ---------------------------------------------------------
+text_sensor:
+  # Human-readable CO2 classification (Ausgezeichnet, Gut, etc.)
+  - platform: template
+    name: "CO2 Bewertung"
+    id: co2_classification
+    icon: "mdi:molecule-co2"
+    update_interval: 30s
+    lambda: |-
+      return get_co2_classification(id(co2_sensor).state);

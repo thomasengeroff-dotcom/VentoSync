@@ -1,0 +1,262 @@
+# ---------------------------------------------------------
+# PID CLIMATE CONTROLLERS (Internal)
+# ---------------------------------------------------------
+climate:
+  - platform: pid
+    name: "PID CO2 Automatik"
+    id: pid_co2
+    sensor: co2_sensor
+    default_target_temperature: 1000
+    cool_output: pid_co2_output
+    internal: true
+    control_parameters:
+      kp: 0.005 # Starke Änderung wenn CO2 ansteigt (zB. +200ppm -> 1.0 Output)
+      ki: 0.0001 # Langsames Nachregeln
+      kd: 0.0
+      output_averaging_samples: 5
+    deadband_parameters:
+      threshold_high: 50.0 # Beginne ab +50ppm über Zielwert
+      threshold_low: -100.0 # Aus bei -100ppm unter Zielwert
+
+  - platform: pid
+    name: "PID Feuchte Automatik"
+    id: pid_humidity
+    sensor: scd41_humidity
+    default_target_temperature: 60
+    cool_output: pid_humidity_output
+    internal: true
+    control_parameters:
+      kp: 0.1 # Starke Änderung wenn Feuchte ansteigt (zB. +10% -> 1.0 Output)
+      ki: 0.002
+      kd: 0.0
+      output_averaging_samples: 5
+    deadband_parameters:
+      threshold_high: 2.0 # Beginne ab +2% über Zielwert
+      threshold_low: -2.0 # Aus bei -2% unter Zielwert
+
+# ---------------------------------------------------------
+# AUTOMATIONS & SWITCHES
+# ---------------------------------------------------------
+switch:
+  - platform: template
+    name: "Lüfter Richtung A"
+    id: fan_direction
+    optimistic: true
+    on_turn_on:
+      - lambda: notify_fan_direction_changed();
+      - script.execute: fan_speed_update
+    on_turn_off:
+      - lambda: notify_fan_direction_changed();
+      - script.execute: fan_speed_update
+
+  # Automatic Fan Cycle (Ramp Up -> Hold -> Ramp Down -> Off)
+  - platform: template
+    name: "Fan Automatic Cycle"
+    id: fan_auto_cycle
+    optimistic: true
+    turn_on_action:
+      - script.execute: fan_cycle_logic
+    turn_off_action:
+      - script.stop: fan_cycle_logic
+      - fan.turn_off: lueftung_fan
+
+  # CO2-based adaptive fan control (on/off)
+  - platform: template
+    name: "CO2 Automatik"
+    id: co2_auto_switch
+    icon: "mdi:molecule-co2"
+    optimistic: false
+    lambda: |-
+      return id(co2_auto_enabled);
+    turn_on_action:
+      - lambda: |-
+          if (std::isnan(id(co2_sensor).state)) {
+            ESP_LOGW("co2_auto", "SCD41 nicht angeschlossen — CO2 Automatik kann nicht aktiviert werden");
+          } else {
+            id(co2_auto_enabled) = true;
+            ESP_LOGI("co2_auto", "CO2 Automatik aktiviert");
+          }
+    turn_off_action:
+      - lambda: |-
+          id(co2_auto_enabled) = false;
+          ESP_LOGI("co2_auto", "CO2 Automatik deaktiviert");
+
+# ---------------------------------------------------------
+# SCRIPTS (Complex Logic)
+# ---------------------------------------------------------
+script:
+  # Logic for the Fan Auto Cycle
+  - id: fan_cycle_logic
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: "return true;"
+          then:
+            # 1. Ramp Up 0 -> 100% in 5s
+            - repeat:
+                count: 100
+                then:
+                  - output.set_level:
+                      id: fan_pwm_primary
+                      level: !lambda |-
+                        return calculate_ramp_up(iteration);
+                  - delay: 50ms
+
+            # 2. Sync Fan State (ON full speed)
+            - fan.turn_on:
+                id: lueftung_fan
+                speed: 100
+
+            # 3. Hold for 20s
+            - delay: 20s
+
+            # 4. Ramp Down 100% -> 0% in 5s
+            - repeat:
+                count: 100
+                then:
+                  - output.set_level:
+                      id: fan_pwm_primary
+                      level: !lambda |-
+                        return calculate_ramp_down(iteration);
+                  - delay: 50ms
+
+            # 5. Sync Fan State (OFF)
+            - fan.turn_off: lueftung_fan
+
+            # 6. Pause before next cycle
+            - delay: 100ms
+
+  # LED Logic Handler
+  - id: update_leds
+    mode: restart
+    then:
+      - lambda: |-
+          update_leds_logic();
+
+  # Unified Fan Speed and Direction Control
+  - id: set_fan_speed_and_direction
+    parameters:
+      speed: float # 0.0-1.0 (duty cycle)
+      direction: int # 0 = Direction A, 1 = Direction B
+    then:
+      - lambda: |-
+          set_fan_logic(speed, direction);
+
+  # Fan Speed Update (called when intensity or mode changes)
+  - id: fan_speed_update
+    mode: restart
+    then:
+      - lambda: update_fan_logic();
+
+# ---------------------------------------------------------
+# CONTROL PANEL BUTTONS (Input)
+# ---------------------------------------------------------
+binary_sensor:
+  - platform: homeassistant
+    id: presence_sensor
+    entity_id: binary_sensor.presence
+    internal: true
+
+  # Button Power (Left) - On/Off (MCP23017 GPA0)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 0 # GPA0
+      mode:
+        input: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Power"
+    id: button_power
+    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    filters:
+      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
+      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+    on_click:
+      then:
+        - lambda: |-
+            handle_button_power_click();
+
+  # Button Mode (Right) - Mode Control (MCP23017 GPA1)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 1 # GPA1
+      mode:
+        input: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Mode"
+    id: button_mode
+    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    filters:
+      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
+      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+    on_click:
+      then:
+        - lambda: |-
+            handle_button_mode_click();
+
+  # Button Level (Middle) - Speed Level (MCP23017 GPA2)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 2 # GPA2
+      mode:
+        input: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Fan Intensity"
+    id: button_leve
+    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    filters:
+      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
+      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+    on_multi_click:
+      # Short press: Cycle through intensity levels 1→10→1
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.1s
+        then:
+          - lambda: |-
+              handle_button_level_click();
+      # Long press (≥1s): Toggle system power
+      - timing:
+          - ON for at least 1s
+        then:
+          - lambda: handle_button_power_click();
+
+# ---------------------------------------------------------
+# VENTILATION CONTROL
+# ---------------------------------------------------------
+
+# Interval to check for pending broadcasts
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: "return ((esphome::VentilationController*)id(ventilation_ctrl))->pending_broadcast;"
+          then:
+            - espnow.send:
+                address: "FF:FF:FF:FF:FF:FF" # Broadcast address for Discovery/Sync
+                data: !lambda |-
+                  return build_and_populate_packet(esphome::MSG_SYNC);
+      - if:
+          condition:
+            lambda: "return ventilation_ctrl->state_machine.is_phase_a;"
+          then:
+            - switch.turn_off: fan_direction
+          else:
+            - switch.turn_on: fan_direction
+
+  # Automatik Logik
+  - interval: 60s
+    id: auto_mode_interval
+    then:
+      - lambda: |-
+          evaluate_auto_mode();
+
+  # CO2 Auto-Control: Check CO2 level and adjust fan every 30s
+  - interval: 30s
+    then:
+      - lambda: |-
+          apply_co2_auto_control();

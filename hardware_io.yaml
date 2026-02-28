@@ -1,0 +1,122 @@
+# ---------------------------------------------------------
+# I2C BUS CONFIGURATION
+# ---------------------------------------------------------
+i2c:
+  sda: GPIO22 # Pin D4 on XIAO ESP32C6
+  scl: GPIO23 # Pin D5 on XIAO ESP32C6
+  scan: true
+  id: bus_a
+  frequency: 400kHz # Fast I2C Mode (400kHz)
+  timeout: 50ms # Increased timeout to prevent "software timeout" errors
+
+# ---------------------------------------------------------
+# MCP23017 I/O EXPANDER
+# ---------------------------------------------------------
+mcp23017:
+  - id: mcp23017_hub
+    address: 0x20
+
+# ---------------------------------------------------------
+# PCA9685 I/O EXPANDER (LED Driver)
+# ---------------------------------------------------------
+pca9685:
+  - id: pwm_hub
+    frequency: 1000Hz
+    address: 0x40
+
+# ---------------------------------------------------------
+# PCA9685 OUTPUTS (LEDs) & GPIO OUTPUTS
+# ---------------------------------------------------------
+output:
+  # --- LEDS Port A (Channels 0-11) ---
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 8 # LED_PWRV
+    id: out_led_pwr
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 7 # LED_MSTV
+    id: out_led_master
+
+  # Level LEDs
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 1 # LED_L1V
+    id: out_led_l1
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 9 # LED_L2V
+    id: out_led_l2
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 3 # LED_L3V
+    id: out_led_l3
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 11 # LED_L4V
+    id: out_led_l4
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 5 # LED_L5V
+    id: out_led_l5
+
+  # Mode LED WRG
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 13 # LED_WRGV
+    id: out_led_wrg
+
+  # --- LEDS Port B ---
+  # Mode LED Ventilation
+  - platform: pca9685
+    pca9685_id: pwm_hub
+    channel: 15 # LED_VENV
+    id: out_led_vent
+
+  # --- Fan PWM (Standard Output) ---
+  - platform: ledc
+    pin: GPIO19 # Pin D8
+    frequency: 2000Hz # 28kHz for silent operation
+    id: fan_pwm_primary
+    inverted: false
+    min_power: 0%
+    zero_means_zero: true
+
+  # --- PID Dummy Outputs (capturing the cooling demand 0.0 - 1.0) ---
+  - platform: template
+    id: pid_co2_output
+    type: float
+    write_action:
+      - globals.set:
+          id: co2_pid_result
+          value: !lambda "return state;"
+
+  - platform: template
+    id: pid_humidity_output
+    type: float
+    write_action:
+      - globals.set:
+          id: humidity_pid_result
+          value: !lambda "return state;"
+
+switch:
+  # MCP23017 Reset (Active Low)
+  # This switch keeps the MCP23017 out of reset state
+  - platform: gpio
+    pin: GPIO2 # Pin D2
+    name: "MCP23017 Reset"
+    id: mcp23017_reset
+    restore_mode: ALWAYS_ON
+    internal: true
+
+  # PCA9685 Output Enable (Active Low)
+  # This switch controls the power to the PCA9685 driver
+  # LEDs are off until the switch is turned on
+  - platform: gpio
+    pin:
+      number: GPIO21 # Pin D3
+      inverted: true
+    name: "PCA9685 Output Enable"
+    id: pca9685_oe
+    restore_mode: ALWAYS_ON
+    internal: true

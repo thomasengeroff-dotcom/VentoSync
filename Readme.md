@@ -550,9 +550,14 @@ Diese Dokumentation enthält:
 
 ```text
 ESPHome-Wohnraumlueftung/
-├── esp_wohnraumlueftung.yaml      # Hauptkonfiguration
+├── esp_wohnraumlueftung.yaml      # Hauptkonfiguration (minimal)
+├── hardware_io.yaml               # Hardware-Schnittstellen (I2C, MCP, PCA, LEDs)
+├── sensors_climate.yaml           # Sensorauswertung (SCD41, NTCs, BMP390)
+├── ui_controls.yaml               # Home Assistant GUI-Elemente (Slider, Selects)
+├── logic_automation.yaml          # Steuerungslogik, PIDs, Intervalle
 ├── esp32c6_common.yaml            # Gemeinsame ESP32-C6 Einstellungen
 ├── device_config.yaml             # Dynamische Gerätekonfiguration
+├── espslaveNTC.yaml               # Firmware für Slave-Geräte (Empfänger)
 ├── automation_helpers.h           # C++ Helper-Funktionen für Lambdas
 ├── components/                    # Externe Komponenten
 │   └── ventilation_group/         # Lüftungssteuerung
@@ -571,11 +576,22 @@ ESPHome-Wohnraumlueftung/
 
 ### Modular aufgebaute Firmware
 
-Die Firmware folgt einem **modularen Architekturansatz**, der Wartbarkeit und Erweiterbarkeit maximiert:
+Die Firmware folgt einem **mehrstufigen modularen Architekturansatz**, der Wartbarkeit und Erweiterbarkeit maximiert:
 
-#### **`automation_helpers.h` - Zentrale Helper-Bibliothek**
+#### **1. YAML Modularisierung (Packages)**
 
-Alle komplexen Lambda-Funktionen wurden in wiederverwendbare C++ Helper-Funktionen ausgelagert:
+Die ehemals gewaltige Hauptdatei `esp_wohnraumlueftung.yaml` wurde drastisch verschlankt, um die Lesbarkeit und Pflege zu vereinfachen. Das Projekt nutzt intensiv die ESPHome `packages:` Funktion, um in sich geschlossene Logikbausteine in separate YAML-Dateien auszulagern:
+
+- **`hardware_io.yaml`**: Kapselt die gesamte physische Hardware. Beinhaltet I2C-Busse, Port-Expander (MCP23017, PCA9685), Basis-Pinbelegungen und Power-Toggles.
+- **`sensors_climate.yaml`**: Beinhaltet die gesamte Mess-Peripherie. Konfiguration des SCD41 (CO2), BMP390 (Druck), NTC-Temperaturfühler, Drehzahlsensoren und klimabasierte Berechnungenpunkte (z. B. Effizienz der Wärmerückgewinnung).
+- **`ui_controls.yaml`**: Isoliert alle Entitäten, die in Home Assistant als Steuerelemente auftauchen (Slider für Timer und Setup, Dropdowns zur Modus-Wahl, sowie logische LED-Lichter).
+- **`logic_automation.yaml`**: Das "Gehirn", wenn es um Abläufe geht. Hier sitzen die komplexen PID-Klimaregler, Automatisierungen per Interval, zyklische Fan-Ramp-Skripte sowie die Input-Logik der Hardwaretaster am Bedienpanel.
+
+Die Hauptdatei (`esp_wohnraumlueftung.yaml`) fungiert nun lediglich als "Klebstoff", der Basisvariablen definiert, C++ Abhängigkeiten lädt und diese vier Modul-Dateien zusammenführt.
+
+#### **2. `automation_helpers.h` - Zentrale Helper-Bibliothek**
+
+Alle komplexen Lambda-Funktionen wurden aus dem YAML Code verbannt und in wiederverwendbare native C++ Helper-Funktionen ausgelagert:
 
 **Vorteile:**
 
