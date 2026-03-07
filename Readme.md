@@ -77,17 +77,17 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 ### ✅ Implementierte Erweiterungen
 
-- **🤖 Adaptive CO2-Regelung**:
-  - Dynamische **stufenlose** Anpassung der Lüfterleistung basierend auf Echtzeit-CO2-Werten (ppm) vom SCD41 Sensor.
+- **🤖 Adaptive Automatik (CO2 & Feuchte)**:
+  - Dynamische **stufenlose** Anpassung der Lüfterleistung basierend auf Echtzeit-CO2-Werten (ppm) vom SCD41 Sensor sowie der relativen Luftfeuchte im Innen- und Außenvergleich.
   - Nutzung eines fortschrittlichen **PID-Reglers (Proportional-Integral-Derivative)** für eine **lautlose, kontinuierliche Steuerung**. Die PWM Leistung wird nahtlos im Hintergrund verstellt, ohne hörbare Drehzahlsprünge.
-  - Konfigurierbarer **Min-/Max-Level** (Moisture / Noise Control) begrenzt das Anpassungsfenster der Automatik auf leise Drehzahlen.
-  - Nur aktiv wenn SCD41 angeschlossen ist — automatische Erkennung. Lokal und remote aktivierbar.
+  - Konfigurierbarer **Min-/Max-Level** (`automatik_min_fan_level`) begrenzt das Anpassungsfenster der Automatik auf leise Drehzahlen.
+  - **Dynamische Zyklusdauer**: Die Wechselintervalle (Richtung A/B) passen sich fließend der aktuellen Lüfterstufe an (z.B. sanfte 70 Sekunden auf Stufe 1 bis schnelle 50 Sekunden auf Stufe 10) inkl. synchronisiertem NTC-Zeitfenster.
   - Siehe [📄 CO2 Automatik Dokumentation](documentation/CO2-Automatik.md) für Details.
 
-- **🚶 Radar-basierte Anwesenheitserkennung**:
-  - Integration eines mmWave-Radarsensors (HLK-LD2450) über den vorgesehenen UART-Pin-Header auf der Platine.
-  - Da die dezentralen Lüftungsgeräte ohnehin in jedem relevanten Raum optimal positioniert sind, dienen sie gleichzeitig als perfekter Standort für eine raumgenaue Präsenzerfassung, die nahtlos an Home Assistant übergeben wird.
-  - **Bedarfsgesteuerte Regelung**: Über Home Assistant lässt sich konfigurieren, inwieweit die Lüftung bei erkannter Anwesenheit reagieren soll (z. B. Lüfterdrehzahl drosseln zur Lärmreduzierung im Schlafzimmer, intensivieren für Büros). Optionen: Keine Anpassung (Default), Intensiv, Normal, Gering.
+- **🚶 Radar-basierte Anwesenheitserkennung (HLK-LD2450)**:
+  - Integration eines mmWave-Radarsensors über den vorgesehenen UART-Pin-Header auf der Platine.
+  - Da die Lüftungsgeräte ohnehin in jedem Raum optimal positioniert sind, dienen sie gleichzeitig als perfekter Standort für eine raumgenaue Präsenzerfassung für Home Assistant.
+  - **Gleitende Bedarfssteuerung**: Über den Slider `Anwesenheit Lüfter-Anpassung` kann stufenlos (von -5 bis +5) konfiguriert werden, wie das System reagieren soll. (z.B. `+3` intensiviert die Lüftung im Büro bei erkanntem Radar-Target; `-2` senkt sie zur Lärmreduzierung im Schlafzimmer, `0` schaltet die Modifikation ab).
 
 - **🧹 Wartungs-Management (Prädiktiver Filterwechsel-Alarm)**:
   - Automatisches Tracking der Lüfter-Betriebsstunden und Kalenderzeit seit letztem Filterwechsel.

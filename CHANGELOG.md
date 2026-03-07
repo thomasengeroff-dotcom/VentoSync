@@ -6,6 +6,18 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **C++ Code-Style & Best Practices**: Umfangreiches Refactoring der Logik in `automation_helpers.h`. Konstanten (`const`), C++ STL-Algorithmen (`std::max`, `std::clamp`) und C++17 Bindings ersetzen alte Magic-Numbers und C-Macros.
+- **Dynamische Zyklusdauer**: Der statische UI-Slider für die `Zyklusdauer` wurde vollständig entfernt. Das System berechnet die Zyklusdauer im C++-Code nun dynamisch basierend auf der Lüfterintensität (linear skalierend von 70s bei Stufe 1 bis zu rasanten 50s bei Stufe 10) in `update_fan_logic()`.
+- **Dynamische NTC-Temperatur-Stabilisierung (`filter_ntc_stable`)**:
+  - Statischer Wartezeitraum für thermische Trägheit der NTCs wurde nach dem Richtungswechsel skalierend gestaltet: Wartet dynamisch **60 % des Zyklus (z.B. 30s bei Stufe 10)** ab.
+  - Das `delta: 0.2` Flag in der YAML Konfiguration blockierte stabile konstante Temperaturen vom Weiterleiten und verklemmte das Window: **Filter wurde entfernt**, das fortlaufend gleitende Sensor-Zeitfenster wächst nun im C++ dynamisch mit.
+- **Zusammengefasste Radar Anwesenheits-Kompensation (-5 bis +5)**:
+  - Drei getrennte Variablen für das Anwesenheitsverhalten zusammengelegt zu einem einzigen gleitenden Range-Slider (`auto_presence_slider` von -5 bis +5) für Home Assistant.
+  - `VentilationPacket` Struktur aktualisiert: `int8_t auto_presence_val` ersetzt die drei Vorgängervariablen. **ESP-NOW Protokoll-Version auf v3 angehoben.** (Erfordert Neu-Flashen aller Raumnodes).
+- **Einheitliche Min/Max Parameter (`automatik_min_fan_level`)**: Zuvor fälschlicherweise auf CO2-Auto begrenzte Bezeichner wurden generisch umbenannt (`co2_min_fan_level` -> `automatik_min_fan_level`), da sie gleichermaßen die Begrenzungslinien des Feuchtigkeitsreglers darstellen.
+
 ### Added
 
 - **Entitäten-Dokumentation**: Neues Referenz-Dokument `documentation/Entities_Documentation.md` mit einer vollständigen Übersicht und thematischen Gruppierung aller bereitgestellten Home Assistant Entitäten inklusive technischer IDs hinzugefügt.

@@ -79,7 +79,6 @@ sensor:
       - median:
           window_size: 5
           send_every: 3
-      - delta: 0.2 # Only report if changed by 0.2°C
       - lambda: |-
           return filter_ntc_stable(0, x);
 
@@ -112,7 +111,6 @@ sensor:
       - median:
           window_size: 5
           send_every: 3
-      - delta: 0.2
       - lambda: |-
           return filter_ntc_stable(1, x);
 

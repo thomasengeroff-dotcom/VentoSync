@@ -115,8 +115,6 @@ static const uint32_t PEER_TIMEOUT_MS = 300000;      // 5 minutes
 /// @{
 
 // Stabilization parameter constants
-static const uint32_t NTC_WAIT_TIME_MS = 45000;      // Wait 45 seconds after direction change
-static const size_t NTC_WINDOW_SIZE = 10;            // Keep 10 samples (at 3s interval = 30s window)
 static const float NTC_MAX_DEVIATION = 0.3f;         // Max allowed deviation in window
 
 // State for each NTC sensor (0 = zuluft, 1 = abluft)
@@ -136,23 +134,42 @@ inline void notify_fan_direction_changed() {
 /// @param new_value The raw value reported by the physical NTC component
 /// @return The original value if stable, else empty optional to discard update
 inline esphome::optional<float> filter_ntc_stable(int sensor_idx, float new_value) {
-    // 1. Check if we are still within the mandatory wait time
-    if (millis() - last_direction_change_time < NTC_WAIT_TIME_MS) {
-        return {}; // Discard value
+    if (ventilation_ctrl == nullptr || ventilation_ctrl->state_machine.cycle_duration_ms == 0) {
+        return new_value; // Fallback if controller is not bound
+    }
+
+    uint32_t cycle_duration_ms = ventilation_ctrl->state_machine.cycle_duration_ms;
+    
+    // Dynamic wait time: 60% of the cycle, but minimum 20 seconds
+    uint32_t wait_time_ms = std::max((uint32_t)20000, (uint32_t)(cycle_duration_ms * 0.6f));
+    
+    // Safety check so we don't wait longer than the cycle itself minus 5s
+    if (wait_time_ms >= cycle_duration_ms) {
+        wait_time_ms = cycle_duration_ms > 5000 ? cycle_duration_ms - 5000 : 0;
+    }
+
+    // Dynamic window size based on remaining time in the cycle
+    // Values arrive every 3 seconds (as specified in yaml median filter send_every)
+    uint32_t remaining_time_ms = cycle_duration_ms > wait_time_ms ? cycle_duration_ms - wait_time_ms : 0;
+    size_t target_window_size = std::max((size_t)1, (size_t)(remaining_time_ms / 3000));
+
+    // 1. Check if we are still within the mandatory thermal adjustment wait time
+    if (millis() - last_direction_change_time < wait_time_ms) {
+        return {}; // Discard value while ceramic adjusts 
     }
 
     // 2. Add current value to history window
     auto &history = ntc_history[sensor_idx];
     history.push_back(new_value);
     
-    // Maintain maximum window size
-    if (history.size() > NTC_WINDOW_SIZE) {
+    // Maintain maximum window size limit
+    while (history.size() > target_window_size) {
         history.pop_front();
     }
 
     // 3. Wait until the window is full for a reliable stabilization check
-    if (history.size() < NTC_WINDOW_SIZE) {
-        return {}; // Discard value while buffer fills
+    if (history.size() < target_window_size) {
+        return {}; // Discard value while checking buffer window fills up
     }
 
     // 4. Calculate deviation
@@ -165,7 +182,7 @@ inline esphome::optional<float> filter_ntc_stable(int sensor_idx, float new_valu
         // Temperature is stable!
         return new_value;
     } else {
-        // Still fluctuating, keep last state
+        // Still fluctuating, keep last known state
         return {}; 
     }
 }
