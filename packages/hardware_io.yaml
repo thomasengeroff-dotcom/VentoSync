@@ -76,7 +76,7 @@ output:
   # --- Fan PWM (Standard Output) ---
   - platform: ledc
     pin: GPIO19 # Pin D8
-    frequency: 2000Hz # 28kHz for silent operation
+    frequency: 2000Hz # required by specification of EBM-Papst fan
     id: fan_pwm_primary
     inverted: false
     min_power: 0%

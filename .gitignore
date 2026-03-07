@@ -4,3 +4,5 @@
 /.esphome/
 /secrets.yaml
 KiCad/
+.agent/skills/cpp-pro/SKILL.md
+.agent/skills/home-assistant-esphome/SKILL.md

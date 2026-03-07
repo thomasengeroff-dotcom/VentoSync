@@ -7,6 +7,7 @@
 /// code-gen provides for globals, scripts, lights, outputs, fan, etc.
 
 #include "esphome.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <deque>
@@ -108,6 +109,9 @@ extern esphome::VentilationController *ventilation_ctrl;
 
 // --- Inline wrappers (called from YAML lambdas) -----------------------
 
+// Global constants
+static const uint32_t PEER_TIMEOUT_MS = 300000;      // 5 minutes
+
 /// @name NTC Stabilization Logic
 /// @{
 
@@ -153,12 +157,9 @@ inline esphome::optional<float> filter_ntc_stable(int sensor_idx, float new_valu
     }
 
     // 4. Calculate deviation
-    float min_val = history[0];
-    float max_val = history[0];
-    for (float v : history) {
-        if (v < min_val) min_val = v;
-        if (v > max_val) max_val = v;
-    }
+    auto [min_it, max_it] = std::minmax_element(history.begin(), history.end());
+    float min_val = *min_it;
+    float max_val = *max_it;
 
     // 5. Evaluate stability
     if ((max_val - min_val) <= NTC_MAX_DEVIATION) {
@@ -227,7 +228,7 @@ inline void evaluate_auto_mode() {
     int internal_mode = v->state_machine.current_mode; // Copy current mode as starting point
 
     // Determine current hardware direction to correctly map NTC sensors during MODE_VENTILATION
-    bool is_intake = v->state_machine.get_target_state().direction_in;
+    const bool is_intake = v->state_machine.get_target_state().direction_in;
 
     // --- 1. Compute Local Temperatures ---
     float local_in = NAN;
@@ -261,13 +262,13 @@ inline void evaluate_auto_mode() {
     float eff_in = local_in;
     float eff_out = local_out;
     
-    uint32_t now = millis();
+    const uint32_t now = millis();
     // Use peer indoor temp if local is missing and peer value is fresh (<5 mins)
-    if (std::isnan(eff_in) && !std::isnan(v->last_peer_t_in) && (now - v->last_peer_t_in_time < 300000)) {
+    if (std::isnan(eff_in) && !std::isnan(v->last_peer_t_in) && (now - v->last_peer_t_in_time < PEER_TIMEOUT_MS)) {
         eff_in = v->last_peer_t_in;
     }
     // Use peer outdoor temp if local is missing and peer value is fresh (<5 mins)
-    if (std::isnan(eff_out) && !std::isnan(v->last_peer_t_out) && (now - v->last_peer_t_out_time < 300000)) {
+    if (std::isnan(eff_out) && !std::isnan(v->last_peer_t_out) && (now - v->last_peer_t_out_time < PEER_TIMEOUT_MS)) {
         eff_out = v->last_peer_t_out;
     }
 
@@ -302,8 +303,8 @@ inline void evaluate_auto_mode() {
     }
 
     if (scd41_humidity != nullptr && outdoor_humidity != nullptr) {
-        float in_hum = scd41_humidity->state;
-        float out_hum = outdoor_humidity->state;
+        const float in_hum = scd41_humidity->state;
+        const float out_hum = outdoor_humidity->state;
         
         if (!std::isnan(in_hum) && !std::isnan(out_hum)) {
             if (out_hum < in_hum && humidity_pid_result != nullptr) {
@@ -323,7 +324,7 @@ inline void evaluate_auto_mode() {
     // is breathing near it, or humidity spiked locally), we adopt that higher demand.
     // This forces all devices in the room to scale up together symmetrically, preventing
     // situations where one device runs loudly at 100% while the other idles at 10%.
-    if (!std::isnan(v->last_peer_pid_demand) && (now - v->last_peer_pid_demand_time < 300000)) {
+    if (!std::isnan(v->last_peer_pid_demand) && (now - v->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
         max_pid_demand = std::max(max_pid_demand, v->last_peer_pid_demand);
     }
 
@@ -401,7 +402,7 @@ inline void set_fan_logic(float speed, int direction) {
 inline void update_fan_logic() {
     if (fan_intensity_level == nullptr) return;
 
-    int intensity = fan_intensity_level->value();
+    const int intensity = fan_intensity_level->value();
 
     // Mapping: Stufe 1 → 10% Mindestdrehzahl, Stufe 10 → 100% Volldrehzahl
     // Formel: speed = 0.10 + ((intensity - 1) / 9) * 0.90
@@ -409,7 +410,8 @@ inline void update_fan_logic() {
     // PWM Dir A (Abluft): pwm = 0.5 - (speed * 0.5)  z.B. Stufe 1 → 45%, Stufe 10 → 0%
     // PWM Dir B (Zuluft): pwm = 0.5 + (speed * 0.5)  z.B. Stufe 1 → 55%, Stufe 10 → 100%
     static const float SPEED_MIN = 0.10f;  // Mindestdrehzahl (Stufe 1)
-    float speed = SPEED_MIN + ((intensity - 1.0f) / 9.0f) * (1.0f - SPEED_MIN);
+    static const float MAX_FAN_LEVEL = 10.0f;
+    float speed = SPEED_MIN + ((intensity - 1.0f) / (MAX_FAN_LEVEL - 1.0f)) * (1.0f - SPEED_MIN);
 
     // In Automatik mode: override speed with precise PID demand
     if (auto_mode_active != nullptr && auto_mode_active->value()) {
@@ -423,20 +425,20 @@ inline void update_fan_logic() {
 
         // Also factor in the peer's PID demand via ESP-NOW for group synchronization
         if (ventilation_ctrl != nullptr) {
-            uint32_t now = millis();
-            if (!std::isnan(ventilation_ctrl->last_peer_pid_demand) && (now - ventilation_ctrl->last_peer_pid_demand_time < 300000)) {
+            const uint32_t now = millis();
+            if (!std::isnan(ventilation_ctrl->last_peer_pid_demand) && (now - ventilation_ctrl->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
                 max_pid_demand = std::max(max_pid_demand, ventilation_ctrl->last_peer_pid_demand);
             }
         }
 
         if (max_pid_demand > 0.01f) {
-            float min_speed = (co2_min_fan_level->value() - 1.0f) / 9.0f;
-            float max_speed = (co2_max_fan_level->value() - 1.0f) / 9.0f;
+            const float min_speed = (co2_min_fan_level->value() - 1.0f) / (MAX_FAN_LEVEL - 1.0f);
+            const float max_speed = (co2_max_fan_level->value() - 1.0f) / (MAX_FAN_LEVEL - 1.0f);
             // Map continuous PID demand [0..1] into allowed PWM window [min..max]
             speed = min_speed + max_pid_demand * (max_speed - min_speed);
         } else {
             // No PID demand: stay at baseline minimum
-            speed = (co2_min_fan_level->value() - 1.0f) / 9.0f;
+            speed = (co2_min_fan_level->value() - 1.0f) / (MAX_FAN_LEVEL - 1.0f);
         }
     }
 
@@ -445,7 +447,7 @@ inline void update_fan_logic() {
     // Read current direction from the fan_direction switch:
     // OFF = Direction A (e.g. Abluft/Rausblasen, PWM < 50%)
     // ON  = Direction B (e.g. Zuluft/Reinblasen, PWM > 50%)
-    int direction = (fan_direction != nullptr && fan_direction->state) ? 1 : 0;
+    const int direction = (fan_direction != nullptr && fan_direction->state) ? 1 : 0;
 
     set_fan_logic(speed, direction);
 }
@@ -507,7 +509,7 @@ void check_master_led_error();
 /// Maps fan intensity 1–10 onto the 5 level LEDs and toggles the two mode LEDs.
 inline void update_leds_logic() {
   auto *v = ventilation_ctrl;
-  int current_mode = v->state_machine.current_mode;
+  const int current_mode = v->state_machine.current_mode;
 
   // 1. Power LED (Always ON if system is ON and UI is active)
   if (system_on->value() && ui_active->value()) {
@@ -554,7 +556,7 @@ inline void update_leds_logic() {
 
   if (!ui_active->value() || !system_on->value() || current_mode == esphome::MODE_OFF) return;
 
-  int level = fan_intensity_level->value();
+  const int level = fan_intensity_level->value();
   
   // Mapping Logic (1-10 -> 5 LEDs)
   if (level >= 10) {
@@ -592,10 +594,10 @@ inline void check_master_led_error() {
 
     // 2. Check ESP-NOW peer freshness (5 minutes = 300000ms)
     if (ventilation_ctrl != nullptr) {
-        uint32_t now = millis();
+        const uint32_t now = millis();
         // If we have never received a peer message, or it's been > 5 minutes
         if (ventilation_ctrl->last_peer_pid_demand_time == 0 ||
-            (now - ventilation_ctrl->last_peer_pid_demand_time > 300000)) {
+            (now - ventilation_ctrl->last_peer_pid_demand_time > PEER_TIMEOUT_MS)) {
             has_error = true;
         }
     }
@@ -621,7 +623,7 @@ inline void check_master_led_error() {
 /// @brief Handles an incoming ESP-NOW packet.
 /// Delegates parsing to VentilationController, then updates UI globals,
 /// select component, LEDs, and fan speed if state changed.
-inline void handle_espnow_receive(std::vector<uint8_t> data) {
+inline void handle_espnow_receive(const std::vector<uint8_t>& data) {
     auto *v = ventilation_ctrl;
     bool changed = v->on_packet_received(data);
 
@@ -783,7 +785,7 @@ inline void set_fan_intensity_slider(float value) {
 }
 
 /// @brief Handles the mode select dropdown: maps string option to VentilationMode.
-inline void set_operating_mode_select(std::string x) {
+inline void set_operating_mode_select(const std::string& x) {
     auto *v = ventilation_ctrl;
     auto_mode_active->value() = false; // Reset by default
     
