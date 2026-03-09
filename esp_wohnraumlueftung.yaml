@@ -184,3 +184,34 @@ fan:
     name: "Lüfter"
     id: lueftung_fan
     speed_count: 100 # 1-100% Granularity
+
+# ---------------------------------------------------------
+# CUSTOM WRG DASHBOARD
+# ---------------------------------------------------------
+wrg_dashboard:
+  web_server_base_id: my_web_server_base
+  temperature_id: temperature
+  pressure_id: pressure
+  outdoor_humidity_id: outdoor_humidity
+  scd41_co2_id: scd41_co2
+  scd41_temperature_id: scd41_temperature
+  scd41_humidity_id: scd41_humidity
+  temp_zuluft_id: temp_zuluft
+  temp_abluft_id: temp_abluft
+  heat_recovery_efficiency_id: heat_recovery_efficiency
+  fan_rpm_id: fan_rpm
+  filter_operating_days_id: filter_operating_days_sensor
+  filter_change_alarm_id: filter_change_alarm
+  radar_presence_id: radar_presence
+  scd41_co2_bewertung_id: scd41_co2_bewertung
+  test_speed_slider_id: test_speed_slider
+  vent_timer_id: vent_timer
+  sync_interval_config_id: sync_interval_config
+  fan_intensity_display_id: fan_intensity_display
+  automatik_min_luefterstufe_id: automatik_min_luefterstufe
+  automatik_max_luefterstufe_id: automatik_max_luefterstufe
+  auto_co2_threshold_id: auto_co2_threshold
+  auto_humidity_threshold_id: auto_humidity_threshold
+  auto_presence_slider_id: auto_presence_slider
+  luefter_modus_id: luefter_modus
+  lueftung_fan_id: lueftung_fan

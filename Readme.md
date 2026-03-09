@@ -72,6 +72,8 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 **Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über Ihr Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
 
+**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betreibbarer, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufen Sie einfach die IP-Adresse des Lüfters im Webbrowser auf. Über das Dashboard können Sie in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern.
+
 **Intuitive Gruppensteuerung**: Durch das "Group-Controller" Konzept via ESP-NOW können mehrere Geräte in einem Raum als eine einzige visuelle Einheit im Home Assistant Dashboard (z.B. mittels Mushroom Cards) abgebildet werden. Dies reduziert den WLAN-Traffic, erhöht die Stabilität und macht die Bedienung extrem einfach (hoher WAF).
 👉 *Details, Konzept und YAML-Beispiele für ESPHome und das HA Dashboard finden Sie im Ordner [ha_integration_example](ha_integration_example/).*
 
@@ -213,6 +215,12 @@ Die Firmware ist für folgende weitere "Advanced Automation"-Funktionen vorberei
   - ✅ Modernisierte ESPHome API-Nutzung (`current_option()` statt deprecated `.state`)
   - ✅ Korrekte Template-Typen für Script-Komponenten (`RestartScript<>`, `SingleScript<>`)
   - ✅ Präzise Komponenten-Typen (`SpeedFan`, `LEDCOutput` statt generischer Basisklassen)
+
+- **C++ Pro Performance & Thread Safety (März 2026)**:
+  - ✅ **Thread Safety**: Ablösung von manuellen LwIP Semaphoren durch C++ Standard-Library `<mutex>` und `std::lock_guard` für 100% Exception-sicheres HTTP-Event Queueing (AsyncWebServer).
+  - ✅ **Memory Management**: Nutzung von Move Semantics (`std::move`) zur abfallfreien Übergabe von Vektoren zwischen Tasks, plus strikte Const-Correctness (`const std::string&`).
+  - ✅ **DRY Architecture**: Entfernung redundanter Ternary-Operatoren (`condition ? state : (float)NAN`) für Web-JSON Building durch Einsatz dedizierter, anonymer Lambda Helper-Funktionen pro Sensor-DataType.
+  - ✅ **Footprint Reduction**: Komplettentfernung veralteter Web-UI Cache-Konzepte (`DashboardSnapshot`) und damit drastisch verbesserte Free-RAM Performance.
 
 ### 🙏 Danksagungen / Credits
 

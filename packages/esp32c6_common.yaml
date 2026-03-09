@@ -62,9 +62,13 @@ wifi:
 # ---------------------------------------------------------
 # WEB INTERFACE
 # ---------------------------------------------------------
+web_server_base:
+  id: my_web_server_base
+
 # Visit http://<device-ip> to see a simple control dashboard and logs
 web_server:
   port: 80
+  local: true
   auth:
     username: !secret webuser
     password: !secret webpw
