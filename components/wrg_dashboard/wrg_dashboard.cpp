@@ -10,7 +10,7 @@ static const char *const TAG = "wrg_dashboard";
 
 bool WrgDashboard::canHandle(AsyncWebServerRequest *request) const {
   if (request->method() == HTTP_GET) {
-    if (request->url() == "/" || request->url() == "/state" || request->url() == "/set") {
+    if (request->url() == "/ui" || request->url() == "/state" || request->url() == "/set") {
       return true;
     }
   }
@@ -74,7 +74,7 @@ void WrgDashboard::dispatch_set_(const std::string &key, const std::string &sval
 }
 
 void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
-  if (request->url() == "/") {
+  if (request->url() == "/ui") {
     this->handle_root_(request);
   } else if (request->url() == "/state") {
     this->handle_state_(request);
@@ -84,7 +84,11 @@ void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
 }
 
 void WrgDashboard::handle_root_(AsyncWebServerRequest *request) {
-  request->send(200, "text/html", DASHBOARD_HTML);
+  AsyncWebServerResponse *response = request->beginResponse(200, "text/html", DASHBOARD_HTML);
+  response->addHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  response->addHeader("Pragma", "no-cache");
+  response->addHeader("Expires", "0");
+  request->send(response);
 }
 
 void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
@@ -93,7 +97,7 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   auto get_b = [](binary_sensor::BinarySensor *b) -> bool { return (b && b->has_state()) ? b->state : false; };
   auto get_t = [](text_sensor::TextSensor *t) -> const char* { return (t && t->has_state()) ? t->state.c_str() : ""; };
   auto get_n = [](number::Number *n) -> float { return (n && n->has_state()) ? n->state : (float)NAN; };
-  auto get_s = [](select::Select *s) -> const char* { return (s && s->has_state()) ? s->state.c_str() : ""; };
+  auto get_s = [](select::Select *s) -> const char* { return (s && s->has_state()) ? s->current_option() : ""; };
   
   doc["temperature"] = get_f(this->temperature_);
   doc["pressure"] = get_f(this->pressure_);

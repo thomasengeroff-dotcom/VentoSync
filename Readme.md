@@ -70,12 +70,12 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 ### 🏠 Integration
 
-**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über Ihr Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
+**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über dein Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
 
-**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betreibbarer, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufen Sie einfach die IP-Adresse des Lüfters im Webbrowser auf. Über das Dashboard können Sie in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern.
+**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betriebener, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z. B. `http://esptest.local/ui`) im Webbrowser auf. Über das Dashboard kannst du in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern. _(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)_
 
 **Intuitive Gruppensteuerung**: Durch das "Group-Controller" Konzept via ESP-NOW können mehrere Geräte in einem Raum als eine einzige visuelle Einheit im Home Assistant Dashboard (z.B. mittels Mushroom Cards) abgebildet werden. Dies reduziert den WLAN-Traffic, erhöht die Stabilität und macht die Bedienung extrem einfach (hoher WAF).
-👉 *Details, Konzept und YAML-Beispiele für ESPHome und das HA Dashboard finden Sie im Ordner [ha_integration_example](ha_integration_example/).*
+👉 _Details, Konzept und YAML-Beispiele für ESPHome und das HA Dashboard findest du im Ordner [ha_integration_example](ha_integration_example/)._
 
 ### ✅ Implementierte Erweiterungen
 
@@ -115,7 +115,7 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
   >
   > **Option A: Wetterdienst-Integration** (kein zusätzlicher Sensor nötig)
   >
-  > Installieren Sie eine Wetter-Integration (z.B. [OpenWeatherMap](https://www.home-assistant.io/integrations/openweathermap/), [Met.no](https://www.home-assistant.io/integrations/met/)) und erstellen Sie in `configuration.yaml` einen Template-Sensor:
+  > Installiere eine Wetter-Integration (z.B. [OpenWeatherMap](https://www.home-assistant.io/integrations/openweathermap/), [Met.no](https://www.home-assistant.io/integrations/met/)) und erstelle in `configuration.yaml` einen Template-Sensor:
   >
   > ```yaml
   > template:
@@ -129,7 +129,7 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
   >
   > **Option B: Physischer Außensensor** (z.B. ESP32 + BME280/SHT31 auf Balkon/Terrasse)
   >
-  > Wenn der Außensensor bereits als HA-Entity existiert (z.B. `sensor.balkon_sht31_humidity`), erstellen Sie einen Alias:
+  > Wenn der Außensensor bereits als HA-Entity existiert (z.B. `sensor.balkon_sht31_humidity`), erstelle einen Alias:
   >
   > ```yaml
   > template:
@@ -141,7 +141,7 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
   >         device_class: humidity
   > ```
   >
-  > **Alternativ:** Ändern Sie direkt die `entity_id` in `sensors_climate.yaml` auf Ihren Sensor:
+  > **Alternativ:** Ändere direkt die `entity_id` in `sensors_climate.yaml` auf deinen Sensor:
   >
   > ```yaml
   > entity_id: sensor.balkon_sht31_humidity  # statt sensor.outdoor_humidity
@@ -164,7 +164,7 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 | Updates | Servicetechniker | ✅ Over-the-Air (OTA) |
 | Lizenz | Proprietär | ✅ Open Source (MIT) |
 
-� **Den vollständigen Feature-für-Feature Vergleich mit allen technischen Details finden Sie in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
+� **Den vollständigen Feature-für-Feature Vergleich mit allen technischen Details findest du in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
 
 ---
 
@@ -181,13 +181,13 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 - 📡 **Automatisches Software-Filtering**: Durch den Broadcast-Modus und die projektinterne Filterung (Floor/Room ID) finden sich Geräte im gleichen Raum automatisch.
 - ⚙️ **Globale Konfigurations-Synchronisation**: Änderungen an Einstellungen (z. B. CO2-Grenzwerte, Timer, Automatik-Modi) an einem Gerät via Home Assistant oder Bedienpanel werden in Echtzeit drahtlos an alle anderen Geräte in derselben Raumgruppe gespiegelt. So laufen alle Lüfter stets mit identischen Parametern, ohne dass jedes Gerät einzeln konfiguriert werden muss.
 
-Weitere Informationen finden Sie in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
+Weitere Informationen findest du in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
 
 ---
 
 ### 🗺️ Roadmap & Zukünftige Erweiterungen
 
-Die Firmware ist für folgende weitere "Advanced Automation"-Funktionen vorbereitet:
+Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 
 - **🌙 Intelligenter Nachtmodus**:
   - Zeitgesteuerte Drosselung der Lüfterleistung zur Geräuschminimierung in Ruhephasen.
@@ -256,7 +256,7 @@ Eine dedizierte Platine (PCB), die alle benötigten Komponenten (XIAO, Traco, Tr
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
-| **Lüfter** | **AxiRev** (4-Pin PWM) oder **3-Pin PWM** (ohne Tacho-Signal). *Siehe [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)* | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Lüfter** | **AxiRev** (4-Pin PWM) oder **3-Pin PWM** (ohne Tacho-Signal). _Siehe [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)_ | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
@@ -265,7 +265,7 @@ Eine dedizierte Platine (PCB), die alle benötigten Komponenten (XIAO, Traco, Tr
 
 > ℹ️ **Hinweis zu 3-Pin PWM Lüftern:**
 > Neben den klassischen 4-Pin PWM Lüftern gibt es auch spezielle Propeller/Lüfter, die **kein Tacho-Signal** besitzen und daher nur über **3 Pins** verfügen (GND, 12V, PWM). Dies ist auch der Fall für den von Ventomaxx verbauten EBM-Papst Lüfter.
-Diese können problemlos ohne physikalische Änderung an der Schaltung betrieben werden, indem der Tacho-Pin (Pin 3 am Terminal) einfach unbelegt bleibt. Beachten Sie jedoch, dass ohne Tacho-Signal keine direkte Überwachung der Drehzahl (RPM) oder Blockadeerkennung durch die Software möglich ist.
+Diese können problemlos ohne physikalische Änderung an der Schaltung betrieben werden, indem der Tacho-Pin (Pin 3 am Terminal) einfach unbelegt bleibt. Beachte jedoch, dass ohne Tacho-Signal keine direkte Überwachung der Drehzahl (RPM) oder Blockadeerkennung durch die Software möglich ist.
 
 ### 🖱️ User Interface
 
@@ -408,7 +408,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 
 ---
 
-#### 1. 🤖 Smart-Automatik *(Standard / Empfohlen)* — `LED_WRG` 🟢 (pulsiert langsam)
+#### 1. 🤖 Smart-Automatik _(Standard / Empfohlen)_ — `LED_WRG` 🟢 (pulsiert langsam)
 
 **Dieser Modus ist der Standard beim Einschalten** und übernimmt vollautomatisch alle Steuerungsaufgaben. Die Lüftungsanlage regelt sich eigenständig basierend auf Umgebungsdaten und erfordert nach initialer HA-Konfiguration keinerlei manuelle Eingriffe ("Set and Forget").
 
@@ -475,7 +475,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **CO2-Grenzwert**: `number.auto_co2_threshold` (Standard aktiv)
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
-👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion finden Sie im Dokument **[Entities_Documentation.md](documentation/Entities_Documentation.md)**.
+👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/Entities_Documentation.md)**.
 
 #### 📊 Lüftergeschwindigkeit pro Stufe (ebm-papst VarioPro PWM-Kennlinie)
 
@@ -523,7 +523,7 @@ Das System trackt automatisch die Betriebsstunden des Lüfters und löst einen A
 
 **Beispiel: Push-Benachrichtigung via HA Automation**
 
-Fügen Sie folgende Automation in Ihre Home Assistant `automations.yaml` ein:
+Füge folgende Automation in deine Home Assistant `automations.yaml` ein:
 
 ```yaml
 automation:
@@ -533,7 +533,7 @@ automation:
         entity_id: binary_sensor.espwohnraumlueftung_filterwechsel_alarm
         to: "on"
     action:
-      - service: notify.mobile_app_<ihr_geraet>
+      - service: notify.mobile_app_<dein_geraet>
         data:
           title: "🧹 Filterwechsel empfohlen"
           message: >-
@@ -544,7 +544,7 @@ automation:
             importance: high
 ```
 
-> 💡 **Nach dem Filterwechsel:** Drücken Sie den Button `Filter gewechselt (Reset)` in Home Assistant, um die Betriebsstunden und den Kalender-Timer zurückzusetzen.
+> 💡 **Nach dem Filterwechsel:** Drücke den Button `Filter gewechselt (Reset)` in Home Assistant, um die Betriebsstunden und den Kalender-Timer zurückzusetzen.
 
 ---
 
@@ -615,7 +615,7 @@ Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden, nutzen beide Sensor
 - Danach sammelt das System Messwerte in einem **30-Sekunden Sliding-Window**.
 - Erst wenn die Schwankung innerhalb dieses Fensters auf realistische **0,3 °C** oder weniger fällt, gilt der Wert als stabil und wird aktualisiert.
 
-*Hinweis zur Redundanz:* `temp_abluft` liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_zuluft` liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren SCD41 Sensor.
+_Hinweis zur Redundanz:_ `temp_abluft` liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_zuluft` liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren SCD41 Sensor.
 
 Konkret wird der folgende Sensor verwendet:
 
@@ -679,7 +679,7 @@ Gerät A: Phase B (Abluft) ←→  Gerät B: Phase A (Zuluft)
 
 ## 🔧 Technische Details & Optimierungen
 
-Detaillierte technische Informationen zu Sensor-Optimierungen, ESPHome YAML Syntax, I²C-Konfiguration und weiteren technischen Aspekten finden Sie in der separaten Dokumentation:
+Detaillierte technische Informationen zu Sensor-Optimierungen, ESPHome YAML Syntax, I²C-Konfiguration und weiteren technischen Aspekten findest du in der separaten Dokumentation:
 
 📄 **[Technical-Details.md](documentation/Technical-Details.md)**
 

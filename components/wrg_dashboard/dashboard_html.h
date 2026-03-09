@@ -7,6 +7,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Wohnraumlüftung Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg-color: #121212;
@@ -29,10 +30,13 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
     }
     h1 { text-align: center; }
     .grid {
-      display: display: grid;
+      display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
       margin-top: 20px;
+    }
+    .full-width {
+      grid-column: 1 / -1;
     }
     .card {
       background: var(--card-bg);
@@ -57,7 +61,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
 </head>
 <body>
   <div class="container">
-    <h1>WRG Lüftung Dashboard</h1>
+    <h1>WRG Lüftung Dashboard <span style="font-size: 0.4em; color: #555;">(v2.0)</span></h1>
     
     <div class="grid">
       <!-- Status & Sensors -->
@@ -142,10 +146,99 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         </div>
 
       </div>
+
+      <!-- Chart -->
+      <div class="card full-width">
+        <h2>Graphen & Verlauf</h2>
+        <div style="position: relative; height: 350px; width: 100%;">
+          <canvas id="historyChart"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
+    // Chart Setup
+    const maxHistoryPoints = 150; // approx 5 minutes at 2s interval
+    const chartData = {
+      labels: ["", "", "", "", ""],
+      datasets: [
+        {
+          label: 'Lüfter RPM',
+          borderColor: '#03dac6',
+          backgroundColor: '#03dac6',
+          data: [null, null, null, null, null],
+          yAxisID: 'y'
+        },
+        {
+          label: 'Raumtemp °C',
+          borderColor: '#cf6679',
+          backgroundColor: '#cf6679',
+          data: [null, null, null, null, null],
+          yAxisID: 'y1'
+        },
+        {
+          label: 'CO2 ppm',
+          borderColor: '#bb86fc',
+          backgroundColor: '#bb86fc',
+          data: [null, null, null, null, null],
+          yAxisID: 'y2'
+        },
+        {
+          label: 'Luftfeuchtigkeit %',
+          borderColor: '#03a9f4',
+          backgroundColor: '#03a9f4',
+          data: [null, null, null, null, null],
+          yAxisID: 'y1'
+        }
+      ]
+    };
+
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    const historyChart = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#ededed' } }
+        },
+        scales: {
+          x: { 
+            ticks: { color: '#ededed' },
+            grid: { color: '#333' }
+          },
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: { display: true, text: 'RPM', color: '#03dac6' },
+            ticks: { color: '#ededed' },
+            grid: { color: '#333' }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: { display: true, text: '°C / %', color: '#cf6679' },
+            ticks: { color: '#ededed' },
+            grid: { drawOnChartArea: false }
+          },
+          y2: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: { display: true, text: 'CO2 ppm', color: '#bb86fc' },
+            ticks: { color: '#ededed' },
+            grid: { drawOnChartArea: false }
+          }
+        }
+      }
+    });
+
     async function updateData() {
       try {
         const res = await fetch('/state');
@@ -185,6 +278,24 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         document.getElementById("label_fan_intensity").innerText = document.getElementById("fan_intensity_display").value;
         document.getElementById("label_speed").innerText = document.getElementById("test_speed_slider").value;
         
+        // Update Chart
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                        now.getMinutes().toString().padStart(2, '0') + ':' + 
+                        now.getSeconds().toString().padStart(2, '0');
+
+        chartData.labels.push(timeStr);
+        chartData.datasets[0].data.push(data.fan_rpm === null ? null : parseFloat(data.fan_rpm));
+        chartData.datasets[1].data.push(data.scd41_temperature === null ? null : parseFloat(data.scd41_temperature));
+        chartData.datasets[2].data.push(data.scd41_co2 === null ? null : parseFloat(data.scd41_co2));
+        chartData.datasets[3].data.push(data.scd41_humidity === null ? null : parseFloat(data.scd41_humidity));
+
+        if (chartData.labels.length > maxHistoryPoints) {
+            chartData.labels.shift();
+            chartData.datasets.forEach(dataset => dataset.data.shift());
+        }
+        historyChart.update();
+
       } catch (e) {
         console.error('Error fetching state:', e);
       }

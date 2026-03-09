@@ -21,6 +21,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Added
 
+- **Lokales Web-Dashboard URL (`/ui`)**: Das benutzerdefinierte Dashboard (`wrg_dashboard`) wurde von `/` auf `/ui` verschoben, um Konflikte mit dem Standard-ESPHome-UI (`web_server`) zu verhindern.
 - **Lokales Web-Dashboard (`wrg_dashboard`)**: Neues Feature für den Zugriff auf alle Sensorwerte, Statusinformationen und Einstellungen (Lüfterstufe, Modus, CO2-Grenzwerte) direkt über einen integrierten, asynchronen Webserver auf dem ESP32. Die responsive Weboberfläche bietet animierte Kacheln, Echtzeit-Updates und interaktive Graphen – völlig unabhängig von Cloud-Diensten oder zwingendem Home Assistant Einsatz.
 - **Entitäten-Dokumentation**: Neues Referenz-Dokument `documentation/Entities_Documentation.md` mit einer vollständigen Übersicht und thematischen Gruppierung aller bereitgestellten Home Assistant Entitäten inklusive technischer IDs hinzugefügt.
 
