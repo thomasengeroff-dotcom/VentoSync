@@ -412,35 +412,20 @@ inline void set_fan_logic(float speed, int direction) {
     fan_pwm_primary->set_level(pwm);
 }
 
-/// @brief Updates fan speed and direction based on intensity and mode.
-/// Reads fan_direction switch for direction, calculates speed from intensity/PID,
-/// then calls set_fan_logic() which maps both into the single VarioPro PWM signal.
-inline void update_fan_logic() {
-    if (fan_intensity_level == nullptr) return;
-
-    const int intensity = fan_intensity_level->value();
-
-    // Mapping: Stufe 1 → 10% Mindestdrehzahl, Stufe 10 → 100% Volldrehzahl
-    // Formel: speed = 0.10 + ((intensity - 1) / 9) * 0.90
-    // Stufe 1=10%, 2=20%, 3=30%, 4=40%, 5=50%, 6=60%, 7=70%, 8=80%, 9=90%, 10=100%
-    // PWM Dir A (Abluft): pwm = 0.5 - (speed * 0.5)  z.B. Stufe 1 → 45%, Stufe 10 → 0%
-    // PWM Dir B (Zuluft): pwm = 0.5 + (speed * 0.5)  z.B. Stufe 1 → 55%, Stufe 10 → 100%
-    static const float SPEED_MIN = 0.10f;  // Mindestdrehzahl (Stufe 1)
+/// @brief Converts a user-facing level (1-10) to actual hardware PWM speed (10% - 100%)
+inline float level_to_speed(float level) {
+    static const float SPEED_MIN = 0.10f;  // Stufe 1 mapped to 10% PWM
     static const float MAX_FAN_LEVEL = 10.0f;
-    float speed = SPEED_MIN + ((intensity - 1.0f) / (MAX_FAN_LEVEL - 1.0f)) * (1.0f - SPEED_MIN);
+    return SPEED_MIN + ((level - 1.0f) / (MAX_FAN_LEVEL - 1.0f)) * (1.0f - SPEED_MIN);
+}
 
-    // Dynamic Cycle duration mapped to fan level:
-    // Level 1 = 70s, Level 10 = 50s.
-    // Mathematical progression: duration = 70 - ((intensity - 1) * (20/9))
-    if (ventilation_ctrl != nullptr) {
-        float dynamic_cycle_s = 70.0f - ((intensity - 1.0f) * (20.0f / 9.0f));
-        uint32_t dynamic_cycle_ms = std::round(dynamic_cycle_s) * 1000;
-        if (ventilation_ctrl->state_machine.cycle_duration_ms != dynamic_cycle_ms) {
-            ventilation_ctrl->set_cycle_duration(dynamic_cycle_ms);
-        }
-    }
+/// @brief Calculates the exact target speed (0.0 to 1.0) based on intensity level and auto PID rules.
+inline float get_current_target_speed() {
+    if (fan_intensity_level == nullptr) return 0.0f;
+    
+    // Normal manual mode calculation
+    float speed = level_to_speed((float)fan_intensity_level->value());
 
-    // In Automatik mode: override speed with precise PID demand
     if (auto_mode_active != nullptr && auto_mode_active->value()) {
         float max_pid_demand = 0.0f;
         if (co2_auto_enabled->value() && co2_pid_result != nullptr) {
@@ -449,27 +434,45 @@ inline void update_fan_logic() {
         if (humidity_pid_result != nullptr) {
              max_pid_demand = std::max(max_pid_demand, humidity_pid_result->value());
         }
-
-        // Also factor in the peer's PID demand via ESP-NOW for group synchronization
         if (ventilation_ctrl != nullptr) {
             const uint32_t now = millis();
             if (!std::isnan(ventilation_ctrl->last_peer_pid_demand) && (now - ventilation_ctrl->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
                 max_pid_demand = std::max(max_pid_demand, ventilation_ctrl->last_peer_pid_demand);
             }
         }
-
+        
+        float min_level = (float)automatik_min_fan_level->value();
+        float max_level = (float)automatik_max_fan_level->value();
+        
         if (max_pid_demand > 0.01f) {
-            const float min_speed = (automatik_min_fan_level->value() - 1.0f) / (MAX_FAN_LEVEL - 1.0f);
-            const float max_speed = (automatik_max_fan_level->value() - 1.0f) / (MAX_FAN_LEVEL - 1.0f);
-            // Map continuous PID demand [0..1] into allowed PWM window [min..max]
-            speed = min_speed + max_pid_demand * (max_speed - min_speed);
+            // Scale the PID demand (0.0 - 1.0) directly onto the Level domain (e.g. Stage 1 to Stage 8)
+            float target_level = min_level + max_pid_demand * (max_level - min_level);
+            speed = level_to_speed(target_level);
         } else {
-            // No PID demand: stay at baseline minimum
-            speed = (automatik_min_fan_level->value() - 1.0f) / (MAX_FAN_LEVEL - 1.0f);
+            // When demand drops to 0, use the minimum defined limit
+            speed = level_to_speed(min_level);
+        }
+    }
+    return std::max(0.0f, std::min(1.0f, speed));
+}
+
+/// @brief Updates fan speed and direction based on intensity and mode.
+/// Reads fan_direction switch for direction, calculates speed from intensity/PID,
+/// then calls set_fan_logic() which maps both into the single VarioPro PWM signal.
+inline void update_fan_logic() {
+    if (fan_intensity_level == nullptr) return;
+    const int intensity = fan_intensity_level->value();
+
+    // Dynamic Cycle duration mapped to fan level:
+    if (ventilation_ctrl != nullptr) {
+        float dynamic_cycle_s = 70.0f - ((intensity - 1.0f) * (20.0f / 9.0f));
+        uint32_t dynamic_cycle_ms = std::round(dynamic_cycle_s) * 1000;
+        if (ventilation_ctrl->state_machine.cycle_duration_ms != dynamic_cycle_ms) {
+            ventilation_ctrl->set_cycle_duration(dynamic_cycle_ms);
         }
     }
 
-    speed = std::max(0.0f, std::min(1.0f, speed));
+    float speed = get_current_target_speed();
 
     // Read current direction from the fan_direction switch:
     // OFF = Direction A (e.g. Abluft/Rausblasen, PWM < 50%)

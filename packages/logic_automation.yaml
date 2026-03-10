@@ -10,13 +10,17 @@ climate:
     cool_output: pid_co2_output
     internal: true
     control_parameters:
-      kp: 0.005 # Starke Änderung wenn CO2 ansteigt (zB. +200ppm -> 1.0 Output)
-      ki: 0.0001 # Langsames Nachregeln
+      # P-Anteil: 0.002 bedeutet +20% Lüfterleistung pro 100ppm über dem Ziel.
+      # Bei Target 1000ppm: 1000ppm = 0%, 1250ppm = 50%, 1500ppm = 100%
+      kp: 0.002
+      # I-Anteil: Extrem niedrig! (Hier ca. 1.8% mehr Leistung pro Minute bei 100ppm Überschreitung)
+      ki: 0.000003
       kd: 0.0
       output_averaging_samples: 5
     deadband_parameters:
-      threshold_high: 50.0 # Beginne ab +50ppm über Zielwert
-      threshold_low: -100.0 # Aus bei -100ppm unter Zielwert
+      # Sehr enges Deadband, damit er weich auf 0% runterdrehen kann.
+      threshold_high: 10.0
+      threshold_low: -10.0
 
   - platform: pid
     name: "PID Feuchte Automatik"
@@ -26,39 +30,34 @@ climate:
     cool_output: pid_humidity_output
     internal: true
     control_parameters:
-      kp: 0.1 # Starke Änderung wenn Feuchte ansteigt (zB. +10% -> 1.0 Output)
-      ki: 0.002
+      # P-Anteil: Bei 60% Sollwert bedeutet kp:0.1 -> bei 65% rF läuft er sanft auf 50%
+      kp: 0.1
+      # I-Anteil: Auch hier deutlich verkleinern (Mit diesem Wert gibt es bei 5% Rest-Feuchte ca. +3% Leistung pro Minute)
+      ki: 0.0001
       kd: 0.0
       output_averaging_samples: 5
     deadband_parameters:
-      threshold_high: 2.0 # Beginne ab +2% über Zielwert
-      threshold_low: -2.0 # Aus bei -2% unter Zielwert
+      threshold_high: 1.0
+      threshold_low: -1.0
 
 # ---------------------------------------------------------
 # AUTOMATIONS & SWITCHES
 # ---------------------------------------------------------
 switch:
   - platform: template
-    name: "Lüfter Richtung A"
+    name: "Fan Direction"
     id: fan_direction
     optimistic: true
-    on_turn_on:
-      - lambda: notify_fan_direction_changed();
-      - script.execute: fan_speed_update
-    on_turn_off:
-      - lambda: notify_fan_direction_changed();
-      - script.execute: fan_speed_update
-
-  # Automatic Fan Cycle (Ramp Up -> Hold -> Ramp Down -> Off)
-  - platform: template
-    name: "Fan Automatic Cycle"
-    id: fan_auto_cycle
-    optimistic: true
     turn_on_action:
-      - script.execute: fan_cycle_logic
+      - lambda: |-
+          notify_fan_direction_changed();
+          id(fan_direction).publish_state(true);
+      - script.execute: fan_speed_update
     turn_off_action:
-      - script.stop: fan_cycle_logic
-      - fan.turn_off: lueftung_fan
+      - lambda: |-
+          notify_fan_direction_changed();
+          id(fan_direction).publish_state(false);
+      - script.execute: fan_speed_update
 
   # CO2-based adaptive fan control (on/off)
   - platform: template
@@ -85,48 +84,6 @@ switch:
 # SCRIPTS (Complex Logic)
 # ---------------------------------------------------------
 script:
-  # Logic for the Fan Auto Cycle
-  - id: fan_cycle_logic
-    mode: restart
-    then:
-      - while:
-          condition:
-            lambda: "return true;"
-          then:
-            # 1. Ramp Up 0 -> 100% in 5s
-            - repeat:
-                count: 100
-                then:
-                  - output.set_level:
-                      id: fan_pwm_primary
-                      level: !lambda |-
-                        return calculate_ramp_up(iteration);
-                  - delay: 50ms
-
-            # 2. Sync Fan State (ON full speed)
-            - fan.turn_on:
-                id: lueftung_fan
-                speed: 100
-
-            # 3. Hold for 20s
-            - delay: 20s
-
-            # 4. Ramp Down 100% -> 0% in 5s
-            - repeat:
-                count: 100
-                then:
-                  - output.set_level:
-                      id: fan_pwm_primary
-                      level: !lambda |-
-                        return calculate_ramp_down(iteration);
-                  - delay: 50ms
-
-            # 5. Sync Fan State (OFF)
-            - fan.turn_off: lueftung_fan
-
-            # 6. Pause before next cycle
-            - delay: 100ms
-
   # LED Logic Handler
   - id: update_leds
     mode: restart
@@ -266,13 +223,6 @@ interval:
                 address: "FF:FF:FF:FF:FF:FF" # Broadcast address for Discovery/Sync
                 data: !lambda |-
                   return build_and_populate_packet(esphome::MSG_SYNC);
-      - if:
-          condition:
-            lambda: "return ventilation_ctrl->state_machine.is_phase_a;"
-          then:
-            - switch.turn_off: fan_direction
-          else:
-            - switch.turn_on: fan_direction
 
   # Automatik Logik
   - interval: 60s

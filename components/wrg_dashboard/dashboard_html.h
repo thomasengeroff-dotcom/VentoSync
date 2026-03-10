@@ -93,6 +93,12 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         <div class="item"><span>Radar Präsenz:</span> <span class="value" id="val_radar_presence">--</span></div>
       </div>
 
+      <!-- Verbundene Geräte (ESP-NOW) -->
+      <div class="card full-width" id="peers_card" style="display: none;">
+        <h2>Verbundene Geräte (ESP-NOW)</h2>
+        <div id="peers_container" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;"></div>
+      </div>
+
       <!-- Controls -->
       <div class="card">
         <h2>Einstellungen</h2>
@@ -277,6 +283,37 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
 
         document.getElementById("label_fan_intensity").innerText = document.getElementById("fan_intensity_display").value;
         document.getElementById("label_speed").innerText = document.getElementById("test_speed_slider").value;
+        
+        // Render ESP-NOW Peers
+        if (data.peers && data.peers.length > 0) {
+          document.getElementById('peers_card').style.display = 'block';
+          const container = document.getElementById('peers_container');
+          let html = '';
+          data.peers.forEach(peer => {
+            const modeNames = ["Aus", "WRG", "Durchlüften", "Stoßlüftung"];
+            const mode = peer.mode >= 0 && peer.mode <= 3 ? modeNames[peer.mode] : "Unbekannt";
+            const phase = peer.phase ? "<span style='color:var(--accent);font-weight:bold;'>IN</span>" : "<span style='color:var(--danger);font-weight:bold;'>OUT</span>";
+            const tIn = peer.t_in ? peer.t_in.toFixed(1) + " °C" : "--";
+            const tOut = peer.t_out ? peer.t_out.toFixed(1) + " °C" : "--";
+            const pid = peer.pid_demand !== undefined && peer.pid_demand !== null ? (Math.round(peer.pid_demand*100) + "%") : "--";
+            
+            html += `<div style="background: #2a2a2a; border-radius: 6px; padding: 12px;">
+                <div style="font-weight:bold; color:var(--text-color); margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 4px;">Gerät ${peer.device_id}</div>
+                <div style="display:flex; justify-content:space-between; font-size:0.95rem; margin-bottom: 4px;">
+                    <span>Modus: <strong>${mode}</strong></span>
+                    <span>Stufe: <strong>${peer.speed}</strong> | ${phase}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:#aaa;">
+                    <span>T_in: ${tIn}</span>
+                    <span>T_out: ${tOut}</span>
+                    <span>PID-Demand: ${pid}</span>
+                </div>
+            </div>`;
+          });
+          container.innerHTML = html;
+        } else {
+          document.getElementById('peers_card').style.display = 'none';
+        }
         
         // Update Chart
         const now = new Date();

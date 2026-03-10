@@ -1,7 +1,10 @@
 #include "wrg_dashboard.h"
 #include "dashboard_html.h"
+#include "esphome/components/ventilation_group/ventilation_group.h"
 #include "esphome/core/log.h"
 #include <ArduinoJson.h>
+
+extern esphome::VentilationController *ventilation_ctrl;
 
 namespace esphome {
 namespace wrg_dashboard {
@@ -126,6 +129,23 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["auto_co2_threshold"] = get_n(this->auto_co2_threshold_);
   doc["auto_humidity_threshold"] = get_n(this->auto_humidity_threshold_);
   doc["auto_presence_slider"] = get_n(this->auto_presence_slider_);
+
+  JsonArray peers_array = doc["peers"].to<JsonArray>();
+  if (ventilation_ctrl != nullptr) {
+      uint32_t now = millis();
+      for (const auto& peer : ventilation_ctrl->peers) {
+          if (now - peer.last_seen_ms < 300000) { // Only show peers seen in the last 5 mins
+              JsonObject p = peers_array.add<JsonObject>();
+              p["device_id"] = peer.device_id;
+              p["mode"] = peer.current_mode;
+              p["speed"] = peer.fan_intensity;
+              p["phase"] = peer.phase_state;
+              if (!std::isnan(peer.t_in)) p["t_in"] = peer.t_in;
+              if (!std::isnan(peer.t_out)) p["t_out"] = peer.t_out;
+              if (!std::isnan(peer.pid_demand)) p["pid_demand"] = peer.pid_demand;
+          }
+      }
+  }
 
   std::string response;
   serializeJson(doc, response);

@@ -96,21 +96,6 @@ select:
             ESP_LOGI("config", "Phase updated to: %s", is_phase_a ? "A" : "B");
 
 # ---------------------------------------------------------
-# ESP-NOW PEER MANAGEMENT
-# ---------------------------------------------------------
-#
-# WICHTIG: ESP-NOW Peers müssen zur Compile-Zeit konfiguriert werden.
-# Die MAC-Adressen können NICHT zur Laufzeit geändert werden.
-#
-# Aktuelle Lösung: Broadcast-Modus (FF:FF:FF:FF:FF:FF)
-# - Alle Geräte empfangen alle Nachrichten
-# - Filterung erfolgt im VentilationController basierend auf Floor/Room/Device ID
-# - Funktioniert ohne manuelle MAC-Konfiguration
-#
-# Alternative: MAC-Adressen als Substitutions vor dem Flashen setzen
-# Siehe esp_wohnraumlueftung.yaml für espnow: peers Konfiguration
-
-# ---------------------------------------------------------
 # DEVICE INFO SENSORS
 # ---------------------------------------------------------
 

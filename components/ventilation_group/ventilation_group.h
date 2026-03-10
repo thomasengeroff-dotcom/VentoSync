@@ -60,6 +60,18 @@ struct __attribute__((packed)) VentilationPacket {
   uint16_t vent_timer_min;        ///< Duration for Stoß/Durchlüften mode (minutes)
 };
 
+/// @brief Represents the latest known state of a peer device in the same room.
+struct PeerState {
+  uint32_t last_seen_ms;
+  uint8_t device_id;
+  uint8_t current_mode;
+  uint8_t fan_intensity;
+  bool phase_state;
+  float t_in;
+  float t_out;
+  float pid_demand;
+};
+
 // ---------------------------------------------------------
 // CONTROLLER CLASS
 // ---------------------------------------------------------
@@ -101,6 +113,9 @@ class VentilationController : public Component {
   float local_pid_demand = 0.0f;          ///< Local PID demand requirement (0.0 to 1.0)
   float last_peer_pid_demand = 0.0f;      ///< Last valid PID demand received from a peer
   uint32_t last_peer_pid_demand_time = 0; ///< millis() when peer PID demand was received
+
+  // --- PEER TRACKING (For Dashboard) ---
+  std::vector<PeerState> peers;           ///< List of recently seen peers
 
   // --- INTERNAL ---
   uint32_t last_sync_tx = 0;       ///< millis() of last sync broadcast.
@@ -195,6 +210,34 @@ class VentilationController : public Component {
       if (pkt->magic_header != 0x42) return false;
       if (pkt->floor_id != floor_id || pkt->room_id != room_id) return false;
       if (pkt->device_id == device_id) return false;
+
+      // Update peer tracking for dashboard
+      bool found_peer = false;
+      for (auto &peer : peers) {
+          if (peer.device_id == pkt->device_id) {
+              peer.last_seen_ms = millis();
+              peer.current_mode = pkt->current_mode;
+              peer.fan_intensity = pkt->fan_intensity;
+              peer.phase_state = pkt->phase_state;
+              peer.t_in = pkt->t_in;
+              peer.t_out = pkt->t_out;
+              peer.pid_demand = pkt->pid_demand;
+              found_peer = true;
+              break;
+          }
+      }
+      if (!found_peer) {
+          PeerState new_peer;
+          new_peer.device_id = pkt->device_id;
+          new_peer.last_seen_ms = millis();
+          new_peer.current_mode = pkt->current_mode;
+          new_peer.fan_intensity = pkt->fan_intensity;
+          new_peer.phase_state = pkt->phase_state;
+          new_peer.t_in = pkt->t_in;
+          new_peer.t_out = pkt->t_out;
+          new_peer.pid_demand = pkt->pid_demand;
+          peers.push_back(new_peer);
+      }
 
       bool changed = false;
 

@@ -44,8 +44,7 @@ bool VentilationStateMachine::update(uint32_t now) {
     }
 
     // 3. Cycle Logic
-    uint32_t period = cycle_duration_ms * 2;
-    uint32_t pos = (now + time_offset_ms) % period;
+    uint32_t pos = get_cycle_pos(now);
     bool new_phase_a_active = (pos < cycle_duration_ms);
 
     if (new_phase_a_active != global_phase) {
@@ -119,7 +118,12 @@ uint32_t VentilationStateMachine::get_remaining_duration(uint32_t now) const {
 /// @return Position in ms within [0 … 2×cycle_duration_ms).
 uint32_t VentilationStateMachine::get_cycle_pos(uint32_t now) const {
     uint32_t period = cycle_duration_ms * 2;
-    return (now + time_offset_ms) % period;
+    int64_t raw_pos = (int64_t)now + (int64_t)time_offset_ms;
+    int64_t mod_pos = raw_pos % (int64_t)period;
+    if (mod_pos < 0) {
+        mod_pos += period;
+    }
+    return (uint32_t)mod_pos;
 }
 
 /// @brief Computes the desired hardware outputs (fan on/off, direction) based on
