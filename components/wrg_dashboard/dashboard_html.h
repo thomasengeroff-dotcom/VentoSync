@@ -103,10 +103,10 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
           <div class="flex flex-col space-y-2">
             <span class="text-sm text-gray-400 font-medium">Lüfter Modus</span>
             <select id="luefter_modus" onchange="sendSet('luefter_modus', this.value)" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5 transition-colors">
-              <option value="Wärmerückgewinnung">Wärmerückgewinnung</option>
-              <option value="Stoßlüftung">Stoßlüftung</option>
-              <option value="Durchlüften">Durchlüften</option>
               <option value="Automatik">Automatik</option>
+              <option value="Wärmerückgewinnung">Wärmerückgewinnung</option>
+              <option value="Durchlüften">Durchlüften</option>
+              <option value="Stoßlüftung">Stoßlüftung</option>
               <option value="Aus">Aus</option>
             </select>
           </div>

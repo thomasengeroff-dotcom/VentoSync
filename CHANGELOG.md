@@ -8,6 +8,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Changed
 
+- **Dokumentations-Restrukturierung (`Readme.md`)**: "Implementierte Erweiterungen"-Sektion aufgelöst und alle Features (ESP-NOW Dashboard, Adaptive Automatik, Radar, Feuchte-Management) thematisch fließend in die jeweiligen Hauptkapitel integriert für eine logischere Leserführung.
+- **Bedienkonzept & Stoßlüftung**: Dokumentation der Stoßlüftung korrigiert (Lüfter läuft auf der aktuell eingestellten manuellen Stufe, nicht zwingend auf 100%). Modus-Zyklus-Reihenfolge in der Readme exakt an das physische Taster-Verhalten (Automatik → WRG → Durchlüften → Stoßlüftung → Aus) angeglichen.
+- **Feuchte-Management HA Setup**: Die detaillierte Anleitung zur Bereitstellung des externen `sensor.outdoor_humidity` für das Feuchte-Management in ein separates Dokument (`documentation/Feuchte-Management-HA-Sensor.md`) ausgelagert.
+- **VentoMaxx 3-Pin Lüfter**: Hinweise zum fehlenden Tacho-Signal bei originalen VentoMaxx EBM-PAPST Lüftern in der `Readme.md` und `documentation/Anleitung-Fan-Circuit.md` präzisiert.
+- **Sensor-Lock im manuellen Betrieb**: `apply_co2_auto_control` in `automation_helpers.h` ist nun durch `auto_mode_active->value()` flankiert. Sensordaten und PID-Regler verändern die PWM-Leistung nur noch im bestätigten "Smart-Automatik" Modus und funken manuellen Modi (WRG, Querlüftung, Stoßlüftung) nicht mehr dazwischen.
 - **Modern Web-Dashboard (Tailwind CSS) & UX**: Vollständige Neugestaltung des asynchronen Web-Dashboards (`wrg_dashboard`) mit Tailwind CSS. Modernes Dark-Mode Design, voll-responsives Layout und verbesserte Performance durch optimiertes CSS-Delivery via CDN.
 - **Dashboard Sektion: Grundeinstellungen**: Integration einer neuen Sektion zur Anzeige von Geräte-ID, Floor ID, Room ID und Geräte-Phase (A/B) direkt im Dashboard für eine einfachere Vor-Ort-Identifikation und Konfiguration.
 - **YAML: Erweiterte Konfigurations-Sensoren**: Einführung von Template-Sensoren in `device_config.yaml` zur korrekten Bereitstellung der Geräte-Metadaten (Phase, IDs) an das Dashboard-Komponente.
@@ -167,6 +172,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Fixed
 
+- **Start-Modus Bugfix (UI vs. Backend)**: Ein Bug wurde behoben, bei dem das System nach einem Neustart nicht im korrekten "Smart-Automatik" Modus gestartet ist. Obwohl das Backend den Modus "Automatik" vorbereitete, hat das Home-Assistant-Dropdown (`luefter_modus`) durch seine fehlerhafte `initial_option` ("Wärmerückgewinnung") beim Booten ein Event ausgelöst und die Automatik ungewollt überschrieben. Dies wurde in `ui_controls.yaml` korrigiert, sodass beide Systeme nun synchron auf "Automatik" starten.
 - **BMP390 Konfiguration**: I2C-Adresse für BMP390 in `esp_wohnraumlueftung.yaml` fest auf `0x76` korrigiert und ungültige `bmp3xx_i2c` Top-Level-Konfiguration entfernt.
 - **Kompilierung**: `RestoringGlobalsComponent` Typ-Konflikt in `automation_helpers.h` behoben (`co2_auto_enabled`, `co2_min/max_fan_level`).
 - **Validierung**: `switch.template` Fehler bei `co2_auto_switch` korrigiert (redundante `component.update` Calls entfernt).

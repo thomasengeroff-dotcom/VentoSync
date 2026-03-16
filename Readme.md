@@ -323,7 +323,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 
 Über die **Modus-Taste (M)** zykliert das Gerät durch die Programme. Beim **Einschalten** ist **Modus 1 (Smart-Automatik)** aktiv.
 
-> 💡 **Tipp:** Die Reihenfolge beim Tastendruck ist: **Automatik → WRG → Stoßlüftung → Durchlüften → Aus → Automatik...**
+> 💡 **Tipp:** Die Reihenfolge beim Tastendruck ist: **Automatik → WRG → Durchlüften → Stoßlüftung → Aus → Automatik...**
 
 ---
 

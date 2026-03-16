@@ -68,10 +68,10 @@ globals:
     type: int
     initial_value: "4" # Start at lower medium intensity
 
-  # Current operating mode index (0=WRG, 1=Stoßlüftung, 2=Durchlüften, 3=Automatik, 4=Aus)
+  # Current operating mode index (0=Automatik, 1=WRG, 2=Durchlüften, 3=Stoßlüftung, 4=Aus)
   - id: current_mode_index
     type: int
-    initial_value: "3" # Default: Smart-Automatik
+    initial_value: "0" # Default: Smart-Automatik
 
   # CO2 auto-control enabled (only functional when SCD41 is connected)
   - id: co2_auto_enabled

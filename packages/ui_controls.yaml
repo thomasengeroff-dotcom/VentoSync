@@ -245,12 +245,12 @@ select:
     name: "Lüftungsmodus"
     id: luefter_modus
     options:
-      - "Wärmerückgewinnung"
-      - "Stoßlüftung"
-      - "Durchlüften"
       - "Automatik"
+      - "Wärmerückgewinnung"
+      - "Durchlüften"
+      - "Stoßlüftung"
       - "Aus"
-    initial_option: "Wärmerückgewinnung"
+    initial_option: "Automatik"
     set_action:
       - lambda: |-
           set_operating_mode_select(x.c_str());

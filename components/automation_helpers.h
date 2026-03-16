@@ -516,18 +516,18 @@ inline void cycle_operating_mode(int mode_index) {
   auto_mode_active->value() = false; // Reset by default
   
   switch(mode_index) {
-    case 0:  // Wärmerückgewinnung
-      v->set_mode(esphome::MODE_ECO_RECOVERY);
+    case 0: // Automatik
+      auto_mode_active->value() = true;
+      v->set_mode(esphome::MODE_ECO_RECOVERY); // Standard start state
       break;
-    case 1:  // Stoßlüftung
-      v->set_mode(esphome::MODE_STOSSLUEFTUNG);
+    case 1:  // Wärmerückgewinnung
+      v->set_mode(esphome::MODE_ECO_RECOVERY);
       break;
     case 2:  // Durchlüften — timer from vent_timer number component
       v->set_mode(esphome::MODE_VENTILATION, (uint32_t)(vent_timer->state * 60 * 1000));
       break;
-    case 3: // Automatik
-      auto_mode_active->value() = true;
-      v->set_mode(esphome::MODE_ECO_RECOVERY); // Standard start state
+    case 3:  // Stoßlüftung
+      v->set_mode(esphome::MODE_STOSSLUEFTUNG);
       break;
     case 4:  // Aus
       v->set_mode(esphome::MODE_OFF);
@@ -681,13 +681,13 @@ inline void handle_espnow_receive(const std::vector<uint8_t>& data) {
             system_on->value() = true;
             
             if (auto_mode_active->value()) {
-                 new_mode_idx = 3; mode_str = "Automatik";
+                 new_mode_idx = 0; mode_str = "Automatik";
             } else if (v->state_machine.current_mode == esphome::MODE_ECO_RECOVERY) { 
-                new_mode_idx = 0; mode_str = "Wärmerückgewinnung"; 
-            } else if (v->state_machine.current_mode == esphome::MODE_STOSSLUEFTUNG) { 
-                new_mode_idx = 1; mode_str = "Stoßlüftung"; 
+                new_mode_idx = 1; mode_str = "Wärmerückgewinnung"; 
             } else if (v->state_machine.current_mode == esphome::MODE_VENTILATION) { 
                 new_mode_idx = 2; mode_str = "Durchlüften"; 
+            } else if (v->state_machine.current_mode == esphome::MODE_STOSSLUEFTUNG) { 
+                new_mode_idx = 3; mode_str = "Stoßlüftung"; 
             }
         }
 
