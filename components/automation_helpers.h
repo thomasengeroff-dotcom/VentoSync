@@ -203,7 +203,10 @@ inline int get_co2_fan_level(float co2_ppm, int current_level, int min_level, in
 /// Checks sensor availability (NaN = not connected), calculates target level,
 /// and applies it only if it differs from the current level (gradual change).
 inline void apply_co2_auto_control() {
-    // Guard: CO2 auto-control must be enabled
+    // Guard: System-wide Automatik mode must be active
+    if (auto_mode_active == nullptr || !auto_mode_active->value()) return;
+
+    // Guard: CO2 auto-control (switch) must be enabled
     if (!co2_auto_enabled->value()) return;
 
     // Guard: System must be on

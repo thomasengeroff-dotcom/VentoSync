@@ -2,6 +2,10 @@
 
 Diese Anleitung beschreibt die Schaltung für eine **universelle Lüftersteuerung**, die standardmäßig über ein **4-Pin Schraubterminal** realisiert wird. Diese Schnittstelle unterstützt sowohl Standard 4-Pin PWM-Lüfter als auch spezielle 3-Pin Ventomaxx-Lüfter (ebm-papst VarioPro) durch einfache Anpassung der Verkabelung.
 
+> ℹ️ **Hinweis zu 3-Pin PWM Lüftern:**
+> Neben den klassischen 4-Pin PWM Lüftern gibt es auch spezielle Lüfter, die **kein Tacho-Signal** besitzen und daher nur über **3 Pins** verfügen (GND, 12V, PWM). Dies ist auch der Fall für den von Ventomaxx verbauten EBM-Papst Lüfter.
+Diese können problemlos ohne physikalische Änderung an der Schaltung betrieben werden, indem der Tacho-Pin (Pin 3 am Terminal) einfach unbelegt bleibt. Beachte jedoch, dass ohne Tacho-Signal keine direkte Überwachung der Drehzahl (RPM) oder Blockadeerkennung durch die Software möglich ist.
+
 ## 🛠️ Funktionsprinzip: Open-Drain PWM
 
 Die Steuerung basiert auf einem simplen **Open-Drain PWM-Treiber**:

@@ -1,6 +1,8 @@
-# 🌬️ Smarte dezentrale Wohnraumlüftung mit Wärmerückgewinnung auf Basis von ESP32-C6 und ESPHome
+# 🌬️ Smarte dezentrale Wohnraumlüftung mit Wärmerückgewinnung auf Basis von ESP32-C6 und ESPHome für die VentoMaxx V-WRG Serie
 
-Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses Projekt erstezt die Steuerung der VentoMaxx V-WRG Serie mittels eines eigens dafür entwickelten PCB und steuert damit einen reversierbaren 12V Lüfter (Push-Pull) zur Wärmerückgewinnung, überwacht die Luftqualität (CO2, Feuchte und Temperatur), berechnet die effektive Wärmerückgewinnung und nutzt das **originale VentoMaxx Bedienpanel** für eine nahtlose Integration, intuitive Steuerung und vieles mehr.
+## 🚀 Zusammenfassung & Überblick
+
+Dieses Open-Source-Projekt bietet eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses Projekt erstezt die Steuerung der VentoMaxx V-WRG Serie mittels einer eigens dafür entwickelten Platine (PCB) und steuert damit den reversierbaren 12V Lüfter (Push-Pull) zur Wärmerückgewinnung, überwacht die Luftqualität (CO2, Feuchte und Temperatur) mittels eines SCD41 Sensors, berechnet die effektive Wärmerückgewinnung und nutzt das **originale VentoMaxx Bedienpanel** für eine nahtlose Integration, intuitive Steuerung und vieles mehr. Die Kommunikation zwischen den einzelnen Lüftungsgeräten erfolgt über das ESP-NOW Protokoll, sodass kein WLAN oder eine zentrale Steuereinheit erforderlich ist (die Kommunikation über die Stromleitungen, welche Ventomaxx nutzt, wird nicht verwendet).
 
 > 💡 **Kompatibilität:** Die Steuerung funktioniert prinzipiell für jede dezentrale Wohnraumlüftung mit einem reversierbaren 12V Lüfter (3-PIN oder 4-PIN PWM). Sie wurde jedoch **speziell als Ersatz für die VentoMaxx V-WRG Serie** entwickelt. Die Hardware (PCB-Layout/Größe und Bedienpanel) ist damit explizit für die VentoMaxx V-WRG Serie optimiert und muss für andere Hersteller ggf. angepasst werden. Das PCB ist so konzipiert, dass es exakt in das Gehäuse der VentoMaxx V-WRG Serie passt und die vorhandenen Befestigungspunkte nutzt.
 
@@ -17,7 +19,6 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 ## 📑 Inhaltsverzeichnis
 
 - [Leistungsmerkmale](#-leistungsmerkmale)
-- [Implementierte Erweiterungen](#-implementierte-erweiterungen)
 - [Roadmap & Zukünftige Erweiterungen](#️-roadmap--zukünftige-erweiterungen)
 - [Vergleich mit VentoMaxx](#-vergleich-mit-ventomaxx-v-wrg)
 - [ESP-NOW & Autonomie](#-esp-now-kabellose-autonomie)
@@ -37,128 +38,12 @@ Eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Dieses
 
 ## Motivation
 
-Ich habe vor vielen Jahren im Rahmen der Haussanierung die dezentrale Wohnraumlüftung V-WRG von Ventomaxx installiert (10 Geräte) und war damit auch sehr zufrieden. Allerdings hat mich die proprietäre Steuerung und die fehlende Integration in mein Smart Home System immer gestört. Daher habe ich mich entschlossen, eine eigene Steuerung auf Basis von ESPHome zu entwickeln, da es keine fertige Lösung gab. Diese Lösung ist Open Source und soll anderen Nutzern helfen, die in der gleichen Situation wie ich sind.
-Da die Lüftungsgeräte in den verschiedenen Räumen meistens eine sehr zentrale Position haben, nutze ich diese auch direkt zur Anwesenheitserkennung mittels Radar-Sensor, der unsichtbar hinter der Blende des Lüftungsgerätes versteckt montiert werden kann.
+Ich habe vor vielen Jahren im Rahmen der Haussanierung die dezentrale Wohnraumlüftung V-WRG von Ventomaxx installiert (10 Geräte) und war damit auch sehr zufrieden. Allerdings hat mich die proprietäre Steuerung und die fehlende Integration in mein Smart Home System immer gestört. Daher habe ich mich entschlossen, eine eigene Platine (PCB) inkl. der Steuerungssoftware auf Basis von ESPHome zu entwickeln, da es keine fertige Lösung gab. Diese Lösung ist Open Source und soll anderen Nutzern helfen, die in der gleichen Situation wie ich sind.
+Da die Lüftungsgeräte in den verschiedenen Räumen meistens eine sehr zentrale Position haben, nutze ich diese auch direkt zur Anwesenheitserkennung mittels Radar-Sensor, der unsichtbar hinter der Blende des Lüftungsgerätes versteckt montiert werden kann. Der Anwesenheitssensor wird für die Steuerung der Lüftungsintensität im Standard-Automatik Modus genutzt und kann darüber hinaus in Home Assistant für weitere Automatisierungen genutzt werden.
+Für die Steuerung der Lüftung auf Basis von CO2 nutze ich einen extrem hochwertigen und präzisen CO2-Sensor (Sensirion SCD41), der direkt in die Platine (per kleines Zusatz-PCB) integriert ist. Dieser Sensor misst die CO2-Konzentration in der Luft und steuert die Lüftungsintensität entsprechend der Voreinstellungen.
 Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherechen über alles hinaus, was aktuell am Markt der Lüftungsgeräte zu finden ist.
 
-## ✨ Leistungsmerkmale
-
-### ⚙️ Intelligente Betriebsmodi
-
-- 🤖 **Standard-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer Anpassung an CO2 und Luftfeuchtigkeit unter Einbezug von Wetterdaten. Im Sommer wird die Querlüftung zur passiven Kühlung (wenn außen kühler als innen) automatisch aktiviert. Zusätzlich nutzt dieser Modus die Radar Anwesenheits Sensorik um die Anwesenheit im Raum zu messen und die Lüftungsintensität entsprechend der Voreinstellungen anzupassen.
-- 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Die Synchronisation aller Einheiten erfolgt vollautomatisch und kabellos über das ESP-NOW Protokoll. Dieser Modus lässt aber die Radar Anwesenheits Sensorik unberücksichtigt.
-- 💨 **Querlüftung (Sommerbetrieb)**: Modus für permanenten Abluftstrom, ideal zur passiven Kühlung in Sommernächten. Flexibel konfigurierbar via Timer oder als Dauerbetrieb. Dieser Modus lässt aber die Radar Anwesenheits Sensorik unberücksichtigt.
-- 🔗 **Autarkes Mesh-Netzwerk**: Robuste Dezentralität durch direkte Peer-to-Peer Kommunikation (ESP-NOW). Der Gruppenbetrieb ist auch ohne zentrale WLAN-Infrastruktur oder externe Broker gewährleistet.
-
-### 🛡️ Präzisions-Sensorik & Monitoring
-
-- 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels Sensirion SCD41.
-- 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
-- 🏔️ **Luftdruckmessung via BMP390**: Der hochpräzise Barometer-Sensor ermöglicht lokale Wettertrend-Analysen, Sturmwarnungen (Rapid Pressure Drop) und liefert gleichzeitig die exakten Höhendaten für die Autokalibrierung und barometrische Kompensation des SCD41 CO2-Sensors.
-- 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen.
-- 🏎️ **Closed-Loop Drehzahlüberwachung**: Kontinuierliches Monitoring der Lüfterdrehzahl via Tacho-Signal für konstanten Volumenstrom und Fehlererkennung (nur bei 4-PIN PWM Lüftern möglich).
-- 📡 **Radar Anwesenheits Sensorik**: Mittels des HLK-LD2450 Radar Sensors wird die Anwesenheit in der Raum gemessen und die Lüftungsintensität entsprechend angepasst. Es kann eingestellt werden, ob die Lüftung intensiver (z.B. für Büro), normal (z.B. für Wohnraum) oder geringer (z.B. für Schlafzimmer) betrieben werden soll.
-
-### 🖥️ Bedienung am Lüftungsgerät
-
-![Bedienung am Lüftungsgerät](images/Ventomax%20V-WRG-1/PXL_20260128_232625674.jpg)
-
-- 🚥 **Original VentoMaxx Panel**: Nutzung des originalen Bedienfelds mit 9 LEDs und 3 Tastern mit überwiegend identischer Funktionalität bzw. Bedienung wie beim Original.
-- 🔘 **Intuitive Steuerung**:
-  - **Power**: System Ein/Aus/Reset.
-    Kurzes Drücken schaltet das Gerät ein.
-    5sec gedrückt halten schaltet das Gerät aus.
-    10sec gedrückt halten schaltet das Gerät aus und startet das System neu (Reboot).
-  - **Modus**: Wechsel zwischen Wärmerückgewinnung (Winter), Querlüftung (Sommer) und dynamischer Lüftung basierend auf CO2-Gehalt und Feuchte.
-  - **Stufe +**: 10 Geschwindigkeitsstufen (zyklisch, angezeigt über 5 LEDs mit halber/voller Helligkeit).
-- 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-5) und Status.
-  - Master Led wird derzeit für Fehleranzeige genutzt: Sie blinkt, wenn das Lüftungsgerät keine Verbindung zum Netzwerk hat oder keine ESP-NOW Nachrichten von anderen Geräten empfängt.
-
-### 🏠 Integration
-
-**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über dein Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
-
-**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betriebener, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z. B. `http://esptest.local/ui`) im Webbrowser auf. Über das Dashboard kannst du in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern. _(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)_
-Damit ist die Nutzung auch komplett ohne Home Assistant möglich!
-
-**Intuitive Gruppensteuerung**: Durch das "Group-Controller" Konzept via ESP-NOW können mehrere Geräte in einem Raum als eine einzige visuelle Einheit im Home Assistant Dashboard (z.B. mittels Mushroom Cards) abgebildet werden. Dies reduziert den WLAN-Traffic, erhöht die Stabilität und macht die Bedienung extrem einfach (hoher WAF).
-👉 _Details, Konzept und YAML-Beispiele für ESPHome und das HA Dashboard findest du im Ordner [ha_integration_example](ha_integration_example/)._
-
-### ✅ Implementierte Erweiterungen
-
-- **📡 ESP-NOW Visualisierung auf dem Web-Dashboard**:
-  - Live-Ansicht aller via ESP-NOW verbundenen Geräte direkt auf dem lokalen Web-Dashboard (`/ui`).
-  - Die Kachel "Verbundene Geräte (ESP-NOW)" visualisiert Node-ID, aktuellen Betriebsmodus, Drehzahl und Luft-Richtung (Phase) aller aktiven Peers in Echtzeit.
-
-- **🤖 Adaptive Automatik (CO2 & Feuchte)**:
-  - Dynamische **stufenlose** Anpassung der Lüfterleistung basierend auf Echtzeit-CO2-Werten (ppm) vom SCD41 Sensor sowie der relativen Luftfeuchte im Innen- und Außenvergleich.
-  - Nutzung eines fortschrittlichen **PID-Reglers (Proportional-Integral-Derivative)** für eine **lautlose, kontinuierliche Steuerung**. Die PWM Leistung wird nahtlos im Hintergrund verstellt, ohne hörbare Drehzahlsprünge.
-  - Konfigurierbarer **Min-/Max-Level** (`automatik_min_fan_level`) begrenzt das Anpassungsfenster der Automatik auf leise Drehzahlen.
-  - **Dynamische Zyklusdauer**: Die Wechselintervalle (Richtung A/B) passen sich fließend der aktuellen Lüfterstufe an (z.B. sanfte 70 Sekunden auf Stufe 1 bis schnelle 50 Sekunden auf Stufe 10) inkl. synchronisiertem NTC-Zeitfenster.
-  - Siehe [📄 CO2 Automatik Dokumentation](documentation/CO2-Automatik.md) für Details.
-
-- **🚶 Radar-basierte Anwesenheitserkennung (HLK-LD2450)**:
-  - Integration eines mmWave-Radarsensors über den vorgesehenen UART-Pin-Header auf der Platine.
-  - Da die Lüftungsgeräte ohnehin in jedem Raum optimal positioniert sind, dienen sie gleichzeitig als perfekter Standort für eine raumgenaue Präsenzerfassung für Home Assistant.
-  - **Gleitende Bedarfssteuerung**: Über den Slider `Anwesenheit Lüfter-Anpassung` kann stufenlos (von -5 bis +5) konfiguriert werden, wie das System reagieren soll. (z.B. `+3` intensiviert die Lüftung im Büro bei erkanntem Radar-Target; `-2` senkt sie zur Lärmreduzierung im Schlafzimmer, `0` schaltet die Modifikation ab).
-
-- **🧹 Wartungs-Management (Prädiktiver Filterwechsel-Alarm)**:
-  - Automatisches Tracking der Lüfter-Betriebsstunden und Kalenderzeit seit letztem Filterwechsel.
-  - Alarm bei Betriebsstunden > 365 Tage Laufzeit oder > 3 Jahre Kalenderzeit.
-  - Digitale Benachrichtigung über Home Assistant Binary Sensor (`binary_sensor.filterwechsel_alarm`).
-  - Reset-Button nach Filterwechsel (`button.filter_gewechselt_reset`) setzt alle Zähler zurück.
-  - Siehe [🧹 Filterwechsel-Alarm in Home Assistant einrichten](#-filterwechsel-alarm-in-home-assistant-einrichten) für HA Automation-Beispiel.
-
-- **Master LED Fehleranzeige**:
-  - Die Master LED blinkt (Strobe-Effekt), wenn keine WiFi-Verbindung besteht oder keine ESP-NOW Nachrichten von Peer-Geräten innerhalb von 5 Minuten empfangen wurden.
-  - Bei normalem Betrieb ist die LED aus.
-
-- **💧 Feuchte-Management**:
-  - Automatisierte Entfeuchtungslogik zur Schimmelprävention: Bei Überschreitung des konfigurierbaren Feuchte-Grenzwerts (40-100%, Default 60%) regelt ein **PID-Regler** (`pid_humidity`) die Lüfterleistung stufenlos hoch.
-  - **Intelligente Hysterese** via PID-Deadband (`±2%`) und Output-Averaging (5 Samples) verhindert "Rapid Cycling".
-  - **Outdoor-Check**: Es wird nur entfeuchtet, wenn die Außenluft trockener ist als die Innenluft (`out_hum < in_hum`).
-  - Zielwert konfigurierbar über `Automatik: Feuchte Grenzwert` Slider in Home Assistant — wird automatisch via ESP-NOW an alle Geräte der Gruppe synchronisiert.
-  - Aktiv im Standard-Automatik und Effiziente Wärmerückgewinnung Modus.
-
-  > **⚙️ Voraussetzung: `sensor.outdoor_humidity` in Home Assistant**
-  >
-  > Das Feuchte-Management benötigt eine Außenluftfeuchtigkeit aus Home Assistant. Der ESPHome-Code erwartet die Entity-ID `sensor.outdoor_humidity` (konfiguriert in `sensors_climate.yaml`). Es gibt zwei Wege, diesen Sensor bereitzustellen:
-  >
-  > **Option A: Wetterdienst-Integration** (kein zusätzlicher Sensor nötig)
-  >
-  > Installiere eine Wetter-Integration (z.B. [OpenWeatherMap](https://www.home-assistant.io/integrations/openweathermap/), [Met.no](https://www.home-assistant.io/integrations/met/)) und erstelle in `configuration.yaml` einen Template-Sensor:
-  >
-  > ```yaml
-  > template:
-  >   - sensor:
-  >       - name: "Outdoor Humidity"
-  >         unique_id: outdoor_humidity
-  >         unit_of_measurement: "%"
-  >         state: "{{ state_attr('weather.home', 'humidity') }}"
-  >         device_class: humidity
-  > ```
-  >
-  > **Option B: Physischer Außensensor** (z.B. ESP32 + BME280/SHT31 auf Balkon/Terrasse)
-  >
-  > Wenn der Außensensor bereits als HA-Entity existiert (z.B. `sensor.balkon_sht31_humidity`), erstelle einen Alias:
-  >
-  > ```yaml
-  > template:
-  >   - sensor:
-  >       - name: "Outdoor Humidity"
-  >         unique_id: outdoor_humidity
-  >         unit_of_measurement: "%"
-  >         state: "{{ states('sensor.balkon_sht31_humidity') }}"
-  >         device_class: humidity
-  > ```
-  >
-  > **Alternativ:** Ändere direkt die `entity_id` in `sensors_climate.yaml` auf deinen Sensor:
-  >
-  > ```yaml
-  > entity_id: sensor.balkon_sht31_humidity  # statt sensor.outdoor_humidity
-  > ```
-  >
-  > 💡 **Ohne `sensor.outdoor_humidity`** funktioniert die Entfeuchtung trotzdem — der Outdoor-Check wird dann übersprungen und der PID regelt rein nach dem Innenfeuchte-Grenzwert.
+---
 
 ## 🔄 Vergleich mit VentoMaxx V-WRG
 
@@ -178,6 +63,52 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 � **Den vollständigen Feature-für-Feature Vergleich mit allen technischen Details findest du in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
 
 ---
+
+## ✨ Leistungsmerkmale
+
+### ⚙️ Intelligente Betriebsmodi
+
+- 🤖 **Standard-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer Anpassung an CO2 und Luftfeuchtigkeit unter Einbezug von Wetterdaten. Die Synchronisation aller Einheiten erfolgt vollautomatisch und kabellos über das ESP-NOW Protokoll.
+Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es außen kühler ist als innen) automatisch aktiviert. Zusätzlich nutzt dieser Modus die Radar Anwesenheits Sensorik um die Anwesenheit im Raum zu messen und die Lüftungsintensität entsprechend der Voreinstellungen anzupassen. Dies ist also der Standardmodus, welcher im Alltag genutzt werden sollte.
+In zukünftigen Versionen werde ich diesen Modus weiter optimieren, um den Komfort und die Effizienz weiter zu steigern.
+- 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Die Synchronisation aller Einheiten erfolgt vollautomatisch und kabellos über das ESP-NOW Protokoll. Dieser Modus lässt aber die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
+- 💨 **Querlüftung (Sommerbetrieb)**: Modus für permanenten Abluftstrom, ideal zur passiven Kühlung in Sommernächten. Flexibel konfigurierbar via Timer oder als Dauerbetrieb. Dieser Modus lässt aber die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
+- 🚀 **Stoßlüftung**: Intensivlüftung für schnellen Luftaustausch. Das Gerät lüftet für 15 Minuten mit der **manuell gewählten Intensität** und pausiert anschließend für 105 Minuten, um Feuchtigkeit effektiv abzuführen und den Keramikspeicher zu regenerieren. Danach wiederholt sich der Zyklus.
+
+### 🛡️ Präzisions-Sensorik & Monitoring
+
+- 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD41](https://sensirion.com/de/produkte/katalog/SCD41)
+- 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
+- 🏔️ **Luftdruckmessung via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) ermöglicht lokale Wettertrend-Analysen, Sturmwarnungen (Rapid Pressure Drop) und liefert gleichzeitig die exakten Höhendaten für die Autokalibrierung und barometrische Kompensation des SCD41 CO2-Sensors.
+- 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen. Hierfür wird eine fortschrittliche PID-Regelung verwendet, welche die Lüfterleistung dynamisch an die gemessenen Werte anpasst. Die Regelung ist so optimiert, dass sie die Lüfterleistung so gering wie möglich hält, um den Energieverbrauch und die Geräuschentwicklung zu minimieren.
+- 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. Da die Lüftungsgeräte ohnehin in jedem Raum optimal positioniert sind, dienen sie gleichzeitig als perfekter Präsenzmelder für Home Assistant. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die Lüftungsintensität ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer).
+
+### 🖥️ Bedienung am Lüftungsgerät
+
+Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpanel des VentoMaxx V-WRG-1 beibehalten. Die Funktionalität wurde so weit wie möglich identisch zum Original umgesetzt, um eine intuitive Bedienung zu ermöglichen.
+
+![Bedienung am Lüftungsgerät](images/Ventomax%20V-WRG-1/PXL_20260128_232625674.jpg)
+
+- 🚥 **Original VentoMaxx Panel**: Nutzung des originalen Bedienfelds mit 9 LEDs und 3 Tastern mit überwiegend identischer Funktionalität bzw. Bedienung wie beim Original.
+- 🔘 **Intuitive Steuerung**:
+  - **ON / OFF**: System Ein/Aus/Reset.
+    Kurzes Drücken --> schaltet das Gerät ein.
+    5sec gedrückt halten --> schaltet das Gerät aus.
+    10sec gedrückt halten --> schaltet das Gerät aus und startet das System neu (Reboot).
+  - **Modus**: Kurzes Drücken zykliert durch die Programme: **Automatik → WRG → Stoßlüftung → Durchlüften → Aus**.
+  - **Stufe +**: 10 Geschwindigkeitsstufen (zyklisch, angezeigt über 5 LEDs mit halber/voller Helligkeit). Die originale Ventomaxx Steuerung bietet hier nur 5 Stufen.
+- 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-10) und Status.
+  - Master Led wird derzeit für Fehleranzeige genutzt: Sie blinkt, wenn das Lüftungsgerät keine Verbindung zum Netzwerk hat oder keine ESP-NOW Nachrichten von anderen Geräten empfängt.
+- Die detaillierte Beschreibung der Bedienung und Steuerung findest du unter [Bedienung](#-bedienung--steuerung).
+
+### 🏠 Integration
+
+**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über dein Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
+
+**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betriebener, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z. B. `http://esptest.local/ui`) im Webbrowser auf. Über das Dashboard kannst du in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern. _(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)_
+Damit ist theoretisch die Nutzung auch komplett ohne Home Assistant möglich (was ich aber nicht empfehle)!
+
+**📡 ESP-NOW Visualisierung**: Das lokale Web-Dashboard bietet eine Live-Ansicht aller via ESP-NOW verbundenen Geräte. Die Kachel "Verbundene Geräte (ESP-NOW)" visualisiert Node-ID, aktuellen Betriebsmodus, Drehzahl und Luft-Richtung (Phase) aller aktiven Peers in Echtzeit.
 
 ## 📡 ESP-NOW: Kabellose Autonomie
 
@@ -200,6 +131,10 @@ Weitere Informationen findest du in der [offiziellen ESPHome Dokumentation](http
 
 Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 
+- **Intuitive Gruppensteuerung**:
+  - Durch das "Group-Controller" Konzept via ESP-NOW können mehrere Geräte in einem Raum als eine einzige visuelle Einheit im Home Assistant Dashboard (z.B. mittels Mushroom Cards) abgebildet werden. Dies reduziert den WLAN-Traffic, erhöht die Stabilität und macht die Bedienung extrem einfach (hoher WAF).
+  - _Details, Konzept und YAML-Beispiele für ESPHome und das HA Dashboard findest du im Ordner [ha_integration_example](ha_integration_example/)._
+
 - **🌙 Intelligenter Nachtmodus**:
   - Zeitgesteuerte Drosselung der Lüfterleistung zur Geräuschminimierung in Ruhephasen.
   - Flexibles Zeitmanagement und Definition spezifischer Nacht-Profile.
@@ -208,42 +143,11 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 - **Unterdruckwächter**:
   - Zum Differenzdruckausgleich bei gleichzeitigem Betrieb von Kamin-/Holzofen und Lüftungsanlage. Erweiterung der Hardware durch einen potentialfreien Kontakt, an welchem der Unterdruckwächter angeschlossen wird.
 
+- **Closed-Loop Drehzahlüberwachung**:
+  - Kontinuierliches Monitoring der Lüfterdrehzahl via Tacho-Signal für konstanten Volumenstrom und Fehlererkennung (nur bei 4-PIN PWM Lüftern möglich).
+
 - **KI-gestützte Lüftungssteuerung**:
   - Proaktive KI-gestützte Lüftungssteuerung basierend auf historischen Daten und externen Prognosen (Wetter, CO2, Feuchte). Siehe [📄 KI-gestützte Lüftungssteuerung](documentation/KI-gestützte-Lüftungssteuerung.md) für Details.
-
-### 🔧 Aktuelle technische Verbesserungen
-
-- **Hardware-Upgrade: SCD41 CO2-Sensor & BMP390 (Februar 2026)**:
-  - ✅ Wechsel von BME680 (VOC-basierte IAQ-Schätzung) zu **SCD41** (echte CO2-Messung) und **BMP390** (Luftdruck)
-  - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm)
-  - ✅ Integrierte Temperatur- und Feuchtigkeitsmessung (SCD41)
-  - ✅ Automatische CO2-basierte Lüftungsregelung für optimale Raumluftqualität
-  - ✅ Dokumentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
-
-- **Code-Refactoring (Februar 2026)**:
-  - ✅ Alle Multi-Line-Lambdas in `automation_helpers.h` ausgelagert
-  - ✅ Verbesserte Typsicherheit durch explizite C++ Funktionen
-  - ✅ Modernisierte ESPHome API-Nutzung (`current_option()` statt deprecated `.state`)
-  - ✅ Korrekte Template-Typen für Script-Komponenten (`RestartScript<>`, `SingleScript<>`)
-  - ✅ Präzise Komponenten-Typen (`SpeedFan`, `LEDCOutput` statt generischer Basisklassen)
-
-- **C++ Pro Performance & Thread Safety (März 2026)**:
-  - ✅ **Thread Safety**: Ablösung von manuellen LwIP Semaphoren durch C++ Standard-Library `<mutex>` und `std::lock_guard` für 100% Exception-sicheres HTTP-Event Queueing (AsyncWebServer).
-  - ✅ **Memory Management**: Nutzung von Move Semantics (`std::move`) zur abfallfreien Übergabe von Vektoren zwischen Tasks, plus strikte Const-Correctness (`const std::string&`).
-  - ✅ **DRY Architecture**: Entfernung redundanter Ternary-Operatoren (`condition ? state : (float)NAN`) für Web-JSON Building durch Einsatz dedizierter, anonymer Lambda Helper-Funktionen pro Sensor-DataType.
-  - ✅ **Footprint Reduction**: Komplettentfernung veralteter Web-UI Cache-Konzepte (`DashboardSnapshot`) und damit drastisch verbesserte Free-RAM Performance.
-
-- **Modern Web-Dashboard (Tailwind CSS) & UX (März 2026)**:
-  - ✅ **Premium UI/UX**: Umstellung des asynchronen Dashboards auf **Tailwind CSS**. Modernes Dark-Mode Design, voll-responsiv und optimiert für Desktop & Mobile.
-  - ✅ **Grundeinstellungen**: Integration einer neuen Dashboard-Sektion für Geräte-ID, Floor ID, Room ID und Phase zur schnellen Vor-Ort-Konfiguration.
-  - ✅ **Echtzeit-Graphen**: Erweiterung der Chart.js Integration für flüssige Visualisierung von CO2, Feuchte, Temp und RPM.
-  - ✅ **Code-Health**: Bereinigung der Dashboard-Backend-Logik, Behebung von Typ-Mismatch Fehlern in C++ Lambdas und Entfernung von Deprecated-Warnungen.
-
-### 🙏 Danksagungen / Credits
-
-Ein besonderer Dank gilt **[patrickcollins12](https://github.com/patrickcollins12)** für sein hervorragendes Projekt **[ESPHome Fan Controller](https://github.com/patrickcollins12/esphome-fan-controller)**. Seine Implementierung und Erläuterungen zur Nutzung des [ESPHome PID Climate](https://esphome.io/components/climate/pid/) Moduls für geräuschlose (lautlose) stufenlose PWM-Lüftersteuerungen dienten als maßgebliche Inspiration und Grundlage für die CO2- und Feuchtigkeitsautomatik in diesem Projekt.
-
----
 
 ## 🖱️ Eigene Platine - PCB
 
@@ -273,16 +177,12 @@ Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
-| **Lüfter** | **AxiRev** (4-Pin PWM) oder **3-Pin PWM** (ohne Tacho-Signal). _Siehe [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)_ | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Lüfter** | Die original Ventomaxx V-WRG Geräte nutzen den **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (ohne Tacho-Signal) Lüfter. Alternativ kann ein deutlich modernerer und leiserer **AxiRev** (4-Pin PWM) verwendet werden. Dafür müsste man sich aber um die Befestigung per 3D-Druck-Adapter kümmern. _Die technische Anbidnung ist im folgenden Dokument beschrieben: [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)_ | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) für dimmbare LEDs im VentoMaxx Panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
-
-> ℹ️ **Hinweis zu 3-Pin PWM Lüftern:**
-> Neben den klassischen 4-Pin PWM Lüftern gibt es auch spezielle Propeller/Lüfter, die **kein Tacho-Signal** besitzen und daher nur über **3 Pins** verfügen (GND, 12V, PWM). Dies ist auch der Fall für den von Ventomaxx verbauten EBM-Papst Lüfter.
-Diese können problemlos ohne physikalische Änderung an der Schaltung betrieben werden, indem der Tacho-Pin (Pin 3 am Terminal) einfach unbelegt bleibt. Beachte jedoch, dass ohne Tacho-Signal keine direkte Überwachung der Drehzahl (RPM) oder Blockadeerkennung durch die Software möglich ist.
 
 ### 🖱️ User Interface
 
@@ -442,11 +342,20 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 
 **Logik im Detail:**
 
-- **Grundbetrieb:** Wärmerückgewinnung (`MODE_ECO_RECOVERY`) auf Mindestlüfterstufe (`co2_min_fan_level`, Standard: 2).
-- **CO2 & Feuchte (PID):** Steigen CO2 oder absolute Feuchtigkeit über die HA-Grenzwerte, regeln PID-Regler den Lüfter **stufenlos** und leise hoch. Deadband-Logik verhindert Mikro-Schwankungen.
+- **Grundbetrieb:** Wärmerückgewinnung (`MODE_ECO_RECOVERY`) auf Mindestlüfterstufe (`co2_min_fan_level`, Standard: 2). Die Wechselintervalle (Zyklusdauer) passen sich dabei dynamisch der aktuellen Lüfterstufe an (sanfte 70 Sekunden auf Stufe 1 bis schnelle 50 Sekunden auf Stufe 10) inkl. synchronisiertem NTC-Zeitfenster.
+- **Adaptive Automatik (CO2):** Steigt der CO2-Wert über den HA-Grenzwert, regelt ein PID-Regler die Lüfterleistung **stufenlos** und lautlos hoch. Ein konfigurierbarer Min-/Max-Level (`automatik_min_fan_level`) begrenzt dabei das Anpassungsfenster.
+- **💧 Feuchte-Management:** Bei Überschreitung des Feuchte-Grenzwerts (Default 60%) regelt ein eigener PID-Regler (`pid_humidity`) die Leistung hoch (Schimmelprävention). Eine intelligente Hysterese (`±2%`) verhindert "Rapid Cycling". **Outdoor Check:** Es wird nur entfeuchtet, wenn die Außenluft trockener ist als die Innenluft (`out_hum < in_hum`).
 - **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich wechselt das System automatisch in `Durchlüften`. Sobald es außen wieder wärmer wird, kehrt es zu WRG zurück.
 - **Anwesenheit:** Optionale Anpassung der Lüfterstärke (+3/+1/-1 Stufen) je nach konfiguriertem Profil in HA.
-- **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW geteilt — alle Geräte im Raum laufen synchron.
+- **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW geteilt — alle Geräte im Raum laufen synchron (die Lüfter skalieren identisch auf den höchsten Bedarf im Raum).
+
+> **⚙️ Voraussetzung für das Feuchte-Management: `sensor.outdoor_humidity` in Home Assistant**
+>
+> Der ESPHome-Code erwartet die Entity-ID `sensor.outdoor_humidity` (in `sensors_climate.yaml`). Es gibt zwei Wege:
+> **Option A (Wetterdienst):** Erstelle einen Template-Sensor basierend auf deiner Wetter-Integration (z.B. OpenWeatherMap).
+> **Option B (Lokaler Sensor):** Erstelle einen Template-Sensor (Alias) oder passe die Entity-ID in der YAML an.
+> _Ohne diesen Sensor funktioniert die Entfeuchtung trotzdem, der Outdoor-Check wird dann einfach übersprungen._
+Details siehe [Feuchte-Management-HA-Sensor.md](documentation/Feuchte-Management-HA-Sensor.md)
 
 ---
 
@@ -799,22 +708,40 @@ binary_sensor:
   - platform: gpio
     on_press:
       - lambda: handle_button_mode_click();
+
 ```
 
----
+### 🔧 Aktuelle technische Verbesserungen
 
-## 🔍 Troubleshooting
+- **Hardware-Upgrade: SCD41 CO2-Sensor & BMP390 (Februar 2026)**:
+  - ✅ Wechsel von BME680 (VOC-basierte IAQ-Schätzung) zu **SCD41** (echte CO2-Messung) und **BMP390** (Luftdruck)
+  - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm)
+  - ✅ Integrierte Temperatur- und Feuchtigkeitsmessung (SCD41)
+  - ✅ Automatische CO2-basierte Lüftungsregelung für optimale Raumluftqualität
+  - ✅ Dokumentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
 
-Für eine umfassende Anleitung zur Fehlerbehebung, siehe die dedizierte [Troubleshooting-Dokumentation](documentation/Troubleshooting.md).
+- **Code-Refactoring (Februar 2026)**:
+  - ✅ Alle Multi-Line-Lambdas in `automation_helpers.h` ausgelagert
+  - ✅ Verbesserte Typsicherheit durch explizite C++ Funktionen
+  - ✅ Modernisierte ESPHome API-Nutzung (`current_option()` statt deprecated `.state`)
+  - ✅ Korrekte Template-Typen für Script-Komponenten (`RestartScript<>`, `SingleScript<>`)
+  - ✅ Präzise Komponenten-Typen (`SpeedFan`, `LEDCOutput` statt generischer Basisklassen)
 
-**Häufige Themen:**
+- **C++ Pro Performance & Thread Safety (März 2026)**:
+  - ✅ **Thread Safety**: Ablösung von manuellen LwIP Semaphoren durch C++ Standard-Library `<mutex>` und `std::lock_guard` für 100% Exception-sicheres HTTP-Event Queueing (AsyncWebServer).
+  - ✅ **Memory Management**: Nutzung von Move Semantics (`std::move`) zur abfallfreien Übergabe von Vektoren zwischen Tasks, plus strikte Const-Correctness (`const std::string&`).
+  - ✅ **DRY Architecture**: Entfernung redundanter Ternary-Operatoren (`condition ? state : (float)NAN`) für Web-JSON Building durch Einsatz dedizierter, anonymer Lambda Helper-Funktionen pro Sensor-DataType.
+  - ✅ **Footprint Reduction**: Komplettentfernung veralteter Web-UI Cache-Konzepte (`DashboardSnapshot`) und damit drastisch verbesserte Free-RAM Performance.
 
-- ESPHome YAML Fehler
-- I²C Bus Probleme
-- SCD41 CO2-Sensor Kalibrierung
-- ESP-NOW Synchronisation
-- Kompilierungsfehler
-- Performance-Optimierung
+- **Modern Web-Dashboard (Tailwind CSS) & UX (März 2026)**:
+  - ✅ **Premium UI/UX**: Umstellung des asynchronen Dashboards auf **Tailwind CSS**. Modernes Dark-Mode Design, voll-responsiv und optimiert für Desktop & Mobile.
+  - ✅ **Grundeinstellungen**: Integration einer neuen Dashboard-Sektion für Geräte-ID, Floor ID, Room ID und Phase zur schnellen Vor-Ort-Konfiguration.
+  - ✅ **Echtzeit-Graphen**: Erweiterung der Chart.js Integration für flüssige Visualisierung von CO2, Feuchte, Temp und RPM.
+  - ✅ **Code-Health**: Bereinigung der Dashboard-Backend-Logik, Behebung von Typ-Mismatch Fehlern in C++ Lambdas und Entfernung von Deprecated-Warnungen.
+
+### 🙏 Danksagungen / Credits
+
+Ein besonderer Dank gilt **[patrickcollins12](https://github.com/patrickcollins12)** für sein hervorragendes Projekt **[ESPHome Fan Controller](https://github.com/patrickcollins12/esphome-fan-controller)**. Seine Implementierung und Erläuterungen zur Nutzung des [ESPHome PID Climate](https://esphome.io/components/climate/pid/) Moduls für geräuschlose (lautlose) stufenlose PWM-Lüftersteuerungen dienten als maßgebliche Inspiration und Grundlage für die CO2- und Feuchtigkeitsautomatik in diesem Projekt.
 
 ---
 
