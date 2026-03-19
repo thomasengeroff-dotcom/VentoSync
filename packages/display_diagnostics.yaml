@@ -28,7 +28,7 @@ display:
       - id: page_system
         lambda: |-
           it.printf(0, 0, id(font_large), "System Status");
-          it.printf(0, 22, id(font_medium), "Modus: %s", id(luefter_modus).state.c_str());
+          it.printf(0, 22, id(font_medium), "Modus: %s", id(luefter_modus).current_option());
           it.printf(0, 38, id(font_small), "Lüfter: Stufe %d/10 (%.0f RPM)", id(fan_intensity_level), id(fan_rpm).state);
 
           if (id(filter_change_alarm).state) {

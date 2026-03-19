@@ -12,6 +12,8 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - **Text-Sensor "Aktuelle Luftrichtung"**: Neue Entität in HA und Dashboard zur Anzeige der Strömungsrichtung ("Zuluft (Rein)", "Abluft (Raus)", "Stillstand").
 - **Virtuelle Drehzahlberechnung (Fallback)**: Automatische Berechnung der RPM (4200 RPM @ 100%), falls kein physisches Tacho-Signal (4-Pin) erkannt wird.
 - **Dynamische Präsenz-Kompensation (Manuelle Modi)**: Der Radar-Sensor wirkt nun als flexibler Boost/Dämpfer (+/- Stufen) in den Modi WRG, Durchlüften und Stoßlüftung.
+- **Power-Button Toggle-Funktion**: Ein kurzes Drücken des Power-Buttons wechselt nun zwischen Ein- und Ausschalten (vorher nur Einschalten möglich).
+- **Light Sleep & Hardware-Energiesparen**: Automatische Abschaltung von WLAN und PCA9685 LED-Treiber im Modus "Aus" zur signifikanten Reduzierung des Stromverbrauchs (Light Sleep Modus).
 
 ### Changed
 

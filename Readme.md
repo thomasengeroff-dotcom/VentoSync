@@ -295,7 +295,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 
 | Taste | Funktion | Bedienung |
 | :--- | :--- | :--- |
-| **Power (I/O)** | System Ein/Aus | • Kurz drücken: Ein / Aus<br>• Lang (>5s): Aus<br>• Sehr lang (>10s): Geräte-Neustart (Reboot) |
+| **Power (I/O)** | System Ein/Aus | • Kurz drücken: Ein / Aus (Toggle)<br>• Lang (>5s): Aus (Sicherheits-Aus)<br>• Sehr lang (>10s): Geräte-Neustart (Reboot) |
 | **Modus (M)** | Betriebsmodus | • Kurz drücken: Zykliert durch Automatik → WRG → Stoßlüftung → Durchlüften → Aus |
 | **Stufe (+)** | Lüfterstärke | • Kurz drücken: Zykliert durch 10 Geschwindigkeitsstufen (angezeigt über 5 LEDs). |
 
@@ -350,6 +350,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 - **💧 Feuchte-Management:** Bei Überschreitung des Feuchte-Grenzwerts (Default 60%) regelt ein eigener PID-Regler (`pid_humidity`) die Leistung hoch (Schimmelprävention). Eine intelligente Hysterese (`±2%`) verhindert "Rapid Cycling". **Outdoor Check:** Es wird nur entfeuchtet, wenn die Außenluft trockener ist als die Innenluft (`out_hum < in_hum`).
 - **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich wechselt das System automatisch in `Durchlüften`. Sobald es außen wieder wärmer wird, kehrt es zu WRG zurück.
 - **Anwesenheit (Manuelle Modi):** In den Modi WRG, Durchlüften und Stoßlüftung wird die Lüfterstärke bei erkannter Präsenz dynamisch angepasst (Slider `-5` bis `+5`). Dies erlaubt einen bedarfsgerechten "Präsenz-Boost" ohne die Automatik-Regelung zu beeinflussen.
+- **🌱 Energiespar-Modus (Light Sleep):** Wenn das System ausgeschaltet wird (Modus `Aus`), wechselt der ESP32-C6 in einen stromsparenden Light Sleep. Dabei wird das WLAN deaktiviert und der LED-Treiber (PCA9685) via Hardware-Pin komplett abgeschaltet. Das Gerät bleibt über den physischen Power-Button jederzeit weckbar.
 - **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW geteilt — alle Geräte im Raum laufen synchron (die Lüfter skalieren identisch auf den höchsten Bedarf im Raum).
 
 > **⚙️ Voraussetzung für das Feuchte-Management: `sensor.outdoor_humidity` in Home Assistant**

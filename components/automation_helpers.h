@@ -566,9 +566,11 @@ inline void cycle_operating_mode(int mode_index) {
     }
   }
   
-  // Update fan speed for active modes
   if (mode_index != 4) {
+    if (system_wakeup != nullptr) system_wakeup->execute();
     fan_speed_update->execute();
+  } else {
+    if (system_sleep != nullptr) system_sleep->execute();
   }
   
   ESP_LOGI("mode", "Mode changed to index %d", mode_index);
@@ -914,7 +916,9 @@ inline void handle_button_power_short_click() {
         fan_speed_update->execute();
         ui_timeout_script->execute();
     } else {
-        ESP_LOGD("power", "System already ON, ignoring short press");
+        ESP_LOGI("power", "System turned OFF by short press");
+        cycle_operating_mode(4);  // Mode index 4 is "Aus", triggers system_sleep via cycle_operating_mode
+        ui_timeout_script->execute();
     }
 }
 
@@ -927,7 +931,8 @@ inline void handle_button_power_long_click() {
         auto *v = ventilation_ctrl;
         v->set_mode(esphome::MODE_OFF);
         lueftung_fan->turn_off();
-        fan_pwm_primary->set_level(0.0);
+        fan_pwm_primary->set_level(0.5f);
+        if (system_sleep != nullptr) system_sleep->execute();
         ui_timeout_script->execute();
     } else {
         ESP_LOGD("power", "System already OFF, ignoring long press");

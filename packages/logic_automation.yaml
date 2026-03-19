@@ -137,6 +137,25 @@ script:
     then:
       - lambda: update_fan_logic();
 
+  # --- Light Sleep Management ---
+  # Reduces power by turning off WiFi and LEDs
+  - id: system_sleep
+    mode: restart
+    then:
+      - lambda: |-
+          ESP_LOGI("sleep", "Entering Light Sleep Mode (WiFi OFF, LEDs OFF)");
+      - switch.turn_off: pca9685_oe
+      - wifi.disable:
+  
+  # Restores full operation
+  - id: system_wakeup
+    mode: restart
+    then:
+      - lambda: |-
+          ESP_LOGI("sleep", "Waking up from Light Sleep (WiFi ON, LEDs ON)");
+      - wifi.enable:
+      - switch.turn_on: pca9685_oe
+
 # ---------------------------------------------------------
 # CONTROL PANEL BUTTONS (Input)
 # ---------------------------------------------------------

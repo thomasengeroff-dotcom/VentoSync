@@ -52,6 +52,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   min_auth_mode: WPA2
+  power_save_mode: HIGH
 
   # Fallback Hotspot:
   # If the configured WiFi is not reachable within 1 minute, the device
