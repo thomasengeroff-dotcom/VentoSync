@@ -154,6 +154,22 @@ sensor:
       then:
         - script.execute: update_leds # Update LEDs on RPM change (optional feedback)
 
+  # Fan PWM Sensor (Diagnose)
+  # Zeigt den logischen PWM-Wert (0–100%), mit dem der Code set_level() aufruft.
+  # Dieser Wert = was der Lüfter tatsächlich sieht (Software-inverted + MOSFET-inverted = original).
+  # 50% = Stop, 0–49% = Richtung A, 51–100% = Richtung B
+  - platform: template
+    name: "Lüfter PWM Ansteuerung"
+    id: fan_pwm_percent
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:fan-speed-1"
+    update_interval: 500ms
+    lambda: |-
+      return last_fan_pwm_level * 100.0f;
+    #filters:
+    #  - delta: 0.5 # Nur senden, wenn Änderung > 0.5% (reduziert HA-Traffic)
+
   # HLK-LD2450 Sensor
   - platform: ld2450
     ld2450_id: ld2450_radar

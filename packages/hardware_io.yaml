@@ -78,7 +78,8 @@ output:
     pin: GPIO19 # Pin D8
     frequency: 2000Hz # required by specification of EBM-Papst fan
     id: fan_pwm_primary
-    inverted: false
+    inverted: true  # Compensates for hardware inversion by PMV16XNR MOSFET:
+                    # ESP 100% → MOSFET ON → GND → Fan sees 0%; so we invert here.
     min_power: 0%
     zero_means_zero: true
 

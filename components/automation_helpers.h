@@ -113,6 +113,10 @@ extern esphome::VentilationController *ventilation_ctrl;
 // Global constants
 static const uint32_t PEER_TIMEOUT_MS = 300000;      // 5 minutes
 
+/// Last PWM level sent to fan_pwm_primary via set_level() (0.0–1.0).
+/// Used by the 'Lüfter PWM Ansteuerung' template sensor since LEDCOutput has no get_level().
+static float last_fan_pwm_level = 0.5f;  // Default: Stop
+
 /// @name NTC Stabilization Logic
 /// @{
 
@@ -403,6 +407,7 @@ inline void set_fan_logic(float speed, int direction) {
     // Soft-stop zone: below 5% speed always output exactly 50% (safe stop, no creeping)
     if (speed < 0.05f) {
         fan_pwm_primary->set_level(0.5f);
+        last_fan_pwm_level = 0.5f;
         return;
     }
 
@@ -416,6 +421,7 @@ inline void set_fan_logic(float speed, int direction) {
     }
 
     fan_pwm_primary->set_level(pwm);
+    last_fan_pwm_level = pwm;
 }
 
 /// @brief Converts a user-facing level (1-10) to actual hardware PWM speed (10% - 100%)
