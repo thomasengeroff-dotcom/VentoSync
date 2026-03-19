@@ -1,0 +1,214 @@
+# =============================================================================
+# ESPHome - VentoMaxx PWM Analyser
+# =============================================================================
+# Zweck: Den PWM-Ausgang der originalen VentoMaxx-Steuerung abgreifen und
+#        in Home Assistant als Kurve darstellen — ohne Eingriff in die Steuerung.
+#
+# Hardware: Seeed XIAO ESP32-C6 (identisch zur Haupt-Platine)
+#
+# Verdrahtung (EINZIGE Verbindung):
+#   GPIO1 (Pin D0) ---> Lüfter PWM-Pin (zwischen VentoMaxx-Controller und Lüfter)
+#
+# WICHTIG Spannungspegel (Spannungsteiler erforderlich):
+#   Der VentoMaxx-PWM-Ausgang liegt bei 12V. Der ESP32-C6 verträgt MAX 3.6V.
+#
+#   Verdrahtung (Spannungsteiler):
+#     12V PWM Pin --- [ 27 kOhm ] ---+--- GPIO1 (Analysator D0)
+#                                    |
+#                                [ 10 kOhm ]
+#                                    |
+#                                   GND (Gemeinsame Masse!)
+#
+#   Berechnung: 12V * (10 / (27+10)) = ~3.24V (Sicherer Pegel)
+#
+# Signal-Interpretation (VarioPro Protokoll):
+#   50% Duty Cycle = STOP
+#   < 50%          = Richtung A (Rausblasen), Geschwindigkeit steigt zum Minimum
+#   > 50%          = Richtung B (Reinblasen), Geschwindigkeit steigt zum Maximum
+# =============================================================================
+
+substitutions:
+  device_name: ventomaxx-analyser
+  friendly_name: "VentoMaxx PWM Analyser"
+
+# ---------------------------------------------------------
+# CORE
+# ---------------------------------------------------------
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "Liest die PWM-Kurve der originalen VentoMaxx-Steuerung"
+
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: esp32c6
+  framework:
+    type: esp-idf
+
+# ---------------------------------------------------------
+# CONNECTIVITY
+# ---------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "VentoMaxx-Analyser"
+    password: !secret appw
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret otapw
+
+logger:
+  level: INFO
+
+# ---------------------------------------------------------
+# SENSORS
+# ---------------------------------------------------------
+sensor:
+
+  # --- RAW: HIGH-Pulsdauer des Signals am GPIO ---
+  # Der pulse_width-Sensor misst wie lange das Signal HIGH ist (in Sekunden).
+  # Achtung: Wenn das Signal durch den MOSFET der Originalsteuerung invertiert ist
+  # (MOSFET an = pin LOW), dann ist hier 0V = "Lüfter sieht 100%". Daher gibt es
+  # unten zwei abgeleitete Sensoren: einmal "wie gemessen" und einmal invertiert.
+  - platform: duty_cycle
+    pin: GPIO1   # D0 auf XIAO ESP32-C6 — an Lüfter-PWM-Pin anschließen
+    name: "PWM Signal (direkt)"
+    id: pwm_duty_direct
+    update_interval: 200ms
+    filters:
+      - exponential_moving_average:
+          alpha: 0.4   # Etwas mitteln für stabile Kurve, aber noch reaktiv
+
+  # --- Duty Cycle: Invertiert (MOSFET-Annahme) ---
+  # Wenn VentoMaxx denselben MOSFET-Trick verwendet wie unser ESP-Board:
+  #   GPIO HIGH → MOSFET an → Lüfter-Pin LOW → Lüfter sieht 0%
+  # Dann gilt: Lüfter sieht das INVERSE des gemessenen Signals.
+  - platform: template
+    name: "PWM Fan sieht (MOSFET-invertiert)"
+    id: pwm_duty_inverted
+    unit_of_measurement: "%"
+    accuracy_decimals: 2
+    icon: "mdi:fan"
+    update_interval: 200ms
+    lambda: |-
+      return 100.0f - id(pwm_duty_direct).state;
+    filters:
+      - exponential_moving_average:
+          alpha: 0.4
+
+  # --- Abgeleiteter Sensor: Lüfter-Geschwindigkeitsvektor ---
+  # Positiv = Richtung B (Reinblasen), Negativ = Richtung A (Rausblasen)
+  # Basis: MOSFET-invertierter Wert (Hypothese 1)
+  - platform: template
+    name: "Richtung+Speed Vektor (MOSFET-Hyp.)"
+    id: pwm_speed_vector_mosfet
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:arrow-left-right"
+    update_interval: 200ms
+    lambda: |-
+      float d = id(pwm_duty_inverted).state;
+      if (std::isnan(d)) return NAN;
+      if (d >= 47.0f && d <= 53.0f) return 0.0f;    // Stop-Zone
+      return (d - 50.0f) * 2.0f;                     // -100 bis +100 (%)
+
+  # --- Abgeleiteter Sensor: Lüfter-Geschwindigkeitsvektor ---
+  # Basis: DIREKTES Signal (Hypothese 2: Kein MOSFET in Originalsteuerung)
+  - platform: template
+    name: "Richtung+Speed Vektor (direkt)"
+    id: pwm_speed_vector_direct
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:arrow-left-right"
+    update_interval: 200ms
+    lambda: |-
+      float d = id(pwm_duty_direct).state;
+      if (std::isnan(d)) return NAN;
+      if (d >= 47.0f && d <= 53.0f) return 0.0f;
+      return (d - 50.0f) * 2.0f;
+
+  # --- Frequenz-Messung (KOMMENTIERT: Kollidiert auf GPIO1) ---
+  # - platform: pulse_counter
+  #   pin: GPIO1
+  #   name: "PWM Frequenz"
+  #   id: pwm_frequency
+  #   unit_of_measurement: "Hz"
+  #   icon: "mdi:waveform"
+  #   accuracy_decimals: 0
+  #   update_interval: 1s
+  #   count_mode:
+  #     rising_edge: INCREMENT
+  #     falling_edge: DISABLE
+  #   filters:
+  #     - multiply: 0.01667  # pulses/min → pulses/s = Hz (1/60 ≈ 0.01667)
+
+# ---------------------------------------------------------
+# TEXT SENSORS: Lesbarer Status
+# ---------------------------------------------------------
+text_sensor:
+
+  # Status für MOSFET-invertiertes Signal
+  - platform: template
+    name: "VentoMaxx Status (MOSFET-Hyp.)"
+    id: status_mosfet
+    icon: "mdi:information-outline"
+    update_interval: 500ms
+    lambda: |-
+      float d = id(pwm_duty_inverted).state;
+      if (std::isnan(d) || d < 0.5f && d > -0.5f)
+        return std::string("Kein Signal");
+      if (d >= 47.0f && d <= 53.0f)
+        return std::string("STOP (50%)");
+      if (d < 50.0f) {
+        int speed = (int)((50.0f - d) * 2.0f);
+        return std::string("Richtung A: ") + std::to_string(speed) + std::string("%");
+      }
+      int speed = (int)((d - 50.0f) * 2.0f);
+      return std::string("Richtung B: ") + std::to_string(speed) + std::string("%");
+
+  # Status für direktes Signal
+  - platform: template
+    name: "VentoMaxx Status (direkt)"
+    id: status_direct
+    icon: "mdi:information"
+    update_interval: 500ms
+    lambda: |-
+      float d = id(pwm_duty_direct).state;
+      if (std::isnan(d))
+        return std::string("Kein Signal");
+      if (d >= 47.0f && d <= 53.0f)
+        return std::string("STOP (50%)");
+      if (d < 50.0f) {
+        int speed = (int)((50.0f - d) * 2.0f);
+        return std::string("Richtung A: ") + std::to_string(speed) + std::string("%");
+      }
+      int speed = (int)((d - 50.0f) * 2.0f);
+      return std::string("Richtung B: ") + std::to_string(speed) + std::string("%");
+
+  # WiFi Info
+  - platform: wifi_info
+    ip_address:
+      name: "IP Adresse"
+    ssid:
+      name: "WLAN SSID"
+    mac_address:
+      name: "MAC Adresse"
+
+# ---------------------------------------------------------
+# SYSTEM
+# ---------------------------------------------------------
+button:
+  - platform: restart
+    name: "Neustart"
+
+binary_sensor:
+  - platform: status
+    name: "Online Status"
