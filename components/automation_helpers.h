@@ -393,32 +393,38 @@ inline void evaluate_auto_mode() {
 
 /// @brief Sets fan PWM for the ebm-papst VarioPro reversible fan.
 /// This fan uses a SINGLE PWM signal for both speed and direction:
-///   - 50.0% duty cycle = STOP (neutral zone)
-///   - 50% → 0%  = Direction A (e.g. Abluft/Rausblasen), speed increases toward 0%
-///   - 50% → 100% = Direction B (e.g. Zuluft/Reinblasen), speed increases toward 100%
-/// @param speed     Target speed as duty cycle fraction (0.0 = stopped, 1.0 = full speed).
-/// @param direction Target direction: 0 = Direction A (pwm 50%→0%), 1 = Direction B (pwm 50%→100%).
+///   - 50.0% duty cycle = STOP (active brake)
+///   - 50% → 0%   = Direction: Zuluft (Stufe 1 @ 30%, Stufe 10 @ 5%)
+///   - 50% → 100% = Direction: Abluft (Stufe 1 @ 70%, Stufe 10 @ 95%)
+/// @param speed     Target speed as duty cycle fraction (0.1 = min, 1.0 = max).
+/// @param direction Target direction: 0 = Zuluft (PWM < 50%), 1 = Abluft (PWM > 50%).
 inline void set_fan_logic(float speed, int direction) {
     if (fan_pwm_primary == nullptr) return;
 
     // Clamp speed to valid range
     speed = std::max(0.0f, std::min(1.0f, speed));
 
-    // Soft-stop zone: below 5% speed always output exactly 50% (safe stop, no creeping)
+    // Stop zone: below 5% speed or logical off
     if (speed < 0.05f) {
-        fan_pwm_primary->set_level(0.5f);
-        last_fan_pwm_level = 0.5f;
+        fan_pwm_primary->set_level(0.50f);
+        last_fan_pwm_level = 0.50f;
         return;
     }
 
     float pwm;
     if (direction == 0) {
-        // Direction A: 50% (stop) → 0% (full speed)
-        pwm = 0.5f - (speed * 0.5f);
+        // Direction Zuluft: Min Speed (0.1) -> 30% PWM, Max Speed (1.0) -> 5% PWM
+        // Linear interpolation: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+        // PWM = 0.30 + (speed - 0.1) * (0.05 - 0.30) / (1.0 - 0.1)
+        pwm = 0.30f - ((speed - 0.1f) / 0.9f) * 0.25f;
     } else {
-        // Direction B: 50% (stop) → 100% (full speed)
-        pwm = 0.5f + (speed * 0.5f);
+        // Direction Abluft: Min Speed (0.1) -> 70% PWM, Max Speed (1.0) -> 95% PWM
+        // PWM = 0.70 + (speed - 0.1) * (0.95 - 0.70) / (0.9)
+        pwm = 0.70f + ((speed - 0.1f) / 0.9f) * 0.25f;
     }
+
+    // Clamp to absolute hardware safety limits
+    pwm = std::max(0.02f, std::min(0.98f, pwm));
 
     fan_pwm_primary->set_level(pwm);
     last_fan_pwm_level = pwm;
@@ -499,8 +505,8 @@ inline void update_fan_logic() {
     }
 
     // Read current direction from the fan_direction switch:
-    // OFF = Direction A (e.g. Abluft/Rausblasen, PWM < 50%)
-    // ON  = Direction B (e.g. Zuluft/Reinblasen, PWM > 50%)
+    // OFF = Direction: Zuluft (PWM < 50%)
+    // ON  = Direction: Abluft (PWM > 50%)
     const int direction = (fan_direction != nullptr && fan_direction->state) ? 1 : 0;
 
     set_fan_logic(speed, direction);

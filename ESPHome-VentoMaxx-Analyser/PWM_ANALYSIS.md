@@ -46,3 +46,51 @@ Sobald die Analysator-Werte (Duty Cycle in %) von der originalen Steuerung vorli
 4. **Invertierungs-Validierung:** Der Analysator zeigt uns, ob das Originalsignal "High-Active" oder "Low-Active" ist. Damit stellen wir sicher, dass unser MOSFET-Kompensations-Flag (`inverted: true`) korrekt gesetzt ist.
 
 **Abschluss-Fazit:** Der Xiao ESP32-C6 wird durch diese Software-Remapping-Logik zum perfekten Ersatz für die VentoMaxx-Steuerung, nutzt aber gleichzeitig deine neuen Smart-Features (CO2-Automatik, Radar-Präsenz, Dashboard).
+
+## Oszilloskop Messung
+
+## 1. Basisdaten & Signalqualität
+
+Die oszilloskopischen Messungen am PWM-Ausgang der Steuerplatine belegen eine einwandfreie Funktion der Hardware-Stufe.
+
+* **Frequenz (f):** Eine Signalperiode (T) dauert exakt $500\ \mu\text{s}$ (5 Divisionen à $100\ \mu\text{s}$). Dies entspricht exakt den spezifizierten **2.000 Hz** ($2\text{ kHz}$) des Herstellers.
+* **Logikpegel:** Die Spannung pegelt sich im High-Zustand sicher bei knapp **5V** ein. Dies resultiert aus dem internen Pull-up-Widerstand des Lüfters.
+* **Invertierende Schaltlogik:** Da ein Low-Side-MOSFET als Open-Drain/Open-Collector agiert, invertiert sich das Tastverhältnis physikalisch. Ein $100\ \%$-PWM-Signal des Controllers zieht die Leitung auf $0\text{V}$ (entspricht $0\ \%$-PWM am Lüfter). Dies muss in der Software ausgeglichen werden.
+
+---
+
+## 2. Messreihen & Auswertung (V-Kennlinie)
+
+Der verwendete Lüfter besitzt eine V-förmige Steuerkurve für den Richtungswechsel. Die Messreihe bestätigt, dass alle relevanten Betriebspunkte exakt und stabil angefahren werden können.
+
+*Hinweis: Ein hohes Signal (High) auf dem Oszilloskop bedeutet, dass der MOSFET sperrt und der Lüfter das Signal über seinen Pull-up-Widerstand hochzieht.*
+
+| Betriebszustand | Datei / Messung | Signal (Lüfter sieht) | Verhalten gem. Datenblatt |
+| :--- | :--- | :--- | :--- |
+| **Stillstand (Pause)** | `S5-Pause.jpg` | **50 % PWM** | Aktive Bremsung, Rotor steht |
+| **Zuluft: Stufe 1** (Minimum) | `S1a.jpg` | **30 % PWM** | Niedrige Vorwärtsdrehzahl |
+| **Zuluft: Stufe 5** (Maximum) | `S5a.jpg` | **5 % PWM** | Maximale Vorwärtsdrehzahl ($4.200\text{ U/min}$) |
+| **Abluft: Stufe 1** (Minimum) | `S2b.jpg` | **70 % PWM** | Niedrige Rückwärtsdrehzahl |
+| **Abluft: Stufe 5** (Maximum) | `S5b.jpg` | **95 % PWM** | Maximale Rückwärtsdrehzahl ($4.200\text{ U/min}$) |
+
+---
+
+## 3. Hardware-Fazit
+
+Das Platinendesign der PWM-Stufe funktioniert **makellos**.
+Der PCA9685 I2C-Treiber gibt das 2-kHz-Signal absolut stabil aus, der N-Channel MOSFET (PMV16XNR) schaltet ausreichend schnell und präzise, und die Pegel bewegen sich im spezifizierten, sicheren Rahmen. Die hardwareseitigen Voraussetzungen für eine softwareseitige, bidirektionale Drehzahlregelung in ESPHome sind damit vollständig erfüllt.
+
+## Software Anpassung (Mapping)
+
+Ich habe die Steuerung nun exakt an die Oszilloskop-Messungen der V-Kennlinie angepasst.
+
+**Was wurde geändert?**
+
+* **set_fan_logic:** Die Funktion mappt nun die Stufen 1 bis 10 linear auf die gemessenen Werte:
+  * **Zuluft:** Von 30% (Stufe 1) runter auf 5% (Stufe 10).
+  * **Abluft:** Von 70% (Stufe 1) hoch auf 95% (Stufe 10).
+  * **Stillstand:** Exakt 50%.
+* **Richtungen:** Die Richtungen im Code wurden so getauscht, dass sie zur Mess-Tabelle passen (Zuluft < 50%, Abluft > 50%).
+* **Hardware-Check:** Die Frequenz in `hardware_io.yaml` steht bereits auf den korrekten **2000 Hz**.
+
+Das Projekt kann nun neu kompiliert und getestet werden. Der Lüfter sollte nun hochpräzise reagieren und die Richtungen korrekt wechseln.

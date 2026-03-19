@@ -7,19 +7,25 @@
 # Hardware: Seeed XIAO ESP32-C6 (identisch zur Haupt-Platine)
 #
 # Verdrahtung (EINZIGE Verbindung):
-#   GPIO1 (Pin D0) ---> Lüfter PWM-Pin (zwischen VentoMaxx-Controller und Lüfter)
+#   GPIO0 (Pin D0) ---> Lüfter PWM-Pin (zwischen VentoMaxx-Controller und Lüfter)
 #
 # WICHTIG Spannungspegel (Spannungsteiler erforderlich):
 #   Der VentoMaxx-PWM-Ausgang liegt bei 12V. Der ESP32-C6 verträgt MAX 3.6V.
 #
-#   Verdrahtung (Spannungsteiler):
-#     12V PWM Pin --- [ 27 kOhm ] ---+--- GPIO1 (Analysator D0)
-#                                    |
-#                                [ 10 kOhm ]
-#                                    |
-#                                   GND (Gemeinsame Masse!)
+#   VERDRAHTUNGSSCHEMA (mit deinen Werten: 22k + 10k):
+#   ==============================================
 #
-#   Berechnung: 12V * (10 / (27+10)) = ~3.24V (Sicherer Pegel)
+#   Original-Signal (max 11.26V) --+
+#                                  |
+#                                [ 22 kOhm (R1) ]
+#                                  |
+#                                  +-----------> GPIO0 (D0 am XIAO)
+#                                  |
+#                                [ 10 kOhm (R2) ]
+#                                  |
+#   Original-GND  -----------------+-----------> GND (am XIAO)
+#
+#   Berechnung: 11.26V * (10 / (22+10)) = ~3.52V (Sicherer Pegel < 3.6V)
 #
 # Signal-Interpretation (VarioPro Protokoll):
 #   50% Duty Cycle = STOP
@@ -79,7 +85,7 @@ sensor:
   # (MOSFET an = pin LOW), dann ist hier 0V = "Lüfter sieht 100%". Daher gibt es
   # unten zwei abgeleitete Sensoren: einmal "wie gemessen" und einmal invertiert.
   - platform: duty_cycle
-    pin: GPIO1   # D0 auf XIAO ESP32-C6 — an Lüfter-PWM-Pin anschließen
+    pin: GPIO0   # D0 auf XIAO ESP32-C6 — an Lüfter-PWM-Pin anschließen
     name: "PWM Signal (direkt)"
     id: pwm_duty_direct
     update_interval: 200ms
@@ -135,9 +141,9 @@ sensor:
       if (d >= 47.0f && d <= 53.0f) return 0.0f;
       return (d - 50.0f) * 2.0f;
 
-  # --- Frequenz-Messung (KOMMENTIERT: Kollidiert auf GPIO1) ---
+  # --- Frequenz-Messung (KOMMENTIERT: Kollidiert auf GPIO0) ---
   # - platform: pulse_counter
-  #   pin: GPIO1
+  #   pin: GPIO0
   #   name: "PWM Frequenz"
   #   id: pwm_frequency
   #   unit_of_measurement: "Hz"
