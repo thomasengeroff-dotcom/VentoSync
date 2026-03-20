@@ -165,7 +165,7 @@ sensor:
       if (raw_rpm > 10.0f) { // If we have > 10 RPM, consider it a real 4-pin signal
         return raw_rpm;
       }
-      
+
       // No 4rd wire / tacho signal: show calculated RPM
       float speed = get_current_target_speed();
       if (speed < 0.05f) return 0.0f; // Fan is off

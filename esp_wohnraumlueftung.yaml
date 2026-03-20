@@ -59,6 +59,7 @@ esphome:
       # Show correct state and start 30s UI timeout
       - script.execute: ui_timeout_script
       - script.execute: fan_speed_update
+  name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
 
 # ---------------------------------------------------------
 # GLOBAL VARIABLES (State Memory)
