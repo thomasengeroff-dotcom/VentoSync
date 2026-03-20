@@ -183,13 +183,20 @@ ventilation_logic:
 # Configures peer-to-peer communication with the Slave/Consumer device
 espnow:
   peers:
-    # - "98:A3:16:85:96:70" # Target MAC Address (Slave)
     - "FF:FF:FF:FF:FF:FF" # Broadcast for Discovery/Sync
+  
+  # on_receive ONLY triggers for registered peers (defined above).
+  # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
+  on_broadcast:
+    - lambda: |-
+        std::vector<uint8_t> packet(data, data + size);
+        handle_espnow_receive(packet);
+  
+  # For robustness, we also handle registered peers (e.g. if we add them dynamically)
   on_receive:
-    then:
-      - lambda: |-
-          std::vector<uint8_t> packet(data, data + size);
-          handle_espnow_receive(packet);
+    - lambda: |-
+        std::vector<uint8_t> packet(data, data + size);
+        handle_espnow_receive(packet);
 
 # packet_transport:
 #   - platform: espnow

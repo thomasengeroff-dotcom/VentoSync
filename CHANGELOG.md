@@ -4,9 +4,18 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [Unreleased]
+## [0.5.0] - 2026-03-20
 
-### Added
+### Changed
+
+- **WLAN-Stabilität (ESP32-C6)**: `power_save_mode` in `esp32c6_common.yaml` von `HIGH` auf `NONE` geändert. Behebt häufige Verbindungsabbrüche zur API und verbessert die Zuverlässigkeit von ESP-NOW.
+- **Logger-Optimierung**: Standard-Log-Level auf `DEBUG` angehoben, um Synchronisationsvorgänge besser nachvollziehen zu können.
+
+### Fixed
+
+- **ESP-NOW Analyse**: Identifikation des "Interface does not match" Fehlers im Light-Sleep-Modus (WLAN-Deaktivierung im "AUS"-Zustand).
+
+## [Unreleased]
 
 - **Echte VentoMaxx V-Kennlinie (Stopp-Modus)**: Der Lüfter wird nun exakt nach Oszilloskop-Messungen der Original-Steuerung angesteuert (50% = Stopp, V-Kurve für Richtungswechsel).
 - **Text-Sensor "Aktuelle Luftrichtung"**: Neue Entität in HA und Dashboard zur Anzeige der Strömungsrichtung ("Zuluft (Rein)", "Abluft (Raus)", "Stillstand").
@@ -24,7 +33,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - **Bereinigung Automatisierungs-Logik**: Veraltete und konkurrierende CO2-Prüfintervalle (`apply_co2_auto_control`) vollständig entfernt.
 
 - **Software-gesteuertes Fan Ramping (WRG)**: Einführung einer 5-sekündigen sanften Anlauf- und Auslauframpe bei Richtungswechseln im WRG- und Stoßlüftungs-Modus. Dies schont die Hardware und reduziert Geräusche während der Umschaltphasen. Die Intensitäts-LEDs bleiben dabei entkoppelt auf dem Zielwert.
-- **Optimierte LED-Logik & Power-Dimming**: 
+- **Optimierte LED-Logik & Power-Dimming**:
   - Die **Power-LED** dimmt bei Inaktivität (nach 60s) nun auf 20% Helligkeit herunter, anstatt vollständig zu löschen, um den Betriebszustand dezent anzuzeigen.
   - Fehler im **Boot-Selbsttest** behoben (3s LED-Lauflicht funktioniert nun zuverlässig).
   - Modus-LEDs reagieren nun unmittelbar auf Änderungen über das Home Assistant Web-Interface.

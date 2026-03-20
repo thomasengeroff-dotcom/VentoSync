@@ -47,6 +47,7 @@ switch:
   - platform: template
     name: "Fan Direction"
     id: fan_direction
+    internal: true
     optimistic: true
     turn_on_action:
       - lambda: |-
@@ -68,17 +69,19 @@ switch:
     lambda: |-
       return id(co2_auto_enabled);
     turn_on_action:
-      - lambda: |-
-          if (std::isnan(id(scd41_co2).state)) {
-            ESP_LOGW("co2_auto", "SCD41 nicht angeschlossen — CO2 Automatik kann nicht aktiviert werden");
-          } else {
-            id(co2_auto_enabled) = true;
-            ESP_LOGI("co2_auto", "CO2 Automatik aktiviert");
-          }
+        - lambda: |-
+            if (std::isnan(id(scd41_co2).state)) {
+              ESP_LOGW("co2_auto", "SCD41 nicht angeschlossen — CO2 Automatik kann nicht aktiviert werden");
+            } else {
+              id(co2_auto_enabled) = true;
+              id(ventilation_ctrl)->trigger_sync();
+              ESP_LOGI("co2_auto", "CO2 Automatik aktiviert");
+            }
     turn_off_action:
-      - lambda: |-
-          id(co2_auto_enabled) = false;
-          ESP_LOGI("co2_auto", "CO2 Automatik deaktiviert");
+        - lambda: |-
+            id(co2_auto_enabled) = false;
+            id(ventilation_ctrl)->trigger_sync();
+            ESP_LOGI("co2_auto", "CO2 Automatik deaktiviert");
 
   # ESP-NOW Peer Check (disable to suppress Master LED blinking without peers)
   - platform: template
@@ -89,13 +92,15 @@ switch:
     lambda: |-
       return id(peer_check_enabled);
     turn_on_action:
-      - lambda: |-
-          id(peer_check_enabled) = true;
-          ESP_LOGI("espnow", "Peer check enabled");
+        - lambda: |-
+            id(peer_check_enabled) = true;
+            id(ventilation_ctrl)->trigger_sync();
+            ESP_LOGI("espnow", "Peer check enabled");
     turn_off_action:
-      - lambda: |-
-          id(peer_check_enabled) = false;
-          ESP_LOGI("espnow", "Peer check disabled");
+        - lambda: |-
+            id(peer_check_enabled) = false;
+            id(ventilation_ctrl)->trigger_sync();
+            ESP_LOGI("espnow", "Peer check disabled");
 
 # ---------------------------------------------------------
 # SCRIPTS (Complex Logic)
@@ -254,6 +259,8 @@ interval:
           condition:
             lambda: "return ((esphome::VentilationController*)id(ventilation_ctrl))->pending_broadcast;"
           then:
+            - lambda: |-
+                ESP_LOGD("espnow_debug", "YAML Interval triggered: pending_broadcast is TRUE. Calling espnow.send...");
             - espnow.send:
                 address: "FF:FF:FF:FF:FF:FF" # Broadcast address for Discovery/Sync
                 data: !lambda |-

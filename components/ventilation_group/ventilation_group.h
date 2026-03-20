@@ -166,6 +166,7 @@ class VentilationController : public Component {
 
     // 3. Auto Sync Broadcast (Every sync_interval_ms)
     if (now - last_sync_tx > sync_interval_ms) {
+        ESP_LOGD("vent", "Triggering periodic sync broadcast (interval reached)");
         pending_broadcast = true; // Let YAML trigger the send
         last_sync_tx = now;
     }
@@ -186,13 +187,19 @@ class VentilationController : public Component {
   void set_sync_interval(uint32_t ms) {
       sync_interval_ms = ms;
       ESP_LOGI("vent", "Sync interval updated to %d ms", sync_interval_ms);
+      trigger_sync();
+  }
+
+  /// @brief Manually triggers a broadcast on the next 1s interval.
+  void trigger_sync() {
+    pending_broadcast = true;
   }
 
   /// @brief Sets the fan intensity level (1–10) and notifies peers.
   void set_fan_intensity(uint8_t intensity) {
       if (current_fan_intensity == intensity) return;
       current_fan_intensity = intensity;
-      ESP_LOGI("vent", "Fan Intensity updated to %d", intensity);
+      ESP_LOGI("vent", "Fan Intensity updated to %d. Setting pending_broadcast = true", intensity);
       pending_broadcast = true;
   }
 
@@ -355,6 +362,7 @@ class VentilationController : public Component {
   /// @param type  MessageType to stamp into the packet.
   /// @return Byte vector ready for espnow.send().
   std::vector<uint8_t> build_packet(MessageType type) {
+      ESP_LOGD("vent_sync", "Building packet type %d. Clearing pending_broadcast.", type);
       VentilationPacket pkt;
       pkt.magic_header = 0x42;
       pkt.floor_id = floor_id;

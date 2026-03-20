@@ -142,6 +142,7 @@ number:
       then:
         - lambda: |-
             id(automatik_min_fan_level) = (int)x;
+            id(ventilation_ctrl)->trigger_sync();
             ESP_LOGI("co2_auto", "Min fan level set to %d", (int)x);
 
   # Automatik: Max Fan Level (noise limiter)
@@ -159,6 +160,7 @@ number:
       then:
         - lambda: |-
             id(automatik_max_fan_level) = (int)x;
+            id(ventilation_ctrl)->trigger_sync();
             ESP_LOGI("co2_auto", "Max fan level set to %d", (int)x);
 
   # Automatik CO2 Grenzwert
@@ -178,6 +180,7 @@ number:
           auto call = id(pid_co2).make_call();
           call.set_target_temperature(x);
           call.perform();
+          id(ventilation_ctrl)->trigger_sync();
 
   # Automatik Feuchte Grenzwert
   - platform: template
@@ -196,6 +199,7 @@ number:
           auto call = id(pid_humidity).make_call();
           call.set_target_temperature(x);
           call.perform();
+          id(ventilation_ctrl)->trigger_sync();
 
   # -- Verhalten der Anwesenheit (Radar) Slider --
   - platform: template
@@ -211,6 +215,7 @@ number:
       - lambda: |-
           id(auto_presence_val) = x;
           id(auto_presence_slider).publish_state(x);
+          id(ventilation_ctrl)->trigger_sync();
           evaluate_auto_mode(); // Force re-eval
 
 # ---------------------------------------------------------

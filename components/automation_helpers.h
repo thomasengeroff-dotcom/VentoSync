@@ -309,6 +309,9 @@ inline void evaluate_auto_mode() {
 
     // Save local demand to controller for ESP-NOW broadcast
     // Every second, this device tells the group how much ventilation it currently demands.
+    if (std::abs(max_pid_demand - v->local_pid_demand) > 0.05f) {
+        v->trigger_sync();
+    }
     v->local_pid_demand = max_pid_demand;
 
     // Compare with peer demand if fresh (<5 mins)
@@ -855,8 +858,11 @@ inline void handle_espnow_receive(const std::vector<uint8_t>& data) {
 inline void set_ventilation_timer(float value) {
     auto *v = ventilation_ctrl;
     uint32_t ms = (uint32_t)value * 60 * 1000;
+    if (v->state_machine.ventilation_duration_ms == ms) return;
+    
     // Update the duration but keep current mode
     v->state_machine.ventilation_duration_ms = ms;
+    v->trigger_sync();
 }
 
 /// @brief Converts a minutes value from the UI slider to ms and updates sync interval.
