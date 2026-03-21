@@ -38,6 +38,7 @@ public:
   void set_pressure(sensor::Sensor *s) { pressure_ = s; }
   void set_outdoor_humidity(sensor::Sensor *s) { outdoor_humidity_ = s; }
   void set_scd41_co2(sensor::Sensor *s) { scd41_co2_ = s; }
+  void set_effective_co2(sensor::Sensor *s) { effective_co2_ = s; }
   void set_scd41_temperature(sensor::Sensor *s) { scd41_temperature_ = s; }
   void set_scd41_humidity(sensor::Sensor *s) { scd41_humidity_ = s; }
   void set_temp_zuluft(sensor::Sensor *s) { temp_zuluft_ = s; }
@@ -115,6 +116,7 @@ protected:
   sensor::Sensor *pressure_{nullptr};
   sensor::Sensor *outdoor_humidity_{nullptr};
   sensor::Sensor *scd41_co2_{nullptr};
+  sensor::Sensor *effective_co2_{nullptr};
   sensor::Sensor *scd41_temperature_{nullptr};
   sensor::Sensor *scd41_humidity_{nullptr};
   sensor::Sensor *temp_zuluft_{nullptr};

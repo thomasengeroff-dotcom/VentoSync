@@ -37,17 +37,17 @@ display:
             it.printf(0, 50, id(font_small), "Filter: %.0f Betriebstage", id(filter_operating_days_sensor).state);
           }
 
-      # Page 2: Raumklima (SCD41 & BMP390)
+      # Page 2: Raumklima (Unified CO2 & BMP390)
       - id: page_raumklima
         lambda: |-
           it.printf(0, 0, id(font_large), "Raumklima");
           it.printf(0, 20, id(font_small), "Temp (BMP390): %.1f°C", id(temperature).state);
 
-          if (id(scd41_co2).has_state()) {
-            it.printf(0, 31, id(font_small), "CO2 (SCD41): %.0f ppm %s", id(scd41_co2).state, id(scd41_co2_bewertung).state.c_str());
+          if (id(effective_co2).has_state()) {
+            it.printf(0, 31, id(font_small), "CO2: %.0f ppm %s", id(effective_co2).state, id(effective_co2_bewertung).state.c_str());
             it.printf(0, 42, id(font_small), "rF (SCD41): %.1f %%", id(scd41_humidity).state);
           } else {
-            it.printf(0, 31, id(font_small), "CO2 (SCD41): N/A");
+            it.printf(0, 31, id(font_small), "CO2: N/A");
           }
 
           it.printf(0, 53, id(font_small), "Druck (BMP390): %.1f hPa", id(pressure).state);

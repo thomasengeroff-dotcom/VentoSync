@@ -6,10 +6,6 @@ globals:
     type: bool
     initial_value: "true" # Start by incrementing up to 10
     restore_value: no
-  - id: max_led_brightness
-    type: float
-    initial_value: "0.8"
-    restore_value: yes
 
 # ---------------------------------------------------------
 # PID CLIMATE CONTROLLERS (Internal)
@@ -18,9 +14,9 @@ climate:
   - platform: pid
     name: "PID CO2 Automatik"
     id: pid_co2
-    sensor: scd41_co2
-    default_target_temperature: 1000
-    cool_output: pid_co2_output
+    sensor: effective_co2
+    default_target_temperature: 1000 # Target CO2 in ppm
+    cool_output: pid_co2_output # Output for fan speed
     internal: true
     control_parameters:
       # P-Anteil: 0.002 bedeutet +20% Lüfterleistung pro 100ppm über dem Ziel.
@@ -83,8 +79,8 @@ switch:
       return id(co2_auto_enabled);
     turn_on_action:
         - lambda: |-
-            if (std::isnan(id(scd41_co2).state)) {
-              ESP_LOGW("co2_auto", "SCD41 nicht angeschlossen — CO2 Automatik kann nicht aktiviert werden");
+            if (std::isnan(id(effective_co2).state)) {
+              ESP_LOGW("co2_auto", "Kein CO2-Sensor verfügbar (SCD41/BME680) — CO2 Automatik kann nicht aktiviert werden");
             } else {
               id(co2_auto_enabled) = true;
               id(ventilation_ctrl)->trigger_sync();
@@ -302,8 +298,11 @@ interval:
       - lambda: |-
           fan_speed_update->execute();
 
+  # --- Status & Error Monitoring ---
+
   # Master LED Error Check: Blink if WiFi disconnected or no ESP-NOW peer within 5 min
-  - interval: 5s
+  # Recurring check every 30s ensures errors are caught even if no other state changes.
+  - interval: 30s
     then:
       - lambda: |-
           check_master_led_error();

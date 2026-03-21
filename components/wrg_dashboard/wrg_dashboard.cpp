@@ -111,7 +111,7 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["temperature"] = get_f(this->temperature_);
   doc["pressure"] = get_f(this->pressure_);
   doc["outdoor_humidity"] = get_f(this->outdoor_humidity_);
-  doc["scd41_co2"] = get_f(this->scd41_co2_);
+  doc["scd41_co2"] = get_f(this->effective_co2_ ? this->effective_co2_ : this->scd41_co2_);
   doc["scd41_temperature"] = get_f(this->scd41_temperature_);
   doc["scd41_humidity"] = get_f(this->scd41_humidity_);
   doc["temp_zuluft"] = get_f(this->temp_zuluft_);
@@ -143,10 +143,12 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["auto_presence_slider"] = get_n(this->auto_presence_slider_);
 
   JsonArray peers_array = doc["peers"].to<JsonArray>();
+  
+  // Peer devices from VentilationController
   if (ventilation_ctrl != nullptr) {
       uint32_t now = millis();
       for (const auto& peer : ventilation_ctrl->peers) {
-          if (now - peer.last_seen_ms < 300000) { // Only show peers seen in the last 5 mins
+          if (now - peer.last_seen_ms < 900000) { // Only show peers seen in the last 15 mins
               JsonObject p = peers_array.add<JsonObject>();
               p["device_id"] = peer.device_id;
               p["mode"] = peer.current_mode;

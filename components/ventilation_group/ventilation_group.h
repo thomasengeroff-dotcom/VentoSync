@@ -94,7 +94,7 @@ class VentilationController : public Component {
   // --- STATE ---
   VentilationStateMachine state_machine;  ///< Pure-logic state machine (no HW deps).
   
-  uint32_t sync_interval_ms = 10800000;   ///< Auto-sync broadcast interval (default 3 h).
+  uint32_t sync_interval_ms = 60000;      ///< Auto-sync broadcast interval (default 1 min for dashboard).
   uint8_t current_fan_intensity = 5;      ///< Cached fan intensity (1–10).
 
   // --- TEMPERATURE SENSOR SHARING ---
@@ -245,7 +245,7 @@ class VentilationController : public Component {
           return false;
       }
       if (pkt->device_id == device_id) {
-          ESP_LOGW("vent_sync", "Ignored own packet (device %d). Check for ID collision!", device_id);
+          ESP_LOGW("vent_sync", "Ignored own packet (device %d). Check for ID collision if this is not a loopback!", device_id);
           return false;
       }
       

@@ -15,6 +15,8 @@
 // Core and Component Headers
 #include "esphome/components/globals/globals_component.h"
 #include "esphome/components/script/script.h"
+#include "esphome/components/template/sensor/template_sensor.h"
+#include "esphome/components/template/text_sensor/template_text_sensor.h"
 #include "esphome/components/template/select/template_select.h"
 #include "esphome/components/template/number/template_number.h"
 #include "esphome/components/template/switch/template_switch.h"
@@ -89,6 +91,7 @@ extern esphome::ledc::LEDCOutput *fan_pwm_primary;   ///< Primary PWM output (GP
 /// @name Sensors
 /// @{
 extern esphome::sensor::Sensor *scd41_co2;           ///< SCD41 CO2 sensor.
+extern esphome::template_::TemplateSensor *effective_co2;       ///< Unified CO2 sensor (SCD41 or BME680 fallback).
 extern esphome::sensor::Sensor *temperature;         ///< Room Temperature (SCD41)
 extern esphome::ntc::NTC *temp_zuluft;         ///< Supply Air Temperature (NTC Inside)
 extern esphome::ntc::NTC *temp_abluft;         ///< Exhaust Air Temperature (NTC Outside)
@@ -678,24 +681,38 @@ inline void update_leds_logic() {
     const int level = fan_intensity_level->value();
     
     // Mapping Logic (1-10 -> 5 LEDs)
-    if (level >= 10) {
-      status_led_l1->turn_on().set_brightness(max_b).perform(); 
-      status_led_l2->turn_on().set_brightness(max_b).perform();
-      status_led_l3->turn_on().set_brightness(max_b).perform(); 
-      status_led_l4->turn_on().set_brightness(max_b).perform();
-      status_led_l5->turn_on().set_brightness(max_b).perform();
-    } else {
-       switch(level) {
-         case 1: status_led_l1->turn_on().set_brightness(max_b).perform(); break;
-         case 2: status_led_l1->turn_on().set_brightness(max_b).perform(); status_led_l2->turn_on().set_brightness(max_b).perform(); break;
-         case 3: status_led_l2->turn_on().set_brightness(max_b).perform(); break;
-         case 4: status_led_l2->turn_on().set_brightness(max_b).perform(); status_led_l3->turn_on().set_brightness(max_b).perform(); break;
-         case 5: status_led_l3->turn_on().set_brightness(max_b).perform(); break;
-         case 6: status_led_l3->turn_on().set_brightness(max_b).perform(); status_led_l4->turn_on().set_brightness(max_b).perform(); break;
-         case 7: status_led_l4->turn_on().set_brightness(max_b).perform(); break;
-         case 8: status_led_l4->turn_on().set_brightness(max_b).perform(); status_led_l5->turn_on().set_brightness(max_b).perform(); break;
-         case 9: status_led_l5->turn_on().set_brightness(max_b).perform(); break;
-       }
+    switch(level) {
+        case 10:
+            status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
+            status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
+            status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
+            status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
+            status_led_l5->turn_on().set_brightness(1.0f * max_b).perform();
+            break;
+        default: {
+            // Level 1-9: 5 LEDs with half/full brightness (2 steps per LED)
+            // Stufe 1: L1 50%, Stufe 2: L1 100%, Stufe 3: L1 100%+L2 50%, etc.
+            int full_leds = (level) / 2;
+            bool half_step = (level % 2 != 0);
+            
+            if (level == 1) { // Special case for very first step
+                status_led_l1->turn_on().set_brightness(0.5f * max_b).perform();
+            } else {
+                if (full_leds >= 1) status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
+                if (full_leds >= 2) status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
+                if (full_leds >= 3) status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
+                if (full_leds >= 4) status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
+                if (full_leds >= 5) status_led_l5->turn_on().set_brightness(1.0f * max_b).perform();
+
+                if (half_step) {
+                   if (full_leds == 1) status_led_l2->turn_on().set_brightness(0.5f * max_b).perform();
+                   else if (full_leds == 2) status_led_l3->turn_on().set_brightness(0.5f * max_b).perform();
+                   else if (full_leds == 3) status_led_l4->turn_on().set_brightness(0.5f * max_b).perform();
+                   else if (full_leds == 4) status_led_l5->turn_on().set_brightness(0.5f * max_b).perform();
+                }
+            }
+            break;
+        }
     }
   }
 

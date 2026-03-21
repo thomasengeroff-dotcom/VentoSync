@@ -22,6 +22,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional("pressure_id"):                 cv.use_id(sensor.Sensor),
         cv.Optional("outdoor_humidity_id"):         cv.use_id(sensor.Sensor),
         cv.Optional("scd41_co2_id"):                cv.use_id(sensor.Sensor),
+        cv.Optional("effective_co2_id"):            cv.use_id(sensor.Sensor),
         cv.Optional("scd41_temperature_id"):        cv.use_id(sensor.Sensor),
         cv.Optional("scd41_humidity_id"):           cv.use_id(sensor.Sensor),
         cv.Optional("temp_zuluft_id"):              cv.use_id(sensor.Sensor),

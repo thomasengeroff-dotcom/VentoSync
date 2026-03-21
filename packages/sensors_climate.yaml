@@ -1,6 +1,13 @@
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
 # ---------------------------------------------------------
+bme68x_bsec2_i2c:
+  address: 0x77
+  model: bme680
+  operating_age: 28d
+  sample_rate: LP
+  supply_voltage: 3.3V
+
 sensor:
   # BMP390 Environmental Data (Temperature & Pressure)
   - platform: bmp3xx_i2c
@@ -201,18 +208,55 @@ sensor:
     target_count:
       name: "Radar Total Target Count"
 
+  # ---------------------------------------------------------
+  # BME680 GAS SENSOR (Environmental Fallback)
+  # ---------------------------------------------------------
+  - platform: bme68x_bsec2
+    temperature:
+      name: "BME680 Temperatur"
+      id: bme680_temperature
+    humidity:
+      name: "BME680 Luftfeuchtigkeit"
+      id: bme680_humidity
+    pressure:
+      name: "BME680 Luftdruck"
+      id: bme680_pressure
+    co2_equivalent:
+      name: "BME680 CO2 Äquivalent"
+      id: bme680_co2
+    iaq:
+      name: "BME680 IAQ Index"
+      id: bme680_iaq
+
+  # ---------------------------------------------------------
+  # EFFECTIVE CO2 SENSOR (Unified Fallback)
+  # ---------------------------------------------------------
+  # Prefers SCD41 (True CO2) but falls back to BME680 (eCO2) if not connected.
+  - platform: template
+    name: "Effektiver CO2 Wert"
+    id: effective_co2
+    unit_of_measurement: "ppm"
+    icon: "mdi:molecule-co2"
+    update_interval: 10s
+    accuracy_decimals: 0
+    lambda: |-
+      if (!std::isnan(id(scd41_co2).state)) {
+        return id(scd41_co2).state;
+      }
+      return id(bme680_co2).state;
+
 # ---------------------------------------------------------
 # TEXT SENSORS (Status & Classification)
 # ---------------------------------------------------------
 text_sensor:
-  # Human-readable CO2 classification (Ausgezeichnet, Gut, etc.)
+  # Human-readable CO2 classification based on effective value
   - platform: template
     name: "CO2 Bewertung"
-    id: scd41_co2_bewertung
-    icon: "mdi:molecule-co2"
+    id: effective_co2_bewertung
+    icon: "mdi:circle-slice-8"
     update_interval: 60s
     lambda: |-
-      return get_co2_classification(id(scd41_co2).state);
+      return get_co2_classification(id(effective_co2).state);
 
 # ---------------------------------------------------------
 # HLK-LD2450 RADAR

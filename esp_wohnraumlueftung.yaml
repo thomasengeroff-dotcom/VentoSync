@@ -153,6 +153,12 @@ globals:
     initial_value: "true"
     restore_value: true
 
+  # LED Brightness control
+  - id: max_led_brightness
+    type: float
+    initial_value: "0.8"
+    restore_value: true
+
 # ---------------------------------------------------------
 # VENTILATION COMPONENT (External)
 # ---------------------------------------------------------
@@ -204,19 +210,9 @@ espnow:
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet);
 
-# packet_transport:
-#   - platform: espnow
-#     # Encryption is currently disabled/commented out
-#     # encryption: "HubSecret123"
-#     peer_address: "98:A3:16:85:96:70"
-#     sensors:
-#       # Data sent over ESP-NOW to the other device
-#       - iaq
-#       - temperature
-
 fan:
   - platform: speed
-    output: fan_pwm_primary # Changed from fan_pwm_output
+    output: fan_pwm_primary
     name: "Lüfter"
     id: lueftung_fan
     speed_count: 100 # 1-100% Granularity
@@ -230,6 +226,7 @@ wrg_dashboard:
   pressure_id: pressure
   outdoor_humidity_id: outdoor_humidity
   scd41_co2_id: scd41_co2
+  effective_co2_id: effective_co2
   scd41_temperature_id: scd41_temperature
   scd41_humidity_id: scd41_humidity
   temp_zuluft_id: temp_zuluft
@@ -239,7 +236,7 @@ wrg_dashboard:
   filter_operating_days_id: filter_operating_days_sensor
   filter_change_alarm_id: filter_change_alarm
   radar_presence_id: radar_presence
-  scd41_co2_bewertung_id: scd41_co2_bewertung
+  scd41_co2_bewertung_id: effective_co2_bewertung
   device_id_id: dashboard_device_id
   floor_id_id: dashboard_floor_id
   room_id_id: dashboard_room_id
