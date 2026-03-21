@@ -1,4 +1,17 @@
 # ---------------------------------------------------------
+# GLOBALS
+# ---------------------------------------------------------
+globals:
+  - id: intensity_bounce_up
+    type: bool
+    initial_value: "true" # Start by incrementing up to 10
+    restore_value: no
+  - id: max_led_brightness
+    type: float
+    initial_value: "0.8"
+    restore_value: yes
+
+# ---------------------------------------------------------
 # PID CLIMATE CONTROLLERS (Internal)
 # ---------------------------------------------------------
 climate:
@@ -161,6 +174,18 @@ script:
       - wifi.enable:
       - switch.turn_on: pca9685_oe
 
+  # Intensity Hold Handler: every 1s, trigger the bounce logic in automation_helpers.h
+  - id: intensity_hold_handler
+    mode: restart
+    then:
+      - delay: 750ms # Wait slightly to distinguish from a short click
+      - while:
+          condition:
+            lambda: return id(button_level).state;
+          then:
+            - lambda: handle_intensity_bounce();
+            - delay: 1000ms
+
 # ---------------------------------------------------------
 # CONTROL PANEL BUTTONS (Input)
 # ---------------------------------------------------------
@@ -224,7 +249,7 @@ binary_sensor:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON
     name: "Button Fan Intensity"
-    id: button_leve
+    id: button_level
     # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
     filters:
       - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
@@ -232,15 +257,14 @@ binary_sensor:
     on_click:
       # Short press: Cycle through intensity levels 1→10→1
       - min_length: 50ms
-        max_length: 999ms
+        max_length: 749ms # Slightly shorter than the hold handler delay
         then:
           - lambda: |-
               handle_button_level_click();
-      # Long press (≥1s): Turn off system power
-      - min_length: 1000ms
-        max_length: 60000ms
-        then:
-          - lambda: handle_button_power_long_click();
+    on_press:
+      - script.execute: intensity_hold_handler
+    on_release:
+      - script.stop: intensity_hold_handler
 
 button:
   - platform: restart

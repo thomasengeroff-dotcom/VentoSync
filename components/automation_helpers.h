@@ -67,9 +67,10 @@ extern esphome::template_::TemplateNumber *config_device_id;      ///< Persisten
 extern esphome::template_::TemplateSelect *config_phase;          ///< Persistent Phase A/B selection.
 /// @}
 
-extern esphome::globals::GlobalsComponent<bool> *ui_active;     ///< UI active flag (30s dimming).
 extern esphome::globals::RestoringGlobalsComponent<bool> *peer_check_enabled; ///< ESP-NOW peer check on/off.
 extern esphome::template_::TemplateSwitch *peer_check_switch;   ///< HA switch for peer check.
+extern esphome::globals::GlobalsComponent<bool> *intensity_bounce_up; ///< Hold-to-cycle direction.
+extern esphome::globals::RestoringGlobalsComponent<float> *max_led_brightness; ///< Global LED brightness limit.
 
 /// @name Scripts
 /// @{
@@ -608,10 +609,12 @@ inline void update_leds_logic() {
     return;
   }
 
+  const float max_b = max_led_brightness->value();
+
   // 1. Case: UI Inactive (Dimming/Night mode)
   if (!ui_active->value()) {
-    // Dim Power LED to 20%
-    status_led_power->turn_on().set_brightness(0.2f).perform();
+    // Dim Power LED to 20% of max
+    status_led_power->turn_on().set_brightness(0.2f * max_b).perform();
     
     // Turn off all others
     status_led_mode_wrg->turn_off().perform();
@@ -628,8 +631,8 @@ inline void update_leds_logic() {
 
   // 2. Case: UI Active and System On (Normal operation)
   
-  // 1. Power LED (100% Brightness)
-  status_led_power->turn_on().set_brightness(1.0f).perform();
+  // 1. Power LED (100% of max)
+  status_led_power->turn_on().set_brightness(max_b).perform();
 
   // 2. Mode LEDs
   status_led_mode_wrg->turn_off().perform();
@@ -640,21 +643,26 @@ inline void update_leds_logic() {
       // Smart-Automatik: Left LED pulses slowly to distinguish from manual WRG
       auto call = status_led_mode_wrg->turn_on();
       call.set_effect("Automatik Pulse");
+      // Note: Pulse uses YAML-defined min/max but respects the output's overall scale if set.
+      // Since we don't have output-level scaling, the pulse will use its YAML values.
+      // But we can at least ensure it starts with the right target.
       call.perform();
     } else if (current_mode == esphome::MODE_ECO_RECOVERY) {
       // Manual WRG: Left LED solid on
       auto call = status_led_mode_wrg->turn_on();
       call.set_effect("None");
+      call.set_brightness(max_b);
       call.perform();
     } else if (current_mode == esphome::MODE_STOSSLUEFTUNG) {
       // Stoßlüftung: Right LED on
-      status_led_mode_vent->turn_on().perform();
+      status_led_mode_vent->turn_on().set_brightness(max_b).perform();
     } else if (current_mode == esphome::MODE_VENTILATION) {
       // Durchlüften: Both LEDs on (solid)
       auto call_wrg = status_led_mode_wrg->turn_on();
       call_wrg.set_effect("None");
+      call_wrg.set_brightness(max_b);
       call_wrg.perform();
-      status_led_mode_vent->turn_on().perform();
+      status_led_mode_vent->turn_on().set_brightness(max_b).perform();
     }
   }
 
@@ -671,20 +679,22 @@ inline void update_leds_logic() {
     
     // Mapping Logic (1-10 -> 5 LEDs)
     if (level >= 10) {
-      status_led_l1->turn_on().perform(); status_led_l2->turn_on().perform();
-      status_led_l3->turn_on().perform(); status_led_l4->turn_on().perform();
-      status_led_l5->turn_on().perform();
+      status_led_l1->turn_on().set_brightness(max_b).perform(); 
+      status_led_l2->turn_on().set_brightness(max_b).perform();
+      status_led_l3->turn_on().set_brightness(max_b).perform(); 
+      status_led_l4->turn_on().set_brightness(max_b).perform();
+      status_led_l5->turn_on().set_brightness(max_b).perform();
     } else {
        switch(level) {
-         case 1: status_led_l1->turn_on().perform(); break;
-         case 2: status_led_l1->turn_on().perform(); status_led_l2->turn_on().perform(); break;
-         case 3: status_led_l2->turn_on().perform(); break;
-         case 4: status_led_l2->turn_on().perform(); status_led_l3->turn_on().perform(); break;
-         case 5: status_led_l3->turn_on().perform(); break;
-         case 6: status_led_l3->turn_on().perform(); status_led_l4->turn_on().perform(); break;
-         case 7: status_led_l4->turn_on().perform(); break;
-         case 8: status_led_l4->turn_on().perform(); status_led_l5->turn_on().perform(); break;
-         case 9: status_led_l5->turn_on().perform(); break;
+         case 1: status_led_l1->turn_on().set_brightness(max_b).perform(); break;
+         case 2: status_led_l1->turn_on().set_brightness(max_b).perform(); status_led_l2->turn_on().set_brightness(max_b).perform(); break;
+         case 3: status_led_l2->turn_on().set_brightness(max_b).perform(); break;
+         case 4: status_led_l2->turn_on().set_brightness(max_b).perform(); status_led_l3->turn_on().set_brightness(max_b).perform(); break;
+         case 5: status_led_l3->turn_on().set_brightness(max_b).perform(); break;
+         case 6: status_led_l3->turn_on().set_brightness(max_b).perform(); status_led_l4->turn_on().set_brightness(max_b).perform(); break;
+         case 7: status_led_l4->turn_on().set_brightness(max_b).perform(); break;
+         case 8: status_led_l4->turn_on().set_brightness(max_b).perform(); status_led_l5->turn_on().set_brightness(max_b).perform(); break;
+         case 9: status_led_l5->turn_on().set_brightness(max_b).perform(); break;
        }
     }
   }
@@ -719,12 +729,15 @@ inline void check_master_led_error() {
         // Only activate if not already blinking (avoid re-triggering every interval)
         auto call = status_led_master->turn_on();
         call.set_effect("Error Blink");
+        // Effect takes care of its own brightness normally, but we could try to scale it.
+        // For now, let error blink be prominent or respect max_b.
         call.perform();
     } else {
         // All clear: check if UI is active so we can show Master status, else turn off
         if (ui_active->value()) {
             auto call = status_led_master->turn_on();
             call.set_effect("None");
+            call.set_brightness(max_led_brightness->value());
             call.perform();
         } else {
             status_led_master->turn_off().perform();
@@ -966,6 +979,42 @@ inline void handle_button_level_click() {
     update_leds->execute();            // Show new intensity level LEDs now
     ui_timeout_script->execute();      // Start 30s auto-dim timer
     ESP_LOGI("button", "Intensity level: %d", level);
+}
+
+/// @brief Handles one step of the "hold-to-cycle" bounce logic.
+inline void handle_intensity_bounce() {
+    if (!ventilation_enabled->value()) return;
+    int current_level = fan_intensity_level->value();
+    bool up = intensity_bounce_up->value();
+
+    if (up) {
+        if (current_level < 10) {
+            current_level++;
+        } else {
+            // Reached top, switch to down
+            current_level = 9;
+            intensity_bounce_up->value() = false;
+        }
+    } else {
+        if (current_level > 1) {
+            current_level--;
+        } else {
+            // Reached bottom, switch to up
+            current_level = 2;
+            intensity_bounce_up->value() = true;
+        }
+    }
+
+    // Apply the new level (sync with UI, hardware, and LEDs)
+    fan_intensity_level->value() = current_level;
+    fan_intensity_display->publish_state(current_level);
+    ventilation_ctrl->set_fan_intensity(current_level);
+    fan_speed_update->execute();
+    ui_active->value() = true;
+    update_leds->execute();
+    ui_timeout_script->execute();
+
+    ESP_LOGI("button", "Intensity bounce: %d (Direction: %s)", current_level, up ? "UP" : "DOWN");
 }
 
 /// @brief Central wrapper to create a fully populated VentilationPacket.

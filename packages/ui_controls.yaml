@@ -35,9 +35,9 @@ light:
     effects:
       - pulse:
           name: "Automatik Pulse"
-          transition_length: 1s
-          update_interval: 2s
-          min_brightness: 15%
+          transition_length: 3.5s
+          update_interval: 3.5s
+          min_brightness: 5%
           max_brightness: 100%
   - platform: monochromatic
     output: out_led_vent
@@ -126,6 +126,23 @@ number:
       then:
         - lambda: |-
             set_fan_intensity_slider(x);
+
+  - platform: template
+    name: "Maximale LED Helligkeit"
+    id: led_max_brightness_config
+    icon: "mdi:brightness-6"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 5
+    initial_value: 80
+    optimistic: true
+    set_action:
+      then:
+        - lambda: |-
+            id(max_led_brightness) = x / 100.0f;
+            id(update_leds).execute();
+            ESP_LOGI("ui", "Max LED brightness set to %.2f", id(max_led_brightness));
 
   # Automatik: Min Fan Level (moisture protection)
   - platform: template
