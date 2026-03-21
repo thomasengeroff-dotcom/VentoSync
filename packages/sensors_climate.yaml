@@ -86,7 +86,7 @@ sensor:
     id: ntc_innen_source
     pin: GPIO1 # Pin D1
     attenuation: 12db # For 0-3.3V range
-    update_interval: 1000ms
+    update_interval: 5s
     internal: true
 
   # NTC Außen - Outdoor/exhaust air temperature measurement
@@ -118,7 +118,7 @@ sensor:
     id: ntc_aussen_source
     pin: GPIO0 # Pin D0
     attenuation: 12db # For 0-3.3V range
-    update_interval: 1000ms
+    update_interval: 5s
     internal: true
 
   # ---------------------------------------------------------
@@ -133,7 +133,7 @@ sensor:
     state_class: "measurement"
     accuracy_decimals: 1
     icon: "mdi:percent"
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       return calculate_heat_recovery_efficiency(
         id(temperature).state,     // Room temperature from BMP390
@@ -161,7 +161,9 @@ sensor:
     state_class: "measurement"
     accuracy_decimals: 0
     icon: "mdi:speedometer"
-    update_interval: 1s
+    update_interval: 2s
+    filters:
+      - delta: 20 # Only update if RPM changes by > 20
     lambda: |-
       float raw_rpm = id(fan_rpm_pulse).state;
       if (raw_rpm > 10.0f) { // If we have > 10 RPM, consider it a real 4-pin signal
@@ -187,11 +189,11 @@ sensor:
     state_class: "measurement"
     accuracy_decimals: 1
     icon: "mdi:fan-speed-1"
-    update_interval: 500ms
+    update_interval: 2s
     lambda: |-
       return last_fan_pwm_level * 100.0f;
-    #filters:
-    #  - delta: 0.5 # Nur senden, wenn Änderung > 0.5% (reduziert HA-Traffic)
+    filters:
+      - delta: 0.5 # Nur senden, wenn Änderung > 0.5% (reduziert HA-Traffic & CPU)
 
   # HLK-LD2450 Sensor
   - platform: ld2450
@@ -208,7 +210,7 @@ text_sensor:
     name: "CO2 Bewertung"
     id: scd41_co2_bewertung
     icon: "mdi:molecule-co2"
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       return get_co2_classification(id(scd41_co2).state);
 

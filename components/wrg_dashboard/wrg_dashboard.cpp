@@ -30,6 +30,13 @@ void WrgDashboard::setup() {
 }
 
 void WrgDashboard::loop() {
+  static uint32_t last_check = 0;
+  uint32_t now = millis();
+  if (now - last_check < 100) {
+    return;
+  }
+  last_check = now;
+
   std::vector<DashboardAction> todo;
 
   {

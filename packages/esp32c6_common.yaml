@@ -29,7 +29,7 @@ esp32:
 # Enables serial logging over USB-C
 logger:
   hardware_uart: USB_SERIAL_JTAG
-  level: DEBUG # Explicitly set for troubleshooting
+  level: INFO # Reduced from DEBUG for performance
 
 # ---------------------------------------------------------
 # HOME ASSISTANT API
