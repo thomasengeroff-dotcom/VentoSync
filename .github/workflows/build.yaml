@@ -14,9 +14,16 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.2.0
 
       - name: ESPHome Builder
+        id: esphome-build
         uses: esphome/build-action@v7.2.0
         with:
           yaml-file: esp_wohnraumlueftung.yaml
+
+      - name: Upload ESPHome Binaries
+        uses: actions/upload-artifact@v7.2.0
+        with:
+          name: firmware-${{ steps.esphome-build.outputs.name }}
+          path: ${{ steps.esphome-build.outputs.name }}
