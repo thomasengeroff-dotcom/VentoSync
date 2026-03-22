@@ -1,0 +1,22 @@
+name: Build ESPHome Firmware
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ESPHome Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build ESPHome Firmware
+        uses: esphome/build-action@v4.0.0
+        with:
+          yaml-file: esp_wohnraumlueftung.yaml

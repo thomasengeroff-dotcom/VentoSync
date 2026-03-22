@@ -87,20 +87,22 @@ In zukünftigen Versionen werde ich diesen Modus weiter optimieren, um den Komfo
 - 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert.
 Natürlich kann dieser Sensor auch für andere Automatisierungen in Home Assistant genutzt werden.
 - 📊 **Echte VentoMaxx V-Kennlinie**: Der Lüfter wird exakt nach den physikalischen Parametern der Original-Hardware gesteuert (50% PWM = Stopp-Zone, lineare Skalierung in beide Richtungen), was eine hochpräzise und materialschonende Regelung ermöglicht.
+- **Virtuelle Drehzahlberechnung:** Intelligente virtuelle Drehzahlberechnung (4200 RPM @ 100%) als Fallback für den Standard-Lüfter ohne Tacho-Signal.
 - 🔄 **Klartext-Richtungsanzeige**: Eine neue Sensor-Entität zeigt jederzeit die aktuelle Luftrichtung ("Zuluft (Rein)", "Abluft (Raus)" oder "Stillstand") an, was die Diagnose und Überwachung der Synchronisation erheblich vereinfacht.
 
 ### ⚡ Extrem niedriger Stromverbrauch
 
 Das VentoMaxx System mit dieser ESPHome Steuerung arbeitet überragend effizient. Durch die Nutzung eines hochwertigen Traco-Netzteils und der präzisen PWM-Steuerung des ebm-papst Motors liegt die reine Wirkleistung (gemessen an 230V) in einem Bereich, der viele kommerzielle Anlagen deutlich unterbietet:
 
-- **Stufe 1 (Grundlüftung):** ~1,9 - 2,1 Watt *(ca. 5,25 € / Jahr)*
-- **Stufe 3 (Mittlere Lüftung):** ~2,6 - 2,9 Watt *(ca. 7,35 € / Jahr)*
-- **Stufe 5 (Erhöhte Last):** ~3,7 - 3,9 Watt *(ca. 10,00 € / Jahr)*
-- **Stufe 10 (Maximalleistung):** ~5,0 - 5,9 Watt *(ca. 15,00 € / Jahr)*
+- **Stufe 1 (Grundlüftung):** ~2,7 - 2,9 Watt *(ca. 7,36 € / Jahr)*
+- **Stufe 5 (Erhöhte Last):** ~3,2 - 3,7 Watt *(ca. 9,10 € / Jahr)*
+- **Stufe 10 (Maximalleistung):** ~5,0 - 6,0 Watt *(ca. 15,75 € / Jahr)*
 
-Selbst bei ganzjährigem 24/7-Dauerbetrieb auf der *absoluten Maximalstufe (10)* belaufen sich die nominellen Stromkosten (bei 0,30 €/kWh) auf lediglich rund 15 Euro im Jahr. Im meist genutzten Automatik-Modus (Werte pendeln nachts oder bei Abwesenheit auf Stufe 1 bis 3) liegen die realen Betriebskosten bei extrem sparsamen **ca. 6 bis 7 Euro pro Jahr** für die gesamte Einheit.
+Selbst bei ganzjährigem 24/7-Dauerbetrieb auf der *absoluten Maximalstufe (10)* belaufen sich die nominellen Stromkosten (bei 0,30 €/kWh) auf lediglich rund 15 Euro im Jahr. Im meist genutzten Automatik-Modus (Werte pendeln nachts oder bei Abwesenheit auf Stufe 1 bis 3) liegen die realen Betriebskosten bei extrem sparsamen **ca. 7 bis 8,50 Euro pro Jahr** für die gesamte Einheit.
 
 *Besonders bemerkenswert: In diese Messwerte ist der durchgängige Betrieb aller verbauten Komponenten eingeflossen – inklusive der ESP32-Steuerung (WLAN/ESP-NOW), der Klima- und CO2-Sensoren sowie dem kontinuierlich messenden mmWave-Radar-Anwesenheitssensor!*
+
+Anmerkung: Es handelt sich hierbei um keine 100% akkurate Labormessung. Ich habe diese Werte mittels eines Shelly 1PM mini ermittelt. Dieser misst den Stromverbrauch der gesamten Einheit, inklusive der ESP32-Steuerung (WLAN/ESP-NOW), der Klima- und CO2-Sensoren sowie dem kontinuierlich messenden mmWave-Radar-Anwesenheitssensor!
 
 ### 🖥️ Bedienung am Lüftungsgerät
 
@@ -139,7 +141,7 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 - 🛡️ **Hohe Zuverlässigkeit**: Durch die direkte Punkt-zu-Punkt-Kommunikation ist das System immun gegen Überlastungen oder Störungen im herkömmlichen WLAN-Netzwerk.
 - ⚡ **Extrem geringe Latenz**: Da keine Verbindung aufgebaut oder verwaltet werden muss (handshake-frei), werden Synchronisationsbefehle nahezu verzögerungsfrei übertragen. Dies ist entscheidend für den exakten Richtungswechsel synchronisierter Lüfterpaare.
 - 🔌 **Keine Steuerleitungen**: Es müssen keine Datenkabel durch Wände gezogen werden. Die Synchronisation erfolgt "Out-of-the-box" über Funk.
-- 📡 **Automatisches Software-Filtering**: Durch den Broadcast-Modus und die projektinterne Filterung (Floor/Room ID) finden sich Geräte im gleichen Raum automatisch.
+- 📡 **Automatisches Software-Filtering**: Durch den Broadcast-Modus und die projektinterne Filterung (Floor/Room ID) finden sich Geräte im gleichen Raum automatisch. Es bedarf keiner manuellen Konfiguration von Peer-Listen oder irgendwelcher Netzwerkeinstellungen.
 - ⚙️ **Globale Konfigurations-Synchronisation**: Änderungen an Einstellungen (z. B. CO2-Grenzwerte, Timer, Automatik-Modi) an einem Gerät via Home Assistant oder Bedienpanel werden in Echtzeit drahtlos an alle anderen Geräte in derselben Raumgruppe gespiegelt. So laufen alle Lüfter stets mit identischen Parametern, ohne dass jedes Gerät einzeln konfiguriert werden muss.
 
 Weitere Informationen findest du in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
@@ -157,28 +159,26 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 - **🌙 Intelligenter Nachtmodus**:
   - Zeitgesteuerte Drosselung der Lüfterleistung zur Geräuschminimierung in Ruhephasen.
   - Flexibles Zeitmanagement und Definition spezifischer Nacht-Profile.
+  - Einbeziehung der Anwesenheitserkennung (Radar-Sensor).
+  - Einbeziehung der CO2-Werte zur Steuerung.
   - Lokal und remote aktivierbar.
 
-- **Unterdruckwächter**:
-  - Zum Differenzdruckausgleich bei gleichzeitigem Betrieb von Kamin-/Holzofen und Lüftungsanlage. Erweiterung der Hardware durch einen potentialfreien Kontakt, an welchem der Unterdruckwächter angeschlossen wird.
-
 - **Closed-Loop Drehzahlüberwachung**:
-  - Kontinuierliches Monitoring der Lüfterdrehzahl via Tacho-Signal für konstanten Volumenstrom und Fehlererkennung (4-PIN PWM Lüfter).
-  - **Neu:** Intelligente virtuelle Drehzahlberechnung (4200 RPM @ 100%) als Fallback für Standard-Lüfter ohne Tacho-Signal.
+  - Kontinuierliches Monitoring der Lüfterdrehzahl via Tacho-Signal für konstanten Volumenstrom und Fehlererkennung (nur bei 4-PIN PWM Lüfter).
 
 - **KI-gestützte Lüftungssteuerung**:
   - Proaktive KI-gestützte Lüftungssteuerung basierend auf historischen Daten und externen Prognosen (Wetter, CO2, Feuchte). Siehe [📄 KI-gestützte Lüftungssteuerung](documentation/KI-gestützte-Lüftungssteuerung.md) für Details.
 
 ## 🖱️ Eigene Platine - PCB
 
-Eine dedizierte Platine (PCB), die alle benötigten Komponenten (XIAO, Traco, Transistoren, Anschlüsse für Sensoren) kompakt vereint, wurde bereits von mir entwickelt und befindet sich aktuell in der Fertigung.
+Eine dedizierte Platine (PCB), die alle benötigten Komponenten (XIAO, Traco, Transistoren, Anschlüsse für Sensoren) kompakt vereint, wurde bereits von mir entwickelt, durch JLCPCB gefertigt und befindet sich aktuell in der Testphase.
 Besonderen Wert habe ich dabei auf Sicherheit und Qualität gelegt, da die Lüftungen in der Regel 24*7 daherhaft laufen. Auch wenn die Leistung minimal ist, hat die Sicherheit hier höchste Priorität.
 Die Komponenten wurden des weiteren so gewählt, dass eine Laufzeit >10 Jahre bedenkenlos möglich ist.
 Um zusätzliche Erweiterungen möglich zu machen, habe ich einen zusätzlichen UART-PIN-Ansschluss (H4 --> wird bereits für den Radar-Sensor genutzt), einen zusätzlichen I²C-Ansschluss (H3 --> frei) und zusätzliche GPIO-PIN-Anschlüsse (H1 --> frei: 6 GPIOs, 3V3 und GND) vorgesehen.
 
 ![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/Screenshot%202026-03-01%20175142.png)
 
-Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt positioniert für die existierende Lüftungsöffnung des Ventomaxx Gehäuses. Im Gegensatz zu vielen Billig-China-SCD41 Boards, sind hier auch beide Kondensatoren ensprechend den Herstellervorgaben montiert, ein Schlitz dient der termischen Trennung des SCD41-Sensors vom sonstigen Board und auch die Kupfer Planes wurden im unteren Bereich ausgespart, um die termische Trennung weiter zu maximieren. Die PINs haben 1,25mm Pitch und sind so positioniert, dass der SCD41 CO2-Sensor perfekt in die Lüftungsöffnung passt.
+Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt positioniert für die existierende Lüftungsöffnung des Ventomaxx Gehäuses. Im Gegensatz zu vielen Billig-China-SCD41 Boards, sind hier auch beide Kondensatoren ensprechend den Herstellervorgaben montiert, ein Schlitz dient der termischen Trennung des SCD41-Sensors vom sonstigen Board und auch die Kupfer Planes wurden im unteren Bereich ausgespart, um die termische Trennung weiter zu maximieren. Die PINs haben 1,25mm Pitch und sind so positioniert, dass der SCD41 CO2-Sensor perfekt in die Lüftungsöffnung passt. Dieses PCB befindet sich aktuell noch in der Fertigung bei JLCPCB.
 ![SCDE41 Prototype](EasyEDA-Pro/PCB%20SCD41%20Prototype%20Images/SCD41-PCB-3D-top_small.png)
 
 ---
@@ -204,13 +204,15 @@ Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) für dimmbare LEDs im VentoMaxx Panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
 
+Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [EasyEDA-Pro](EasyEDA-Pro) in der [BOM](EasyEDA-Pro/BOM_ESPHome%20Wohnraumlueftung%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv) .
+
 ### 🖱️ User Interface
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
 | **VentoMaxx Panel** | Original Panel (14-Pin FFC). 3 Taster, 9 LEDs (via PCA9685 dimmbar). | Die PIN-Belegung des Original-Panels wurde von mir vollständig durchgemessen und dokumentiert, um die exakte Ansteuerung über das eigene PCB und die Port-Expander (MCP23017/PCA9685) zu ermöglichen. |
 
-![Control-Panel Adapter](images/Ventomax%20V-WRG-1/Control-Panel%20Adapter.jpg)
+[Control-Panel Adapter](images/Ventomax%20V-WRG-1/Control-Panel%20Adapter.jpg)
 
 ---
 

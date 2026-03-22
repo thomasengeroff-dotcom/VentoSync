@@ -314,10 +314,36 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         document.getElementById("label_fan_intensity").innerText = document.getElementById("fan_intensity_display").value;
         
         // Render ESP-NOW Peers
+        document.getElementById('peers_card').classList.remove('hidden');
+        const container = document.getElementById('peers_container');
+        
+        let localPhaseBadge = "<span class='text-gray-400 font-bold px-2 py-0.5 bg-gray-700/50 rounded-full text-xs'>--</span>";
+        if (data.direction_display && data.direction_display.includes("Zuluft")) {
+            localPhaseBadge = "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>";
+        } else if (data.direction_display && data.direction_display.includes("Abluft")) {
+            localPhaseBadge = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
+        }
+        
+        const localTIn = (data.temperature !== null && data.temperature !== undefined) ? Number(data.temperature).toFixed(1) + " °C" : "--";
+        const localTOut = (data.temp_abluft !== null && data.temp_abluft !== undefined) ? Number(data.temp_abluft).toFixed(1) + " °C" : "--";
+        
+        let html = `<div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+            <div class="font-bold text-gray-300 mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
+              <span>Gerät ${data.device_id || "--"} (lokales Gerät)</span>
+              <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+            </div>
+            <div class="flex justify-between text-sm mb-2">
+                <span class="text-gray-400">Modus: <strong class="text-gray-200">${data.luefter_modus || "--"}</strong></span>
+                <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${data.fan_intensity_display || "--"}</strong> ${localPhaseBadge}</span>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
+                <span title="Temp In">In: ${localTIn}</span>
+                <span title="Temp Out">Out: ${localTOut}</span>
+                <span title="PID Demand" class="text-gray-500">PID: --</span>
+            </div>
+        </div>`;
+
         if (data.peers && data.peers.length > 0) {
-          document.getElementById('peers_card').classList.remove('hidden');
-          const container = document.getElementById('peers_container');
-          let html = '';
           data.peers.forEach(peer => {
             const modeNames = ["Aus", "WRG", "Durchlüften", "Stoßlüftung"];
             const mode = peer.mode >= 0 && peer.mode <= 3 ? modeNames[peer.mode] : "Unbekannt";
@@ -342,10 +368,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
                 </div>
             </div>`;
           });
-          container.innerHTML = html;
-        } else {
-          document.getElementById('peers_card').classList.add('hidden');
         }
+        container.innerHTML = html;
         
         // Update Chart
         const now = new Date();

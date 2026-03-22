@@ -459,6 +459,30 @@ inline float get_current_target_speed() {
     return level_to_speed(intensity);
 }
 
+/// @brief Calculates the virtual fan RPM including ramping and air direction.
+/// @param raw_rpm The physical RPM reading from the pulse counter (if any).
+inline float calculate_virtual_fan_rpm(float raw_rpm) {
+    if (raw_rpm > 10.0f) { // Real 4-pin signal
+        return raw_rpm;
+    }
+
+    float speed = get_current_target_speed();
+    float direction_multiplier = 1.0f; // Default: Zuluft (IN)
+      
+    if (ventilation_ctrl != nullptr) {
+        esphome::HardwareState state = ventilation_ctrl->state_machine.get_target_state(millis());
+        speed *= state.ramp_factor;
+        if (!state.direction_in) {
+            direction_multiplier = -1.0f; // Abluft (OUT)
+        }
+    } else if (fan_direction != nullptr && !fan_direction->state) {
+        direction_multiplier = -1.0f;
+    }
+
+    if (speed < 0.05f) return 0.0f; // Fan is off
+    return speed * 4200.0f * direction_multiplier;
+}
+
 /// @brief Updates fan speed and direction based on intensity and mode.
 /// Reads fan_direction switch for direction, calculates speed from intensity/PID,
 /// then calls set_fan_logic() which maps both into the single VarioPro PWM signal.

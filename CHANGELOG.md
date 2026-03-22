@@ -4,59 +4,22 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.6.1] - 2026-03-21
+## [0.6.14] - 2026-03-22
 
 ### Added
 
-- **Automatisierte Versionierung**: Implementierung eines `version_bump.py` Skripts, das bei jedem Compile die Patch-Version (0.6.x) automatisch erhöht und als C++ Makro (`PROJECT_VERSION`) zur Verfügung stellt.
-- **Projekt-Version Sensor**: Neue Entität in Home Assistant zur Anzeige der aktuellen Firmware-Version.
-- **Kontinuierliche Intensitäts-Anpassung**: Durch Gedrückthalten der Intensitäts-Taste werden die Stufen nun automatisch zyklisch durchlaufen (1→10→1) mit einer Geschwindigkeit von einer Stufe pro Sekunde.
-- **Optimierter Automatik-Pulse**: Das Pulsieren der LED im Automatik-Modus wurde verlangsamt (3.5s Fade) und vertieft (bis auf 5% Helligkeit), um es deutlich vom statischen WRG-Modus unterscheidbar zu machen.
-- **Globale LED-Helligkeitssteuerung**: Über einen neuen Schieberegler in Home Assistant kann die maximale Helligkeit aller LEDs (Status, Modus, Stufen) begrenzt werden (Standard: 80%).
-- **Performance-Optimierungen**: Systemweite Entlastung der CPU durch reduziertes Log-Level (INFO), intelligente Delta-Filter für Sensoren (RPM/PWM) und optimierte Taktung der Dashboard-Prozesse.
-
-### Changed
-
-- **Echtzeit-Synchronisations-Trigger**: Das System sendet nun **sofort** einen ESP-NOW Broadcast, sobald ein Richtungswechsel (Zyklus-Ende) oder ein physischer Richtungs-Toggle eintritt. Dies garantiert, dass alle Geräte im Raum ohne Latenz synchron bleiben.
-
-### Fixed
-
-- **Home Assistant Langzeitstatistiken**: `state_class: measurement` zu den Sensoren für Drehzahl hinzugefügt, um die Datenaufzeichnung in der HA-Datenbank zu reparieren.
-
-## [0.6.0] - 2026-03-20
-
-### Changed
-
-- **Echtzeit-Synchronisations-Trigger**: Das System sendet nun **sofort** einen ESP-NOW Broadcast, sobald ein Richtungswechsel (Zyklus-Ende) oder ein Phasenwechsel (Stoßlüftung) eintritt. Dies garantiert, dass alle Geräte im Raum exakt zeitgleich umschalten.
-- **ESP-NOW Broadcast Refactoring**: Umstellung von `espnow.send` auf die native `espnow.broadcast` Action in der YAML-Konfiguration für saubereren Code und bessere Kompatibilität.
-- **Unmittelbare Hardware-Reaktion**: Settermethoden für Phase (A/B) und Intensität triggern nun sofort einen Hardware-Refresh, anstatt auf den nächsten 1s-Loop zu warten.
-
-### Fixed
-
-- **Home Assistant Langzeitstatistiken**: `state_class: measurement` zu den Sensoren für Drehzahl, PWM-Ansteuerung und WRG-Effizienz hinzugefügt. Behebt die Warnung "Entität hat keine Zustandsklasse" und stellt Grafiken in HA wieder her.
-
-## [0.5.0] - 2026-03-20
-
-### Changed
-
-- **WLAN-Stabilität (ESP32-C6)**: `power_save_mode` in `esp32c6_common.yaml` von `HIGH` auf `NONE` geändert. Behebt häufige Verbindungsabbrüche zur API und verbessert die Zuverlässigkeit von ESP-NOW.
-- **Logger-Optimierung**: Standard-Log-Level auf `DEBUG` angehoben, um Synchronisationsvorgänge besser nachvollziehen zu können.
-
-### Fixed
-
-- **ESP-NOW Analyse**: Identifikation des "Interface does not match" Fehlers im Light-Sleep-Modus (WLAN-Deaktivierung im "AUS"-Zustand).
-
-## [Unreleased]
-
+- **GitHub Actions CI**: Offizielle `esphome/build-action` als `.github/workflows/build.yaml` hinterlegt, um die Firmware-Kompilierung bei jedem Git Push automatisch zu prüfen.
 - **Echte VentoMaxx V-Kennlinie (Stopp-Modus)**: Der Lüfter wird nun exakt nach Oszilloskop-Messungen der Original-Steuerung angesteuert (50% = Stopp, V-Kurve für Richtungswechsel).
 - **Text-Sensor "Aktuelle Luftrichtung"**: Neue Entität in HA und Dashboard zur Anzeige der Strömungsrichtung ("Zuluft (Rein)", "Abluft (Raus)", "Stillstand").
-- **Virtuelle Drehzahlberechnung (Fallback)**: Automatische Berechnung der RPM (4200 RPM @ 100%), falls kein physisches Tacho-Signal (4-Pin) erkannt wird.
+- **Virtuelle Drehzahlberechnung (Fallback)**: Automatische Berechnung der RPM (4200 RPM @ 100%), falls kein physisches Tacho-Signal (4-Pin) erkannt wird. Berücksichtigt weiche Anlauf-/Auslauframpen und zeigt die Luftrichtung (Abluft = negative Werte) an.
 - **Dynamische Präsenz-Kompensation (Manuelle Modi)**: Der Radar-Sensor wirkt nun als flexibler Boost/Dämpfer (+/- Stufen) in den Modi WRG, Durchlüften und Stoßlüftung.
 - **Power-Button Toggle-Funktion**: Ein kurzes Drücken des Power-Buttons wechselt nun zwischen Ein- und Ausschalten (vorher nur Einschalten möglich).
 - **Light Sleep & Hardware-Energiesparen**: Automatische Abschaltung von WLAN und PCA9685 LED-Treiber im Modus "Aus" zur signifikanten Reduzierung des Stromverbrauchs (Light Sleep Modus).
 
 ### Changed
 
+- **Dashboard UI (Lokales Gerät)**: Das eigene Gerät wird in der ESP-NOW Peer-Liste des Dashboards ab sofort permanent oben links, grau abgesetzt und als "(lokales Gerät)" markiert dargestellt.
+- **Dokumentation Stromverbrauch**: Die `Readme.md` wurde mit echten gemessenen Leistungsdaten aktualisiert (Stufe 1: ~2,8W, Stufe 5: ~3,5W, Stufe 10: ~5,5W inkl. gesamter Sensorik).
 - **Dashboard-Optimierung**: Veralteter "Test Speed Slider" entfernt und durch die dynamische Anzeige der Luftrichtung ersetzt.
 - **PWM-Logik-Invertierung**: MOSFET-Ansteuerung in `hardware_io.yaml` auf `inverted: true` gesetzt, um konsistente Spannungspegel zu gewährleisten.
 - **Radar-Logik Refactoring**: Präsenz-Kompensation aus dem Automatik-Modus entfernt (dort nun rein PID-basiert für CO2/Feuchte) und stattdessen als dynamischen Boost in manuelle Modi integriert.
@@ -239,6 +202,48 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - **WiFi-Check auf ESP-IDF**: `WiFi.isConnected()` (Arduino-only) durch `esphome::wifi::global_wifi_component->is_connected()` ersetzt, um Kompatibilität mit ESP-IDF Framework sicherzustellen.
 - **Display Typ-Fehler**: `current_option()` Rückgabetyp in `display_diagnostics.yaml` korrigiert (gibt `std::string` zurück, nicht `const char*`).
 
+## [0.6.1] - 2026-03-21
+
+### Added
+
+- **Automatisierte Versionierung**: Implementierung eines `version_bump.py` Skripts, das bei jedem Compile die Patch-Version (0.6.x) automatisch erhöht und als C++ Makro (`PROJECT_VERSION`) zur Verfügung stellt.
+- **Projekt-Version Sensor**: Neue Entität in Home Assistant zur Anzeige der aktuellen Firmware-Version.
+- **Kontinuierliche Intensitäts-Anpassung**: Durch Gedrückthalten der Intensitäts-Taste werden die Stufen nun automatisch zyklisch durchlaufen (1→10→1) mit einer Geschwindigkeit von einer Stufe pro Sekunde.
+- **Optimierter Automatik-Pulse**: Das Pulsieren der LED im Automatik-Modus wurde verlangsamt (3.5s Fade) und vertieft (bis auf 5% Helligkeit), um es deutlich vom statischen WRG-Modus unterscheidbar zu machen.
+- **Globale LED-Helligkeitssteuerung**: Über einen neuen Schieberegler in Home Assistant kann die maximale Helligkeit aller LEDs (Status, Modus, Stufen) begrenzt werden (Standard: 80%).
+- **Performance-Optimierungen**: Systemweite Entlastung der CPU durch reduziertes Log-Level (INFO), intelligente Delta-Filter für Sensoren (RPM/PWM) und optimierte Taktung der Dashboard-Prozesse.
+
+### Changed
+
+- **Echtzeit-Synchronisations-Trigger**: Das System sendet nun **sofort** einen ESP-NOW Broadcast, sobald ein Richtungswechsel (Zyklus-Ende) oder ein physischer Richtungs-Toggle eintritt. Dies garantiert, dass alle Geräte im Raum ohne Latenz synchron bleiben.
+
+### Fixed
+
+- **Home Assistant Langzeitstatistiken**: `state_class: measurement` zu den Sensoren für Drehzahl hinzugefügt, um die Datenaufzeichnung in der HA-Datenbank zu reparieren.
+
+## [0.6.0] - 2026-03-20
+
+### Changed
+
+- **Echtzeit-Synchronisations-Trigger**: Das System sendet nun **sofort** einen ESP-NOW Broadcast, sobald ein Richtungswechsel (Zyklus-Ende) oder ein Phasenwechsel (Stoßlüftung) eintritt. Dies garantiert, dass alle Geräte im Raum exakt zeitgleich umschalten.
+- **ESP-NOW Broadcast Refactoring**: Umstellung von `espnow.send` auf die native `espnow.broadcast` Action in der YAML-Konfiguration für saubereren Code und bessere Kompatibilität.
+- **Unmittelbare Hardware-Reaktion**: Settermethoden für Phase (A/B) und Intensität triggern nun sofort einen Hardware-Refresh, anstatt auf den nächsten 1s-Loop zu warten.
+
+### Fixed
+
+- **Home Assistant Langzeitstatistiken**: `state_class: measurement` zu den Sensoren für Drehzahl, PWM-Ansteuerung und WRG-Effizienz hinzugefügt. Behebt die Warnung "Entität hat keine Zustandsklasse" und stellt Grafiken in HA wieder her.
+
+## [0.5.0] - 2026-03-20
+
+### Changed
+
+- **WLAN-Stabilität (ESP32-C6)**: `power_save_mode` in `esp32c6_common.yaml` von `HIGH` auf `NONE` geändert. Behebt häufige Verbindungsabbrüche zur API und verbessert die Zuverlässigkeit von ESP-NOW.
+- **Logger-Optimierung**: Standard-Log-Level auf `DEBUG` angehoben, um Synchronisationsvorgänge besser nachvollziehen zu können.
+
+### Fixed
+
+- **ESP-NOW Analyse**: Identifikation des "Interface does not match" Fehlers im Light-Sleep-Modus (WLAN-Deaktivierung im "AUS"-Zustand).
+
 ## [0.4.0] - 2026-02-15
 
 ### Added
@@ -327,7 +332,6 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 - Logging auf DEBUG-Level reduziert (weniger Spam).
 
-[Unreleased]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.1.0...v0.2.0

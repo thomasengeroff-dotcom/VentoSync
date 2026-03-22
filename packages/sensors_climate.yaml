@@ -172,15 +172,7 @@ sensor:
     filters:
       - delta: 20 # Only update if RPM changes by > 20
     lambda: |-
-      float raw_rpm = id(fan_rpm_pulse).state;
-      if (raw_rpm > 10.0f) { // If we have > 10 RPM, consider it a real 4-pin signal
-        return raw_rpm;
-      }
-
-      // No 4rd wire / tacho signal: show calculated RPM
-      float speed = get_current_target_speed();
-      if (speed < 0.05f) return 0.0f; // Fan is off
-      return speed * 4200.0f;
+      return calculate_virtual_fan_rpm(id(fan_rpm_pulse).state);
     on_value:
       then:
         - script.execute: update_leds # Update LEDs on RPM change (optional feedback)
