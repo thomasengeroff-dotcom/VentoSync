@@ -317,38 +317,3 @@ button:
           id(filter_operating_days_sensor).publish_state(0);
           ESP_LOGI("filter", "Filter counters reset. Timestamp: %d", id(filter_last_change_ts));
 
-  # --- LED Test Buttons (Diagnostic) ---
-  - platform: template
-    name: "Test LED L1"
-    icon: "mdi:led-on"
-    entity_category: diagnostic
-    on_press:
-      - light.toggle: status_led_l1
-
-  - platform: template
-    name: "Test LED L2"
-    icon: "mdi:led-on"
-    entity_category: diagnostic
-    on_press:
-      - light.toggle: status_led_l2
-
-  - platform: template
-    name: "Test LED L3"
-    icon: "mdi:led-on"
-    entity_category: diagnostic
-    on_press:
-      - light.toggle: status_led_l3
-
-  - platform: template
-    name: "Test LED L4"
-    icon: "mdi:led-on"
-    entity_category: diagnostic
-    on_press:
-      - light.toggle: status_led_l4
-
-  - platform: template
-    name: "Test LED L5"
-    icon: "mdi:led-on"
-    entity_category: diagnostic
-    on_press:
-      - light.toggle: status_led_l5
