@@ -311,12 +311,4 @@ interval:
   - interval: 60s
     then:
       - lambda: |-
-          // Increment operating hours only when fan is ON and system is active
-          if (id(system_on) && id(ventilation_enabled)) {
-            id(filter_operating_hours) += (1.0f / 60.0f); // +1 minute in hours
-          }
-          // Set initial timestamp on first boot if not yet set
-          if (id(filter_last_change_ts) == 0 && id(sntp_time).now().is_valid()) {
-            id(filter_last_change_ts) = id(sntp_time).now().timestamp;
-            ESP_LOGI("filter", "Initial filter timestamp set: %d", id(filter_last_change_ts));
-          }
+          update_filter_analytics();

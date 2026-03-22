@@ -483,6 +483,22 @@ inline float calculate_virtual_fan_rpm(float raw_rpm) {
     return speed * 4200.0f * direction_multiplier;
 }
 
+/// @brief Updates filter operating hours and initializes transition timestamp.
+/// Called every 60s from logic_automation.yaml.
+inline void update_filter_analytics() {
+    // Increment operating hours only when fan is ON and system is active
+    if (id(system_on).state && id(ventilation_enabled).state) {
+        id(filter_operating_hours) += (1.0f / 60.0f); // +1 minute in hours
+    }
+    
+    // Set initial timestamp on first boot if not yet set
+    auto now = id(sntp_time).now();
+    if (id(filter_last_change_ts) == 0 && now.is_valid()) {
+        id(filter_last_change_ts) = now.timestamp;
+        ESP_LOGI("filter", "Initial filter timestamp set: %lld", id(filter_last_change_ts));
+    }
+}
+
 /// @brief Updates fan speed and direction based on intensity and mode.
 /// Reads fan_direction switch for direction, calculates speed from intensity/PID,
 /// then calls set_fan_logic() which maps both into the single VarioPro PWM signal.
