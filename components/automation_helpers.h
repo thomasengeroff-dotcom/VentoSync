@@ -487,7 +487,7 @@ inline float calculate_virtual_fan_rpm(float raw_rpm) {
 /// Called every 60s from logic_automation.yaml.
 inline void update_filter_analytics() {
     // Increment operating hours only when fan is ON and system is active
-    if (id(system_on).state && id(ventilation_enabled).state) {
+    if (id(system_on) && id(ventilation_enabled)) {
         id(filter_operating_hours) += (1.0f / 60.0f); // +1 minute in hours
     }
     

@@ -13,7 +13,7 @@ static const char *const TAG = "wrg_dashboard";
 
 bool WrgDashboard::canHandle(AsyncWebServerRequest *request) const {
   if (request->method() == HTTP_GET) {
-    if (request->url_to() == "/ui" || request->url_to() == "/state" || request->url_to() == "/set") {
+    if (request->url() == "/ui" || request->url() == "/state" || request->url() == "/set") {
       return true;
     }
   }
@@ -83,11 +83,11 @@ void WrgDashboard::dispatch_set_(const std::string &key, const std::string &sval
 }
 
 void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
-  if (request->url_to() == "/ui") {
+  if (request->url() == "/ui") {
     this->handle_root_(request);
-  } else if (request->url_to() == "/state") {
+  } else if (request->url() == "/state") {
     this->handle_state_(request);
-  } else if (request->url_to() == "/set") {
+  } else if (request->url() == "/set") {
     this->handle_set_(request);
   }
 }
