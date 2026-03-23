@@ -1,3 +1,28 @@
+// ==========================================================================
+// WRG Wohnraumlüftung – ESPHome Custom Component
+// https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+//
+// Copyright (c) 2026 Thomas Engeroff
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+//
+// File:        automation_helpers.h
+// Description: Helper functions for ESPHome YAML automations.
+// Author:      Thomas Engeroff
+// Created:     2026-03-07
+// Modified:    2026-03-23
+// ==========================================================================
 #pragma once
 
 /// @file automation_helpers.h
@@ -11,7 +36,6 @@
 #include <deque>
 #include <string>
 #include <vector>
-
 
 // Core and Component Headers
 #include "esphome/components/binary_sensor/binary_sensor.h"
@@ -465,7 +489,8 @@ inline void set_fan_logic(float speed, int direction) {
 /// @brief Converts a user-facing level (1-10) to actual hardware PWM speed (10%
 /// - 100%)
 inline float level_to_speed(float level) {
-  return VentilationLogic::calculate_fan_speed_from_intensity((int)std::round(level));
+  return VentilationLogic::calculate_fan_speed_from_intensity(
+      (int)std::round(level));
 }
 
 /// @brief Calculates the exact target speed (0.0 to 1.0) based on intensity
@@ -542,7 +567,8 @@ inline float calculate_virtual_fan_rpm(float raw_rpm) {
     direction_in = false;
   }
 
-  return VentilationLogic::calculate_virtual_fan_rpm(speed, direction_in, ramp_factor);
+  return VentilationLogic::calculate_virtual_fan_rpm(speed, direction_in,
+                                                     ramp_factor);
 }
 
 /// @brief Updates filter operating hours and initializes transition timestamp.
@@ -573,7 +599,8 @@ inline void update_fan_logic() {
 
   // Dynamic Cycle duration mapped to fan level:
   if (ventilation_ctrl != nullptr) {
-    uint32_t dynamic_cycle_ms = VentilationLogic::calculate_dynamic_cycle_duration(intensity);
+    uint32_t dynamic_cycle_ms =
+        VentilationLogic::calculate_dynamic_cycle_duration(intensity);
     if (ventilation_ctrl->state_machine.cycle_duration_ms != dynamic_cycle_ms) {
       ventilation_ctrl->set_cycle_duration(dynamic_cycle_ms);
     }

@@ -1,11 +1,11 @@
 {
   "name": "Wohnrauml\u00c3\u00bcftung",
-  "version": "0.6.19",
+  "version": "0.6.20",
   "builds": [
     {
       "chipFamily": "ESP32-C6",
       "ota": {
-        "md5": "53f2bc3f12c0e50d107f4d0e5428c02c",
+        "md5": "9662a0e76294fa0d52da1da93813cf72",
         "path": "firmware.bin",
         "summary": "Neueste Features und Bugfixes"
       }

@@ -1,8 +1,29 @@
-# ---------------------------------------------------------
-# This device is the master device that controls the ventilation
-# and can be used to control the ventilation from Home Assistant.
-# If there are several of these devices, they can communicate with each other via ESP-NOW.
-# ---------------------------------------------------------
+# ==========================================================================
+# WRG Wohnraumlüftung – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        esp_wohnraumlueftung.yaml
+# Description: Main ESPHome configuration for the room ventilation system.
+#              Controls fan, clusters via ESP-NOW, and integrates with HA.
+# Author:      Thomas Engeroff
+# Created:     2026-01-27
+# Modified:    2026-03-21
+# ==========================================================================
 substitutions:
   device_name: espwrglueftung
   friendly_name: "ESP-WRG-Lüftung"
