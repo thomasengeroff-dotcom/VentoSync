@@ -34,112 +34,59 @@ bool test_heat_recovery() {
     return true;
 }
 
-// ============================================================
-// [Unreleased] ebm-papst VarioPro: Single-PWM-Mapping Formel
-// direction 0 → pwm = 0.5 - (speed × 0.5)   (Richtung A, Abluft)
-// direction 1 → pwm = 0.5 + (speed × 0.5)   (Richtung B, Zuluft)
-// Soft-Stop: speed < 0.05 → immer exakt 0.50
-// ============================================================
-float calc_single_pwm(float speed, int direction) {
-    if (speed < 0.05f) return 0.5f;  // Soft-Stop-Zone
-    if (direction == 0)
-        return 0.5f - (speed * 0.5f);
-    else
-        return 0.5f + (speed * 0.5f);
-}
-
 bool test_ebmpapst_pwm_mapping() {
     // Stopp: speed=0 (< 0.05) → exakt 50 % egal welche Richtung
-    TEST_ASSERT(std::abs(calc_single_pwm(0.0f, 0) - 0.5f) < 0.001f);
-    TEST_ASSERT(std::abs(calc_single_pwm(0.0f, 1) - 0.5f) < 0.001f);
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(0.0f, 0) - 0.5f) < 0.001f);
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(0.0f, 1) - 0.5f) < 0.001f);
 
     // Soft-Stop-Grenze: speed=0.04 → 50 % (noch in Zone)
-    TEST_ASSERT(std::abs(calc_single_pwm(0.04f, 1) - 0.5f) < 0.001f);
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(0.04f, 1) - 0.5f) < 0.001f);
 
-    // Richtung A (Abluft): speed=1.0 → pwm = 0.5 - 0.5 = 0.0
-    TEST_ASSERT(std::abs(calc_single_pwm(1.0f, 0) - 0.0f) < 0.001f);
-    // Richtung A: speed=0.5 → pwm = 0.5 - 0.25 = 0.25
-    TEST_ASSERT(std::abs(calc_single_pwm(0.5f, 0) - 0.25f) < 0.001f);
+    // Richtung A (Abluft): Min Speed (0.1) -> 30% PWM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(0.1f, 0) - 0.30f) < 0.001f);
+    // Richtung A (Abluft): Max Speed (1.0) -> 5% PWM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(1.0f, 0) - 0.05f) < 0.001f);
+    // Richtung A: speed=0.55 (Mitte 0.1..1.0) -> 0.30 - 0.5 * 0.25 = 0.175
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(0.55f, 0) - 0.175f) < 0.001f);
 
-    // Richtung B (Zuluft): speed=1.0 → pwm = 0.5 + 0.5 = 1.0
-    TEST_ASSERT(std::abs(calc_single_pwm(1.0f, 1) - 1.0f) < 0.001f);
-    // Richtung B: speed=0.5 → pwm = 0.5 + 0.25 = 0.75
-    TEST_ASSERT(std::abs(calc_single_pwm(0.5f, 1) - 0.75f) < 0.001f);
-
-    // Symmetrie: Richtung A und B sind gespiegelt um 0.5
-    float pwm_a = calc_single_pwm(0.8f, 0);
-    float pwm_b = calc_single_pwm(0.8f, 1);
-    TEST_ASSERT(std::abs((pwm_a + pwm_b) - 1.0f) < 0.001f);  // a + b = 1.0
+    // Richtung B (Zuluft): Min Speed (0.1) -> 70% PWM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(0.1f, 1) - 0.70f) < 0.001f);
+    // Richtung B (Zuluft): Max Speed (1.0) -> 95% PWM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_pwm(1.0f, 1) - 0.95f) < 0.001f);
 
     return true;
-}
-
-// ============================================================
-// [Unreleased] Mindestdrehzahl Stufe 1 = 10 %
-// speed = 0.10 + ((intensity - 1) / 9) × 0.90
-// Stufe 1 → 10 %, Stufe 10 → 100 %
-// ============================================================
-float calc_fan_speed_from_intensity(int intensity) {
-    return 0.10f + ((float)(intensity - 1) / 9.0f) * 0.90f;
 }
 
 bool test_min_speed_mapping() {
-    // Stufe 1: Mindestdrehzahl 10 % (nicht mehr 0 % / Soft-Stop)
-    TEST_ASSERT(std::abs(calc_fan_speed_from_intensity(1) - 0.10f) < 0.001f);
+    // Stufe 1: Mindestdrehzahl 10 %
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_speed_from_intensity(1) - 0.10f) < 0.001f);
 
     // Stufe 10: 100 %
-    TEST_ASSERT(std::abs(calc_fan_speed_from_intensity(10) - 1.00f) < 0.001f);
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_speed_from_intensity(10) - 1.00f) < 0.001f);
 
     // Stufe 5: Mittelwert = 0.10 + (4/9)*0.90 = 0.10 + 0.40 = 0.50
-    TEST_ASSERT(std::abs(calc_fan_speed_from_intensity(5) - 0.50f) < 0.001f);
-
-    // Stufe 1 muss > Soft-Stop-Grenze (0.05) liegen → Lüfter dreht wirklich
-    TEST_ASSERT(calc_fan_speed_from_intensity(1) > 0.05f);
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_speed_from_intensity(5) - 0.50f) < 0.001f);
 
     return true;
-}
-
-// ============================================================
-// [Unreleased] Dynamischer Zyklus (Level 1: 70s -> Level 10: 50s)
-// y = 70000 - ((x - 1) * 20000 / 9)
-// ============================================================
-int calc_dynamic_cycle_duration(int intensity) {
-    return 70000 - ((intensity - 1) * 20000 / 9);
 }
 
 bool test_dynamic_cycle_duration() {
-    TEST_ASSERT(calc_dynamic_cycle_duration(1) == 70000);
-    TEST_ASSERT(calc_dynamic_cycle_duration(10) == 50000);
-    // Level 5 (ca. Mitte) = 70000 - (4 * 20000 / 9) = 70000 - 8888 = 61111
-    TEST_ASSERT(calc_dynamic_cycle_duration(5) > 61000 && calc_dynamic_cycle_duration(5) < 62000);
+    TEST_ASSERT(VentilationLogic::calculate_dynamic_cycle_duration(1) == 70000);
+    TEST_ASSERT(VentilationLogic::calculate_dynamic_cycle_duration(10) == 50000);
+    // Level 5 (ca. Mitte) = 70000 - (4 * 2222) = 70000 - 8888 = 61111 (rounded to 61000)
+    TEST_ASSERT(VentilationLogic::calculate_dynamic_cycle_duration(5) == 61000);
     return true;
 }
 
-// ============================================================
-// [Unreleased] Radar Presence Slider Logic (-5 bis +5)
-// ============================================================
-int apply_presence_slider(int fan_level, int auto_presence_val) {
-    if (auto_presence_val > 0) {
-        return std::min(10, fan_level + auto_presence_val);
-    } else if (auto_presence_val < 0) {
-        return std::max(1, fan_level + auto_presence_val); // auto_presence_val ist negativ
-    }
-    return fan_level;
-}
-
-bool test_presence_slider_logic() {
-    // Keine Änderung
-    TEST_ASSERT(apply_presence_slider(5, 0) == 5);
-    
-    // Positive Anpassung (Boost)
-    TEST_ASSERT(apply_presence_slider(5, 3) == 8);
-    TEST_ASSERT(apply_presence_slider(8, 3) == 10); // Clamped
-    TEST_ASSERT(apply_presence_slider(10, 3) == 10); // Clamped
-    
-    // Negative Anpassung (Reduce)
-    TEST_ASSERT(apply_presence_slider(5, -2) == 3);
-    TEST_ASSERT(apply_presence_slider(2, -3) == 1); // Clamped
-    TEST_ASSERT(apply_presence_slider(1, -5) == 1); // Clamped
+bool test_virtual_rpm_calculation() {
+    // 100% speed, Zuluft, no ramp -> 4200 RPM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_virtual_fan_rpm(1.0f, true, 1.0f) - 4200.0f) < 0.1f);
+    // 50% speed, Abluft, no ramp -> -2100 RPM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_virtual_fan_rpm(0.5f, false, 1.0f) - (-2100.0f)) < 0.1f);
+    // 100% speed, Zuluft, 50% ramp -> 2100 RPM
+    TEST_ASSERT(std::abs(VentilationLogic::calculate_virtual_fan_rpm(1.0f, true, 0.5f) - 2100.0f) < 0.1f);
+    // Low speed (< 0.05) -> 0 RPM
+    TEST_ASSERT(VentilationLogic::calculate_virtual_fan_rpm(0.04f, true, 1.0f) == 0.0f);
     
     return true;
 }
@@ -240,12 +187,12 @@ bool test_mode_off() {
     sm.setup();
     sm.set_mode(esphome::MODE_OFF, 0);
 
-    esphome::HardwareState state = sm.get_target_state();
+    esphome::HardwareState state = sm.get_target_state(0);
     TEST_ASSERT(state.fan_enabled == false);
 
     // Auch nach mehreren Updates bleibt der Lüfter aus
     sm.update(60000);
-    state = sm.get_target_state();
+    state = sm.get_target_state(60000);
     TEST_ASSERT(state.fan_enabled == false);
 
     return true;
@@ -263,7 +210,7 @@ bool test_ventilation_timer() {
     sm.set_mode(esphome::MODE_VENTILATION, start, duration_ms);
 
     // Lüfter läuft direkt nach Start
-    esphome::HardwareState state = sm.get_target_state();
+    esphome::HardwareState state = sm.get_target_state(start);
     TEST_ASSERT(state.fan_enabled == true);
 
     // Verbleibende Zeit kurz nach Start ≈ 5 min
@@ -316,24 +263,24 @@ bool test_stosslueftung_cycle() {
     sm.set_mode(esphome::MODE_STOSSLUEFTUNG, start_time);
     
     // 1. Initial State: Active (Fan ON)
-    esphome::HardwareState state = sm.get_target_state();
+    esphome::HardwareState state = sm.get_target_state(start_time);
     TEST_ASSERT(state.fan_enabled == true);
     TEST_ASSERT(sm.stoss_active_phase == true);
     
     // 2. Advance 14 minutes -> Still Active
     sm.update(start_time + 14 * 60 * 1000);
-    state = sm.get_target_state();
+    state = sm.get_target_state(start_time + 14 * 60 * 1000);
     TEST_ASSERT(state.fan_enabled == true);
     
     // 3. Advance 16 minutes -> Pause (Fan OFF)
     sm.update(start_time + 16 * 60 * 1000);
-    state = sm.get_target_state();
+    state = sm.get_target_state(start_time + 16 * 60 * 1000);
     TEST_ASSERT(state.fan_enabled == false);
     TEST_ASSERT(sm.stoss_active_phase == false);
 
     // 4. Advance 119 minutes (Total) -> Still Pause
     sm.update(start_time + 119 * 60 * 1000);
-    state = sm.get_target_state();
+    state = sm.get_target_state(start_time + 119 * 60 * 1000);
     TEST_ASSERT(state.fan_enabled == false);
 
     // 5. Advance 121 minutes (Total) -> New Cycle (Fan ON, Direction Flipped)
@@ -341,7 +288,7 @@ bool test_stosslueftung_cycle() {
     // Note: We need to capture direction from active phase to compare
     
     sm.update(start_time + 121 * 60 * 1000);
-    state = sm.get_target_state();
+    state = sm.get_target_state(start_time + 121 * 60 * 1000);
     TEST_ASSERT(state.fan_enabled == true);
     TEST_ASSERT(sm.stoss_active_phase == true);
     TEST_ASSERT(sm.stoss_direction_flip == true);
@@ -358,14 +305,14 @@ bool test_phase_logic() {
     // t=0 -> Phase A Active (0-1000)
     // Group A (is_phase_a=true) should be IN
     sm.update(0);
-    esphome::HardwareState state = sm.get_target_state();
+    esphome::HardwareState state = sm.get_target_state(0);
     TEST_ASSERT(sm.global_phase == true);
     TEST_ASSERT(state.direction_in == true);
     
     // t=1100 -> Phase B Active (1000-2000)
     // Group A should be OUT
     sm.update(1100);
-    state = sm.get_target_state();
+    state = sm.get_target_state(1100);
     TEST_ASSERT(sm.global_phase == false);
     TEST_ASSERT(state.direction_in == false);
     
@@ -385,7 +332,7 @@ int main() {
     if (test_ebmpapst_pwm_mapping()){ std::cout << "[PASS] ebm-papst Single-PWM Mapping" << std::endl; } else { std::cout << "[FAIL] ebm-papst Single-PWM Mapping" << std::endl; all_passed = false; }
     if (test_min_speed_mapping()) { std::cout << "[PASS] Mindestdrehzahl Stufe 1 (10%)" << std::endl; } else { std::cout << "[FAIL] Mindestdrehzahl Stufe 1 (10%)" << std::endl; all_passed = false; }
     if (test_dynamic_cycle_duration()) { std::cout << "[PASS] Dynamic Cycle Duration" << std::endl; } else { std::cout << "[FAIL] Dynamic Cycle Duration" << std::endl; all_passed = false; }
-    if (test_presence_slider_logic()) { std::cout << "[PASS] Presence Slider Logic (-5 to +5)" << std::endl; } else { std::cout << "[FAIL] Presence Slider Logic (-5 to +5)" << std::endl; all_passed = false; }
+    if (test_virtual_rpm_calculation()) { std::cout << "[PASS] Virtual RPM Calculation" << std::endl; } else { std::cout << "[FAIL] Virtual RPM Calculation" << std::endl; all_passed = false; }
 
     std::cout << "Running VentilationStateMachine Tests..." << std::endl;
     if (test_mode_off())          { std::cout << "[PASS] Mode OFF" << std::endl; }                else { std::cout << "[FAIL] Mode OFF" << std::endl;                all_passed = false; }

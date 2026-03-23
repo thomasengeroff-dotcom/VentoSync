@@ -456,30 +456,7 @@ inline void set_fan_logic(float speed, int direction) {
   if (fan_pwm_primary == nullptr)
     return;
 
-  // Clamp speed to valid range
-  speed = std::max(0.0f, std::min(1.0f, speed));
-
-  // Stop zone: below 5% speed or logical off
-  if (speed < 0.05f) {
-    fan_pwm_primary->set_level(0.50f);
-    last_fan_pwm_level = 0.50f;
-    return;
-  }
-
-  float pwm;
-  if (direction == 0) {
-    // Direction Abluft (Raus): Min Speed (0.1) -> 30% PWM, Max Speed (1.0) ->
-    // 5% PWM Linear interpolation: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
-    // PWM = 0.30 + (speed - 0.1) * (0.05 - 0.30) / (1.0 - 0.1)
-    pwm = 0.30f - ((speed - 0.1f) / 0.9f) * 0.25f;
-  } else {
-    // Direction Zuluft (Rein): Min Speed (0.1) -> 70% PWM, Max Speed (1.0) ->
-    // 95% PWM PWM = 0.70 + (speed - 0.1) * (0.95 - 0.70) / (0.9)
-    pwm = 0.70f + ((speed - 0.1f) / 0.9f) * 0.25f;
-  }
-
-  // Clamp to absolute hardware safety limits
-  pwm = std::max(0.02f, std::min(0.98f, pwm));
+  float pwm = VentilationLogic::calculate_fan_pwm(speed, direction);
 
   fan_pwm_primary->set_level(pwm);
   last_fan_pwm_level = pwm;
@@ -488,10 +465,7 @@ inline void set_fan_logic(float speed, int direction) {
 /// @brief Converts a user-facing level (1-10) to actual hardware PWM speed (10%
 /// - 100%)
 inline float level_to_speed(float level) {
-  static const float SPEED_MIN = 0.10f; // Stufe 1 mapped to 10% PWM
-  static const float MAX_FAN_LEVEL = 10.0f;
-  return SPEED_MIN +
-         ((level - 1.0f) / (MAX_FAN_LEVEL - 1.0f)) * (1.0f - SPEED_MIN);
+  return VentilationLogic::calculate_fan_speed_from_intensity((int)std::round(level));
 }
 
 /// @brief Calculates the exact target speed (0.0 to 1.0) based on intensity
@@ -556,22 +530,19 @@ inline float calculate_virtual_fan_rpm(float raw_rpm) {
   }
 
   float speed = get_current_target_speed();
-  float direction_multiplier = 1.0f; // Default: Zuluft (IN)
+  bool direction_in = true;
+  float ramp_factor = 1.0f;
 
   if (ventilation_ctrl != nullptr) {
     esphome::HardwareState state =
         ventilation_ctrl->state_machine.get_target_state(millis());
-    speed *= state.ramp_factor;
-    if (!state.direction_in) {
-      direction_multiplier = -1.0f; // Abluft (OUT)
-    }
+    ramp_factor = state.ramp_factor;
+    direction_in = state.direction_in;
   } else if (fan_direction != nullptr && !fan_direction->state) {
-    direction_multiplier = -1.0f;
+    direction_in = false;
   }
 
-  if (speed < 0.05f)
-    return 0.0f; // Fan is off
-  return speed * 4200.0f * direction_multiplier;
+  return VentilationLogic::calculate_virtual_fan_rpm(speed, direction_in, ramp_factor);
 }
 
 /// @brief Updates filter operating hours and initializes transition timestamp.
@@ -602,8 +573,7 @@ inline void update_fan_logic() {
 
   // Dynamic Cycle duration mapped to fan level:
   if (ventilation_ctrl != nullptr) {
-    float dynamic_cycle_s = 70.0f - ((intensity - 1.0f) * (20.0f / 9.0f));
-    uint32_t dynamic_cycle_ms = std::round(dynamic_cycle_s) * 1000;
+    uint32_t dynamic_cycle_ms = VentilationLogic::calculate_dynamic_cycle_duration(intensity);
     if (ventilation_ctrl->state_machine.cycle_duration_ms != dynamic_cycle_ms) {
       ventilation_ctrl->set_cycle_duration(dynamic_cycle_ms);
     }

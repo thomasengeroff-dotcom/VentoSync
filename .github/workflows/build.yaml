@@ -8,8 +8,27 @@ on:
   workflow_dispatch:
 
 jobs:
+  unit-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Compile Tests
+        run: |
+          g++ -o simple_test \
+          tests/simple_test_runner.cpp \
+          components/ventilation_logic/ventilation_logic.cpp \
+          components/ventilation_group/ventilation_state_machine.cpp \
+          -Icomponents
+
+      - name: Run Tests
+        run: ./simple_test
+
   build:
     name: ESPHome Build
+    needs: unit-tests
     runs-on: ubuntu-latest
 
     steps:

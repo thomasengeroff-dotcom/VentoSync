@@ -36,6 +36,49 @@ int VentilationLogic::get_next_fan_level(int current_level) {
     return (current_level % 10) + 1;  // 1->2->...->10->1
 }
 
+float VentilationLogic::calculate_fan_speed_from_intensity(int intensity) {
+    // Level 1 @ 10%, Level 10 @ 100%
+    int clamped_intensity = std::max(1, std::min(10, intensity));
+    return 0.10f + ((float)(clamped_intensity - 1) / 9.0f) * 0.90f;
+}
+
+float VentilationLogic::calculate_fan_pwm(float speed, int direction) {
+    // Clamp speed to valid range
+    speed = std::max(0.0f, std::min(1.0f, speed));
+
+    // Stop zone: below 5% speed
+    if (speed < 0.05f) {
+        return 0.50f;
+    }
+
+    float pwm;
+    if (direction == 0) {
+        // Direction Abluft (Raus): Min Speed (0.1) -> 30% PWM, Max Speed (1.0) -> 5% PWM
+        pwm = 0.30f - ((speed - 0.1f) / 0.9f) * 0.25f;
+    } else {
+        // Direction Zuluft (Rein): Min Speed (0.1) -> 70% PWM, Max Speed (1.0) -> 95% PWM
+        pwm = 0.70f + ((speed - 0.1f) / 0.9f) * 0.25f;
+    }
+
+    // Clamp to absolute hardware safety limits
+    return std::max(0.02f, std::min(0.98f, pwm));
+}
+
+uint32_t VentilationLogic::calculate_dynamic_cycle_duration(int intensity) {
+    // Level 1: 70s, Level 10: 50s
+    int clamped_intensity = std::max(1, std::min(10, intensity));
+    float duration_s = 70.0f - ((float)(clamped_intensity - 1) * (20.0f / 9.0f));
+    return (uint32_t)(std::round(duration_s) * 1000.0f);
+}
+
+float VentilationLogic::calculate_virtual_fan_rpm(float speed, bool direction_is_intake, float ramp_factor) {
+    float effective_speed = speed * ramp_factor;
+    if (effective_speed < 0.05f) return 0.0f;
+    
+    float rpm = effective_speed * 4200.0f;
+    return direction_is_intake ? rpm : -rpm;
+}
+
 // --- Adaptive CO2 Control ---
 
 /// @brief Determines the target fan level for a given CO2 concentration.
