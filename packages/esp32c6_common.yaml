@@ -24,11 +24,19 @@
 # Modified:    2026-03-23
 # ==========================================================================
 # ---------------------------------------------------------
-# CORE CONFIGURATION
+# CORE CONFIGURATION & VERSIONING
 # ---------------------------------------------------------
+substitutions:
+  # The project version is automatically updated by version_bump.py during build.
+  # Do not change manually unless you know what you are doing.
+  project_version: "0.6.25"
+
 esphome:
   name: "${device_name}"
   friendly_name: "${friendly_name}"
+  project:
+    name: "thomasengeroff.wohnraumlueftung"
+    version: "${project_version}"
   # Force specific flash mode for better stability with C6
   platformio_options:
     board_build.flash_mode: dio
@@ -83,8 +91,8 @@ update:
   - platform: http_request
     name: "${device_name} Firmware Update"
     # Der /local/ Ordner entspricht dem "www" Ordner im Home Assistant Samba Share
-    source: "http://192.168.178.45:8123/local/firmware/manifest.json"
-    update_interval: 12h
+    source: "http://192.168.178.45:8123/local/firmware/wohnraumlueftung/manifest.json"
+    update_interval: 2h
 
 # ---------------------------------------------------------
 # WIFI CONNECTIVITY
@@ -180,8 +188,8 @@ text_sensor:
     icon: "mdi:tag-outline"
     entity_category: diagnostic
     lambda: |-
-      #ifdef PROJECT_VERSION
-        return {PROJECT_VERSION};
+      #ifdef CUSTOM_PROJECT_VERSION
+        return {CUSTOM_PROJECT_VERSION};
       #else
         return {"0.0.0-dev"};
       #endif

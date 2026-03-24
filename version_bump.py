@@ -48,16 +48,40 @@ def bump_version():
     
     version_str = f"{data['major']}.{data['minor']}.{data['patch']}"
     
-    # Inject as a C++ macro: -DPROJECT_VERSION="0.6.1"
+    # Inject as a C++ macro: -DCUSTOM_PROJECT_VERSION="0.6.1"
     if 'env' in globals():
         env.Append(CPPDEFINES=[
-            ("PROJECT_VERSION", f'\\"{version_str}\\"')
+            ("CUSTOM_PROJECT_VERSION", f'\\"{version_str}\\"')
         ])
     
     print(f"\n>>> AUTOMATED VERSION BUMP: {version_str} <<<\n")
+    return version_str
+
+def update_yaml_version(version_str):
+    # This function finds the project_version substitution in the common YAML 
+    # and updates it to match the new version.
+    yaml_file = os.path.join(project_dir, "packages", "esp32c6_common.yaml")
+    if not os.path.exists(yaml_file):
+        # Fallback for different project structures
+        yaml_file = os.path.join(project_dir, "esp32c6_common.yaml")
+    
+    if os.path.exists(yaml_file):
+        with open(yaml_file, "r") as f:
+            lines = f.readlines()
+        
+        with open(yaml_file, "w") as f:
+            for line in lines:
+                if "project_version:" in line:
+                    # preserves indentation
+                    indent = line[:line.find("project_version:")]
+                    f.write(f'{indent}project_version: "{version_str}"\n')
+                else:
+                    f.write(line)
+        print(f">>> AUTOMATED YAML UPDATE: {yaml_file} set to {version_str}")
 
 if __name__ == "__main__" or 'env' in globals():
-    bump_version()
+    new_version_str = bump_version()
+    update_yaml_version(new_version_str)
 
 # --- POST BUILD ACTION ---
 # This runs after the firmware.bin is compiled
@@ -94,8 +118,9 @@ def after_build(source, target, env):
                 
             print(f">>> POST-BUILD: Updated {manifest_path}")
 
-            # Define Samba target
-            smb_dir = r"\\192.168.178.45\config\www\firmware"
+            # Define Samba target - project specific folder
+            project_name = "wohnraumlueftung"
+            smb_dir = os.path.join(r"\\192.168.178.45\config\www\firmware", project_name)
             smb_firmware = os.path.join(smb_dir, "firmware.bin")
             smb_manifest = os.path.join(smb_dir, "manifest.json")
             
@@ -107,7 +132,7 @@ def after_build(source, target, env):
                 print(f">>> POST-BUILD: Copying files to {smb_dir}...")
                 shutil.copy2(firmware_path, smb_firmware)
                 shutil.copy2(manifest_path, smb_manifest)
-                print(f"\n>>> SUCCESSFULLY DEPLOYED: v{version_str} to Home Assistant! <<<\n")
+                print(f"\n>>> SUCCESSFULLY DEPLOYED: v{version_str} to Home Assistant ({project_name})! <<<\n")
             except Exception as smb_err:
                 print(f"\n>>> WARNING: Target directory {smb_dir} not reachable. Copy skipped. Error: {smb_err} <<<\n")
         else:
