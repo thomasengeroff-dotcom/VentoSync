@@ -36,12 +36,13 @@
 /// #included directly from main.cpp, they are visible without linkage issues.
 
 #include "esp_mac.h"
+#include "esp_now.h"
 #include "esphome.h"
 #include <algorithm>
 #include <deque>
 #include <string>
 #include <vector>
-#include "esp_now.h"
+
 
 // Core and Component Headers
 #include "esphome/components/binary_sensor/binary_sensor.h"
@@ -196,15 +197,16 @@ extern esphome::light::LightState
 extern esphome::VentilationController *ventilation_ctrl;
 
 // --- ESP-NOW Dynamic Discovery & Persistence -------------------------
-inline std::vector<uint8_t> build_and_populate_packet(esphome::MessageType type);
+inline std::vector<uint8_t>
+build_and_populate_packet(esphome::MessageType type);
 
 // Helper to parse MAC address strings (e.g., "AA:BB:CC:DD:EE:FF")
 inline esphome::optional<std::array<uint8_t, 6>>
 parse_mac_local(const std::string &str) {
   std::array<uint8_t, 6> res;
   int values[6];
-  if (sscanf(str.c_str(), "%X:%X:%X:%X:%X:%X", &values[0], &values[1], &values[2],
-             &values[3], &values[4], &values[5]) == 6) {
+  if (sscanf(str.c_str(), "%X:%X:%X:%X:%X:%X", &values[0], &values[1],
+             &values[2], &values[3], &values[4], &values[5]) == 6) {
     for (int i = 0; i < 6; ++i)
       res[i] = (uint8_t)values[i];
     return res;
@@ -438,7 +440,8 @@ inline void sync_settings_to_peers() {
   // than unicast because it works even if a peer's MAC is not yet discovered
   // or registered. Periodic sync still uses unicast.
   uint8_t broadcast_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  esphome::espnow::global_esp_now->send(broadcast_mac, data, [](esp_err_t err) {});
+  esphome::espnow::global_esp_now->send(broadcast_mac, data,
+                                        [](esp_err_t err) {});
 
   ESP_LOGI("vent_sync", "Sent state change via BROADCAST to room members.");
 }
@@ -1256,9 +1259,17 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
       luefter_modus->publish_state(mode_str);
     }
 
+    // FIXED: Activate UI so LEDs show the peer's change for 30 seconds
+    // Without this, ui_active is false and update_leds_logic() turns
+    // everything off immediately.
+    ui_active->value() = true;
+    ui_timeout_script->execute(); // Start 30s auto-dim timer
+
     // Update Visuals
     update_leds->execute();
     fan_speed_update->execute();
+
+    ESP_LOGI("vent_sync", "Peer state applied — UI activated for 30s");
   }
 
   // --- Configuration Settings Sync ---
@@ -1593,9 +1604,10 @@ inline void sync_config_to_controller() {
       (config_phase->current_option() == "Phase A (Startet mit Zuluft)");
   v->set_is_phase_a(is_phase_a);
 
-  ESP_LOGI("boot",
-           "Synced Config to Controller: Floor %d, Room %d, Device %d, Phase: %s",
-           v->floor_id, v->room_id, v->device_id, is_phase_a ? "A" : "B");
+  ESP_LOGI(
+      "boot",
+      "Synced Config to Controller: Floor %d, Room %d, Device %d, Phase: %s",
+      v->floor_id, v->room_id, v->device_id, is_phase_a ? "A" : "B");
 }
 
 /// @brief Runs a 3-second visual self-test by turning on all physical status

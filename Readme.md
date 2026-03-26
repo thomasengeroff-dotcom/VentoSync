@@ -172,10 +172,33 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 
 - **🌙 Intelligenter Nachtmodus**:
   - Zeitgesteuerte Drosselung der Lüfterleistung zur Geräuschminimierung in Ruhephasen.
-  - Flexibles Zeitmanagement und Definition spezifischer Nacht-Profile.
+  - **Lichtsensor-Integration**: Automatische Aktivierung eines "Whisper-Quiet" Profils bei Dunkelheit via Hardware-Twilight-Sensor (LDR/BH1750 Support geplant).
   - Einbeziehung der Anwesenheitserkennung (Radar-Sensor).
   - Einbeziehung der CO2-Werte zur Steuerung.
   - Lokal und remote aktivierbar.
+
+- **🏠 Außer-Haus-Modus (Safety Dehumidification)**:
+  - Automatisierter Schutzmodus für Abwesenheit (Urlaub).
+  - Das System bleibt "Aus", überwacht aber die Luftfeuchtigkeit. Bei Überschreitung eines fixen Schwellenwerts (z. B. 60 %) startet die Lüftung auf Stufe 1 zur Schimmelprävention.
+
+- **🌡️ Überwachungs-Modus (Sensor-Only)**:
+  - Modus, in dem der Lüfter steht, aber alle Sensoren (CO2, Temp, Radar) und das Web-Dashboard voll aktiv bleiben (ohne Light Sleep), um lückenlose Messdaten in Home Assistant zu gewährleisten.
+
+- **🛠️ Erweiterte Wartungs-Logik**:
+  - Proaktive Erinnerung an den Filterwechsel nach exakt **3000 Betriebsstunden** (Industriestandard).
+  - Optionaler "Service-Lock": Sperrung der Modus-Wahl bei kritisch überfälliger Wartung zur Vermeidung von Motorschäden durch zugesetzte Filter.
+
+- **⏲️ Zeitgesteuerter Einrichtbetrieb**:
+  - Über das Dashboard/App aktivierbarer manueller Zuluft- oder Abluftbetrieb mit integriertem Timer für gezielte Extraktion (z.B. nach dem Kochen).
+
+- **❄️ Frostschutz-Automatik**:
+  - Intelligente Erkennung von drohendem Frost am Keramikspeicher bei extremen Außentemperaturen. Automatische Anpassung der Zykluszeiten oder kurzes Deaktivieren der Zuluft zur Regeneration des Speichers.
+
+- **📅 Autarker Wochenzeitplan**:
+  - Native Implementierung von Zeitplänen direkt auf dem ESP32 zur Sicherstellung der Komfort-Funktion auch bei Ausfall der zentralen Smart-Home-Steuerung.
+
+- **🔔 Erweiterte Alarm-Logik**:
+  - Implementierung von visuellen (Master-LED) und digitalen (Push) Alarmierungen für kritische Zustände wie extreme Luftfeuchtigkeit, Frostgefahr oder kritische CO2-Werte.
 
 - **Closed-Loop Drehzahlüberwachung**:
   - Kontinuierliches Monitoring der Lüfterdrehzahl via Tacho-Signal für konstanten Volumenstrom und Fehlererkennung (nur bei 4-PIN PWM Lüfter).
