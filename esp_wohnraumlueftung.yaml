@@ -60,7 +60,7 @@ esphome:
   includes:
     - components/automation_helpers.h # Helper functions logic
   on_boot:
-    900 # High priority to ensure registration before other components start
+    priority: 900.0 # High priority to ensure registration before other components start
     then:
       # Sync persistent configuration IDs to the C++ controller object
       - lambda: sync_config_to_controller();
