@@ -1574,18 +1574,28 @@ inline void sync_config_to_controller() {
   if (v == nullptr)
     return;
 
-  v->set_floor_id((uint8_t)config_floor_id->state);
-  v->set_room_id((uint8_t)config_room_id->state);
-  v->set_device_id((uint8_t)config_device_id->state);
+  uint8_t floor = (uint8_t)config_floor_id->state;
+  uint8_t room = (uint8_t)config_room_id->state;
+  uint8_t dev = (uint8_t)config_device_id->state;
+
+  // Guard: If values are still 0, the restore hasn't happened yet
+  if (floor == 0 && room == 0 && dev == 0) {
+    ESP_LOGW("boot", "Config IDs are all 0 — restore_value not yet loaded. "
+                     "Will retry on next interval.");
+    return;
+  }
+
+  v->set_floor_id(floor);
+  v->set_room_id(room);
+  v->set_device_id(dev);
 
   bool is_phase_a =
       (config_phase->current_option() == "Phase A (Startet mit Zuluft)");
   v->set_is_phase_a(is_phase_a);
 
-  ESP_LOGI(
-      "boot",
-      "Synced Config to Controller: Floor %d, Room %d, Device %d, Phase: %s",
-      v->floor_id, v->room_id, v->device_id, is_phase_a ? "A" : "B");
+  ESP_LOGI("boot",
+           "Synced Config to Controller: Floor %d, Room %d, Device %d, Phase: %s",
+           v->floor_id, v->room_id, v->device_id, is_phase_a ? "A" : "B");
 }
 
 /// @brief Runs a 3-second visual self-test by turning on all physical status

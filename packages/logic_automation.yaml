@@ -349,6 +349,11 @@ interval:
   - interval: 10s
     id: auto_mode_interval
     then:
+      # Retry config sync if IDs are still 0 (Safety guard for boot-time race conditions)
+      - lambda: |-
+          if (ventilation_ctrl->device_id == 0) {
+            sync_config_to_controller();
+          }
       - lambda: |-
           evaluate_auto_mode();
 

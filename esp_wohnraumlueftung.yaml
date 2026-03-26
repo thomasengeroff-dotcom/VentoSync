@@ -60,10 +60,11 @@ esphome:
   includes:
     - components/automation_helpers.h # Helper functions logic
   on_boot:
-    priority: 900.0 # High priority to ensure registration before other components start
-    then:
-      # Sync persistent configuration IDs to the C++ controller object
-      - lambda: sync_config_to_controller();
+    - priority: -100.0 # Standard is 600. -100 ensures restore_value for template components is ready
+      then:
+        - delay: 2s # Wait for all components/NVS to stabilize
+        - lambda: |-
+            sync_config_to_controller();
 
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
 
