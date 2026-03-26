@@ -207,6 +207,21 @@ script:
             - lambda: handle_intensity_bounce();
             - delay: 1000ms
 
+  # ESP-NOW Discovery: Load peers from flash and send discovery broadcast
+  # Called from the boot interval once ESP-NOW is fully ready
+  - id: espnow_discovery
+    mode: single
+    then:
+      - lambda: load_peers_from_runtime_cache(); # W4: renamed from load_peers_from_flash
+      - lambda: send_discovery_broadcast();
+      
+      # LED Self-Test and UI start (moved from boot to avoid bus contention)
+      - delay: 500ms
+      - lambda: run_led_self_test();
+      - delay: 3s
+      - script.execute: ui_timeout_script
+      - script.execute: fan_speed_update
+
 # ---------------------------------------------------------
 # CONTROL PANEL BUTTONS (Input)
 # ---------------------------------------------------------
@@ -298,6 +313,19 @@ button:
 
 # Interval to check for pending broadcasts
 interval:
+  # One-shot: trigger ESP-NOW discovery after boot, once ESP-NOW is ready
+  # Uses a simple counter so it only fires on the first tick (10s after boot)
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              static bool done = false;
+              if (!done) { done = true; return true; }
+              return false;
+          then:
+            - script.execute: espnow_discovery
+
   - interval: 1s
     then:
       - if:
@@ -305,10 +333,9 @@ interval:
             lambda: "return ((esphome::VentilationController*)id(ventilation_ctrl))->pending_broadcast;"
           then:
             - lambda: |-
-                ESP_LOGD("espnow_debug", "YAML Interval triggered: pending_broadcast is TRUE. Calling espnow.send...");
-            - espnow.broadcast:
-                data: !lambda |-
-                  return build_and_populate_packet(esphome::MSG_SYNC);
+                ESP_LOGV("espnow_sync", "Pending sync detected. Sending unicast to all known peers...");
+                auto data = build_and_populate_packet(esphome::MSG_SYNC);
+                send_sync_to_all_peers(data);
 
   # Automatik Logik (CO2, Feuchte, Sommer/Winter)
   - interval: 10s

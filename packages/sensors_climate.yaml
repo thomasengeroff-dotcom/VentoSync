@@ -134,10 +134,10 @@ sensor:
       reference_temperature: 25°C
       reference_resistance: 10kOhm
     accuracy_decimals: 1
-    filters:
-      - median:
-          window_size: 5
-          send_every: 3
+    #filters:
+    #  - median:
+    #      window_size: 5
+    #      send_every: 3
 
   - platform: adc
     id: ntc_innen_source
@@ -180,10 +180,10 @@ sensor:
       reference_temperature: 25°C
       reference_resistance: 10kOhm
     accuracy_decimals: 1
-    filters:
-      - median:
-          window_size: 5
-          send_every: 3
+    #filters:
+    #  - median:
+    #      window_size: 5
+    #      send_every: 3
 
   - platform: adc
     id: ntc_aussen_source

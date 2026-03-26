@@ -31,8 +31,8 @@ i2c:
   scl: GPIO23 # Pin D5 on XIAO ESP32C6
   scan: true
   id: bus_a
-  frequency: 400kHz # Fast I2C Mode (400kHz)
-  timeout: 50ms # Increased timeout to prevent "software timeout" errors
+  frequency: 100kHz # Standard I2C Mode for maximum reliability
+  timeout: 100ms # Increased timeout for slow responding devices
 
 # ---------------------------------------------------------
 # MCP23017 I/O EXPANDER

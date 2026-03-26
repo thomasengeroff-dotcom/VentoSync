@@ -13,7 +13,7 @@ Die Kommunikation zwischen den einzelnen Lüftungsgeräten erfolgt über das ESP
 ![Sensor: SCD41](https://img.shields.io/badge/Sensor-SCD41-lightgrey)
 ![Sensor: BMP390](https://img.shields.io/badge/Sensor-BMP390-lightgrey)
 ![Sensor: BME680](https://img.shields.io/badge/Sensor-BME680-lightgrey)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
 ---
 
@@ -71,10 +71,11 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 
 ### ⚙️ Intelligente Betriebsmodi
 
-- 🤖 **Standard-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer Anpassung an CO2 und Luftfeuchtigkeit unter Einbezug von Wetterdaten. Die Synchronisation aller Einheiten erfolgt vollautomatisch und kabellos über das ESP-NOW Protokoll.
-Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es außen kühler ist als innen) automatisch aktiviert. Dieser Modus ist der Standard im Alltag, um maximale Energieeffizienz und Luftqualität zu gewährleisten.
-In zukünftigen Versionen werde ich diesen Modus weiter optimieren, um den Komfort und die Effizienz weiter zu steigern.
-- 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Die Synchronisation aller Einheiten erfolgt vollautomatisch und kabellos über das ESP-NOW Protokoll. Dieser Modus lässt die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
+Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatisch über eine **dynamische ESP-NOW Discovery** und kommunizieren anschließend effizient via Unicast.
+
+- 🤖 **Standard-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer Anpassung an CO2 und Luftfeuchtigkeit unter Einbezug von Wetterdaten.
+Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es außen kühler ist als innen) automatisch aktiviert. Dieser Modus ist der Standard im Alltag, um maximale Energieeffizienz und Luftqualität zu gewährleisten. In zukünftigen Versionen werde ich diesen Modus weiter optimieren, um den Komfort und die Effizienz weiter zu steigern.
+- 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Dieser Modus lässt die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
 - 💨 **Querlüftung (Sommerbetrieb)**: Modus für permanenten Abluftstrom, ideal zur passiven Kühlung in Sommernächten. Flexibel konfigurierbar via Timer oder als Dauerbetrieb. Dieser Modus lässt die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
 - 🚀 **Stoßlüftung**: Intensivlüftung für schnellen Luftaustausch. Das Gerät lüftet für 15 Minuten mit der **manuell gewählten Intensität** und pausiert anschließend für 105 Minuten, um Feuchtigkeit effektiv abzuführen und den Keramikspeicher zu regenerieren. Danach wiederholt sich der Zyklus.
 
@@ -140,9 +141,19 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 
 - 🌐 **WLAN-Unabhängigkeit**: Die Geräte benötigen keinen WLAN-Router (Access Point) für die Synchronisation. Die Kommunikation erfolgt direkt auf der MAC-Ebene (2,4 GHz Radio). Fällt das lokale WLAN aus, arbeitet die Lüftungsgruppe ungestört weiter.
 - 🛡️ **Hohe Zuverlässigkeit**: Durch die direkte Punkt-zu-Punkt-Kommunikation ist das System immun gegen Überlastungen oder Störungen im herkömmlichen WLAN-Netzwerk.
-- ⚡ **Extrem geringe Latenz**: Da keine Verbindung aufgebaut oder verwaltet werden muss (handshake-frei), werden Synchronisationsbefehle nahezu verzögerungsfrei übertragen. Dies ist entscheidend für den exakten Richtungswechsel synchronisierter Lüfterpaare.
+- ⚡ **Extrem geringe Latenz**: Da keine Verbindung aufgebaut oder verwaltet werden muss (handshake-frei nach Discovery), werden Synchronisationsbefehle nahezu verzögerungsfrei übertragen. Dies ist entscheidend für den exakten Richtungswechsel synchronisierter Lüfterpaare.
 - 🔌 **Keine Steuerleitungen**: Es müssen keine Datenkabel durch Wände gezogen werden. Die Synchronisation erfolgt "Out-of-the-box" über Funk.
-- 📡 **Automatisches Software-Filtering**: Durch den Broadcast-Modus und die projektinterne Filterung (Floor/Room ID) finden sich Geräte im gleichen Raum automatisch. Es bedarf keiner manuellen Konfiguration von Peer-Listen oder irgendwelcher Netzwerkeinstellungen.
+- 📡 **Dynamische Discovery & Persistence**: Geräte im gleichen Raum finden sich beim Booten oder bei Konfigurationsänderungen automatisch über einen Discovery-Broadcast. Sobald ein Matching (gleiche Floor/Room ID) stattfindet, werden die MAC-Adressen der Peers dauerhaft im NVS (Flash) gespeichert.
+- ⚙️ **Effiziente Unicast-Kommunikation**: Nach der initialen Entdeckung erfolgt die eigentliche Datenübertragung (PID-Demand, Status, Sync) mittels gezielter Unicast-Pakete an die bekannten Peers. Dies reduziert das Grundrauschen im 2,4 GHz Band massiv und erhöht die Stabilität.
+- 🔧 **Globale Konfigurations-Synchronisation**: Änderungen an Einstellungen (z. B. CO2-Grenzwerte, Timer, Automatik-Modi) an einem Gerät via Home Assistant oder Bedienpanel werden in Echtzeit drahtlos an alle anderen synchronisierten Peers gespiegelt.
+
+#### Discovery-Ablauf
+
+1. **Broadcast**: Ein Gerät sendet beim Start oder Raumwechsel ein `ROOM_DISC` Paket an alle (FF:FF:FF:FF:FF:FF).
+2. **Matching**: Empfänger prüfen, ob Floor- und Room-ID mit den eigenen übereinstimmen.
+3. **Handshake**: Bei Übereinstimmung wird der Absender als Peer gespeichert und eine Bestätigung (`ROOM_CONF`) direkt (Unicast) zurückgeschickt.
+4. **Persistence**: Die Liste der Peers übersteht Neustarts und sorgt für sofortige Einsatzbereitschaft nach dem Bootvorgang.
+
 - ⚙️ **Globale Konfigurations-Synchronisation**: Änderungen an Einstellungen (z. B. CO2-Grenzwerte, Timer, Automatik-Modi) an einem Gerät via Home Assistant oder Bedienpanel werden in Echtzeit drahtlos an alle anderen Geräte in derselben Raumgruppe gespiegelt. So laufen alle Lüfter stets mit identischen Parametern, ohne dass jedes Gerät einzeln konfiguriert werden muss.
 
 Weitere Informationen findest du in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
@@ -371,7 +382,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 - **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich wechselt das System automatisch in `Durchlüften`. Sobald es außen wieder wärmer wird, kehrt es zu WRG zurück.
 - **Anwesenheit (Manuelle Modi):** In den Modi WRG, Durchlüften und Stoßlüftung wird die Lüfterstärke bei erkannter Präsenz dynamisch angepasst (Slider `-5` bis `+5`). Dies erlaubt einen bedarfsgerechten "Präsenz-Boost" ohne die Automatik-Regelung zu beeinflussen.
 - **🌱 Energiespar-Modus (Light Sleep):** Wenn das System ausgeschaltet wird (Modus `Aus`), wechselt der ESP32-C6 in einen stromsparenden Light Sleep. Dabei wird das WLAN deaktiviert und der LED-Treiber (PCA9685) via Hardware-Pin komplett abgeschaltet. Das Gerät bleibt über den physischen Power-Button jederzeit weckbar.
-- **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW geteilt — alle Geräte im Raum laufen synchron (die Lüfter skalieren identisch auf den höchsten Bedarf im Raum).
+- **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW Unicast geteilt — alle entdeckten Geräte im Raum laufen synchron (die Lüfter skalieren identisch auf den höchsten Bedarf im Raum).
 
 > **⚙️ Voraussetzung für das Feuchte-Management: `sensor.outdoor_humidity` in Home Assistant**
 >

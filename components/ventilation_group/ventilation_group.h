@@ -53,28 +53,30 @@ enum MessageType {
   MSG_STATE = 3      ///< Mode or fan-intensity change notification.
 };
 
-/// Ensure breaking packet schema changes are detected across nodes
-static const uint8_t PROTOCOL_VERSION = 3;
+/// Ensure breaking packet schema changes are detected across nodes.
+/// Bump this whenever the VentilationPacket layout or semantics change.
+static const uint8_t PROTOCOL_VERSION = 4; // Bumped: protocol_version field added
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
+/// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
+/// and do a simultaneous OTA rollout on all nodes whenever this struct changes.
 struct __attribute__((packed)) VentilationPacket {
-  uint8_t magic_header; ///< Always 0x42 — used for basic validation.
-  uint8_t floor_id;     ///< Floor group (filters unrelated devices).
-  uint8_t room_id;      ///< Room group within the floor.
-  uint8_t device_id;    ///< Unique sender ID (used to ignore own packets).
-  uint8_t msg_type;     ///< MessageType enum value.
-  uint8_t current_mode; ///< VentilationMode enum value.
+  uint8_t magic_header;    ///< Always 0x42 — used for basic validation.
+  uint8_t protocol_version;///< FIXED K2: Schema version — reject mismatched peers.
+  uint8_t floor_id;        ///< Floor group (filters unrelated devices).
+  uint8_t room_id;         ///< Room group within the floor.
+  uint8_t device_id;       ///< Unique sender ID (used to ignore own packets).
+  uint8_t msg_type;        ///< MessageType enum value.
+  uint8_t current_mode;    ///< VentilationMode enum value.
 
   // Live Data Synced States
-  uint32_t timestamp_ms; ///< Sender's millis() at packet creation.
-  uint32_t cycle_pos_ms; ///< Sender's position in the direction cycle.
-  uint32_t
-      remaining_duration_ms; ///< Remaining ventilation timer (0 = infinite).
-  bool phase_state;          ///< Sender's current global phase (A or B).
-  float t_in;                ///< Sender's local indoor temperature (or NAN).
-  float t_out;               ///< Sender's local outdoor temperature (or NAN).
-  float
-      pid_demand; ///< Sender's local evaluated PID cooling demand (0.0 to 1.0).
+  uint32_t timestamp_ms;         ///< Sender's millis() at packet creation.
+  uint32_t cycle_pos_ms;         ///< Sender's position in the direction cycle.
+  uint32_t remaining_duration_ms;///< Remaining ventilation timer (0 = infinite).
+  bool phase_state;              ///< Sender's current global phase (A or B).
+  float t_in;                    ///< Sender's local indoor temperature (or NAN).
+  float t_out;                   ///< Sender's local outdoor temperature (or NAN).
+  float pid_demand;              ///< Sender's local evaluated PID demand (0.0–1.0).
 
   // Control & Settings Synced States
   uint8_t fan_intensity; ///< Current 1-10 level
@@ -85,7 +87,7 @@ struct __attribute__((packed)) VentilationPacket {
   uint8_t automatik_max_fan_level;     ///< 1-10 maximum level
   uint16_t auto_co2_threshold_val;     ///< Setpoint, e.g. 1000 ppm (16-bit)
   uint8_t auto_humidity_threshold_val; ///< Setpoint, e.g. 60 % (8-bit)
-  int8_t auto_presence_val;            ///< Presence compensation (-5 to +5)
+  int8_t auto_presence_val;           ///< Presence compensation (-5 to +5)
 
   // Timer Settings payload
   uint16_t sync_interval_min; ///< ESP-NOW Broadcast Interval
@@ -150,10 +152,11 @@ public:
   // to the identically highest required speed necessary to clear the room,
   // without fighting each other or creating noise artifacts.
   float local_pid_demand = 0.0f; ///< Local PID demand requirement (0.0 to 1.0)
-  float last_peer_pid_demand =
-      0.0f; ///< Last valid PID demand received from a peer
-  uint32_t last_peer_pid_demand_time =
-      0; ///< millis() when peer PID demand was received
+  float last_peer_pid_demand = 0.0f; ///< Last valid PID demand received from a peer
+  uint32_t last_peer_pid_demand_time = 0; ///< millis() when peer PID demand was received
+  /// FIXED W3: Explicit flag avoids millis()-overflow false-positive when
+  /// last_peer_pid_demand_time == 0 is used as a sentinel after 49.7 days.
+  bool has_peer_pid_demand = false; ///< True once any peer PID demand has been received.
 
   // --- PEER TRACKING (For Dashboard) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
@@ -291,10 +294,18 @@ public:
     }
     VentilationPacket *pkt = (VentilationPacket *)data.data();
 
-    // Filter: magic, group, self
+    // Filter: magic header
     if (pkt->magic_header != 0x42) {
       ESP_LOGD("vent_sync", "Magic header mismatch! Expected 0x42, got 0x%02X",
                pkt->magic_header);
+      return false;
+    }
+    // FIXED K2: Reject packets from nodes running a different protocol version.
+    // Always do a simultaneous OTA rollout when PROTOCOL_VERSION changes.
+    if (pkt->protocol_version != PROTOCOL_VERSION) {
+      ESP_LOGW("vent_sync", "Protocol version mismatch! Got v%d, expected v%d — "
+               "update firmware on all nodes simultaneously.",
+               pkt->protocol_version, PROTOCOL_VERSION);
       return false;
     }
     if (pkt->floor_id != floor_id || pkt->room_id != room_id) {
@@ -383,6 +394,7 @@ public:
     if (!std::isnan(pkt->pid_demand)) {
       last_peer_pid_demand = pkt->pid_demand;
       last_peer_pid_demand_time = millis();
+      has_peer_pid_demand = true; // FIXED W3: use explicit flag, not time==0 sentinel
     }
 
     return changed;
@@ -452,6 +464,7 @@ public:
              "Building packet type %d. Clearing pending_broadcast.", type);
     VentilationPacket pkt;
     pkt.magic_header = 0x42;
+    pkt.protocol_version = PROTOCOL_VERSION; // FIXED K2: stamp version for peer validation
     pkt.floor_id = floor_id;
     pkt.room_id = room_id;
     pkt.device_id = device_id;

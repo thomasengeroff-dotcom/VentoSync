@@ -65,12 +65,6 @@ esphome:
       # Sync persistent configuration IDs to the C++ controller object
       - lambda: sync_config_to_controller();
 
-      # LED Self-Test: All LEDs on for 3 seconds
-      - lambda: run_led_self_test();
-      - delay: 3s
-      # Show correct state and start 30s UI timeout
-      - script.execute: ui_timeout_script
-      - script.execute: fan_speed_update
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
 
 # ---------------------------------------------------------
@@ -101,6 +95,13 @@ globals:
   - id: current_mode_index
     type: int
     initial_value: "0" # Default: Smart-Automatik
+
+  # ESP-NOW dynamic peer list
+  - id: espnow_peers
+    type: std::string
+    max_restore_data_length: 254
+    initial_value: '""'
+    restore_value: false  # Temporarily disabled to clear NVS corruption from previous firmware
 
   # CO2 auto-control enabled (only functional when SCD41 is connected)
   - id: co2_auto_enabled
@@ -208,26 +209,29 @@ espnow:
   # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
   on_broadcast:
     - lambda: |-
-        ESP_LOGD("espnow_raw", "Received BROADCAST from %02X:%02X:%02X:%02X:%02X:%02X, size %d", 
-                 info.src_addr[0], info.src_addr[1], info.src_addr[2], 
-                 info.src_addr[3], info.src_addr[4], info.src_addr[5], size);
+        std::string payload((const char*)data, size);
+        if (handle_discovery_payload(payload, info.src_addr)) {
+          return;
+        }
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet);
 
   # For robustness, we also handle registered peers (e.g. if we add them dynamically)
   on_receive:
     - lambda: |-
-        ESP_LOGD("espnow_raw", "Received UNICAST from %02X:%02X:%02X:%02X:%02X:%02X, size %d", 
-                 info.src_addr[0], info.src_addr[1], info.src_addr[2], 
-                 info.src_addr[3], info.src_addr[4], info.src_addr[5], size);
+        std::string payload((const char*)data, size);
+        if (handle_discovery_payload(payload, info.src_addr)) {
+          return;
+        }
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet);
 
   on_unknown_peer:
     - lambda: |-
-        ESP_LOGD("espnow_raw", "Received UNKNOWN PEER BROADCAST from %02X:%02X:%02X:%02X:%02X:%02X, size %d", 
-                 info.src_addr[0], info.src_addr[1], info.src_addr[2], 
-                 info.src_addr[3], info.src_addr[4], info.src_addr[5], size);
+        std::string payload((const char*)data, size);
+        if (handle_discovery_payload(payload, info.src_addr)) {
+          return;
+        }
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet);
 
@@ -274,3 +278,18 @@ wrg_dashboard:
   luefter_modus_id: luefter_modus
   lueftung_fan_id: lueftung_fan
   ventilation_ctrl_id: ventilation_ctrl
+
+# ---------------------------------------------------------
+# ESP-NOW DIAGNOSTICS
+# ---------------------------------------------------------
+text_sensor:
+  - platform: template
+    name: "ESP-NOW Peers"
+    id: espnow_peers_display
+    icon: "mdi:access-point-network"
+    entity_category: diagnostic
+    update_interval: 30s
+    lambda: |-
+      std::string list = id(espnow_peers);
+      if (list.empty()) return std::string("Keine Peers");
+      return list;

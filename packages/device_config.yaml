@@ -58,6 +58,8 @@ number:
             auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
             v->set_floor_id((uint8_t)x);
             ESP_LOGI("config", "Floor ID updated to: %d", (uint8_t)x);
+            id(espnow_peers) = ""; // Clear peers on floor change
+            send_discovery_broadcast(); // Trigger discovery broadcast
 
   - platform: template
     name: "Raum (Room ID)"
@@ -77,6 +79,8 @@ number:
             auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
             v->set_room_id((uint8_t)x);
             ESP_LOGI("config", "Room ID updated to: %d", (uint8_t)x);
+            id(espnow_peers) = ""; // Clear peers on room change
+            send_discovery_broadcast(); // Trigger discovery broadcast
 
   - platform: template
     name: "Geräte-ID (Device ID)"

@@ -295,7 +295,7 @@ select:
     initial_option: "Automatik"
     set_action:
       - lambda: |-
-          set_operating_mode_select(x.c_str());
+          set_operating_mode_select(x); // W5: pass std::string directly, not c_str()
 
 # ---------------------------------------------------------
 # FILTER MAINTENANCE

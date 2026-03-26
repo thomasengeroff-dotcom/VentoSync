@@ -4,6 +4,42 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.6.50] - 2026-03-26
+
+### Fixed
+
+- **Kritische ESP-NOW Synchronisation**: Grundlegender Fix der `send()` API (direkte Nutzung von Pointer und Größe statt `std::vector`-Objekt), was die Kommunikation und Status-Synchronisation zwischen den Geräten wiederhergestellt hat.
+- **ESP-NOW Protokoll-Sicherheit (K2)**: Einführung eines `protocol_version` Feldes im `VentilationPacket` und Anhebung auf **Protokoll-Version 4**. Dies verhindert Speicher-Korruption bei inkompatiblem Firmware-Mischbetrieb während Rollouts.
+- **ESP-NOW Loop-Prävention (K1/W6)**: Unterbindung einer potentiellen Endlosschleife (Ping-Pong-Effekt) beim Konfigurations-Sync durch gezielte Guards in `evaluate_auto_mode()`.
+- **Systemstabilität nach 49,7 Tagen (W3)**: Behebung eines Fehlers bei der Peer-Timeout-Erkennung nach einem `millis()` Overflows durch Einführung eines dedizierten `has_peer_pid_demand` Flags.
+- **Summer-Cooling Hysterese**: Implementierung eines 1.5°C/0.5°C Totbands, um hektisches Umschalten (Flapping) zwischen WRG und Sommer-Kühlung an der Temperaturschwelle zu verhindern.
+- **Verbesserte Fehlerbehandlung**: Korrektur von Format-Strings (%lld -> %d), Namespace-Zuweisungen (`esphome::HardwareState`) und Hinzufügen von Cast-Guards zur Vermeidung von Undefined Behaviour beim Paketempfang.
+- **Power-Off Logik**: Fix eines Fehlers, bei dem das System nach Power-Down via Long-Click nicht vollständig in den "Aus"-Zustand wechselte.
+
+### Changed
+
+- **C++17 Modernisierung**: Umstellung mutabler statischer Variablen auf `inline` zur Gewährleistung der Linkage-Sicherheit in einer Single-Translation-Unit.
+- **Architektur & Modulardesign**: Einführung von `extern` Deklarationen in `automation_helpers.h`, was eine sauberere Trennung von generiertem Code und Logik ermöglicht.
+- **NTC Filter-Diagnose (W1)**: Neue Warnung im Log, falls die gewählte Zyklusdauer physikalisch zu kurz für eine stabile NTC-Messung ist.
+- **Refactoring Discovery**: Umbenennung von `load_peers_from_flash()` in `load_peers_from_runtime_cache()`, um das tatsächliche Verhalten (flüchtige Speicherung) korrekt im Code zu dokumentieren.
+- **YAML Performance**: Unnötige String-Kopien (via `c_str()`) in UI-Actions entfernt.
+
+## [0.6.37] - 2026-03-26
+
+### Added
+
+- **Dynamische ESP-NOW Discovery**: Umstellung von statischem Broadcast auf ein intelligentes Peer-to-Peer Discovery-System. Geräte finden sich nun beim Booten oder bei Raumwechseln automatisch über einen Discovery-Handshake (`ROOM_DISC` / `ROOM_CONF`).
+- **NVS-basierte Peer-Persistenz**: Entdeckte Peers werden dauerhaft im Flash-Speicher gespeichert, was einen sofortigen Verbindungsaufbau nach einem Neustart ermöglicht.
+- **Effiziente Unicast-Synchronisation**: Nach der initialen Kopplung erfolgt der gesamte Datenaustausch (PID-Demand, Status-Sync) per gezieltem Unicast statt Broadcast. Dies reduziert den Netzwerk-Overhead massiv.
+- **Diagnose-Entität "ESP-NOW Peers"**: Neuer Text-Sensor in Home Assistant zur Echtzeit-Anzeige aller aktuell verbundenen MAC-Adressen der Lüftungsgruppe.
+- **Sensor-Sichtbarkeit in HA**: Einführung eines `delta: 0.1` Filters für RAW-Temperatursensoren, um sicherzustellen, dass Werte unmittelbar in Home Assistant veröffentlicht werden.
+
+### Fixed
+
+- **Wiederherstellung NTC-Filter**: Die versehentlich entfernte Funktion `filter_ntc_stable` wurde wiederhergestellt, wodurch die primären Temperatursensoren wieder zuverlässige Werte liefern (statt "unknown").
+- **ESPHome Kompilierfehler**: Korrektur von Typ-Konflikten in `automation_helpers.h` (Nutzung der statischen Variablen aus `main.cpp` statt fehlerhafter `extern` Deklarationen).
+- **YAML Validierung**: Behebung von Fehlern bei den Global-Variablen (Umbenennung `max_length` -> `max_restore_data_length` und Korrektur auf den Maximalwert 254).
+
 ## [0.6.14] - 2026-03-22
 
 ### Added
