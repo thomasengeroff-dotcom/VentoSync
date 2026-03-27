@@ -41,7 +41,7 @@ Die Kommunikation zwischen den einzelnen Lüftungsgeräten erfolgt über das ESP
 ## Motivation
 
 Ich habe vor vielen Jahren im Rahmen der Haussanierung die dezentrale Wohnraumlüftung V-WRG von Ventomaxx installiert (10 Geräte) und war damit auch sehr zufrieden. Allerdings hat mich die proprietäre Steuerung und die fehlende Integration in mein Smart Home System immer gestört. Daher habe ich mich entschlossen, eine eigene Platine (PCB) inkl. der Steuerungssoftware auf Basis von ESPHome zu entwickeln, da es keine fertige Lösung gab. Diese Lösung ist Open Source und soll anderen Nutzern helfen, die in der gleichen Situation wie ich sind.
-Für die Steuerung der Lüftung auf Basis von CO2 nutze ich einen extrem hochwertigen und präzisen CO2-Sensor (Sensirion SCD41), der direkt in die Platine (per kleines Zusatz-PCB) integriert ist (Hinweis: Aktuell dient der BME680 als Fallback, da das SCD41-PCB noch in Fertigung ist). Dieser Sensor misst die echte CO2-Konzentration in der Luft und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung).
+Für die Steuerung der Lüftung auf Basis von CO2 nutze ich einen extrem hochwertigen und präzisen CO2-Sensor (Sensirion SCD41), der direkt in die Platine (per kleines Zusatz-PCB) integriert ist (Hinweis: Aktuell dient der BME680 als Fallback, da das SCD41-PCB noch in Fertigung ist). Dieser Sensor misst die echte CO2-Konzentration in der Luft und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung). Sämtliche Code-Kommentare und die interne Dokumentation wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt, während das User-Interface weiterhin auf Deutsch bleibt.
 Da die Lüftungsgeräte in den verschiedenen Räumen meistens eine sehr zentrale Position haben, nutze ich diese auch direkt zur Anwesenheitserkennung mittels Radar-Sensor, der unsichtbar hinter der Blende des Lüftungsgerätes versteckt montiert werden kann. Der Anwesenheitssensor wird für die Steuerung der Lüftungsintensität im Standard-Automatik Modus genutzt und kann darüber hinaus in Home Assistant für jegliche weitere Automatisierungen genutzt werden.
 Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherechen über alles hinaus, was aktuell am Markt der Lüftungsgeräte zu finden ist!
 
@@ -691,7 +691,9 @@ ESPHome-Wohnraumlueftung/
 ├── secrets.yaml                   # WLAN-Daten (Git-ignored)
 ├── packages/                      # Geteilte YAML-Module
 │   ├── hardware_io.yaml           # Hardware-Schnittstellen (I2C, MCP, PCA, LEDs)
-│   ├── sensors_climate.yaml       # Sensorik (SCD41, NTCs, BMP390, LD2450)
+│   ├── sensor_BME680.yaml         # Bosch BME680 (IAQ, Gas, Baseline, Trend)
+│   ├── sensor_LD2450.yaml         # HLK-LD2450 Radar (Präsenz, Targets)
+│   ├── sensors_climate.yaml       # Zentrale Klimasensorik (SCD41, BMP390, NTCs)
 │   ├── ui_controls.yaml           # HA GUI-Elemente (Slider, Selects, Alarm)
 │   ├── logic_automation.yaml      # Steuerungslogik, PIDs, Intervalle, Wartung
 │   └── display_diagnostics.yaml   # OLED-Display Diagnoseseiten
@@ -724,7 +726,8 @@ Die Firmware folgt einem **mehrstufigen modularen Architekturansatz**, der Wartb
 Die ehemals gewaltige Hauptdatei `esp_wohnraumlueftung.yaml` wurde drastisch verschlankt, um die Lesbarkeit und Pflege zu vereinfachen. Das Projekt nutzt intensiv die ESPHome `packages:` Funktion, um in sich geschlossene Logikbausteine in separate YAML-Dateien auszulagern:
 
 - **`hardware_io.yaml`**: Kapselt die gesamte physische Hardware. Beinhaltet I2C-Busse, Port-Expander (MCP23017, PCA9685), Basis-Pinbelegungen und Power-Toggles.
-- **`sensors_climate.yaml`**: Beinhaltet die gesamte Mess-Peripherie. Konfiguration des SCD41 (CO2), BMP390 (Druck), NTC-Temperaturfühler, Drehzahlsensoren und klimabasierte Berechnungenpunkte (z. B. Effizienz der Wärmerückgewinnung).
+- **`sensors_climate.yaml`**: Beinhaltet die zentrale Mess-Peripherie (SCD41 CO2, BMP390 Druck, NTC-Temperaturfühler) und klimabasierte Berechnungen (z. B. Effizienz der Wärmerückgewinnung).
+- **`sensor_BME680.yaml`** & **`sensor_LD2450.yaml`**: Spezifische Pakete für den IAQ-Gassensor und das mmWave-Radar zur besseren Modularität und Hardware-Austauschbarkeit.
 - **`ui_controls.yaml`**: Isoliert alle Entitäten, die in Home Assistant als Steuerelemente auftauchen (Slider für Timer und Setup, Dropdowns zur Modus-Wahl, sowie logische LED-Lichter).
 - **`logic_automation.yaml`**: Das "Gehirn", wenn es um Abläufe geht. Hier sitzen die komplexen PID-Klimaregler, Automatisierungen per Interval, zyklische Fan-Ramp-Skripte sowie die Input-Logik der Hardwaretaster am Bedienpanel.
 
@@ -818,7 +821,7 @@ Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-
   - ✅ **Millis-Refactoring**: 64-Bit Arithmetik zur Vermeidung des 49-Tage Rollover Bugs in der `VentilationStateMachine`.
   - ✅ **NTC-Performance**: Optimierung der Filter-Wartezeit (40% des Zyklus) für schnellere Wertlieferung bei gleicher Stabilität.
   - ✅ **Sommer-Kühlung**: Präzisierung der Hysterese-Regelung (+1.5°C Aktivierung / -0.5°C Deaktivierung).
-  - ✅ **Modularisierung**: Saubere Trennung von C++ Kern und YAML-Zuschnitt zur Behebung von Linker-Errors und Verbesserung der Kompilierbarkeit.
+  - ✅ **Modularisierung & Internationalisierung**: Saubere Trennung von C++ Kern und YAML-Zuschnitt (sensor-spezifische Pakete) zur Behebung von Linker-Errors und Verbesserung der Kompilierbarkeit. Umstellung sämtlicher Code-Kommentare auf Englisch zur internationalen Wartbarkeit.
 
 ### 🙏 Danksagungen / Credits
 

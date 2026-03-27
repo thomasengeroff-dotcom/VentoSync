@@ -21,7 +21,7 @@
 # Description: Core project automation logic and scripts.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-22
+# Modified:    2026-03-27
 # ==========================================================================
 # ---------------------------------------------------------
 # GLOBALS
@@ -44,15 +44,15 @@ climate:
     cool_output: pid_co2_output # Output for fan speed
     internal: true
     control_parameters:
-      # P-Anteil: 0.002 bedeutet +20% Lüfterleistung pro 100ppm über dem Ziel.
-      # Bei Target 1000ppm: 1000ppm = 0%, 1250ppm = 50%, 1500ppm = 100%
+      # P-part: 0.002 means +20% fan power per 100ppm above target.
+      # At target 1000ppm: 1000ppm = 0%, 1250ppm = 50%, 1500ppm = 100%
       kp: 0.002
-      # I-Anteil: Extrem niedrig! (Hier ca. 1.8% mehr Leistung pro Minute bei 100ppm Überschreitung)
+      # I-part: Extremely low! (~1.8% more power per minute at 100ppm excess)
       ki: 0.000003
       kd: 0.0
       output_averaging_samples: 5
     deadband_parameters:
-      # Sehr enges Deadband, damit er weich auf 0% runterdrehen kann.
+      # Narrow deadband for smooth ramp-down to 0%
       threshold_high: 10.0
       threshold_low: -10.0
 
@@ -64,9 +64,9 @@ climate:
     cool_output: pid_humidity_output
     internal: true
     control_parameters:
-      # P-Anteil: Bei 60% Sollwert bedeutet kp:0.1 -> bei 65% rF läuft er sanft auf 50%
+      # P-part: At 60% setpoint, kp:0.1 means at 65% rH it runs softly at 50%
       kp: 0.1
-      # I-Anteil: Auch hier deutlich verkleinern (Mit diesem Wert gibt es bei 5% Rest-Feuchte ca. +3% Leistung pro Minute)
+      # I-part: Also reduced significantly (approx. +3% power per minute at 5% residual humidity)
       ki: 0.0001
       kd: 0.0
       output_averaging_samples: 5
@@ -105,17 +105,17 @@ switch:
     turn_on_action:
       - lambda: |-
           if (std::isnan(id(effective_co2).state)) {
-            ESP_LOGW("co2_auto", "Kein CO2-Sensor verfügbar (SCD41/BME680) — CO2 Automatik kann nicht aktiviert werden");
+            ESP_LOGW("co2_auto", "No CO2 sensor available (SCD41/BME680) — CO2 Auto Mode cannot be enabled");
           } else {
             id(co2_auto_enabled) = true;
             sync_settings_to_peers();
-            ESP_LOGI("co2_auto", "CO2 Automatik aktiviert");
+            ESP_LOGI("co2_auto", "CO2 Auto Mode enabled");
           }
     turn_off_action:
       - lambda: |-
           id(co2_auto_enabled) = false;
           sync_settings_to_peers();
-          ESP_LOGI("co2_auto", "CO2 Automatik deaktiviert");
+          ESP_LOGI("co2_auto", "CO2 Auto Mode disabled");
 
   # ESP-NOW Peer Check (disable to suppress Master LED blinking without peers)
   - platform: template
@@ -235,6 +235,7 @@ binary_sensor:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON
     name: "Button Power"
+    internal: true # not needed in HA
     id: button_power
     # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
     filters:
@@ -266,6 +267,7 @@ binary_sensor:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON
     name: "Button Mode"
+    internal: true # not needed in HA
     id: button_mode
     # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
     filters:
@@ -285,6 +287,7 @@ binary_sensor:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON
     name: "Button Fan Intensity"
+    internal: true # not needed in HA
     id: button_level
     # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
     filters:
@@ -337,15 +340,15 @@ interval:
           then:
             - lambda: |-
                 auto data = build_and_populate_packet(esphome::MSG_SYNC);
-                // Sofortige Änderungen per Broadcast (robust)
+                // Immediate changes via broadcast (robust)
                 uint8_t broadcast_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
                 esphome::espnow::global_esp_now->send(
                     broadcast_mac, data, [](esp_err_t err) {});
-                // Zusätzlich per Unicast für zuverlässige Zustellung
+                // Additionally via unicast for reliable delivery
                 send_sync_to_all_peers(data);
                 // build_and_populate_packet/build_packet set pending_broadcast to false
 
-  # Automatik Logik (CO2, Feuchte, Sommer/Winter)
+  # Automation Logic (CO2, Humidity, Summer/Winter)
   - interval: 10s
     id: auto_mode_interval
     then:
@@ -357,7 +360,7 @@ interval:
       - lambda: |-
           evaluate_auto_mode();
 
-  # Lüfter-Geschwindigkeits-Update (Präsenz-Check für alle Modi)
+  # Fan Speed Update (Presence check for all modes)
   - interval: 10s
     then:
       - lambda: |-

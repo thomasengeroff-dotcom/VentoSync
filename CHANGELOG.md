@@ -4,6 +4,33 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.6.67] - 2026-03-27
+
+### Changed
+
+- **Internationalisierung**: Übersetzung aller Kommentare und UI-Texte (Namen, Optionen) in allen Paket-Dateien (`packages/*.yaml`) von Deutsch nach Englisch zur besseren Wartbarkeit.
+- **System**: Erhöhung der Projektversion auf 0.6.67.
+
+## [0.6.66] - 2026-03-27
+
+### Changed
+
+- **Modularisierung**: Weitere Auslagerung von Sensor-Komponenten in dedizierte Pakete.
+  - Neuerstellung von `packages/sensor_LD2450.yaml` (Radar-Präsenzerkennung).
+  - Umbenennung von `packages/BME680.yaml` in `packages/sensor_BME680.yaml` zur Vereinheitlichung.
+  - Bereinigung der `packages/sensors_climate.yaml` (Entfernung von Radar-Entitäten).
+  - Update der Hauptkonfiguration `esp_wohnraumlueftung.yaml` mit den neuen Pfaden.
+
+## [0.6.65] - 2026-03-27
+
+### Changed
+
+- **OLED Diagnostics Display**: Umfassende Überarbeitung der UI für bessere Ablesbarkeit.
+  - Erhöhung der Schriftgrößen (Small: 12pt, Medium: 16pt, Large: 22pt).
+  - Neue dedizierte Seite für **BME680 IAQ/eCO2**, inklusive Trend-Anzeige und Sensor-Status.
+  - Optimierung der **Wärmetauscher-Seite** zur Anzeige der neuen, stabilisierten WRG-Effizienz.
+  - Layout-Anpassungen für klarere Datenvisualisierung auf dem SH1106 Display.
+
 ## [0.6.64] - 2026-03-27
 
 ### Added

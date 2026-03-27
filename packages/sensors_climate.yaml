@@ -21,12 +21,11 @@
 # Description: Configuration for climate sensors (BME390, SCD41) and IAQ.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-22
+# Modified:    2026-03-27
 # ==========================================================================
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
 # ---------------------------------------------------------
-# Standard BME680 Hub (Implicit in platform)
 
 sensor:
   # BMP390 Environmental Data (Temperature & Pressure)
@@ -49,7 +48,7 @@ sensor:
     update_interval: 60s
     iir_filter: 2x
 
-  # Home Assistant Daten (Automatik)
+  # Home Assistant Data (Automation)
   - platform: homeassistant
     name: "Außenluftfeuchtigkeit"
     id: outdoor_humidity
@@ -62,15 +61,15 @@ sensor:
   # Will show as "unavailable" until sensor is connected to H2 header
   - platform: scd4x
     co2:
-      name: "CO2"
+      name: "SCD41 CO2"
       id: scd41_co2
       accuracy_decimals: 0
       filters:
         - median:
             window_size: 5
             send_every: 3
-    temperature_offset: 4.0 # Optional: Standardwert ist 4.0 °C
-    altitude_compensation: 250m # Ersetze 250m durch Wohnort-Höhe
+    temperature_offset: 4.0 # Optional: default value is 4.0 °C
+    altitude_compensation: 250m # Replace 250m with your location's altitude
     automatic_self_calibration: true
     temperature:
       name: "SCD41 Temperatur"
@@ -95,7 +94,7 @@ sensor:
   # - Tolerance: ±0.1% (High precision)
   # - Temperature Coefficient: ±25ppm/°C (Highly stable)
   # ---------------------------------------------------------
-  # NTC Innen - Indoor air temperature measurement
+  # NTC Interior - Indoor air temperature measurement
   - platform: resistance
     id: ntc_innen_resistance
     sensor: ntc_innen_source
@@ -120,20 +119,6 @@ sensor:
       - lambda: |-
           return filter_ntc_stable(0, x);
 
-  - platform: ntc
-    sensor: ntc_innen_resistance
-    name: "Temperatur Zuluft (Innen) RAW"
-    id: temp_zuluft_raw
-    calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
-      reference_temperature: 25°C
-      reference_resistance: 10kOhm
-    accuracy_decimals: 1
-    #filters:
-    #  - median:
-    #      window_size: 5
-    #      send_every: 3
-
   - platform: adc
     id: ntc_innen_source
     pin: GPIO1 # Pin D1
@@ -141,7 +126,7 @@ sensor:
     update_interval: 5s
     internal: true
 
-  # NTC Außen - Outdoor/exhaust air temperature measurement
+  # NTC Exterior - Outdoor/exhaust air temperature measurement
   - platform: resistance
     id: ntc_aussen_resistance
     sensor: ntc_aussen_source
@@ -165,20 +150,6 @@ sensor:
           send_every: 3
       - lambda: |-
           return filter_ntc_stable(1, x);
-
-  - platform: ntc
-    sensor: ntc_aussen_resistance
-    name: "Temperatur Abluft (Außen) RAW"
-    id: temp_abluft_raw
-    calibration:
-      b_constant: 3976
-      reference_temperature: 25°C
-      reference_resistance: 10kOhm
-    accuracy_decimals: 1
-    #filters:
-    #  - median:
-    #      window_size: 5
-    #      send_every: 3
 
   - platform: adc
     id: ntc_aussen_source
@@ -206,7 +177,7 @@ sensor:
       if (std::isnan(t_in)) t_in = id(temperature).state; // Fallback to BMP390
 
       return calculate_heat_recovery_efficiency(
-        t_in,                         // Room temperature from BMP390
+        t_in,                         // Room temperature
         id(temp_zuluft).state,        // Supply air temperature
         id(temp_abluft).state,        // Exhaust air temperature
         id(heat_recovery_efficiency).state
@@ -256,13 +227,7 @@ sensor:
     lambda: |-
       return last_fan_pwm_level * 100.0f;
     filters:
-      - delta: 0.5 # Nur senden, wenn Änderung > 0.5% (reduziert HA-Traffic & CPU)
-
-  # HLK-LD2450 Sensor
-  - platform: ld2450
-    ld2450_id: ld2450_radar
-    target_count:
-      name: "Radar Total Target Count"
+      - delta: 0.5 # Only send if change > 0.5% (reduces HA traffic & CPU)
 
   # ---------------------------------------------------------
   # EFFECTIVE CO2 SENSOR (Unified Fallback)
@@ -293,21 +258,3 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       return get_co2_classification(id(effective_co2).state);
-
-# ---------------------------------------------------------
-# HLK-LD2450 RADAR
-# ---------------------------------------------------------
-ld2450:
-  - id: ld2450_radar
-    uart_id: uart_ld2450
-
-binary_sensor:
-  - platform: ld2450
-    ld2450_id: ld2450_radar
-    has_target:
-      name: "Radar Presence"
-      id: radar_presence
-    has_moving_target:
-      name: "Radar Moving Target"
-    has_still_target:
-      name: "Radar Still Target"

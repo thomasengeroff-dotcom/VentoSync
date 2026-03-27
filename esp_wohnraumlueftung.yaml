@@ -47,7 +47,8 @@ packages:
   device_config_pkg: !include packages/device_config.yaml
   hardware: !include packages/hardware_io.yaml
   sensors: !include packages/sensors_climate.yaml
-  bme680: !include packages/BME680.yaml
+  bme680: !include packages/sensor_BME680.yaml
+  ld2450: !include packages/sensor_LD2450.yaml
   ui: !include packages/ui_controls.yaml
   logic: !include packages/logic_automation.yaml
   diagnostics_display: !include packages/display_diagnostics.yaml
@@ -243,6 +244,7 @@ fan:
     output: fan_pwm_primary
     name: "Lüfter"
     id: lueftung_fan
+    internal: true
     speed_count: 100 # 1-100% Granularity
 
 # ---------------------------------------------------------

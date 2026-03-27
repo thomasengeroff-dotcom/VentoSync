@@ -21,7 +21,7 @@
 # Description: Web UI and physical control entities for ventilation.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-22
+# Modified:    2026-03-27
 # ==========================================================================
 # ---------------------------------------------------------
 # LED LIGHTS (Monochromatic for Dimming)
@@ -169,7 +169,7 @@ number:
             id(update_leds).execute();
             ESP_LOGI("ui", "Max LED brightness set to %.2f", id(max_led_brightness));
 
-  # Automatik: Min Fan Level (moisture protection)
+  # Auto Mode: Min Fan Level (moisture protection)
   - platform: template
     name: "Automatik Min Lüfterstufe"
     id: automatik_min_luefterstufe
@@ -187,7 +187,7 @@ number:
             sync_settings_to_peers();
             ESP_LOGI("co2_auto", "Min fan level set to %d", (int)x);
 
-  # Automatik: Max Fan Level (noise limiter)
+  # Auto Mode: Max Fan Level (noise limiter)
   - platform: template
     name: "Automatik Max Lüfterstufe"
     id: automatik_max_luefterstufe
@@ -205,7 +205,7 @@ number:
             sync_settings_to_peers();
             ESP_LOGI("co2_auto", "Max fan level set to %d", (int)x);
 
-  # Automatik CO2 Grenzwert
+  # Auto Mode CO2 Threshold
   - platform: template
     name: "Automatik: CO2 Grenzwert"
     id: auto_co2_threshold
@@ -224,7 +224,7 @@ number:
           call.perform();
           sync_settings_to_peers();
 
-  # Automatik Feuchte Grenzwert
+  # Auto Mode Humidity Threshold
   - platform: template
     name: "Automatik: Feuchte Grenzwert"
     id: auto_humidity_threshold
@@ -243,7 +243,7 @@ number:
           call.perform();
           sync_settings_to_peers();
 
-  # -- Verhalten der Anwesenheit (Radar) Slider --
+  # -- Presence (Radar) Slider Behavior --
   - platform: template
     name: "Anwesenheit Lüfter-Anpassung"
     id: auto_presence_slider
@@ -282,9 +282,9 @@ text_sensor:
 # VENTILATION MODE SELECTION
 # ---------------------------------------------------------
 select:
-  # Lüftungsmodus (existing)
+  # Ventilation Mode
   - platform: template
-    name: "Lüftungsmodus"
+    name: "Lüftermodus"
     id: luefter_modus
     options:
       - "Automatik"
@@ -341,4 +341,3 @@ button:
           id(filter_change_alarm).publish_state(false);
           id(filter_operating_days_sensor).publish_state(0);
           ESP_LOGI("filter", "Filter counters reset. Timestamp: %d", id(filter_last_change_ts));
-

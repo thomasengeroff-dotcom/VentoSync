@@ -1,26 +1,47 @@
-# ---------------------------------------------------------
-# BME680 SENSOR COMPLETE
-# Includes: IAQ, Dewpoint, Absolute Pressure, Trend,
-#           Baseline Persistence, Sensor Status
-# ---------------------------------------------------------
-# Voraussetzungen:
-#   - I2C Bus "bus_a" muss konfiguriert sein
-#   - 48h Burn-in fuer stabile Gaswerte
-#   - Hoehe des Standorts in "ALTITUDE" anpassen
-# ---------------------------------------------------------
+# ==========================================================================
+# WRG Wohnraumlüftung – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        sensor_BME680.yaml
+# Description: Configuration for sensor BME680 SENSOR COMPLETE
+#              Includes: IAQ, Dewpoint, Absolute Pressure, Trend,
+#                        Baseline Persistence, Sensor Status
+#              Requirements:
+#                - I2C Bus "bus_a" must be configured
+#                - 48h Burn-in for stable gas values
+#                - Adjust location altitude in "ALTITUDE"
+# Author:      Thomas Engeroff
+# Created:     2026-03-28
+# Modified:    2026-03-28
+# ==========================================================================
 
 globals:
-  # Baseline im Flash speichern (ueberlebt Reboot)
+  # Save baseline in flash (survives reboot)
   - id: saved_baseline
     type: float
     restore_value: true
     initial_value: "0.0"
-  # Burn-in Zaehler (Minuten)
+  # Burn-in counter (minutes)
   - id: burn_in_counter
     type: int
     restore_value: true
     initial_value: "0"
-  # Letzter IAQ Wert fuer Trend-Berechnung
+  # Last IAQ value for trend calculation
   - id: last_iaq_value
     type: float
     restore_value: false
@@ -28,7 +49,7 @@ globals:
 
 sensor:
   # ---------------------------------------------------------
-  # BME680 Hardware-Sensor (I2C)
+  # BME680 Hardware Sensor (I2C)
   # ---------------------------------------------------------
   - platform: bme680
     i2c_id: bus_a
@@ -61,9 +82,9 @@ sensor:
             max_value: 1000000
 
   # ---------------------------------------------------------
-  # Temperatur mit Offset-Korrektur
-  # BME680 hat Eigenwaerme durch Heizplatte (~1.5C)
-  # Offset nach Vergleich mit Referenzthermometer anpassen
+  # Temperature with offset correction
+  # BME680 has self-heating from the heating plate (~1.5C)
+  # Adjust offset after comparison with a reference thermometer
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 Temperature"
@@ -81,8 +102,8 @@ sensor:
       return temp + TEMP_OFFSET;
 
   # ---------------------------------------------------------
-  # Absoluter Luftdruck (hoehenkorrigiert)
-  # Standorthoehe in Metern anpassen!
+  # Absolute air pressure (altitude-corrected)
+  # Adjust location altitude in meters!
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 Pressure Absolute"
@@ -94,17 +115,17 @@ sensor:
     state_class: "measurement"
     update_interval: 30s
     lambda: |-
-      // Standorthoehe in Metern ueber NN anpassen (passend zu SCD41: 250m)
+      // Adjust location altitude in meters above sea level (matching SCD41: 250m)
       static const float ALTITUDE = 250.0f;
       float p = id(bme680_pressure_relative).state;
       float t = id(bme680_temperature).state;
       if (std::isnan(p) || std::isnan(t)) return NAN;
-      // Barometrische Hoehenformel
+      // Barometric formula
       return p * powf(1.0f - (0.0065f * ALTITUDE / (t + 273.15f + 0.0065f * ALTITUDE)), -5.257f);
 
   # ---------------------------------------------------------
-  # Taupunkt-Berechnung (Magnus-Formel)
-  # Wichtig fuer Lueftungssteuerung
+  # Dew point calculation (Magnus formula)
+  # Important for ventilation control
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 Dewpoint"
@@ -125,8 +146,8 @@ sensor:
       return (B * alpha) / (A - alpha);
 
   # ---------------------------------------------------------
-  # Absolute Luftfeuchtigkeit (g/m3)
-  # Nuetzlich fuer Lueftungsvergleich innen/aussen
+  # Absolute humidity (g/m3)
+  # Useful for indoor/outdoor ventilation comparison
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 Absolute Humidity"
@@ -140,13 +161,13 @@ sensor:
       float t = id(bme680_temperature).state;
       float h = id(bme680_humidity).state;
       if (std::isnan(t) || std::isnan(h)) return NAN;
-      // Tetens-Formel
+      // Tetens formula
       float es = 6.112f * expf(17.67f * t / (t + 243.5f));
       float ea = es * h / 100.0f;
       return (ea * 2.1674f) / (t + 273.15f);
 
   # ---------------------------------------------------------
-  # Gas Baseline (selbstlernend + persistent)
+  # Gas Baseline (self-learning + persistent)
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 Gas Baseline"
@@ -164,7 +185,7 @@ sensor:
       float gas = id(gas_resistance).state;
       if (std::isnan(gas) || gas < 1000.0f) return baseline;
 
-      // Gespeicherte Baseline beim ersten Start laden
+      // Load saved baseline on first start
       if (baseline == 0.0f && id(saved_baseline) > 1000.0f) {
         baseline = id(saved_baseline);
         warmed_up = true;
@@ -189,7 +210,7 @@ sensor:
         }
       }
 
-      // Baseline alle 30 Minuten im Flash speichern
+      // Save baseline to flash every 30 minutes
       save_counter++;
       if (save_counter >= 30) {
         save_counter = 0;
@@ -199,7 +220,7 @@ sensor:
       return baseline;
 
   # ---------------------------------------------------------
-  # BME680 IAQ als Pseudo-CO2 (400-5000 ppm)
+  # BME680 IAQ as Pseudo-CO2 (400-5000 ppm)
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 Air Quality (CO2eq)"
@@ -244,13 +265,13 @@ sensor:
       float combined = GAS_WEIGHT * g_score + HUM_WEIGHT * h_score;
       float ppm = PPM_MIN + combined * (PPM_MAX - PPM_MIN);
 
-      // Trend speichern
+      // Save trend
       id(last_iaq_value) = ppm;
       return ppm;
 
   # ---------------------------------------------------------
-  # IAQ Trend (Veraenderung pro Minute)
-  # Positiv = verschlechtert sich, Negativ = verbessert sich
+  # IAQ Trend (change per minute)
+  # Positive = worsening, Negative = improving
   # ---------------------------------------------------------
   - platform: template
     name: "BME680 IAQ Trend"
@@ -277,7 +298,7 @@ sensor:
       return trend;
 
 text_sensor:
-  # IAQ Klassifizierung
+  # IAQ Classification
   - platform: template
     name: "BME680 Air Quality Level"
     id: iaq_level
@@ -285,14 +306,14 @@ text_sensor:
     update_interval: 30s
     lambda: |-
       float val = id(iaq_co2eq).state;
-      if (std::isnan(val)) return std::string("Unknown");
+      if (std::isnan(val)) return std::string("Unbekannt");
       if (val <= 700) return std::string("Ausgezeichnet");
       if (val <= 1000) return std::string("Gut");
       if (val <= 1500) return std::string("Maessig");
       if (val <= 2000) return std::string("Schlecht");
       return std::string("Sehr schlecht");
 
-  # Trend als Text
+  # Trend as text
   - platform: template
     name: "BME680 IAQ Trend Direction"
     id: iaq_trend_direction
@@ -300,14 +321,14 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       float trend = id(iaq_trend).state;
-      if (std::isnan(trend)) return std::string("Unknown");
+      if (std::isnan(trend)) return std::string("Unbekannt");
       if (trend < -50) return std::string("Stark verbessernd");
       if (trend < -10) return std::string("Verbessernd");
       if (trend <= 10) return std::string("Stabil");
       if (trend <= 50) return std::string("Verschlechternd");
       return std::string("Stark verschlechternd");
 
-  # Sensor-Status (Burn-in Erkennung)
+  # Sensor Status (Burn-in detection)
   - platform: template
     name: "BME680 Sensor Status"
     id: bme680_status
@@ -331,7 +352,7 @@ text_sensor:
       return std::string("Bereit");
 
 # ---------------------------------------------------------
-# Diagnose-Button: Baseline zuruecksetzen
+# Diagnostic Button: Reset Baseline
 # ---------------------------------------------------------
 button:
   - platform: template

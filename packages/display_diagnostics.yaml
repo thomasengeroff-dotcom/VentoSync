@@ -21,22 +21,25 @@
 # Description: Display configuration for diagnostics and status monitoring.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-21
+# Modified:    2026-03-27
 # ==========================================================================
 # ---------------------------------------------------------
-# Oled Display (SH1106 1.3" 128x64)
+# OLED Display (SH1106 1.3" 128x64)
 # ---------------------------------------------------------
 
 font:
   - file: "gfonts://Roboto"
-    id: font_small
+    id: font_tiny
     size: 10
   - file: "gfonts://Roboto"
+    id: font_small
+    size: 12
+  - file: "gfonts://Roboto"
     id: font_medium
-    size: 14
+    size: 16
   - file: "gfonts://Roboto"
     id: font_large
-    size: 20
+    size: 22
 
 # Create a time component to trigger the page switching
 time:
@@ -52,59 +55,52 @@ display:
       # Page 1: System Info & Filter
       - id: page_system
         lambda: |-
-          it.printf(0, 0, id(font_large), "System Status");
-          it.printf(0, 22, id(font_medium), "Modus: %s", id(luefter_modus).current_option());
-          it.printf(0, 38, id(font_small), "Lüfter: Stufe %d/10 (%.0f RPM)", id(fan_intensity_level), id(fan_rpm).state);
+          it.printf(0, 0, id(font_large), "System");
+          it.printf(0, 26, id(font_small), "Modus: %s", id(luefter_modus).current_option().c_str());
+          it.printf(0, 39, id(font_small), "Stufe: %d/10  (%.0f RPM)", id(fan_intensity_level), id(fan_rpm).state);
 
           if (id(filter_change_alarm).state) {
-            it.printf(0, 50, id(font_small), "WARNUNG: Filter wechseln!");
+            it.printf(0, 52, id(font_small), "ALARM: Filter wechseln!");
           } else {
-            it.printf(0, 50, id(font_small), "Filter: %.0f Betriebstage", id(filter_operating_days_sensor).state);
+            it.printf(0, 52, id(font_small), "Filter: %.0f Tage aktiv", id(filter_operating_days_sensor).state);
           }
 
-      # Page 2: Raumklima (Unified CO2 & BMP390)
+      # Page 2: Room Climate (SCD41 & BMP390)
       - id: page_raumklima
         lambda: |-
-          it.printf(0, 0, id(font_large), "Raumklima");
-          it.printf(0, 20, id(font_small), "Temp (BMP390): %.1f°C", id(temperature).state);
+          it.printf(0, 0, id(font_large), "Klima");
+          it.printf(0, 26, id(font_small), "Temp (BMP): %.1f°C", id(temperature).state);
 
           if (id(effective_co2).has_state()) {
-            it.printf(0, 31, id(font_small), "CO2: %.0f ppm %s", id(effective_co2).state, id(effective_co2_bewertung).state.c_str());
-            it.printf(0, 42, id(font_small), "rF (SCD41): %.1f %%", id(scd41_humidity).state);
+            it.printf(0, 39, id(font_small), "CO2: %.0f ppm (%s)", id(effective_co2).state, id(effective_co2_bewertung).state.c_str());
+            it.printf(0, 52, id(font_small), "rF (SCD41): %.1f %%", id(scd41_humidity).state);
           } else {
-            it.printf(0, 31, id(font_small), "CO2: N/A");
+            it.printf(0, 39, id(font_small), "CO2: Initialisierung...");
           }
 
-          it.printf(0, 53, id(font_small), "Druck (BMP390): %.1f hPa", id(pressure).state);
+      # Page 3: BME680 Diagnostics (IAQ & Trend)
+      - id: page_bme680
+        lambda: |-
+          it.printf(0, 0, id(font_large), "BME680 / IAQ");
+          it.printf(0, 26, id(font_small), "eCO2: %.0f ppm  (%s)", id(iaq_co2eq).state, id(iaq_level).state.c_str());
+          it.printf(0, 39, id(font_small), "Trend: %+.1f ppm/min %s", id(iaq_trend).state, id(iaq_trend_direction).state.c_str());
+          it.printf(0, 52, id(font_small), "Status: %s", id(bme680_status).state.c_str());
 
-      # Page 3: NTC Sensoren & WRG
+      # Page 4: Heat Exchanger & WRG
       - id: page_wrg
         lambda: |-
-          it.printf(0, 0, id(font_large), "Wärmetauscher");
-          it.printf(0, 20, id(font_medium), "NTC In (Zu): %.1f°C", id(temp_zuluft).state);
-          it.printf(0, 35, id(font_medium), "NTC Out (Ab): %.1f°C", id(temp_abluft).state);
-          it.printf(0, 50, id(font_medium), "WRG-Effizienz: %.1f %%", id(heat_recovery_efficiency).state);
+          it.printf(0, 0, id(font_large), "Tauscher");
+          it.printf(0, 26, id(font_small), "Zuluft: %.1f°C  (Rein)", id(temp_zuluft).state);
+          it.printf(0, 39, id(font_small), "Abluft: %.1f°C  (Raus)", id(temp_abluft).state);
+          it.printf(0, 52, id(font_small), "Effizienz: %.1f %%", id(heat_recovery_efficiency).state);
 
-      # Page 4: Automatik-Regeln & Radar
-      - id: page_auto
-        lambda: |-
-          it.printf(0, 0, id(font_large), "Auto & Radar");
-          it.printf(0, 20, id(font_small), "Limit CO2: %.0f ppm", id(auto_co2_threshold).state);
-          it.printf(0, 31, id(font_small), "Limit rF: %.0f %%", id(auto_humidity_threshold).state);
-          if (id(radar_presence).has_state()) {
-            it.printf(0, 42, id(font_small), "Radar: %s", id(radar_presence).state ? "Anwesend" : "Leer/Keiner");
-            it.printf(0, 53, id(font_small), "Radar-Boost: %+.0f Stufen", id(auto_presence_slider).state);
-          } else {
-            it.printf(0, 42, id(font_small), "Radar: Nicht bereit");
-          }
-
-      # Page 5: Network Data
+      # Page 5: Network & Info
       - id: page_network
         lambda: |-
           it.printf(0, 0, id(font_large), "Netzwerk");
-          it.printf(0, 22, id(font_small), "IP: %s", id(sensor_ip_address).state.c_str());
-          it.printf(0, 36, id(font_small), "WiFi: %.0f dBm", id(sensor_wifi_signal).state);
-          it.printf(0, 50, id(font_small), "Uptime: %.1f d", id(sensor_uptime).state);
+          it.printf(0, 26, id(font_small), "IP: %s", id(sensor_ip_address).state.c_str());
+          it.printf(0, 39, id(font_small), "WiFi: %.0f dBm", id(sensor_wifi_signal).state);
+          it.printf(0, 52, id(font_small), "Laufzeit: %.1f d", id(sensor_uptime).state);
 
 interval:
   - interval: 5s

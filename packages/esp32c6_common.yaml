@@ -18,18 +18,16 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        esp32c6_common.yaml
-# Description: Base configuration for ESP32-C6 hardware features.
+# Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-23
+# Modified:    2026-03-27
 # ==========================================================================
-# ---------------------------------------------------------
-# CORE CONFIGURATION & VERSIONING
-# ---------------------------------------------------------
+
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.6.63"
+  project_version: "0.6.66"
 
 esphome:
   name: "${device_name}"
@@ -90,7 +88,7 @@ http_request:
 update:
   - platform: http_request
     name: "${device_name} Firmware Update"
-    # Der /local/ Ordner entspricht dem "www" Ordner im Home Assistant Samba Share
+    # The /local/ folder corresponds to the "www" folder in the Home Assistant Samba Share
     source: "http://192.168.178.45:8123/local/firmware/wohnraumlueftung/manifest.json"
     update_interval: 2h
 
@@ -183,7 +181,7 @@ text_sensor:
 
   # Custom Project Version (auto-incremented on compile)
   - platform: template
-    name: "${device_name} Projekt Version"
+    name: "${device_name} Project Version"
     id: text_project_version
     icon: "mdi:tag-outline"
     entity_category: diagnostic
