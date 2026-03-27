@@ -156,21 +156,21 @@ text_sensor:
     update_interval: 60s
 
   - platform: template
-    name: "Dashboard Device ID"
+    name: "Dashboard Geräte ID"
     id: dashboard_device_id
     internal: true
     lambda: return std::to_string((int)id(config_device_id).state);
     update_interval: 60s
 
   - platform: template
-    name: "Dashboard Floor ID"
+    name: "Dashboard Stockwerk ID"
     id: dashboard_floor_id
     internal: true
     lambda: return std::to_string((int)id(config_floor_id).state);
     update_interval: 60s
 
   - platform: template
-    name: "Dashboard Room ID"
+    name: "Dashboard Raum ID"
     id: dashboard_room_id
     internal: true
     lambda: return std::to_string((int)id(config_room_id).state);

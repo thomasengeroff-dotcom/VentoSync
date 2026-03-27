@@ -34,15 +34,15 @@ sensor:
   - platform: ld2450
     ld2450_id: ld2450_radar
     target_count:
-      name: "Radar Total Target Count"
+      name: "Radar Anzahl Ziele"
 
 binary_sensor:
   - platform: ld2450
     ld2450_id: ld2450_radar
     has_target:
-      name: "Radar Presence"
+      name: "Radar Anwesenheit"
       id: radar_presence
     has_moving_target:
-      name: "Radar Moving Target"
+      name: "Radar Bewegung"
     has_still_target:
-      name: "Radar Still Target"
+      name: "Radar Stillstand"

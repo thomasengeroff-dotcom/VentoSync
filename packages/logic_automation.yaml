@@ -79,7 +79,7 @@ climate:
 # ---------------------------------------------------------
 switch:
   - platform: template
-    name: "Fan Direction"
+    name: "Lüfterrichtung"
     id: fan_direction
     internal: true
     optimistic: true
@@ -96,7 +96,7 @@ switch:
 
   # CO2-based adaptive fan control (on/off)
   - platform: template
-    name: "CO2 Automatik"
+    name: "Automatik CO2"
     id: automatik_co2
     icon: "mdi:molecule-co2"
     optimistic: false

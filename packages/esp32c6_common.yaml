@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.6.66"
+  project_version: "0.6.67"
 
 esphome:
   name: "${device_name}"
@@ -137,7 +137,7 @@ time:
 sensor:
   # Monitors WiFi connection quality (-50dBm is great, -90dBm is unusable)
   - platform: wifi_signal
-    name: "${device_name} WiFi Signal"
+    name: "${device_name} WLAN Signal"
     id: sensor_wifi_signal
     update_interval: 60s
     accuracy_decimals: 0
@@ -145,7 +145,7 @@ sensor:
 
   # WiFi Channel diagnostic
   - platform: template
-    name: "${device_name} WiFi Channel"
+    name: "${device_name} WLAN Kanal"
     id: sensor_wifi_channel
     lambda: |-
       return (float)id(wifi_component).get_wifi_channel();
@@ -155,7 +155,7 @@ sensor:
 
   # Tracks how long the device has been running without crash/reboot
   - platform: uptime
-    name: "${device_name} Uptime"
+    name: "${device_name} Laufzeit"
     id: sensor_uptime
     unit_of_measurement: days
     update_interval: 300s
@@ -181,7 +181,7 @@ text_sensor:
 
   # Custom Project Version (auto-incremented on compile)
   - platform: template
-    name: "${device_name} Project Version"
+    name: "${device_name} Projektversion"
     id: text_project_version
     icon: "mdi:tag-outline"
     entity_category: diagnostic

@@ -52,7 +52,7 @@ light:
               duration: 500ms
   - platform: monochromatic
     output: out_led_wrg
-    name: "Status LED Mode WRG"
+    name: "Status LED Modus WRG"
     id: status_led_mode_wrg # ID expected by automation_helpers.h
     internal: true
     default_transition_length: 0.5s
@@ -66,7 +66,7 @@ light:
           max_brightness: 100%
   - platform: monochromatic
     output: out_led_vent
-    name: "Status LED Mode Vent"
+    name: "Status LED Modus Vent"
     id: status_led_mode_vent # Automation helper expects this ID
     internal: true
     default_transition_length: 0.5s

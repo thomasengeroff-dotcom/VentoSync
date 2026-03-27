@@ -104,7 +104,7 @@ globals:
     type: std::string
     max_restore_data_length: 254
     initial_value: '""'
-    restore_value: false  # TODO: Temporarily disabled to clear NVS corruption from previous firmware
+    restore_value: true
 
   # CO2 auto-control enabled (only functional when SCD41 is connected)
   - id: co2_auto_enabled
