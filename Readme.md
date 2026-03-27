@@ -82,7 +82,7 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
 ### 🛡️ Präzisions-Sensorik & Monitoring
 
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD41](https://sensirion.com/de/produkte/katalog/SCD41).
-  > 💡 **Aktueller Hinweis (März 2026):** Da mein SCD41-Zusatz-PCB aktuell noch in der Fertigung ist, nutze ich übergangsweise den **Bosch BME680 Gas Sensor** als Fallback. Der Code ist so implementiert, dass automatisch der CO2-Wert (IAQ-Äquivalent) des BME680 genutzt wird, falls kein SCD41 am Bus erkannt wird.
+  > 💡 **Aktueller Hinweis (März 2026):** Da mein SCD41-Zusatz-PCB aktuell noch in der Fertigung ist, nutze ich den **Bosch BME680** als Fallback. Um die Kompilierungszeit drastisch zu reduzieren, wurde von der BSEC2-Bibliothek auf eine **leichtgewichtige IAQ-Template-Berechnung** (`log(R) + 0.04 * RH`) umgestellt. Falls kein SCD41 am Bus erkannt wird, dient dieser IAQ-Index als redundanter Indikator für die Luftqualität.
 - 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
 - 🏔️ **Luftdruckmessung via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) ermöglicht lokale Wettertrend-Analysen, Sturmwarnungen (Rapid Pressure Drop) und liefert gleichzeitig die exakten Höhendaten für die Autokalibrierung und barometrische Kompensation des SCD41 CO2-Sensors.
 - 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen. Hierfür wird eine fortschrittliche PID-Regelung verwendet, welche die Lüfterleistung dynamisch an die gemessenen Werte anpasst. Die Regelung ist so optimiert, dass sie die Lüfterleistung so gering wie möglich hält, um den Energieverbrauch und die Geräuschentwicklung zu minimieren.
@@ -185,18 +185,14 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 - **🌡️ Überwachungs-Modus (Sensor-Only)**:
   - Modus, in dem der Lüfter steht, aber alle Sensoren (CO2, Temp, Radar) und das Web-Dashboard voll aktiv bleiben (ohne Light Sleep), um lückenlose Messdaten in Home Assistant zu gewährleisten.
 
-- **🛠️ Erweiterte Wartungs-Logik**:
-  - Proaktive Erinnerung an den Filterwechsel nach exakt **3000 Betriebsstunden** (Industriestandard).
-  - Optionaler "Service-Lock": Sperrung der Modus-Wahl bei kritisch überfälliger Wartung zur Vermeidung von Motorschäden durch zugesetzte Filter.
-
-- **⏲️ Zeitgesteuerter Einrichtbetrieb**:
-  - Über das Dashboard/App aktivierbarer manueller Zuluft- oder Abluftbetrieb mit integriertem Timer für gezielte Extraktion (z.B. nach dem Kochen).
+- **⏲️ Zeitgesteuertes Durchlüften**:
+  - Über das Dashboard/App aktivierbarer manueller Zuluft- oder Abluftbetrieb mit integriertem Timer für gezielte Extraktion (z.B. nach dem Kochen), danach wechel zurück in den gewünschten Modus.
 
 - **❄️ Frostschutz-Automatik**:
-  - Intelligente Erkennung von drohendem Frost am Keramikspeicher bei extremen Außentemperaturen. Automatische Anpassung der Zykluszeiten oder kurzes Deaktivieren der Zuluft zur Regeneration des Speichers.
+  - Intelligente Erkennung von drohendem Frost am Keramikspeicher bei extremen Außentemperaturen. Automatische Anpassung der Zykluszeiten oder kurzes Deaktivieren der Zuluft zur Regeneration des Speichers. Dafür kann der äußere NTC-Sensor genutzt werden.
 
 - **📅 Autarker Wochenzeitplan**:
-  - Native Implementierung von Zeitplänen direkt auf dem ESP32 zur Sicherstellung der Komfort-Funktion auch bei Ausfall der zentralen Smart-Home-Steuerung.
+  - Native Implementierung von Zeitplänen direkt auf dem ESP32 zur Sicherstellung der Komfort-Funktion auch bei Ausfall der zentralen Smart-Home-Steuerung. Unabhängig davon können über Home Assistant Zeitpläne einfach konfiguriert werden. Wenn dieses Feature implementiert wird, muss sichergestellt werden, dass die Zeitpläne nicht mit Zeitplänen aus Home Assistant kollidieren.
 
 - **🔔 Erweiterte Alarm-Logik**:
   - Implementierung von visuellen (Master-LED) und digitalen (Push) Alarmierungen für kritische Zustände wie extreme Luftfeuchtigkeit, Frostgefahr oder kritische CO2-Werte.
@@ -238,7 +234,7 @@ Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt
 | **Lüfter** | Die original Ventomaxx V-WRG Geräte nutzen den **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (ohne Tacho-Signal) Lüfter. Alternativ kann ein deutlich modernerer und leiserer **AxiRev** (4-Pin PWM) verwendet werden. Dafür müsste man sich aber um die Befestigung per 3D-Druck-Adapter kümmern. *Die technische Anbidnung ist im folgenden Dokument beschrieben: [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)* | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
-| **BME680** | Bosch Gas Sensor (Fallback für CO2-Messung) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
+| **BME680** | Bosch Gas Sensor (Fallback für IAQ/Luftqualität) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) für dimmbare LEDs im VentoMaxx Panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
@@ -790,8 +786,8 @@ Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-
 ### 🔧 Aktuelle technische Verbesserungen
 
 - **Hardware-Upgrade: SCD41 CO2-Sensor & BMP390 (Februar 2026)**:
-  - ✅ Wechsel von BME680 (VOC-basierte IAQ-Schätzung) zu **SCD41** (echte CO2-Messung) und **BMP390** (Luftdruck).
-  - ⚠️ **Hinweis:** Da das SCD41-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ). Der Code erkennt automatisch, ob der SCD41 vorhanden ist.
+  - ✅ **BME680 Optimierung**: Umstellung auf Standard-Plattform (ohne BSEC2) spart massiv Kompilierungszeit. IAQ wird nun über ein effizientes Template berechnet.
+  - ⚠️ **Hinweis:** Da das SCD41-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ-Index). Der Code erkennt automatisch, ob der SCD41 vorhanden ist.
   - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm)
   - ✅ Integrierte Temperatur- und Feuchtigkeitsmessung (SCD41)
   - ✅ Automatische CO2-basierte Lüftungsregelung für optimale Raumluftqualität

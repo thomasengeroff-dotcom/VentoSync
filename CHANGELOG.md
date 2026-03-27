@@ -4,6 +4,23 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.6.70] - 2026-03-27
+
+### Added
+
+- **BME680 IAQ Template & Klassifizierung**: Implementierung einer leichtgewichtigen IAQ-Berechnung (`log(R) + 0.04 * RH`) und einer 7-stufigen Klartext-Bewertung (Exzellent bis Extrem belastet) direkt in YAML.
+- **Transparente CO2-Fallback-Logik**: Die Entität `effective_co2` nutzt nun das neue BME680 IAQ-Template als redundanten Indikator, falls der SCD41 Sensor nicht verfügbar ist.
+
+### Changed
+
+- **BME680 Plattform-Migration**: Umstellung von der ressourcenintensiven `bme68x_bsec2` Plattform auf die Standard `bme680` Plattform.
+- **Kompilierungs-Optimierung**: Massive Reduzierung der Build-Dauer durch Entfernung der proprietären Bosch BSEC2-Bibliothek und deren Abhängigkeiten.
+- **Sensor-Präzision**: Aktivierung von 16x Oversampling für die BME680 Temperaturmessung zur Rauschminderung.
+
+### Removed
+
+- **BSEC2 Hub & Komponenten**: Vollständige Entfernung der `bme68x_bsec2_i2c` Konfiguration und der BSEC-spezifischen IAQ/eCO2 Sensoren zur Systemverschlankung.
+
 ## [0.6.60] - 2026-03-27
 
 ### Added

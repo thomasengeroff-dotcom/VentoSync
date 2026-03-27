@@ -26,12 +26,7 @@
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
 # ---------------------------------------------------------
-bme68x_bsec2_i2c:
-  address: 0x77
-  model: bme680
-  operating_age: 28d
-  sample_rate: LP
-  supply_voltage: 3.3V
+# Standard BME680 Hub (Implicit in platform)
 
 sensor:
   # BMP390 Environmental Data (Temperature & Pressure)
@@ -267,22 +262,31 @@ sensor:
   # ---------------------------------------------------------
   # BME680 GAS SENSOR (Environmental Fallback)
   # ---------------------------------------------------------
-  - platform: bme68x_bsec2
+  - platform: bme680
     temperature:
       name: "BME680 Temperatur"
       id: bme680_temperature
+      oversampling: 16x
     humidity:
       name: "BME680 Luftfeuchtigkeit"
       id: bme680_humidity
     pressure:
       name: "BME680 Luftdruck"
       id: bme680_pressure
-    co2_equivalent:
-      name: "BME680 CO2 Äquivalent"
-      id: bme680_co2
-    iaq:
-      name: "BME680 IAQ Index"
-      id: bme680_iaq
+    gas_resistance:
+      name: "BME680 Gaswiderstand"
+      id: gas_resistance
+    address: 0x77
+    update_interval: 60s
+
+  - platform: template
+    name: "BME680 Indoor Air Quality"
+    id: iaq
+    icon: "mdi:gauge"
+    # calculation: comp_gas = log(R_gas[ohm]) + 0.04 log(Ohm)/%rh * hum[%rh]
+    lambda: |-
+      return log(id(gas_resistance).state) + 0.04 * id(bme680_humidity).state;
+    state_class: "measurement"
 
   # ---------------------------------------------------------
   # EFFECTIVE CO2 SENSOR (Unified Fallback)
@@ -299,7 +303,7 @@ sensor:
       if (!std::isnan(id(scd41_co2).state)) {
         return id(scd41_co2).state;
       }
-      return id(bme680_co2).state;
+      return id(iaq).state;
 
 # ---------------------------------------------------------
 # TEXT SENSORS (Status & Classification)
@@ -313,6 +317,35 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       return get_co2_classification(id(effective_co2).state);
+
+  - platform: template
+    name: "BME680 IAQ Classification"
+    icon: "mdi:checkbox-marked-circle-outline"
+    lambda: |-
+      if (int(id(iaq).state) <= 50) {
+        return {"Excellent"};
+      }
+      else if (int(id(iaq).state) <= 100) {
+        return {"Good"};
+      }
+      else if (int(id(iaq).state) <= 150) {
+        return {"Lightly polluted"};
+      }
+      else if (int(id(iaq).state) <= 200) {
+        return {"Moderately polluted"};
+      }
+      else if (int(id(iaq).state) <= 250) {
+        return {"Heavily polluted"};
+      }
+      else if (int(id(iaq).state) <= 350) {
+        return {"Severely polluted"};
+      }
+      else if (int(id(iaq).state) <= 500) {
+        return {"Extremely polluted"};
+      }
+      else {
+        return {"unknown"};
+      }
 
 # ---------------------------------------------------------
 # HLK-LD2450 RADAR
