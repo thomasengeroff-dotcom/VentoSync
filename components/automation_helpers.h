@@ -569,13 +569,30 @@ inline int get_co2_fan_level(float co2_ppm, int current_level, int min_level,
 // Legacy CO2 control removed in favor of evaluate_auto_mode()
 
 /// @brief Calculates Wärmerückgewinnung (heat recovery) efficiency safely.
+/// Only performs calculation during stable Intake (Zuluft) phase in WRG mode.
 inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
-                                                float t_aussen) {
-  if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
+                                                float t_aussen, float current_eff) {
+  if (ventilation_ctrl == nullptr) {
     return NAN;
   }
-  return VentilationLogic::calculate_heat_recovery_efficiency(t_raum, t_zuluft,
-                                                              t_aussen);
+
+  // Only calculate during stable WRG Intake phase
+  const bool is_wrg = ventilation_ctrl->state_machine.current_mode == esphome::MODE_ECO_RECOVERY;
+  const bool is_intake = ventilation_ctrl->state_machine.get_target_state(millis()).direction_in;
+
+  // Thermal stabilization: Wait at least 30s into the cycle before sampling
+  const uint32_t stable_time_ms = 30000;
+  const bool is_stable = (millis() - last_direction_change_time) > stable_time_ms;
+
+  if (is_wrg && is_intake && is_stable) {
+    if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
+      return current_eff; // Keep last value if sensors are missing
+    }
+    return VentilationLogic::calculate_heat_recovery_efficiency(t_raum, t_zuluft, t_aussen);
+  }
+
+  // Outside stable intake phase: Hold the last valid efficiency value
+  return std::isnan(current_eff) ? 0.0f : current_eff;
 }
 
 /// @brief Core logic for the new Standard-Automatik mode.

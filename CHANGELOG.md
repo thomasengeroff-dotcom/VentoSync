@@ -4,49 +4,29 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.6.63] - 2026-03-27
+## [0.6.64] - 2026-03-27
 
 ### Added
 
-- **BME680 Standalone Package**: Auslagerung der kompletten BME680-Logik in eine modulare `BME680.yaml`.
-- **NVS-Baseline-Persistence**: Die Gas-Baseline wird nun dauerhaft im Flash gespeichert und bleibt nach einem Reboot erhalten.
-- **Erweiterte Umwelt-Metriken**: Hinzufügen von Berechnungen für Taupunkt, absolute Luftfeuchtigkeit und höhenkorrigierten (absoluten) Luftdruck.
-- **IAQ Trend-Analyse**: Berechnung der Luftqualitätsänderung pro Minute (ppm/min) inklusive Trend-Graphen und Richtungsanzeige.
-- **Sensor-Status & Burn-in Tracking**: Automatisches Tracking der 48h Burn-in Phase mit Statusanzeige (Aufwärmphase, Burn-in, Bereit).
-- **Diagnose-Tools**: Neuer Reset-Button zum manuellen Zurücksetzen der gelernten Baseline.
+- **BME680 Standalone Package**: Vollständige Modularisierung der BME680-Logik in `packages/BME680.yaml` zur besseren Wartbarkeit.
+- **Advanced IAQ & eCO2 Logic**: Implementierung einer selbstlernenden Gas-Baseline mit **NVS-Speicherung** (überlebt Reboots) und einem präzisen eCO2-Modell (400–5000 ppm).
+- **Erweiterte Umwelt-Sensorik**: Neue Berechnungen für Taupunkt, absolute Luftfeuchtigkeit und höhenkorrigierten Luftdruck (250m).
+- **IAQ Trend- & Status-Analyse**: Echtzeit-Tracking der Luftqualitätsänderung (ppm/min) und Überwachung der 48-stündigen Burn-in Phase mit Statusanzeige.
+- **Diagnose-Tools**: Neuer Reset-Button zum manuellen Zurücksetzen der gelernten BME680-Baseline.
+
+### Fixed
+
+- **Wärmerückgewinnung Effizienz**: Grundlegende Korrektur der WRG-Berechnung. Die Effizienz wird nun ausschließlich in der stabilen **Zuluft-Phase** (Intake) ermittelt, inklusive einer 30-sekündigen thermischen Stabilisierungszeit nach jedem Richtungswechsel.
+- **Präzisions-Upgrade**: Die Raumtemperatur für die WRG-Berechnung wird nun mit Priorität vom **SCD41** oder **BME680** bezogen, um Verfälschungen durch Eigenwärme (BMP390) zu minimieren.
 
 ### Changed
 
-- **Code-Struktur**: Bereinigung der `sensors_climate.yaml` durch Verschiebung aller BME680-bezogenen Sensoren in das neue Paket.
-
-## [0.6.62] - 2026-03-27
-
-### Added
-
-- **Selbstlernende BME680 Gas-Baseline**: Implementierung eines adaptiven Referenzwert-Algorithmus (`gas_baseline`), der den Sensor automatisch an die Umgebungsluft kalibriert (asymmetrisches Tracking).
-- **Präziser Pseudo-CO2 Sensor (iaq_co2eq)**: Neues Berechnungsmodell für eCO2 (400–5000 ppm) mit 80% Gas- und 20% Feuchtigkeitsgewichtung auf Basis der gelernten Baseline.
-- **SCD41-kompatible Luftqualitätsstufen**: Neuer Text-Sensor `iaq_level` zur Einstufung der Luftqualität in 5 Stufen (Ausgezeichnet bis Sehr schlecht).
-
-### Changed
-
-- **Hardware-Sensitivität**: Optimierung der BME680 Oversampling-Raten (Temp: 8x, Hum: 8x, Press: 4x) und Verkürzung des Update-Intervalls auf 30s.
-
-## [0.6.61] - 2026-03-27
-
-### Added
-
-- **BME680 IAQ Template & Klassifizierung**: Implementierung einer leichtgewichtigen IAQ-Berechnung (Gewichtet: 25% Hum / 75% Gas-R) und einer 7-stufigen Klartext-Bewertung (Exzellent bis Extrem belastet) direkt in YAML.
-- **Transparente CO2-Fallback-Logik**: Die Entität `effective_co2` nutzt nun das verbesserte BME680 IAQ-Template als redundanten Indikator und mappt diesen auf eine realistische CO2-Skala von 400 bis 2500 ppm.
-
-### Changed
-
-- **BME680 Plattform-Migration**: Umstellung von der ressourcenintensiven `bme68x_bsec2` Plattform auf die Standard `bme680` Plattform.
-- **Kompilierungs-Optimierung**: Massive Reduzierung der Build-Dauer durch Entfernung der proprietären Bosch BSEC2-Bibliothek und deren Abhängigkeiten.
-- **Sensor-Präzision**: Aktivierung von 16x Oversampling für die BME680 Temperaturmessung zur Rauschminderung.
+- **Plattform-Migration & Performance**: Umstellung von `bme68x_bsec2` auf die Standard `bme680` Plattform. Dies führt zu einer massiven Reduzierung der Kompilierungszeit durch Entfernung der proprietären Bosch BSEC2-Bibliothek.
+- **Transparente Fallback-Logik**: `effective_co2` nutzt nun das verbesserte eCO2-Modell des BME680 als redundanten Indikator zum SCD41.
 
 ### Removed
 
-- **BSEC2 Hub & Komponenten**: Vollständige Entfernung der `bme68x_bsec2_i2c` Konfiguration und der BSEC-spezifischen IAQ/eCO2 Sensoren zur Systemverschlankung.
+- **BSEC2-Abhängigkeiten**: Vollständige Entfernung aller BSEC-spezifischen Komponenten und Hub-Konfigurationen zur Systemverschlankung.
 
 ## [0.6.60] - 2026-03-27
 

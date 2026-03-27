@@ -201,10 +201,15 @@ sensor:
     icon: "mdi:percent"
     update_interval: 60s
     lambda: |-
+      float t_in = id(scd41_temperature).state;
+      if (std::isnan(t_in)) t_in = id(bme680_temperature).state;
+      if (std::isnan(t_in)) t_in = id(temperature).state; // Fallback to BMP390
+
       return calculate_heat_recovery_efficiency(
-        id(temperature).state,     // Room temperature from BMP390
-        id(temp_zuluft).state,     // Supply air temperature
-        id(temp_abluft).state      // Exhaust air temperature
+        t_in,                         // Room temperature from BMP390
+        id(temp_zuluft).state,        // Supply air temperature
+        id(temp_abluft).state,        // Exhaust air temperature
+        id(heat_recovery_efficiency).state
       );
 
   # Fan Tachometer (RPM) Reading (Hardware)
@@ -288,7 +293,6 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       return get_co2_classification(id(effective_co2).state);
-
 
 # ---------------------------------------------------------
 # HLK-LD2450 RADAR
