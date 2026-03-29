@@ -6,6 +6,7 @@ Dieses Open-Source-Projekt bietet eine professionelle, dezentrale Lüftungssteue
 Die Kommunikation zwischen den einzelnen Lüftungsgeräten erfolgt über das ESP-NOW Protokoll, sodass kein WLAN oder eine zentrale Steuereinheit erforderlich sind (die Kommunikation über die Stromleitungen, welche Ventomaxx nutzt, wird nicht verwendet).
 
 > 💡 **Kompatibilität:** Die Steuerung funktioniert prinzipiell für jede dezentrale Wohnraumlüftung mit einem reversierbaren 12V Lüfter (3-PIN oder 4-PIN PWM). Sie wurde jedoch **speziell als Ersatz für die VentoMaxx V-WRG Serie** entwickelt. Die Hardware (PCB-Layout/Größe und Bedienpanel) ist damit explizit für die VentoMaxx V-WRG Serie optimiert und muss für andere Hersteller ggf. angepasst werden. Das PCB ist so konzipiert, dass es exakt in das Gehäuse der VentoMaxx V-WRG Serie passt und die vorhandenen Befestigungspunkte nutzt.
+Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da diese eine zentrale Steuereinheit nutzt!
 
 [![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue)](https://esphome.io/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-green)](https://www.home-assistant.io/)
@@ -131,6 +132,9 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
 
 **Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betriebener, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z. B. `http://esptest.local/ui`) im Webbrowser auf. Über das Dashboard kannst du in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
 Damit ist theoretisch die Nutzung auch komplett ohne Home Assistant möglich (was ich aber nicht empfehle)!
+
+![WRG Dashboard Einstellungen](documentation/screenshots/wrg-dashboard1.png)
+![WRG Dashboard Verbundene Geräte & Echtzeitdaten](documentation/screenshots/wrg-dashboard2.png)
 
 **📡 ESP-NOW Visualisierung**: Das lokale Web-Dashboard bietet eine Live-Ansicht aller via ESP-NOW verbundenen Geräte. Die Kachel "Verbundene Geräte (ESP-NOW)" visualisiert Node-ID, aktuellen Betriebsmodus, Drehzahl und Luft-Richtung (Phase) aller aktiven Peers in Echtzeit.
 
