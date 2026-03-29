@@ -32,6 +32,7 @@
 #include "esphome.h"
 #include "ventilation_state_machine.h"
 #include <vector>
+#include <cmath>
 
 // Forward declaration of the global fan update function (defined in
 // automation_helpers.h)
@@ -224,7 +225,7 @@ public:
     // a) The state machine reported a discrete change (e.g. direction flip)
     // b) We are currently in a ramping phase (ramp_factor != 1.0)
     // c) System is off (to ensure it stays off/ramps down)
-    if (dirty || state.ramp_factor < 1.0f || !state.fan_enabled) {
+    if (dirty || (1.0f - state.ramp_factor) > 0.01f || !state.fan_enabled) {
       if (dirty) {
         ESP_LOGD("vent", "State transition detected (flip/mode timer). "
                          "Triggering sync broadcast.");
@@ -238,6 +239,17 @@ public:
       ESP_LOGD("vent", "Triggering periodic sync broadcast (interval reached)");
       pending_broadcast = true; // Let YAML trigger the send
       last_sync_tx = now;
+    }
+
+    // 4. Cleanup old peers (5 minutes timeout)
+    auto it = peers.begin();
+    while (it != peers.end()) {
+      if (now - it->last_seen_ms > 300000) {
+        ESP_LOGD("vent", "Removing stale peer %d due to timeout", it->device_id);
+        it = peers.erase(it);
+      } else {
+        ++it;
+      }
     }
   }
 
@@ -375,10 +387,9 @@ public:
     }
 
     // 2. Mode & timer sync (>2 s drift triggers re-sync)
+    int32_t time_diff = (int32_t)pkt->remaining_duration_ms - (int32_t)state_machine.get_remaining_duration(millis());
     if (pkt->current_mode != state_machine.current_mode ||
-        (pkt->current_mode == MODE_VENTILATION &&
-         abs((int)(pkt->remaining_duration_ms -
-                   state_machine.get_remaining_duration(millis()))) > 2000)) {
+        (pkt->current_mode == MODE_VENTILATION && std::abs(time_diff) > 2000)) {
 
       ESP_LOGI("vent", "Syncing mode from peer: %d (Duration: %d)",
                pkt->current_mode, pkt->remaining_duration_ms);
@@ -490,6 +501,7 @@ public:
     ESP_LOGD("vent_sync",
              "Building packet type %d. Clearing pending_broadcast.", type);
     VentilationPacket pkt;
+    memset(&pkt, 0, sizeof(pkt));
     pkt.magic_header = 0x42;
     pkt.protocol_version =
         PROTOCOL_VERSION; // FIXED K2: stamp version for peer validation
