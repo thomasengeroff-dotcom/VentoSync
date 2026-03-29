@@ -46,12 +46,16 @@ bool VentilationLogic::is_fan_slider_off(float value) {
 
 /// @brief Linear ramp-up over 100 iterations: returns iteration / 100.
 float VentilationLogic::calculate_ramp_up(int iteration) {
+    if (iteration < 0) return 0.0f;
+    if (iteration > 100) return 1.0f;
     // 0 to 100 in 100 steps
     return (float)iteration / 100.0f;
 }
 
 /// @brief Linear ramp-down over 100 iterations: returns (100 − iteration) / 100.
 float VentilationLogic::calculate_ramp_down(int iteration) {
+    if (iteration < 0) return 1.0f;
+    if (iteration > 100) return 0.0f;
     // 100 to 0 in 100 steps
     return (100.0f - (float)iteration) / 100.0f;
 }

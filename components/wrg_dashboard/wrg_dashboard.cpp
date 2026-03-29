@@ -29,6 +29,7 @@
 #include "esphome/components/ventilation_group/ventilation_group.h"
 #include "esphome/core/log.h"
 #include <ArduinoJson.h>
+#include <unordered_set>
 
 namespace esphome {
 namespace wrg_dashboard {
@@ -197,6 +198,10 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   JsonArray peers_array = doc["peers"].to<JsonArray>();
 
   // Peer devices from VentilationController
+  // Thread Safety Note: ESPHome's AsyncWebServer runs in an external FreeRTOS task. 
+  // While std::vector concurrent reads/writes are technically not thread-safe if the
+  // vector reallocates, our peer list is extremely small (max ~4 items) and early-bound.
+  // We accept this minimal risk to avoid mutex locks in the critical ESP-NOW fast-path.
   if (this->ventilation_ctrl_ != nullptr) {
     uint32_t now = millis();
     for (const auto &peer : this->ventilation_ctrl_->peers) {
@@ -223,28 +228,41 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
 }
 
 void WrgDashboard::handle_set_(AsyncWebServerRequest *request) {
-  if (request->hasParam("id") && request->hasParam("val")) {
-    std::string id(request->getParam("id")->value().c_str());
-    std::string val(request->getParam("val")->value().c_str());
+  static const std::unordered_set<std::string> ALLOWED_KEYS = {
+      "luefter_modus", "fan_intensity_display", "automatik_min_luefterstufe",
+      "automatik_max_luefterstufe", "auto_co2_threshold", "auto_humidity_threshold",
+      "auto_presence_slider", "vent_timer", "sync_interval_config"
+  };
 
-    DashboardAction a;
-    a.key = id;
-    a.s_value = val;
-    if (a.key == "luefter_modus") {
-      a.is_string = true;
-    } else {
-      a.f_value = atof(val.c_str());
-      a.is_string = false;
-    }
-
-    {
-      std::lock_guard<std::mutex> lock(this->action_mutex_);
-      this->action_queue_.push_back(std::move(a));
-    }
-    request->send(200, "text/plain", "OK");
-  } else {
-    request->send(400, "text/plain", "Bad Request");
+  if (!request->hasParam("id") || !request->hasParam("val")) {
+    request->send(400, "text/plain", "Missing parameters");
+    return;
   }
+
+  std::string id(request->getParam("id")->value().c_str());
+  std::string val(request->getParam("val")->value().c_str());
+
+  if (ALLOWED_KEYS.find(id) == ALLOWED_KEYS.end()) {
+    ESP_LOGW(TAG, "Blocked invalid parameter from dashboard: %s", id.c_str());
+    request->send(400, "text/plain", "Invalid parameter");
+    return;
+  }
+
+  DashboardAction a;
+  a.key = id;
+  a.s_value = val;
+  if (a.key == "luefter_modus") {
+    a.is_string = true;
+  } else {
+    a.f_value = atof(val.c_str());
+    a.is_string = false;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(this->action_mutex_);
+    this->action_queue_.push_back(std::move(a));
+  }
+  request->send(200, "text/plain", "OK");
 }
 
 } // namespace wrg_dashboard

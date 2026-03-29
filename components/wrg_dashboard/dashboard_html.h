@@ -187,6 +187,13 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
   </div>
 
   <script>
+    function sanitizeHTML(str) {
+        if (typeof str !== 'string') return str;
+        return str.replace(/[<>&"]/g, function(c) {
+            return {'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;'}[c];
+        });
+    }
+
     // Chart Setup
     const maxHistoryPoints = 150; // approx 5 minutes at 2s interval
     const chartData = {
@@ -307,7 +314,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
           const el = document.getElementById("val_" + id);
           if (el && data[id] !== null) {
             let num = parseFloat(data[id]);
-            el.innerText = isNaN(num) ? data[id] : (Number.isInteger(num) ? num : num.toFixed(1));
+            let strVal = typeof data[id] === 'string' ? data[id] : String(data[id]);
+            el.textContent = isNaN(num) ? sanitizeHTML(strVal) : (Number.isInteger(num) ? num : num.toFixed(1));
           }
         });
 
@@ -354,12 +362,12 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         
         let html = `<div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
             <div class="font-bold text-gray-300 mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
-              <span>Gerät ${data.device_id || "--"} (lokales Gerät)</span>
+              <span>Gerät ${sanitizeHTML(String(data.device_id || "--"))} (lokales Gerät)</span>
               <span class="w-2 h-2 rounded-full bg-gray-400"></span>
             </div>
             <div class="flex justify-between text-sm mb-2">
-                <span class="text-gray-400">Modus: <strong class="text-gray-200">${data.luefter_modus || "--"}</strong></span>
-                <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${data.fan_intensity_display || "--"}</strong> ${localPhaseBadge}</span>
+                <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(String(data.luefter_modus || "--"))}</strong></span>
+                <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(data.fan_intensity_display || "--"))}</strong> ${localPhaseBadge}</span>
             </div>
             <div class="flex justify-between text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
                 <span title="Temp In">In: ${localTIn}</span>
@@ -379,12 +387,12 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             
             html += `<div class="bg-gray-800/80 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
                 <div class="font-bold text-white mb-3 pb-2 border-b border-gray-700 flex justify-between items-center">
-                  <span>Gerät ${peer.device_id}</span>
+                  <span>Gerät ${sanitizeHTML(String(peer.device_id))}</span>
                   <span class="w-2 h-2 rounded-full bg-accent"></span>
                 </div>
                 <div class="flex justify-between text-sm mb-2">
-                    <span class="text-gray-400">Modus: <strong class="text-gray-200">${mode}</strong></span>
-                    <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${peer.speed}</strong> ${phase}</span>
+                    <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(mode)}</strong></span>
+                    <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(peer.speed))}</strong> ${phase}</span>
                 </div>
                 <div class="flex justify-between text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
                     <span title="Temp In">In: ${tIn}</span>
@@ -420,6 +428,19 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
     }
 
     async function sendSet(id, val) {
+      const allowedKeys = ['luefter_modus', 'fan_intensity_display', 'automatik_min_luefterstufe', 
+                          'automatik_max_luefterstufe', 'auto_co2_threshold', 'auto_humidity_threshold',
+                          'auto_presence_slider', 'vent_timer', 'sync_interval_config'];
+
+      if (!allowedKeys.includes(id)) {
+          console.error('Client validation failed: Invalid parameter =', id);
+          return;
+      }
+      if (id === 'fan_intensity_display' && (val < 1 || val > 10)) {
+          console.error('Client validation failed: Invalid fan intensity =', val);
+          return;
+      }
+
       if (id === 'fan_intensity_display') document.getElementById("label_fan_intensity").innerText = val;
 
       try {
