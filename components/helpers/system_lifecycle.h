@@ -110,7 +110,7 @@ inline void cycle_operating_mode(int mode_index) {
   // Sync HA select dropdown
   if (mode_index >= 0 && mode_index < 5) {
     std::string mode_str = mode_names[mode_index];
-    if (luefter_modus != nullptr && luefter_modus->state != mode_str) {
+    if (luefter_modus != nullptr && std::string(luefter_modus->current_option()) != mode_str) {
       luefter_modus->publish_state(mode_str);
     }
   }
@@ -149,7 +149,7 @@ inline void sync_config_to_controller() {
   v->set_device_id(dev);
 
   if (config_phase != nullptr) {
-    bool is_phase_a = (config_phase->state == "Phase A (Startet mit Zuluft)");
+    bool is_phase_a = (std::string(config_phase->current_option()) == "Phase A (Startet mit Zuluft)");
     v->set_is_phase_a(is_phase_a);
 
     ESP_LOGI("boot", "Synced Config to Controller: Floor %d, Room %d, Device %d, Phase: %s",

@@ -83,7 +83,7 @@ extern esphome::globals::GlobalsComponent<bool>
     *system_on; ///< Master power state.
 extern esphome::globals::GlobalsComponent<bool>
     *ventilation_enabled; ///< Ventilation enabled flag.
-extern esphome::globals::GlobalsComponent<int>
+extern esphome::globals::RestoringGlobalsComponent<int>
     *current_mode_index; ///< Active mode index (0–3).
 extern esphome::globals::RestoringGlobalsComponent<int>
     *fan_intensity_level; ///< Fan intensity (1–10).
@@ -95,7 +95,7 @@ extern esphome::globals::RestoringGlobalsComponent<int>
 extern esphome::globals::RestoringGlobalsComponent<int>
     *automatik_max_fan_level; ///< Max fan level for auto control (noise limit).
 
-extern esphome::globals::GlobalsComponent<bool> *auto_mode_active;
+extern esphome::globals::RestoringGlobalsComponent<bool> *auto_mode_active;
 extern esphome::globals::RestoringGlobalsComponent<int> *auto_co2_threshold_val;
 extern esphome::globals::RestoringGlobalsComponent<int>
     *auto_humidity_threshold_val;

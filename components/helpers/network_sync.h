@@ -40,6 +40,13 @@ inline bool is_local_mac(const uint8_t *mac) {
   return true;
 }
 
+/** @brief Checks if this is the only device in the room group. */
+inline bool is_single_device_group() {
+  if (espnow_peers == nullptr) return true;
+  std::string peer_list = espnow_peers->value();
+  return peer_list.empty();
+}
+
 /** @brief Registers a MAC address as an ESP-NOW peer and persists it to NVS. */
 inline void register_peer_dynamic(const uint8_t *mac) {
   if (!esphome::espnow::global_esp_now) {
@@ -115,8 +122,14 @@ inline void load_peers_from_runtime_cache() {
 
 /** @brief Sends a discovery broadcast to identify peers in the same room. */
 inline void send_discovery_broadcast() {
-  if (!esphome::espnow::global_esp_now || !config_floor_id || !config_room_id)
-    return;
+  if (!esphome::espnow::global_esp_now || !config_floor_id || !config_room_id) return;
+  
+  // Random backoff (100-500ms) to prevent simultaneous broadcast storms on boot
+  static bool first_broadcast = true;
+  if (first_broadcast) {
+    delay(esphome::random_uint32() % 401 + 100);
+    first_broadcast = false;
+  }
 
   char buffer[64];
   int written =
@@ -218,34 +231,57 @@ inline bool handle_discovery_payload(const std::string &payload,
   return false;
 }
 
-/** @brief Sends a sync packet to all registered peers via room-wide broadcast.
- */
+/** @brief Sends a sync packet to all registered peers via room-wide broadcast. */
 inline void sync_settings_to_peers() {
-  if (ventilation_ctrl == nullptr || !esphome::espnow::global_esp_now)
+  if (ventilation_ctrl == nullptr || !esphome::espnow::global_esp_now) return;
+  
+  // Broadcast loop guard (max 1 per 500ms)
+  static uint32_t last_settings_sync = 0;
+  if (millis() - last_settings_sync < 500) {
+    ESP_LOGD("vent_sync", "Settings sync broadcast suppressed (loop prevention)");
     return;
+  }
+  last_settings_sync = millis();
+
   auto data = build_and_populate_packet(esphome::MSG_STATE);
-  esphome::espnow::global_esp_now->send(BROADCAST_MAC, data,
-                                        [](esp_err_t err) {});
+  esphome::espnow::global_esp_now->send(BROADCAST_MAC, data, [](esp_err_t err) {});
   ESP_LOGI("vent_sync", "Sent state change via BROADCAST to room members.");
 }
 
 namespace espnow_handler {
 
-inline bool validate_packet(const std::vector<uint8_t> &data) {
-  if (data.size() != sizeof(esphome::VentilationPacket)) {
-    ESP_LOGI("vent_sync", "Invalid packet size: %d", data.size());
-    return false;
+  inline bool validate_packet(const std::vector<uint8_t> &data) {
+    if (data.empty()) return false;
+    
+    // Check header and protocol version first for better diagnostics
+    if (data.size() >= 2) {
+      if (data[0] != 0x42) {
+        ESP_LOGW("vent_sync", "Invalid magic header: 0x%02X", data[0]);
+        return false;
+      }
+      if (data[1] != esphome::PROTOCOL_VERSION) {
+        ESP_LOGW("vent_sync", "Protocol version mismatch! Got v%d, expected v%d. Devices on the network are running mismatched firmware.", 
+                 data[1], esphome::PROTOCOL_VERSION);
+        return false;
+      }
+    }
+
+    // Now safely check strict size
+    if (data.size() != sizeof(esphome::VentilationPacket)) {
+      ESP_LOGW("vent_sync", "Invalid packet size: %d", data.size());
+      return false;
+    }
+
+    const auto *pkt = reinterpret_cast<const esphome::VentilationPacket *>(data.data());
+    
+    // Validate configuration ranges to prevent potential out-of-bounds exploits
+    if (pkt->fan_intensity > 10) return false;
+    if (pkt->automatik_min_fan_level < 1 || pkt->automatik_min_fan_level > 10) return false;
+    if (pkt->automatik_max_fan_level < 1 || pkt->automatik_max_fan_level > 10) return false;
+    if (pkt->sync_interval_min < 1 || pkt->sync_interval_min > 1440) return false;
+
+    return true;
   }
-  const auto *pkt =
-      reinterpret_cast<const esphome::VentilationPacket *>(data.data());
-  if (pkt->magic_header != 0x42 ||
-      pkt->protocol_version != esphome::PROTOCOL_VERSION) {
-    ESP_LOGI("vent_sync", "Invalid packet header: %d %d", pkt->magic_header,
-             pkt->protocol_version);
-    return false;
-  }
-  return true;
-}
 
 inline void handle_status_request(const esphome::VentilationPacket *pkt) {
   if (config_floor_id != nullptr && config_room_id != nullptr &&
@@ -473,7 +509,11 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
 
   espnow_handler::handle_config_sync(pkt);
 
-  if (v->device_id != 1 && pkt->device_id == 1 &&
+  // --- Master Device Authority Enforcer ---
+  // If we are not alone, and the received packet originates from the designated Master 
+  // Device (Device 1), and its operating mode differs from our local mode, we immediately 
+  // align our state to match. This resolves boot-time conflicts or desyncs.
+  if (!is_single_device_group() && v->device_id != 1 && pkt->device_id == 1 &&
       current_mode_index != nullptr &&
       pkt->current_mode_index != current_mode_index->value()) {
     ESP_LOGI("vent_sync",
