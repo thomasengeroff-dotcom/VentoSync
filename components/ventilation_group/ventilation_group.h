@@ -56,7 +56,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static const uint8_t PROTOCOL_VERSION = 5; // Bumped: max_led_brightness added
+static const uint8_t PROTOCOL_VERSION = 6; // Bumped: current_mode_index added
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
 /// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
@@ -69,6 +69,7 @@ struct __attribute__((packed)) VentilationPacket {
   uint8_t device_id;    ///< Unique sender ID (used to ignore own packets).
   uint8_t msg_type;     ///< MessageType enum value.
   uint8_t current_mode; ///< VentilationMode enum value.
+  uint8_t current_mode_index; ///< exact UI mode index.
 
   // Live Data Synced States
   uint32_t timestamp_ms; ///< Sender's millis() at packet creation.

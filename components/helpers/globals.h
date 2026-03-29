@@ -17,11 +17,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 //
-// File:        automation_helpers.h
-// Description: Helper functions for ESPHome YAML automations.
+// File:        globals.h
+// Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
-// Created:     2026-03-07
-// Modified:    2026-03-26
+// Created:     2026-03-29
+// Modified:    2026-03-29
 // ==========================================================================
 #pragma once
 

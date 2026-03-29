@@ -67,6 +67,9 @@ esphome:
         - delay: 2s # Wait for all components/NVS to stabilize
         - lambda: |-
             sync_config_to_controller();
+            if (current_mode_index != nullptr) {
+              cycle_operating_mode(current_mode_index->value());
+            }
 
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
 
@@ -100,6 +103,7 @@ globals:
   - id: current_mode_index
     type: int
     initial_value: "0" # Default: Smart-Automatik
+    restore_value: true
 
   # ESP-NOW dynamic peer list
   - id: espnow_peers
@@ -130,6 +134,7 @@ globals:
   - id: auto_mode_active
     type: bool
     initial_value: "true"
+    restore_value: true
 
   # Automatik CO2 Grenzwert (Wert in ppm, ab dem hochgeregelt wird)
   - id: auto_co2_threshold_val

@@ -1,3 +1,28 @@
+// ==========================================================================
+// WRG Wohnraumlüftung – ESPHome Custom Component
+// https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+//
+// Copyright (c) 2026 Thomas Engeroff
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+//
+// File:        user_input.h
+// Description: Processing of physical button and slider interactions.
+// Author:      Thomas Engeroff
+// Created:     2026-03-29
+// Modified:    2026-03-29
+// ==========================================================================
 #pragma once
 #include "helpers/globals.h"
 
@@ -179,6 +204,7 @@ build_and_populate_packet(esphome::MessageType type) {
   esphome::VentilationPacket *pkt = (esphome::VentilationPacket *)data.data();
 
   // Populate all HA configurations
+  pkt->current_mode_index = current_mode_index != nullptr ? current_mode_index->value() : 0;
   pkt->co2_auto_enabled = co2_auto_enabled->value();
   pkt->automatik_min_fan_level = (uint8_t)automatik_min_fan_level->value();
   pkt->automatik_max_fan_level = (uint8_t)automatik_max_fan_level->value();
