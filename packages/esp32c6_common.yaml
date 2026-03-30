@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.10"
+  project_version: "0.7.12"
 
 esphome:
   name: "${device_name}"
@@ -164,11 +164,11 @@ sensor:
   - platform: uptime
     name: "${device_name} Laufzeit"
     id: sensor_uptime
-    unit_of_measurement: days
+    unit_of_measurement: h
     update_interval: 300s
     accuracy_decimals: 1
     filters:
-      - multiply: 0.000011574 # Convert seconds to days
+      - multiply: 0.000277778 # Convert seconds to hours
 
 # ---------------------------------------------------------
 # SYSTEM INFORMATION (TEXT)

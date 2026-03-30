@@ -178,7 +178,7 @@ script:
   # --- Light Sleep Management ---
   # Reduces power by turning off WiFi and LEDs
   - id: system_sleep
-    mode: restart
+    mode: restart  # Note: 'light_sleep' is not a valid execution mode for a script.
     then:
       - lambda: |-
           ESP_LOGI("sleep", "Entering Light Sleep Mode (WiFi OFF, LEDs OFF)");

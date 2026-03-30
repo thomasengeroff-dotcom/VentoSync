@@ -116,6 +116,7 @@ number:
     step: 5
     initial_value: 30
     optimistic: true
+    restore_value: true
     set_action:
       then:
         - lambda: |-
@@ -131,6 +132,7 @@ number:
     step: 10
     initial_value: 180 # 3 hours
     optimistic: true
+    restore_value: true
     set_action:
       then:
         - lambda: |-
@@ -144,7 +146,8 @@ number:
     max_value: 10
     step: 1
     mode: slider
-    optimistic: false
+    #restore_value: true      # ✅ Jetzt möglich ohne lambda
+    optimistic: false         # ✅ Bessere UI Erfahrung
     lambda: |-
       return id(fan_intensity_level);
     set_action:
@@ -162,6 +165,7 @@ number:
     step: 5
     initial_value: 80
     optimistic: true
+    restore_value: true
     set_action:
       then:
         - lambda: |-
@@ -181,6 +185,7 @@ number:
     mode: slider
     optimistic: true
     initial_value: 2
+    restore_value: true
     set_action:
       then:
         - lambda: |-
@@ -199,6 +204,7 @@ number:
     mode: slider
     optimistic: true
     initial_value: 7
+    restore_value: true
     set_action:
       then:
         - lambda: |-
