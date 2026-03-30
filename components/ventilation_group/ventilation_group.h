@@ -386,32 +386,36 @@ public:
       state_machine.sync_time(millis(), pkt->cycle_pos_ms);
     }
 
-    // 2. Mode & timer sync (>2 s drift triggers re-sync)
-    int32_t time_diff = (int32_t)pkt->remaining_duration_ms - (int32_t)state_machine.get_remaining_duration(millis());
-    if (pkt->current_mode != state_machine.current_mode ||
-        (pkt->current_mode == MODE_VENTILATION && std::abs(time_diff) > 2000)) {
-
-      ESP_LOGI("vent", "Syncing mode from peer: %d (Duration: %d)",
-               pkt->current_mode, pkt->remaining_duration_ms);
-      set_mode((VentilationMode)pkt->current_mode, pkt->remaining_duration_ms);
-      changed = true;
+    // Determine if we should adopt this packet's mode/intensity properties
+    bool should_sync = false;
+    if (pkt->msg_type == MSG_STATE) {
+        should_sync = true; // Always adopt explicit group interactions
+    } else if (pkt->msg_type == MSG_SYNC && pkt->device_id == 1 && device_id != 1) {
+        should_sync = true; // Slaves align to Master's periodic state broadcast
     }
 
-    // 3. Fan intensity sync
-    if (pkt->fan_intensity > 0 && pkt->fan_intensity <= 10 &&
-        pkt->fan_intensity != current_fan_intensity) {
-      ESP_LOGI("vent", "Syncing fan intensity from peer: %d",
-               pkt->fan_intensity);
-      current_fan_intensity = pkt->fan_intensity;
-      changed = true;
-    }
+    if (should_sync) {
+        // 2. Mode & timer sync (>2 s drift triggers re-sync)
+        int32_t time_diff = (int32_t)pkt->remaining_duration_ms - (int32_t)state_machine.get_remaining_duration(millis());
+        if (pkt->current_mode != state_machine.current_mode ||
+            (pkt->current_mode == MODE_VENTILATION && std::abs(time_diff) > 2000)) {
 
-    // 4. Settings Synchronization
-    // NOTE: Config sync (co2_auto_enabled, automatik_min/max_fan_level,
-    // thresholds, timers etc.) is handled in automation_helpers.h ::
-    // handle_espnow_receive() because those globals are 'static' in main.cpp
-    // and only visible from there. This class (VentilationController) cannot
-    // access them directly.
+          ESP_LOGI("vent", "Syncing mode from peer %d (Type: %d): %d", pkt->device_id, pkt->msg_type, pkt->current_mode);
+          // Set logical state without triggering an echo broadcast
+          state_machine.set_mode((VentilationMode)pkt->current_mode, millis(), pkt->remaining_duration_ms);
+          update_hardware();
+          changed = true;
+        }
+
+        // 3. Fan intensity sync
+        if (pkt->fan_intensity > 0 && pkt->fan_intensity <= 10 &&
+            pkt->fan_intensity != current_fan_intensity) {
+          ESP_LOGI("vent", "Syncing fan intensity from peer %d: %d", pkt->device_id, pkt->fan_intensity);
+          current_fan_intensity = pkt->fan_intensity;
+          update_hardware();
+          changed = true;
+        }
+    }
 
     // 5. Temperature sync
     if (!std::isnan(pkt->t_in)) {

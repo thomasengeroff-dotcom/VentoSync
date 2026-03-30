@@ -318,17 +318,20 @@ button:
 
 # Interval to check for pending broadcasts
 interval:
-  # One-shot: trigger ESP-NOW discovery after boot, once ESP-NOW is ready
-  # Uses a simple counter so it only fires on the first tick (10s after boot)
-  - interval: 10s
+  # Trigger ESP-NOW discovery and request peer status whenever WiFi connects.
+  # This fires at boot AND when waking up from Light Sleep (Aus mode).
+  - interval: 2s
     then:
       - if:
           condition:
             lambda: |-
-              static bool done = false;
-              if (!done && wifi::global_wifi_component->is_connected()) {
-                done = true;
+              static bool was_connected = false;
+              bool is_conn = wifi::global_wifi_component->is_connected();
+              if (is_conn && !was_connected) {
+                was_connected = true;
                 return true;
+              } else if (!is_conn) {
+                was_connected = false;
               }
               return false;
           then:

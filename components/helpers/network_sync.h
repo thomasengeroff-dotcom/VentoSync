@@ -499,6 +499,7 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
         fan_intensity_level->value() = pkt->fan_intensity;
 
       v->is_state_synced = true;
+      v->pending_broadcast = false; // Mute echo to prevent spamming old state on boot
       return;
     }
   }
@@ -507,18 +508,14 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
     espnow_handler::handle_state_sync(pkt);
   }
 
-  espnow_handler::handle_config_sync(pkt);
+  bool should_sync_config = false;
+  if (pkt->msg_type == esphome::MSG_STATE) {
+    should_sync_config = true;
+  } else if (pkt->msg_type == esphome::MSG_SYNC && pkt->device_id == 1 && v->device_id != 1) {
+    should_sync_config = true;
+  }
 
-  // --- Master Device Authority Enforcer ---
-  // If we are not alone, and the received packet originates from the designated Master 
-  // Device (Device 1), and its operating mode differs from our local mode, we immediately 
-  // align our state to match. This resolves boot-time conflicts or desyncs.
-  if (!is_single_device_group() && v->device_id != 1 && pkt->device_id == 1 &&
-      current_mode_index != nullptr &&
-      pkt->current_mode_index != current_mode_index->value()) {
-    ESP_LOGI("vent_sync",
-             "Mode mismatch with Master (Device %d). Adopting Master Mode %d",
-             pkt->device_id, pkt->current_mode_index);
-    cycle_operating_mode(pkt->current_mode_index);
+  if (should_sync_config) {
+    espnow_handler::handle_config_sync(pkt);
   }
 }

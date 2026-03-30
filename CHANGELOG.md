@@ -4,6 +4,20 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.6.94] - 2026-03-30
+
+### Fixed
+
+- **Aggressives Master-Override (ESP-NOW)**: Der "Master Device Authority Enforcer" in `network_sync.h` wurde entfernt. Dieser überschrieb zuvor fehlerhaft die gesamte Gruppe, wenn ein "Master"-Gerät neu startete und sein Recovery-Paket mit alten Konfigurationseinstellungen flashte. Geräte übernehmen nun Modus-Zustände aus dem Netzwerk nur noch bei dedizierten Sync-Events, echten State-Änderungen oder Status-Requests.
+- **Boot-Loop und Light Sleep Wakeup**: Beim Aufwecken aus dem energiersparenden "Aus"-Zustand (Hardware-Button) flutet das Gerät das ESP-NOW-Netzwerk nicht mehr sofort mit seinem alten, lokal gespeicherten Zustand. Es fährt stattdessen die Lüfter lokal hoch, stummgeschaltet (`pending_broadcast = false`), und wartet auf den `MSG_STATUS_RESPONSE` des Master-Geräts, um sich nahtlos in die Gruppe einzufügen.
+- **WiFi Connect Discovery**: Die Recovery-Erkennung (`request_peer_status`) triggert nun intelligent bei **jedem** erfolgreichen WLAN-Reconnect und nicht nur einmalig beim Hardware-Boot (wie bisheriger `static done` Guard).
+
+### Changed
+
+- **Web-Dashboard Sicherheit (XSS)**: Einführung strikter HTML-Sanitisierung (`sanitizeHTML`) und Umstellung von `innerHTML`/`innerText` Zuweisungen auf saubere Typkonvertierungen im Web-Dashboard (`dashboard_html.h`), um serverseitige XSS-Angriffsvektoren über den `/state` Endpoint sicher auszuschließen.
+- **Backend-Whitelist Validierung**: Der lokale `/set` Endpoint in `wrg_dashboard.cpp` schützt die REST-Schnittstelle nun mit einem Whitelist-Filter (`std::unordered_set`) und verhindert die Verarbeitung von manipulierten GET-Parametern.
+- **C++ Bounds Checking & Memory Safety**: Die `calculate_ramp_up` und `calculate_ramp_down` Funktionen in der Lüftungslogik erhielten saubere In-/Out-Bounding Checks sowie `memset` Zero-Init für das `VentilationPacket` Struktur-Objekt, um potentielle Integer-Overflows oder Memory-Padding Leaks abzufangen.
+
 ## [0.6.79] - 2026-03-29
 
 ### Refactored

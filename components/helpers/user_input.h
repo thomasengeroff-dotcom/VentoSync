@@ -130,9 +130,17 @@ inline void handle_button_power_short_click() {
 
   if (!ventilation_enabled->value()) {
     ventilation_enabled->value() = true;
-    ESP_LOGI("power", "System turned ON by short press - restoring mode %d",
+    ESP_LOGI("power", "System turned ON by short press - restoring mode %d locally, awaiting network sync",
              current_mode_index->value());
     cycle_operating_mode(current_mode_index->value());
+    
+    // Mute the outgoing state broadcast to prevent overwriting the group with our slept state.
+    // Instead we arm the sync flag to adopt the Master's mode when WiFi connects.
+    if (ventilation_ctrl != nullptr) {
+      ventilation_ctrl->pending_broadcast = false;
+      ventilation_ctrl->is_state_synced = false;
+    }
+    
     fan_speed_update->execute();
     ui_timeout_script->execute();
   } else {
