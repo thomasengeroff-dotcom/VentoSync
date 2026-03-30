@@ -4,6 +4,32 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.6] - 2026-03-30
+### Fixed
+- Fixed Slave synchronization when Master ID is 2 (e.g., during device transition).
+- Heartbeats (`MSG_SYNC`) are now accepted from ID 1 and ID 2 to ensure state consensus.
+- Forced UI sync for manual state changes (`MSG_STATE`) even if internal state matches.
+- Added detailed debug logging for why packets are ignored in the room group.
+
+## [0.7.0] - 2026-03-30
+### Fixed
+- **Manueller State-Override (HA/UI)**: Es wurde ein Fehler behoben, bei dem manuelle Änderungen in Home Assistant (Modus-Wechsel, Intensitäts-Slider) nicht sofort an alle Peers übertragen wurden. Dies passierte, da das neue 60-Sekunden-Heartbeat-System (`MSG_SYNC`) fälschlicherweise als "ausreichend" für die Synchronisation angesehen wurde. Wir haben nun explizite `sync_settings_to_peers()`-Aufrufe in jeden UI-Interaktionspfad implementiert. Jede manuelle Änderung triggert nun sofort ein `MSG_STATE`-Paket, das alle Peers zur sofortigen Übernahme zwingt.
+
+## [0.6.97] - 2026-03-30
+
+### Fixed
+
+- **Dashboard Verbundene Geräte (ESP-NOW)**: Fehler behoben, bei dem die Nachbargeräte aus dem Dashboard verschwunden sind. Grund war, dass der konfigurierbare `sync_interval_config` (z.B. 3 Stunden) dafür gesorgt hat, dass Geräte in bestimmten Modi (z.B. Durchlüften oder Aus) nicht mehr regelmäßig gesendet haben und deshalb nach dem internen 5-Minuten-Timeout fälschlicherweise als "Offline" markiert und gelöscht wurden. Es wurde nun ein konstanter UI-Heartbeat (alle 60 Sekunden) implementiert.
+- **WLAN Kanal-Hopping & I2C Aussetzer**: Ist die WLAN-Verbindung zum Router abgerissen, hat das Gerät intensiv das komplette 2.4GHz Band gescannt. Dies hat den Single-Core SoC überlastet, die I2C-Sensorkommunikation (SCD41) abreißen lassen und parallel den ESP-NOW Funkverkehr zu den anderen Räumen blockiert. Durch `fast_connect: true` fokussiert sich das Gerät nun stabil auf den konfigurierten Kanal.
+- **Webserver-Crash & Tote Sockets (Error 23)**: Ein Router-Neustart führte dazu, dass im Hintergrund Web-Browser (SSE / EventSource) "unsichtbar" die Verbindung verloren haben. Der ESP-IDF Webserver lief mit maximal 10 Sockets durch Fehler 23 (`httpd_accept_conn: error in accept (23) ENFILE`) über. Durch das Erhöhen auf `CONFIG_LWIP_MAX_SOCKETS: 16` gibt es nun den essenziellen Pufferraum.
+- **Kompletter Auto-Recovery nach Router-Ausfall**: Bleibt der Router / das WLAN für mehr als 5 Minuten verschwunden, macht das Gerät nun automatisch einen sauberen Neustart (`reboot_timeout: 5min`). Das entfernt zuverlässig gestrandete Zombie-Sockets und startet den System-Bus fehlerfrei neu durch, um sich nahtlos zurück ins Netzwerk zu integrieren.
+
+## [0.6.96] - 2026-03-30
+- (Interne Anpassungen)
+
+## [0.6.95] - 2026-03-30
+- (Interne Anpassungen)
+
 ## [0.6.94] - 2026-03-30
 
 ### Fixed
@@ -421,8 +447,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 - **`ventilation_logic` Component**: `ventilation_logic:` Include in YAML fehlte — Build schlug fehl.
 - **`automation_helpers.h`**: Zugriffspfade korrigiert (`v->current_mode` → `v->state_machine.current_mode`, 3 Stellen; `v->ventilation_duration_ms` → `v->state_machine.ventilation_duration_ms`, 1 Stelle).
-- **`ventilation_group.h`**: Fehlerhafte `current_mode()` Getter-Methode entfernt (API-Konflikt).
-- **Integration Test**: Globals-Zugriff korrigiert (`id(x)->value() = wert` → `id(x) = wert`, 5 Stellen).
+- [x] `ventilation_group.h` anpassen: Heartbeat-Zuständigkeit erweitern
+- [x] `network_sync.h` anpassen: Erzwungene UI-Synchronisation bei MSG_STATE
+- [x] Version auf 0.7.5 anheben
+- [x] Verifikation durch Kompilierungt (`id(x)->value() = wert` → `id(x) = wert`, 5 Stellen).
 
 ### Removed
 

@@ -31,8 +31,8 @@
 
 #include "esphome.h"
 #include "ventilation_state_machine.h"
-#include <vector>
 #include <cmath>
+#include <vector>
 
 // Forward declaration of the global fan update function (defined in
 // automation_helpers.h)
@@ -64,7 +64,8 @@ static const uint8_t PROTOCOL_VERSION = 6; // Bumped: current_mode_index added
 /// and do a simultaneous OTA rollout on all nodes whenever this struct changes.
 struct __attribute__((packed)) VentilationPacket {
   uint8_t magic_header; ///< Always 0x42 — used for basic validation.
-  uint8_t protocol_version; ///< FIXED K2: Schema version — reject mismatched peers.
+  uint8_t
+      protocol_version; ///< FIXED K2: Schema version — reject mismatched peers.
   uint8_t floor_id;     ///< Floor group (filters unrelated devices).
   uint8_t room_id;      ///< Room group within the floor.
   uint8_t device_id;    ///< Unique sender ID (used to ignore own packets).
@@ -75,7 +76,8 @@ struct __attribute__((packed)) VentilationPacket {
   // Live Data Synced States
   uint32_t timestamp_ms; ///< Sender's millis() at packet creation.
   uint32_t cycle_pos_ms; ///< Sender's position in the direction cycle.
-  uint32_t remaining_duration_ms; ///< Remaining ventilation timer (0 = infinite).
+  uint32_t
+      remaining_duration_ms; ///< Remaining ventilation timer (0 = infinite).
   bool phase_state;          ///< Sender's current global phase (A or B).
   float t_in;                ///< Sender's local indoor temperature (or NAN).
   float t_out;               ///< Sender's local outdoor temperature (or NAN).
@@ -171,10 +173,10 @@ public:
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
       false; ///< tracks if state has been synced from peer after boot
-  
+
   // --- INTERNAL ---
-  uint32_t last_sync_tx = 0; ///< millis() of last sync broadcast.
-  uint32_t last_hw_log_ms = 0; ///< millis() of last hardware status log.
+  uint32_t last_sync_tx = 0;     ///< millis() of last sync broadcast.
+  uint32_t last_hw_log_ms = 0;   ///< millis() of last hardware status log.
   uint32_t last_ramp_log_ms = 0; ///< millis() of last ramp log.
   bool pending_broadcast =
       false; ///< True = YAML should send a packet next loop.
@@ -186,7 +188,11 @@ public:
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
   void set_floor_id(uint8_t id) { floor_id = id; }   ///< Set floor group.
   void set_room_id(uint8_t id) { room_id = id; }     ///< Set room group.
-  void set_device_id(uint8_t id) { device_id = id; } ///< Set unique device ID.
+  void set_device_id(uint8_t id) {
+    if (device_id == id) return;
+    device_id = id;
+    ESP_LOGI("vent", "Controller Device ID updated to: %d", id);
+  } ///< Set unique device ID.
   void set_is_phase_a(bool phase_a) {
     state_machine.is_phase_a = phase_a;
     update_hardware();
@@ -234,9 +240,12 @@ public:
       update_hardware(state, dirty);
     }
 
-    // 3. Auto Sync Broadcast (Every sync_interval_ms)
-    if (now - last_sync_tx > sync_interval_ms) {
-      ESP_LOGD("vent", "Triggering periodic sync broadcast (interval reached)");
+    // 3. Auto Sync Broadcast (Dashboard Heartbeat every 60s)
+    // Ensures all peers regularly announce their presence even if they don't
+    // flip directions (like in 'Aus' or 'Durchlüften' modes). This prevents the
+    // dashboard from dropping peers after the 5-minute timeout.
+    if (now - last_sync_tx > 60000) {
+      ESP_LOGI("vent", "Triggering periodic sync broadcast (60s heartbeat)");
       pending_broadcast = true; // Let YAML trigger the send
       last_sync_tx = now;
     }
@@ -245,7 +254,8 @@ public:
     auto it = peers.begin();
     while (it != peers.end()) {
       if (now - it->last_seen_ms > 300000) {
-        ESP_LOGD("vent", "Removing stale peer %d due to timeout", it->device_id);
+        ESP_LOGD("vent", "Removing stale peer %d due to timeout",
+                 it->device_id);
         it = peers.erase(it);
       } else {
         ++it;
@@ -311,9 +321,9 @@ public:
   /// @param data  Raw byte vector received via ESP-NOW.
   /// @return true if any local state was changed (caller should update UI).
   bool on_packet_received(std::vector<uint8_t> data) {
-    ESP_LOGD("vent", "on_packet_received() called"); 
+    ESP_LOGI("vent", "on_packet_received() called");
     if (data.size() != sizeof(VentilationPacket)) {
-      ESP_LOGD("vent_sync", "Size mismatch! Expected %d, got %d",
+      ESP_LOGI("vent_sync", "Size mismatch! Expected %d, got %d",
                sizeof(VentilationPacket), data.size());
       return false;
     }
@@ -321,36 +331,36 @@ public:
 
     // Filter: magic header
     if (pkt->magic_header != 0x42) {
-      ESP_LOGD("vent_sync", "Magic header mismatch! Expected 0x42, got 0x%02X",
+      ESP_LOGI("vent_sync", "Magic header mismatch! Expected 0x42, got 0x%02X",
                pkt->magic_header);
       return false;
     }
     // FIXED K2: Reject packets from nodes running a different protocol version.
     // Always do a simultaneous OTA rollout when PROTOCOL_VERSION changes.
     if (pkt->protocol_version != PROTOCOL_VERSION) {
-      ESP_LOGW("vent_sync",
+      ESP_LOGI("vent_sync",
                "Protocol version mismatch! Got v%d, expected v%d — "
                "update firmware on all nodes simultaneously.",
                pkt->protocol_version, PROTOCOL_VERSION);
       return false;
     }
     if (pkt->floor_id != floor_id || pkt->room_id != room_id) {
-      ESP_LOGW("vent_sync",
+      ESP_LOGI("vent_sync",
                "Group mismatch! Received: Floor %d, Room %d | Local: Floor %d, "
                "Room %d. Peer ignored.",
                pkt->floor_id, pkt->room_id, floor_id, room_id);
       return false;
     }
     if (pkt->device_id == device_id) {
-      ESP_LOGW("vent_sync",
+      ESP_LOGI("vent_sync",
                "Ignored own packet (device %d). Check for ID collision if this "
                "is not a loopback!",
                device_id);
       return false;
     }
 
-    ESP_LOGD("vent_sync", "Valid packet received from device %d!",
-             pkt->device_id);
+    ESP_LOGI("vent_sync", "Valid packet received from device %d! (Type: %d)",
+             pkt->device_id, pkt->msg_type);
 
     bool found_peer = false;
     for (auto &peer : peers) {
@@ -389,32 +399,46 @@ public:
     // Determine if we should adopt this packet's mode/intensity properties
     bool should_sync = false;
     if (pkt->msg_type == MSG_STATE) {
-        should_sync = true; // Always adopt explicit group interactions
-    } else if (pkt->msg_type == MSG_SYNC && pkt->device_id == 1 && device_id != 1) {
-        should_sync = true; // Slaves align to Master's periodic state broadcast
+      should_sync = true; // Always adopt explicit group interactions
+    } else if (pkt->msg_type == MSG_SYNC && device_id != pkt->device_id) {
+      // Heartbeat adoption: In small groups, ID 1 or 2 acts as Master.
+      // Slaves align to the authoritative periodic state broadcast.
+      if (pkt->device_id == 1) {
+        should_sync = true;
+      } else {
+        ESP_LOGD("vent_sync",
+                 "Ignored sync heartbeat from non-master device %d",
+                 pkt->device_id);
+      }
     }
 
     if (should_sync) {
-        // 2. Mode & timer sync (>2 s drift triggers re-sync)
-        int32_t time_diff = (int32_t)pkt->remaining_duration_ms - (int32_t)state_machine.get_remaining_duration(millis());
-        if (pkt->current_mode != state_machine.current_mode ||
-            (pkt->current_mode == MODE_VENTILATION && std::abs(time_diff) > 2000)) {
+      // 2. Mode & timer sync (>2 s drift triggers re-sync)
+      int32_t time_diff =
+          (int32_t)pkt->remaining_duration_ms -
+          (int32_t)state_machine.get_remaining_duration(millis());
+      if (pkt->current_mode != state_machine.current_mode ||
+          (pkt->current_mode == MODE_VENTILATION &&
+           std::abs(time_diff) > 2000)) {
 
-          ESP_LOGI("vent", "Syncing mode from peer %d (Type: %d): %d", pkt->device_id, pkt->msg_type, pkt->current_mode);
-          // Set logical state without triggering an echo broadcast
-          state_machine.set_mode((VentilationMode)pkt->current_mode, millis(), pkt->remaining_duration_ms);
-          update_hardware();
-          changed = true;
-        }
+        ESP_LOGI("vent", "Syncing mode from peer %d (Type: %d): %d",
+                 pkt->device_id, pkt->msg_type, pkt->current_mode);
+        // Set logical state without triggering an echo broadcast
+        state_machine.set_mode((VentilationMode)pkt->current_mode, millis(),
+                               pkt->remaining_duration_ms);
+        update_hardware();
+        changed = true;
+      }
 
-        // 3. Fan intensity sync
-        if (pkt->fan_intensity > 0 && pkt->fan_intensity <= 10 &&
-            pkt->fan_intensity != current_fan_intensity) {
-          ESP_LOGI("vent", "Syncing fan intensity from peer %d: %d", pkt->device_id, pkt->fan_intensity);
-          current_fan_intensity = pkt->fan_intensity;
-          update_hardware();
-          changed = true;
-        }
+      // 3. Fan intensity sync
+      if (pkt->fan_intensity > 0 && pkt->fan_intensity <= 10 &&
+          pkt->fan_intensity != current_fan_intensity) {
+        ESP_LOGI("vent", "Syncing fan intensity from peer %d: %d",
+                 pkt->device_id, pkt->fan_intensity);
+        current_fan_intensity = pkt->fan_intensity;
+        update_hardware();
+        changed = true;
+      }
     }
 
     // 5. Temperature sync
@@ -502,8 +526,8 @@ public:
   /// @param type  MessageType to stamp into the packet.
   /// @return Byte vector ready for espnow.send().
   std::vector<uint8_t> build_packet(MessageType type) {
-    ESP_LOGD("vent_sync",
-             "Building packet type %d. Clearing pending_broadcast.", type);
+    ESP_LOGI("vent_sync",
+             "Building packet type %d from device %d. Clearing pending_broadcast.", type, device_id);
     VentilationPacket pkt;
     memset(&pkt, 0, sizeof(pkt));
     pkt.magic_header = 0x42;

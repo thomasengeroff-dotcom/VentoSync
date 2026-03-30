@@ -238,7 +238,7 @@ inline void sync_settings_to_peers() {
   // Broadcast loop guard (max 1 per 500ms)
   static uint32_t last_settings_sync = 0;
   if (millis() - last_settings_sync < 500) {
-    ESP_LOGD("vent_sync", "Settings sync broadcast suppressed (loop prevention)");
+    ESP_LOGI("vent_sync", "Settings sync broadcast suppressed (loop prevention)");
     return;
   }
   last_settings_sync = millis();
@@ -390,18 +390,18 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   }
 }
 
-inline void handle_state_sync(const esphome::VentilationPacket *pkt) {
+inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force = false) {
   auto *v = ventilation_ctrl;
   if (v == nullptr)
     return;
 
   if (fan_intensity_level != nullptr && fan_intensity_display != nullptr &&
-      v->current_fan_intensity != fan_intensity_level->value()) {
+      (v->current_fan_intensity != fan_intensity_level->value() || force)) {
     fan_intensity_level->value() = v->current_fan_intensity;
     fan_intensity_display->publish_state(v->current_fan_intensity);
   }
 
-  int new_mode_idx = 0;
+  int new_mode_idx = -1; // -1 = Don't update unless determined
   std::string mode_str = "Wärmerückgewinnung";
 
   if (v->state_machine.current_mode == esphome::MODE_OFF) {
@@ -434,7 +434,7 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt) {
     }
   }
 
-  if (current_mode_index != nullptr) {
+  if (current_mode_index != nullptr && (new_mode_idx != current_mode_index->value() || force)) {
     current_mode_index->value() = new_mode_idx;
   }
 
@@ -505,7 +505,7 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
   }
 
   if (changed) {
-    espnow_handler::handle_state_sync(pkt);
+    espnow_handler::handle_state_sync(pkt, pkt->msg_type == esphome::MSG_STATE);
   }
 
   bool should_sync_config = false;

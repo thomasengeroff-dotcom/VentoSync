@@ -62,7 +62,7 @@ esphome:
     - components/automation_helpers.h # Helper functions logic
     - components/helpers
   on_boot:
-    - priority: -100.0 # Standard is 600. -100 ensures restore_value for template components is ready
+    - priority: -10.0 # -10 ensure WiFi and NVS are ready before syncing.
       then:
         - delay: 2s # Wait for all components/NVS to stabilize
         - lambda: |-

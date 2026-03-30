@@ -45,7 +45,6 @@ climate:
     internal: true
     control_parameters:
       # P-part: 0.002 means +20% fan power per 100ppm above target.
-      # At target 1000ppm: 1000ppm = 0%, 1250ppm = 50%, 1500ppm = 100%
       kp: 0.002
       # I-part: Extremely low! (~1.8% more power per minute at 100ppm excess)
       ki: 0.000003
@@ -352,6 +351,12 @@ interval:
                 // Additionally via unicast for reliable delivery
                 send_sync_to_all_peers(data);
                 // build_and_populate_packet/build_packet set pending_broadcast to false
+
+  # Sync Controller Config every 60 seconds to ensure IDs match HA state
+  - interval: 60s
+    then:
+      - lambda: |-
+          sync_config_to_controller();
 
   # Automation Logic (CO2, Humidity, Summer/Winter)
   - interval: 10s

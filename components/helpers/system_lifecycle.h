@@ -134,27 +134,28 @@ inline void sync_config_to_controller() {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
 
-  uint8_t floor = (config_floor_id != nullptr) ? (uint8_t)config_floor_id->state : 0;
-  uint8_t room = (config_room_id != nullptr) ? (uint8_t)config_room_id->state : 0;
-  uint8_t dev = (config_device_id != nullptr) ? (uint8_t)config_device_id->state : 0;
+  uint8_t floor = (config_floor_id != nullptr && !std::isnan(config_floor_id->state)) ? (uint8_t)config_floor_id->state : 0;
+  uint8_t room = (config_room_id != nullptr && !std::isnan(config_room_id->state)) ? (uint8_t)config_room_id->state : 0;
+  uint8_t dev = (config_device_id != nullptr && !std::isnan(config_device_id->state)) ? (uint8_t)config_device_id->state : 0;
 
-  // Guard: If values are still 0, the restore hasn't happened yet
-  if (floor == 0 && room == 0 && dev == 0) {
-    ESP_LOGW("boot", "Config IDs are all 0 — restore_value not yet loaded. Will retry on next interval.");
-    return;
+  // Guard: If IDs are not yet restored or set to 0, use safe defaults 
+  // to avoid sending as "Device 0" which breaks synchronization.
+  if (floor > 0) v->set_floor_id(floor);
+  if (room > 0) v->set_room_id(room);
+  
+  if (dev > 0) {
+    v->set_device_id(dev);
+  } else {
+    ESP_LOGW("boot", "Device ID is still 0 or NaN — ignoring sync to prevent ID collisions.");
   }
-
-  v->set_floor_id(floor);
-  v->set_room_id(room);
-  v->set_device_id(dev);
 
   if (config_phase != nullptr) {
     bool is_phase_a = (std::string(config_phase->current_option()) == "Phase A (Startet mit Zuluft)");
     v->set_is_phase_a(is_phase_a);
-
-    ESP_LOGI("boot", "Synced Config to Controller: Floor %d, Room %d, Device %d, Phase: %s",
-             v->floor_id, v->room_id, v->device_id, is_phase_a ? "A" : "B");
   }
+
+  ESP_LOGI("boot", "Status Sync: Floor %d, Room %d, Device %d", 
+           v->floor_id, v->room_id, v->device_id);
 }
 
 /// @brief Runs a 3-second visual self-test by turning on all physical status LEDs.

@@ -43,6 +43,7 @@ inline void set_ventilation_timer(float value) {
   // Update the duration but keep current mode
   v->state_machine.ventilation_duration_ms = ms;
   v->trigger_sync();
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
 }
 
 /// @brief Converts a minutes value from the UI slider to ms and updates sync
@@ -58,6 +59,7 @@ inline void set_sync_interval_handler(float value) {
   }
 
   v->set_sync_interval(static_cast<uint32_t>(value * 60 * 1000));
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
 }
 
 /// @brief Handles the fan intensity slider: updates global, notifies
@@ -75,6 +77,7 @@ inline void set_fan_intensity_slider(float value) {
 
   fan_intensity_level->value() = val;
   ventilation_ctrl->set_fan_intensity(val);
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   fan_speed_update->execute();
   ui_active->value() = true;
   update_leds->execute();
@@ -101,6 +104,7 @@ inline void set_operating_mode_select(const std::string &x) {
 
   current_mode_index->value() = mode_index;
   cycle_operating_mode(mode_index);
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   ui_active->value() = true;
   update_leds->execute();
   ui_timeout_script->execute();
@@ -115,6 +119,7 @@ inline void handle_button_mode_click() {
 
   current_mode_index->value() = (current_mode_index->value() + 1) % 5;
   cycle_operating_mode(current_mode_index->value());
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   ui_active->value() = true;    // Activate UI immediately so LEDs render
   update_leds->execute();       // Show new mode LEDs now
   ui_timeout_script->execute(); // Start 30s auto-dim timer
@@ -146,6 +151,7 @@ inline void handle_button_power_short_click() {
   } else {
     ESP_LOGI("power", "System turned OFF by short press");
     cycle_operating_mode(4); // Mode index 4 is "Aus", triggers system_sleep via cycle_operating_mode
+    sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
     ui_timeout_script->execute();
   }
 }
@@ -163,6 +169,7 @@ inline void handle_button_power_long_click() {
     ESP_LOGI("power", "System turned OFF by long press (>5s)");
     auto *v = ventilation_ctrl;
     v->set_mode(esphome::MODE_OFF);
+    sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
     lueftung_fan->turn_off().perform(); // perform() avoids null derefs inside fan components
     fan_pwm_primary->set_level(0.5f);
     if (system_sleep != nullptr)
@@ -192,6 +199,7 @@ inline void handle_button_level_click() {
   fan_intensity_display->publish_state(level);
 
   ventilation_ctrl->set_fan_intensity(level);
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   fan_speed_update->execute();
   ui_active->value() = true;    // Activate UI immediately so LEDs render
   update_leds->execute();       // Show new intensity level LEDs now
@@ -234,6 +242,7 @@ inline void handle_intensity_bounce() {
   fan_intensity_level->value() = current_level;
   fan_intensity_display->publish_state(current_level);
   ventilation_ctrl->set_fan_intensity(current_level);
+  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   fan_speed_update->execute();
   ui_active->value() = true;
   update_leds->execute();
