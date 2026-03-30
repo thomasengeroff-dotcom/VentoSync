@@ -122,39 +122,44 @@ inline void update_leds_logic() {
       status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
       status_led_l5->turn_on().set_brightness(1.0f * max_b).perform();
       break;
-    default: {
-      // Level 1-9: 5 LEDs with half/full brightness (2 steps per LED)
-      // Stufe 1: L1 50%, Stufe 2: L1 100%, Stufe 3: L1 100%+L2 50%, etc.
-      int full_leds = (level) / 2;
-      bool half_step = (level % 2 != 0);
-
-      if (level == 1) { // Special case for very first step
-        status_led_l1->turn_on().set_brightness(0.5f * max_b).perform();
-      } else {
-        if (full_leds >= 1)
-          status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-        if (full_leds >= 2)
-          status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-        if (full_leds >= 3)
-          status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
-        if (full_leds >= 4)
-          status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
-        if (full_leds >= 5)
-          status_led_l5->turn_on().set_brightness(1.0f * max_b).perform();
-
-        if (half_step) {
-          if (full_leds == 1)
-            status_led_l2->turn_on().set_brightness(0.5f * max_b).perform();
-          else if (full_leds == 2)
-            status_led_l3->turn_on().set_brightness(0.5f * max_b).perform();
-          else if (full_leds == 3)
-            status_led_l4->turn_on().set_brightness(0.5f * max_b).perform();
-          else if (full_leds == 4)
-            status_led_l5->turn_on().set_brightness(0.5f * max_b).perform();
-        }
-      }
+    case 9:
+      status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
+      status_led_l5->turn_on().set_brightness(0.5f * max_b).perform();
       break;
-    }
+    case 8:
+      status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
+      // status_led_l5->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 7:
+      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
+      status_led_l4->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 6:
+      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
+      // status_led_l4->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 5:
+      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
+      status_led_l3->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 4:
+      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
+      // status_led_l3->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 3:
+      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
+      status_led_l2->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 2:
+      status_led_l1->turn_on().set_brightness(0.5f * max_b).perform();
+      status_led_l2->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    case 1:
+      status_led_l1->turn_on().set_brightness(0.5f * max_b).perform();
+      break;
+    default: {
+      // do nothing
+    } break;
     }
   }
 

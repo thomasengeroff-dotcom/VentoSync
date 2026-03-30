@@ -242,7 +242,6 @@ inline void handle_intensity_bounce() {
   fan_intensity_level->value() = current_level;
   fan_intensity_display->publish_state(current_level);
   ventilation_ctrl->set_fan_intensity(current_level);
-  sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   fan_speed_update->execute();
   ui_active->value() = true;
   update_leds->execute();

@@ -204,7 +204,7 @@ script:
             lambda: return id(button_level).state;
           then:
             - lambda: handle_intensity_bounce();
-            - delay: 1000ms
+            - delay: 500ms
 
   # ESP-NOW Discovery: Load peers from flash and send discovery broadcast
   # Called from the boot interval once ESP-NOW is fully ready
@@ -305,6 +305,7 @@ binary_sensor:
       - script.execute: intensity_hold_handler
     on_release:
       - script.stop: intensity_hold_handler
+      - lambda: sync_settings_to_peers();
 
 button:
   - platform: restart
