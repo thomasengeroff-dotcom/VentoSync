@@ -54,6 +54,9 @@ sensor:
       float t_in = id(scd41_temperature).state;
       if (std::isnan(t_in)) t_in = id(bme680_temperature).state;
 
+      // Abort calculation if no valid room temperature is available
+      if (std::isnan(t_in)) return NAN;
+
       return calculate_heat_recovery_efficiency(
         t_in,                         // Room temperature (SCD41 or BME680 only!)
         id(temp_zuluft).state,        // Supply air temperature
@@ -96,7 +99,7 @@ text_sensor:
     name: "WRG Referenz-Messpunkt"
     id: wrg_reference_sensor
     icon: "mdi:target-variant"
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       if (!std::isnan(id(scd41_temperature).state)) return std::string("SCD41");
       if (!std::isnan(id(bme680_temperature).state)) return std::string("BME680");

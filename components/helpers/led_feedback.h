@@ -203,23 +203,35 @@ inline void check_master_led_error() {
     target_effect = "Warning Safety";
   }
 
-  // Apply or remove the blink effect
+  // Apply or remove the blink effect statefully to prevent I2C bus flooding
+  static std::string last_active_effect = "__none__";
+  static float last_active_brightness = -1.0f;
+  const float current_max_b = max_led_brightness->value();
+
   if (target_effect != "None") {
-    // Only activate if the effect just changed to avoid re-triggering
-    // log/internal state every cycle
-    auto call = status_led_master->turn_on();
-    call.set_effect(target_effect);
-    call.perform();
-  } else {
-    // All clear: check if UI is active so we can show Master status, else turn
-    // off
-    if (ui_active->value()) {
+    if (target_effect != last_active_effect) {
+      last_active_effect = target_effect;
       auto call = status_led_master->turn_on();
-      call.set_effect("None");
-      call.set_brightness(max_led_brightness->value());
+      call.set_effect(target_effect);
       call.perform();
+    }
+  } else {
+    // All clear logic
+    if (ui_active->value()) {
+      if (last_active_effect != "None" ||
+          std::abs(last_active_brightness - current_max_b) > 0.01f) {
+        last_active_effect = "None";
+        last_active_brightness = current_max_b;
+        auto call = status_led_master->turn_on();
+        call.set_effect("None");
+        call.set_brightness(current_max_b);
+        call.perform();
+      }
     } else {
-      status_led_master->turn_off().perform();
+      if (last_active_effect != "Off") {
+        last_active_effect = "Off";
+        status_led_master->turn_off().perform();
+      }
     }
   }
 }

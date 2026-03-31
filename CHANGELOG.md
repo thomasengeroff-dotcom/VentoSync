@@ -4,7 +4,19 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.7.16] - 2026-03-31
+## [0.7.21] - 2026-03-31
+### Fixed
+- **System-Stabilität**: Einführung einer "Stateful"-Logik in der `led_feedback.h`, um I2C-Bus-Flutungen durch redundante LED-Befehle zu verhindern.
+- **WLAN & Erreichbarkeit**: 
+  - Reduzierung des I2C-Timeouts auf **20ms** zur Vermeidung von Loop-Blocking.
+  - Verkürzung des `reboot_timeout` auf **1min** für schnellere Selbstheilung bei Verbindungsverlust.
+  - Umstellung auf `power_save_mode: LIGHT` zur Verbesserung der Stabilität auf dem ESP32-C6.
+- **Sicherheit**: Mathematische Absicherung (`NaN`-Check) der Effizienzberechnung in der `sensors_climate.yaml`.
+
+### Changed
+- **I2C-Bus Optimierung**: Anpassung der Frequenz auf 100kHz und Timeout auf 100ms für eine noch robustere Kommunikation mit den Sensoren.
+- **Dokumentation**: Übersetzung technischer Kommentare in der `hardware_io.yaml` ins Englische.
+
 ### Fixed
 - **Wärmerückgewinnung (WRG) Effizienz**: 
   - Entfernung des ungenauen **BMP390** (Gehäuse-Sensor) als Referenzquelle zur Vermeidung von Verfälschungen durch Elektronik-Abwärme.

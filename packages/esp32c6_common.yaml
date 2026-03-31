@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.16"
+  project_version: "0.7.21"
 
 globals:
   - id: thermal_warning_active
@@ -114,9 +114,9 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   fast_connect: true # Prevent long channel scans during reconnects (vital for ESP-NOW coexistence/I2C stability)
-  reboot_timeout: 15min # Auto-reboot to clear stuck WebServer sockets if router disappears for long
+  reboot_timeout: 1min # Shorter timeout for faster recovery during debugging
   min_auth_mode: WPA2
-  power_save_mode: NONE
+  power_save_mode: LIGHT # none hat eventuell zu Problemen geführt
 
   # Fallback Hotspot:
   # If the configured WiFi is not reachable within 1 minute, the device

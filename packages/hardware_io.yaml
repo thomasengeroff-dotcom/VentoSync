@@ -31,8 +31,9 @@ i2c:
   scl: GPIO23 # Pin D5 on XIAO ESP32C6
   scan: true
   id: bus_a
-  frequency: 50kHz # ESPHome-Standard for maximum compatibility
-  timeout: 13ms # Aggressive timeout for bus recovery/reset
+  frequency: 100kHz     # Standard for maximum compatibility
+  timeout: 20ms        # Recommended for stable communication
+  # pullup: true        # Usually not necessary as internal pullups are present
 
 # ---------------------------------------------------------
 # MCP23017 I/O EXPANDER
