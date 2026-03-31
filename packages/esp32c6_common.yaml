@@ -27,7 +27,12 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.14"
+  project_version: "0.7.15"
+
+globals:
+  - id: thermal_warning_active
+    type: bool
+    initial_value: 'false'
 
 esphome:
   name: "${device_name}"
@@ -109,7 +114,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   fast_connect: true # Prevent long channel scans during reconnects (vital for ESP-NOW coexistence/I2C stability)
-  reboot_timeout: 5min # Auto-reboot to clear stuck WebServer sockets if router disappears for long
+  reboot_timeout: 15min # Auto-reboot to clear stuck WebServer sockets if router disappears for long
   min_auth_mode: WPA2
   power_save_mode: NONE
 

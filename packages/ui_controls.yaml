@@ -43,13 +43,59 @@ light:
     gamma_correct: 1.0
     effects:
       - strobe:
-          name: "Error Blink"
+          name: "Error Peer"
           colors:
             - state: true
               brightness: 100%
               duration: 500ms
             - state: false
+              duration: 200ms
+            - state: true
+              brightness: 100%
               duration: 500ms
+            - state: false
+              duration: 5000ms
+      - strobe:
+          name: "Error WiFi"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 200ms
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 200ms
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 5000ms
+      - strobe:
+          name: "Warning Safety"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 100ms
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 100ms
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 100ms
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 2000ms
   - platform: monochromatic
     output: out_led_wrg
     name: "Status LED Modus WRG"
@@ -146,8 +192,8 @@ number:
     max_value: 10
     step: 1
     mode: slider
-    #restore_value: true      # ✅ Jetzt möglich ohne lambda
-    optimistic: false         # ✅ Bessere UI Erfahrung
+    #restore_value: true
+    optimistic: false
     #initial_value: 1
     lambda: |-
       return id(fan_intensity_level);

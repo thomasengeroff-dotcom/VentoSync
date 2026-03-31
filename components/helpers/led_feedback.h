@@ -168,37 +168,47 @@ inline void update_leds_logic() {
 }
 
 /// @brief Checks for error conditions and blinks the Master LED accordingly.
-/// Error conditions: WiFi disconnected OR no ESP-NOW peer message within 5
-/// minutes. Uses the "Error Blink" strobe effect defined on the
-/// status_led_master light.
+/// Priority Ladder:
+/// 1. Peer Sync Error (2 Pulses) - HIGHEST
+/// 2. WiFi Disconnected (3 Pulses)
+/// 3. Thermal Warning (4 Pulses)
 inline void check_master_led_error() {
-  bool has_error = false;
+  if (status_led_master == nullptr) return;
+  std::string target_effect = "None";
 
-  // 1. Check WiFi connectivity (ESPHome API, works on both Arduino and ESP-IDF)
-  if (!esphome::wifi::global_wifi_component->is_connected()) {
-    has_error = true;
-  }
-
-  // 2. Check ESP-NOW peer freshness (5 minutes = 300000ms) — only if enabled
+  // 1. Check ESP-NOW peer freshness (Highest Priority: 2 pulses)
+  bool peer_error = false;
   if (peer_check_enabled != nullptr && peer_check_enabled->value() &&
       ventilation_ctrl != nullptr) {
     const uint32_t now = millis();
-    // FIXED W3: Use has_peer_pid_demand flag instead of time==0 sentinel.
-    // The time==0 check was unreliable after a millis() overflow (~49.7 days).
     if (!ventilation_ctrl->has_peer_pid_demand ||
         (now - ventilation_ctrl->last_peer_pid_demand_time > PEER_TIMEOUT_MS)) {
-      has_error = true;
+      peer_error = true;
     }
   }
 
-  // 3. Apply or remove the blink effect
-  if (has_error) {
-    // Only activate if not already blinking (avoid re-triggering every
-    // interval)
+  // 2. Check WiFi connectivity (Medium Priority: 3 pulses)
+  bool wifi_error = !esphome::wifi::global_wifi_component->is_connected();
+
+  // 3. Check Thermal Warning (Low Priority: 4 pulses)
+  bool thermal_warning =
+      (thermal_warning_active != nullptr && thermal_warning_active->value());
+
+  // Priority Ladder
+  if (peer_error) {
+    target_effect = "Error Peer";
+  } else if (wifi_error) {
+    target_effect = "Error WiFi";
+  } else if (thermal_warning) {
+    target_effect = "Warning Safety";
+  }
+
+  // Apply or remove the blink effect
+  if (target_effect != "None") {
+    // Only activate if the effect just changed to avoid re-triggering
+    // log/internal state every cycle
     auto call = status_led_master->turn_on();
-    call.set_effect("Error Blink");
-    // Effect takes care of its own brightness normally, but we could try to
-    // scale it. For now, let error blink be prominent or respect max_b.
+    call.set_effect(target_effect);
     call.perform();
   } else {
     // All clear: check if UI is active so we can show Master status, else turn

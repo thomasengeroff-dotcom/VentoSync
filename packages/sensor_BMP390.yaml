@@ -20,7 +20,7 @@ sensor:
             window_size: 5
             send_every: 5
       on_value_range:
-        # Warnstufe: 50.0 °C bis 59.9 °C
+        # Warning level: 50.0 °C to 59.9 °C
         - above: 50.0
           below: 59.9
           then:
@@ -35,7 +35,11 @@ sensor:
                     char buf[128];
                     snprintf(buf, sizeof(buf), "%s: Achtung: Traco-Netzteil Derating-Grenze erreicht: %.1f°C", "${friendly_name}", x);
                     return (std::string)buf;
-        # Kritische Stufe / Not-Aus: ab 60.0 °C
+            - globals.set:
+                id: thermal_warning_active
+                value: 'true'
+            - script.execute: update_leds
+        # Critical level / Emergency shutdown: from 60.0 °C
         - above: 60.0
           then:
             - logger.log:
@@ -50,13 +54,17 @@ sensor:
                     snprintf(buf, sizeof(buf), "%s: KRITISCHE TEMPERATUR (%.1f°C)! Not-Abschaltung eingeleitet!", "${friendly_name}", x);
                     return (std::string)buf;
                   title: "WRG NOT-AUS (Überhitzung)"
+            # MachtLED blinken macht keinen Sinn, da das Gerät sowieso abgeschaltet wird.
+            #- globals.set:
+            #    id: thermal_warning_active
+            #    value: 'true'
             - output.set_level:
                 id: fan_pwm_primary
                 level: 0.5
             - deep_sleep.enter:
                 id: safety_sleep
                 sleep_duration: 60min
-        # Entwarnung: unter 48.0 °C
+        # Recovery state: below 48.0 °C
         - below: 48.0
           then:
             - logger.log:
@@ -70,6 +78,10 @@ sensor:
                     char buf[128];
                     snprintf(buf, sizeof(buf), "%s: Entwarnung: Temperatur wieder im sicheren Bereich (%.1f°C)", "${friendly_name}", x);
                     return (std::string)buf;
+            - globals.set:
+                id: thermal_warning_active
+                value: 'false'
+            - script.execute: update_leds
     pressure:
       name: "BMP390 Luftdruck"
       id: pressure

@@ -125,7 +125,10 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
   - **Stufe +**: 10 Geschwindigkeitsstufen (zyklisch, angezeigt über 5 LEDs mit halber/voller Helligkeit). Die originale Ventomaxx Steuerung bietet hier nur 5 Stufen. Taste gedrückt halten zykliert durch die Lüftungsstufen.
 - 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-10) und Status.
   - ✨ **Gruppen-Synchronisierung**: Alle Displays in einer Lüftungsgruppe synchronisieren sich in Echtzeit. Ändert Gerät A den Modus oder die Stufe, wachen die LEDs aller Partner-Geräte (Peers) im Raum sofort auf, um den neuen Status für 30 Sekunden anzuzeigen (Wake-up Effekt).
-  - Master Led wird derzeit für Fehleranzeige genutzt: Sie blinkt, wenn das Lüftungsgerät keine Verbindung zum Netzwerk hat oder keine ESP-NOW Nachrichten von anderen Geräten empfängt.
+  - **Diagnose-Blinkcodes (Master LED)**: Die mittlere LED (Master) signalisiert Störungen über ein Blink-Muster (Pulse):
+    - **2x Blinken**: Synchronisierungs-Fehler zwischen den Lüftern (Raumgruppe). Die Geräte können sich nicht mehr untereinander abstimmen.
+    - **3x Blinken**: Die Verbindung zum WLAN-Router ist unterbrochen. Die App-Steuerung ist aktuell nicht möglich.
+    - **4x Blinken**: Hitzewarnung (50-60°C). Die Temperatur im Gehäuse des Lüftungsgerätes ist zu warm (z.B. durch direkte Sonneneinstrahlung oder einer Fehlfunktion). Die Anlage läuft noch, sollte aber geprüft werden. Bei über 60°C schaltet das Gerät automatisch ab.
 - Die detaillierte Beschreibung der Bedienung und Steuerung findest du unter [Bedienung](#-bedienung--steuerung).
 
 ### 🏠 Integration
@@ -363,7 +366,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 | LED | Anzahl | Position | Verhalten |
 | :--- | :---: | :--- | :--- |
 | **Power** | 🟢 1x | LED Panel | Leuchtet hell im Betrieb. Dimmt nach 60s @ `ui_active_timeout` (Standard: 60s) auf 20% Helligkeit ab (statt ganz auszugehen). |
-| **Master** | 🟢 1x | LED Panel | Leuchtet bei aktivem UI (kein Fehler). Blinkt dauerhaft bei Fehler (WLAN-/ESP-NOW-Verbindungsverlust) — unabhängig vom UI-Timeout. |
+| **Master** | 🟢 1x | LED Panel | Leuchtet bei aktivem UI (Normalbetrieb). Signalisiert Störungen durch Blink-Muster: **2x**: Raum-Synchronisierung fehlgeschlagen | **3x**: WLAN-Verlust | **4x**: Hitze-Warnung (50-60°C). Bei über 60°C schaltet das Gerät automatisch ab. |
 | **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert** im Smart-Automatik Modus. Dauerhaft an bei WRG oder Durchlüften. |
 | **Modus R** (`LED_VEN`) | 🟢 1x | Rechts | Dauerhaft an bei Stoßlüftung oder Durchlüften. |
 | **Intensität** | 🟢 5x | LED Panel | Zeigt aktuelle Lüfterstufe 1–10 (halbe/volle Helligkeit für 10 Stufen über 5 LEDs). Nur bei aktivem UI sichtbar. |
@@ -378,7 +381,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 | Durchlüften (Sommer) | 🟢 | 🟢 |
 | Aus / System OFF | ⚫ | ⚫ |
 
-> 💡 **60 Sekunden Auto-Dimming:** Alle Status-LEDs (Modus, Intensität, Master) erlöschen 60 Sekunden (konfigurierbar) nach dem letzten Tastendruck sanft. Die **Power-LED** bleibt dabei auf 20% gedimmt an. Bei jedem Tastendruck werden alle LEDs wieder aktiviert. Ausnahme: Die **Master-LED blinkt weiter bei Fehler** (WLAN/ESP-NOW-Ausfall), auch nach dem Timeout.
+> 💡 **60 Sekunden Auto-Dimming:** Alle Status-LEDs (Modus, Intensität, Master) erlöschen 60 Sekunden (konfigurierbar) nach dem letzten Tastendruck sanft. Die **Power-LED** bleibt dabei auf 20% gedimmt an. Bei jedem Tastendruck werden alle LEDs wieder aktiviert. Ausnahme: Die **Master-LED signalisiert Fehlerzustände weiter**, auch nach dem Timeout.
 
 ---
 

@@ -4,7 +4,20 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.7.14] - 2026-03-31
+## [0.7.15] - 2026-03-31
+### Added
+- **Priorisierte Diagnose-Blinkcodes**: Die Master-LED signalisiert nun verschiedene Fehlerzustände über ein mehrstufiges Blink-System (Prioritäts-Ladder):
+  1. **2 Pulse (Höchste Prio)**: ESP-NOW Peer-Synchronisierungsfehler.
+  2. **3 Pulse (Mittlere Prio)**: WLAN-Verbindungsverlust.
+  3. **4 Pulse (Niedrige Prio)**: Thermische Warnung (Traco PSU Schutz, aktiv zwischen 50°C und 60°C).
+- **Netzwerk-Härtung (ESP32-C6)**: 
+  - `power_save_mode: NONE` erzwingt permanent aktives WLAN zur Vermeidung von Stack-Lockups.
+  - `reboot_timeout: 15min` als Watchdog für nicht-reaktive Netzwerkzustände.
+
+### Changed
+- **Codestyle-Bereinigung**: Alle verbleibenden Kommentare in den YAML-Konfigurationsdateien wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt.
+- **C++ Refactoring**: Optimierung der `check_master_led_error` Logik in `led_feedback.h` zur sauberen Abbildung der neuen Fehler-Prioritäten.
+
 ### Added
 - **Hardware-Sicherheitssystem**: Implementierung einer mehrstufigen Temperaturüberwachung (BMP390) zum Schutz des Traco-Netzteils.
   - Warnstufe (50°C): Warn-Log und HA-Benachrichtigung.

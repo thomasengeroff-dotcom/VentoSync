@@ -148,6 +148,8 @@ extern esphome::globals::GlobalsComponent<bool>
     *intensity_bounce_up; ///< Hold-to-cycle direction.
 extern esphome::globals::RestoringGlobalsComponent<float>
     *max_led_brightness; ///< Global LED brightness limit.
+extern esphome::globals::GlobalsComponent<bool>
+    *thermal_warning_active; ///< True if BMP390 detects >50°C.
 
 /// @name Scripts
 /// @{

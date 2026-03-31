@@ -49,10 +49,10 @@ sensor:
       then:
         - script.execute: update_leds # Update LEDs on RPM change (optional feedback)
 
-  # Fan PWM Sensor (Diagnose)
-  # Zeigt den logischen PWM-Wert (0–100%), mit dem der Code set_level() aufruft.
-  # Dieser Wert = was der Lüfter tatsächlich sieht (Software-inverted + MOSFET-inverted = original).
-  # 50% = Stop, 0–49% = Richtung A, 51–100% = Richtung B
+  # Fan PWM Sensor (Diagnostic)
+  # Shows the logical PWM value (0–100%) used when calling set_level() in the code.
+  # This value represents what the fan actually receives (Software-inverted + MOSFET-inverted = original).
+  # 50% = Stop, 0–49% = Direction A, 51–100% = Direction B
   - platform: template
     name: "Lüfter PWM Ansteuerung"
     id: fan_pwm_percent
