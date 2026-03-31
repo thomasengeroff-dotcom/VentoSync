@@ -31,8 +31,8 @@ i2c:
   scl: GPIO23 # Pin D5 on XIAO ESP32C6
   scan: true
   id: bus_a
-  frequency: 100kHz # Standard I2C Mode for maximum reliability
-  timeout: 100ms # Increased timeout for slow responding devices
+  frequency: 50kHz # ESPHome-Standard for maximum compatibility
+  timeout: 13ms # Aggressive timeout for bus recovery/reset
 
 # ---------------------------------------------------------
 # MCP23017 I/O EXPANDER
@@ -97,17 +97,6 @@ output:
     pca9685_id: pwm_hub
     channel: 15 # LED_VENV
     id: out_led_vent
-
-  # --- Fan PWM (Standard Output) ---
-  - platform: ledc
-    pin: GPIO19 # Pin D8
-    frequency: 2000Hz # required by specification of EBM-Papst fan
-    id: fan_pwm_primary
-    inverted:
-      true # Compensates for hardware inversion by PMV16XNR MOSFET:
-      # ESP 100% → MOSFET ON → GND → Fan sees 0%; so we invert here.
-    min_power: 0%
-    zero_means_zero: true
 
   # --- PID Dummy Outputs (capturing the cooling demand 0.0 - 1.0) ---
   - platform: template

@@ -85,7 +85,9 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD41](https://sensirion.com/de/produkte/katalog/SCD41).
   > 💡 **Aktueller Hinweis (März 2026):** Da mein SCD41-Zusatz-PCB aktuell noch in der Fertigung ist, nutze ich den **Bosch BME680** als Fallback. Um die Kompilierungszeit drastisch zu reduzieren, wurde von der BSEC2-Bibliothek auf eine **leichtgewichtige IAQ-Template-Berechnung** (`log(R) + 0.04 * RH`) umgestellt. Falls kein SCD41 am Bus erkannt wird, dient dieser IAQ-Index als redundanter Indikator für die Luftqualität.
 - 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
-- 🏔️ **Luftdruckmessung via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) ermöglicht lokale Wettertrend-Analysen, Sturmwarnungen (Rapid Pressure Drop) und liefert gleichzeitig die exakten Höhendaten für die Autokalibrierung und barometrische Kompensation des SCD41 CO2-Sensors.
+- 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**.
+  - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
+  - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
 - 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen. Hierfür wird eine fortschrittliche PID-Regelung verwendet, welche die Lüfterleistung dynamisch an die gemessenen Werte anpasst. Die Regelung ist so optimiert, dass sie die Lüfterleistung so gering wie möglich hält, um den Energieverbrauch und die Geräuschentwicklung zu minimieren.
 - 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert.
 Natürlich kann dieser Sensor auch für andere Automatisierungen in Home Assistant genutzt werden.
@@ -694,10 +696,14 @@ ESPHome-Wohnraumlueftung/
 ├── device_config.yaml             # Dynamische Gerätekonfiguration
 ├── secrets.yaml                   # WLAN-Daten (Git-ignored)
 ├── packages/                      # Geteilte YAML-Module
-│   ├── hardware_io.yaml           # Hardware-Schnittstellen (I2C, MCP, PCA, LEDs)
-│   ├── sensor_BME680.yaml         # Bosch BME680 (IAQ, Gas, Baseline, Trend)
+│   ├── hardware_io.yaml           # Hardware (PCA9685, MCP23017, LEDs)
+│   ├── hardware_fan.yaml          # Zentrale Lüfterkonfiguration (PWM, RPM, Fan-Entity)
+│   ├── sensor_BMP390.yaml         # Bosch BMP390 (Druck, Luftdruck-Trend, Thermal Guard)
+│   ├── sensor_SCD41.yaml          # Sensirion SCD41 (CO2, Temp, Hum, Calibration)
+│   ├── sensor_NTC.yaml            # Analoge NTC-Fühler (Zuluft/Abluft) & ADC-Setup
+│   ├── sensor_BME680.yaml         # Bosch BME680 (IAQ & Gas Fallback)
 │   ├── sensor_LD2450.yaml         # HLK-LD2450 Radar (Präsenz, Targets)
-│   ├── sensors_climate.yaml       # Zentrale Klimasensorik (SCD41, BMP390, NTCs)
+│   ├── sensors_climate.yaml       # Übergreifende Klimastatistiken & WRG-Effizienz
 │   ├── ui_controls.yaml           # HA GUI-Elemente (Slider, Selects, Alarm)
 │   ├── logic_automation.yaml      # Steuerungslogik, PIDs, Intervalle, Wartung
 

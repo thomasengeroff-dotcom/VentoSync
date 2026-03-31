@@ -4,6 +4,23 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.14] - 2026-03-31
+### Added
+- **Hardware-Sicherheitssystem**: Implementierung einer mehrstufigen Temperaturüberwachung (BMP390) zum Schutz des Traco-Netzteils.
+  - Warnstufe (50°C): Warn-Log und HA-Benachrichtigung.
+  - Kritische Stufe (60°C): Error-Log, kritische Benachrichtigung, automatischer Lüfterstopp (50% PWM) und 60-minütiger Deep Sleep zur Abkühlung.
+  - Entwarnung (<48°C): Info-Log und Entwarnungs-Benachrichtigung.
+- **System-Diagnose**: Integration einer Debug-Komponente zur Überwachung des freien Speichers (Heap RAM) in Home Assistant.
+- **Geräte-Identifikation**: Home Assistant Benachrichtigungen enthalten nun automatisch den `${friendly_name}` für eine einfachere Zuordnung bei mehreren Geräten.
+
+### Changed
+- **I2C-Bus Härtung**: Optimierung der I2C-Parameter zur Vermeidung von "Zombie-Zuständen" (Bus-Lockups). Frequenz auf 50kHz (Standard) und Timeout auf 13ms gesetzt für schnellere Recovery.
+- **Architektur-Refactoring (Modularisierung)**: Die Sensorkonfiguration wurde für bessere Wartbarkeit in dedizierte Pakete aufgeteilt:
+  - `sensor_BMP390.yaml`: BMP390 Druck & Temperatur + Sicherheitslogik.
+  - `sensor_SCD41.yaml`: SCD41 CO2, Temp & Feuchte + Kalibrierung.
+  - `sensor_NTC.yaml`: Analoge NTC-Fühler (Zuluft/Abluft) + ADC-Konfiguration.
+  - `hardware_fan.yaml`: Konsolidierung von PWM-Output, RPM-Tacho und Lüfter-Komponente.
+
 ## [0.7.6] - 2026-03-30
 ### Fixed
 - Fixed Slave synchronization when Master ID is 2 (e.g., during device transition).

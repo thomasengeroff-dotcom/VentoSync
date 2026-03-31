@@ -28,134 +28,13 @@
 # ---------------------------------------------------------
 
 sensor:
-  # BMP390 Environmental Data (Temperature & Pressure)
-  - platform: bmp3xx_i2c
-    temperature:
-      name: "BMP390 Temperatur"
-      id: temperature
-      accuracy_decimals: 1
-      oversampling: 16x
-      filters:
-        - median:
-            window_size: 5
-            send_every: 5
-    pressure:
-      name: "BMP390 Luftdruck"
-      id: pressure
-      accuracy_decimals: 1
-      oversampling: 16x
-    address: 0x76
-    update_interval: 60s
-    iir_filter: 2x
-
-  # Home Assistant Data (Automation)
+  # Home Assistant Data (Automation): 
+  # Entity filled with data from Home Assistant. 
+  # Must be configured as described in readme.md
   - platform: homeassistant
     name: "Außenluftfeuchtigkeit"
     id: outdoor_humidity
     entity_id: sensor.outdoor_humidity
-    internal: true
-
-  # ---------------------------------------------------------
-  # SCD41 CO2 SENSOR (Optional)
-  # ---------------------------------------------------------
-  # Will show as "unavailable" until sensor is connected to H2 header
-  - platform: scd4x
-    co2:
-      name: "SCD41 CO2"
-      id: scd41_co2
-      accuracy_decimals: 0
-      filters:
-        - median:
-            window_size: 5
-            send_every: 3
-    temperature_offset: 4.0 # Optional: default value is 4.0 °C
-    altitude_compensation: 250m # Replace 250m with your location's altitude
-    automatic_self_calibration: true
-    temperature:
-      name: "SCD41 Temperatur"
-      id: scd41_temperature
-      accuracy_decimals: 1
-    humidity:
-      name: "SCD41 Luftfeuchtigkeit"
-      id: scd41_humidity
-      accuracy_decimals: 1
-
-  # ---------------------------------------------------------
-  # NTC TEMPERATURE SENSORS (Analog)
-  # ---------------------------------------------------------
-  # Sensor Info (Eurosensor ENTC-EI-10k9777-02):
-  # - Resistance at 25°C: 10kΩ
-  # - Beta constant (25/85): 3976K ±0.5%
-  # - Accuracy: ±0.2°C (0 to 70°C)
-  #
-  # Voltage Divider Reference Resistor (R4, R5):
-  # - Part: HoAR0603-1/10W-10KR-0.1%-TCR25 (LCSC: C5123581)
-  # - Value: 10kΩ
-  # - Tolerance: ±0.1% (High precision)
-  # - Temperature Coefficient: ±25ppm/°C (Highly stable)
-  # ---------------------------------------------------------
-  # NTC Interior - Indoor air temperature measurement
-  - platform: resistance
-    id: ntc_innen_resistance
-    sensor: ntc_innen_source
-    configuration: DOWNSTREAM
-    resistor: 10kOhm # Reference resistor in voltage divider
-    name: "NTC Innen Widerstand"
-    internal: true # Hide raw resistance value
-
-  - platform: ntc
-    sensor: ntc_innen_resistance
-    name: "Temperatur Zuluft (Innen)"
-    id: temp_zuluft
-    calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
-      reference_temperature: 25°C
-      reference_resistance: 10kOhm
-    accuracy_decimals: 1
-    filters:
-      - median:
-          window_size: 5
-          send_every: 3
-      - lambda: |-
-          return filter_ntc_stable(0, x);
-
-  - platform: adc
-    id: ntc_innen_source
-    pin: GPIO1 # Pin D1
-    attenuation: 12db # For 0-3.3V range
-    update_interval: 5s
-    internal: true
-
-  # NTC Exterior - Outdoor/exhaust air temperature measurement
-  - platform: resistance
-    id: ntc_aussen_resistance
-    sensor: ntc_aussen_source
-    configuration: DOWNSTREAM
-    resistor: 10kOhm # Reference resistor in voltage divider
-    name: "NTC Außen Widerstand"
-    internal: true
-
-  - platform: ntc
-    sensor: ntc_aussen_resistance
-    name: "Temperatur Abluft (Außen)"
-    id: temp_abluft
-    calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
-      reference_temperature: 25°C
-      reference_resistance: 10kOhm
-    accuracy_decimals: 1
-    filters:
-      - median:
-          window_size: 5
-          send_every: 3
-      - lambda: |-
-          return filter_ntc_stable(1, x);
-
-  - platform: adc
-    id: ntc_aussen_source
-    pin: GPIO0 # Pin D0
-    attenuation: 12db # For 0-3.3V range
-    update_interval: 5s
     internal: true
 
   # ---------------------------------------------------------
@@ -182,52 +61,6 @@ sensor:
         id(temp_abluft).state,        // Exhaust air temperature
         id(heat_recovery_efficiency).state
       );
-
-  # Fan Tachometer (RPM) Reading (Hardware)
-  - platform: pulse_counter
-    pin: GPIO20 # Pin D9
-    id: fan_rpm_pulse
-    internal: true
-    use_pcnt: true # Use hardware PCNT for efficient pulse counting (recommended for ESP32)
-    update_interval: 1s # 1s Window for stable RPM calculation
-    filters:
-      - multiply: 0.5 # 2 pulses per revolution -> divide by 2
-
-  # Fan RPM (Virtual / Calculated)
-  # Uses real RPM if pulse_counter > 0, otherwise calculates based on speed demand.
-  # 100% speed (level 10) = 4200 RPM
-  - platform: template
-    name: "Lüfter Drehzahl"
-    id: fan_rpm
-    unit_of_measurement: "RPM"
-    state_class: "measurement"
-    accuracy_decimals: 0
-    icon: "mdi:speedometer"
-    update_interval: 2s
-    filters:
-      - delta: 20 # Only update if RPM changes by > 20
-    lambda: |-
-      return calculate_virtual_fan_rpm(id(fan_rpm_pulse).state);
-    on_value:
-      then:
-        - script.execute: update_leds # Update LEDs on RPM change (optional feedback)
-
-  # Fan PWM Sensor (Diagnose)
-  # Zeigt den logischen PWM-Wert (0–100%), mit dem der Code set_level() aufruft.
-  # Dieser Wert = was der Lüfter tatsächlich sieht (Software-inverted + MOSFET-inverted = original).
-  # 50% = Stop, 0–49% = Richtung A, 51–100% = Richtung B
-  - platform: template
-    name: "Lüfter PWM Ansteuerung"
-    id: fan_pwm_percent
-    unit_of_measurement: "%"
-    state_class: "measurement"
-    accuracy_decimals: 1
-    icon: "mdi:fan-speed-1"
-    update_interval: 2s
-    lambda: |-
-      return last_fan_pwm_level * 100.0f;
-    filters:
-      - delta: 0.5 # Only send if change > 0.5% (reduces HA traffic & CPU)
 
   # ---------------------------------------------------------
   # EFFECTIVE CO2 SENSOR (Unified Fallback)

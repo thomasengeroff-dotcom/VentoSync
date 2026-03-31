@@ -148,6 +148,7 @@ number:
     mode: slider
     #restore_value: true      # ✅ Jetzt möglich ohne lambda
     optimistic: false         # ✅ Bessere UI Erfahrung
+    #initial_value: 1
     lambda: |-
       return id(fan_intensity_level);
     set_action:

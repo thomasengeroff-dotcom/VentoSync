@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.12"
+  project_version: "0.7.14"
 
 esphome:
   name: "${device_name}"
@@ -63,6 +63,13 @@ esp32:
 logger:
   hardware_uart: USB_SERIAL_JTAG
   level: INFO # Reduced from DEBUG for performance
+
+# Enables memory and system diagnostics
+debug:
+
+# Enables emergency sleep mode for temperature protection
+deep_sleep:
+  id: safety_sleep
 
 # ---------------------------------------------------------
 # HOME ASSISTANT API
@@ -150,6 +157,13 @@ sensor:
     accuracy_decimals: 0
     entity_category: diagnostic
 
+  # Internal RAM monitoring
+  - platform: debug
+    free:
+      name: "${device_name} Freier Speicher (RAM)"
+      id: sensor_free_ram
+      entity_category: diagnostic
+
   # WiFi Channel diagnostic
   - platform: template
     name: "${device_name} WLAN Kanal"
@@ -169,7 +183,8 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.000277778 # Convert seconds to hours
-
+    entity_category: diagnostic
+    
 # ---------------------------------------------------------
 # SYSTEM INFORMATION (TEXT)
 # ---------------------------------------------------------

@@ -1,0 +1,87 @@
+# ==========================================================================
+# WRG Wohnraumlüftung – NTC TEMPERATURE SENSORS (Analog)
+# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+#
+# File:        sensor_NTC.yaml
+# Description: Configuration for interior (Zuluft) and exterior (Abluft) 
+#              analog NTC temperature sensors.
+# ==========================================================================
+
+sensor:
+  # ---------------------------------------------------------
+  # NTC TEMPERATURE SENSORS (Analog)
+  # ---------------------------------------------------------
+  # Sensor Info (Eurosensor ENTC-EI-10k9777-02):
+  # - Resistance at 25°C: 10kΩ
+  # - Beta constant (25/85): 3976K ±0.5%
+  # - Accuracy: ±0.2°C (0 to 70°C)
+  #
+  # Voltage Divider Reference Resistor (R4, R5):
+  # - Part: HoAR0603-1/10W-10KR-0.1%-TCR25 (LCSC: C5123581)
+  # - Value: 10kΩ
+  # - Tolerance: ±0.1% (High precision)
+  # - Temperature Coefficient: ±25ppm/°C (Highly stable)
+  # ---------------------------------------------------------
+  # NTC Interior - Indoor air temperature measurement
+  - platform: resistance
+    id: ntc_innen_resistance
+    sensor: ntc_innen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Reference resistor in voltage divider
+    name: "NTC Innen Widerstand"
+    internal: true # Hide raw resistance value
+
+  - platform: ntc
+    sensor: ntc_innen_resistance
+    name: "Temperatur Zuluft (Innen)"
+    id: temp_zuluft
+    calibration:
+      b_constant: 3976 # Beta coefficient from datasheet
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - lambda: |-
+          return filter_ntc_stable(0, x);
+
+  - platform: adc
+    id: ntc_innen_source
+    pin: GPIO1 # Pin D1
+    attenuation: 12db # For 0-3.3V range
+    update_interval: 5s
+    internal: true
+
+  # NTC Exterior - Outdoor/exhaust air temperature measurement
+  - platform: resistance
+    id: ntc_aussen_resistance
+    sensor: ntc_aussen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm # Reference resistor in voltage divider
+    name: "NTC Außen Widerstand"
+    internal: true
+
+  - platform: ntc
+    sensor: ntc_aussen_resistance
+    name: "Temperatur Abluft (Außen)"
+    id: temp_abluft
+    calibration:
+      b_constant: 3976 # Beta coefficient from datasheet
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+      - lambda: |-
+          return filter_ntc_stable(1, x);
+
+  - platform: adc
+    id: ntc_aussen_source
+    pin: GPIO0 # Pin D0
+    attenuation: 12db # For 0-3.3V range
+    update_interval: 5s
+    internal: true
