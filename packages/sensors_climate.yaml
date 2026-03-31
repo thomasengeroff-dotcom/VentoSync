@@ -53,10 +53,9 @@ sensor:
     lambda: |-
       float t_in = id(scd41_temperature).state;
       if (std::isnan(t_in)) t_in = id(bme680_temperature).state;
-      if (std::isnan(t_in)) t_in = id(temperature).state; // Fallback to BMP390
 
       return calculate_heat_recovery_efficiency(
-        t_in,                         // Room temperature
+        t_in,                         // Room temperature (SCD41 or BME680 only!)
         id(temp_zuluft).state,        // Supply air temperature
         id(temp_abluft).state,        // Exhaust air temperature
         id(heat_recovery_efficiency).state
@@ -91,3 +90,14 @@ text_sensor:
     update_interval: 60s
     lambda: |-
       return get_co2_classification(id(effective_co2).state);
+
+  # Human-readable info about which sensor is used for WRG efficiency
+  - platform: template
+    name: "WRG Referenz-Messpunkt"
+    id: wrg_reference_sensor
+    icon: "mdi:target-variant"
+    update_interval: 30s
+    lambda: |-
+      if (!std::isnan(id(scd41_temperature).state)) return std::string("SCD41");
+      if (!std::isnan(id(bme680_temperature).state)) return std::string("BME680");
+      return std::string("Kein Raumsensor");

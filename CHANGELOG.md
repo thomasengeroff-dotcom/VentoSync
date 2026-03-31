@@ -4,7 +4,15 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.7.15] - 2026-03-31
+## [0.7.16] - 2026-03-31
+### Fixed
+- **Wärmerückgewinnung (WRG) Effizienz**: 
+  - Entfernung des ungenauen **BMP390** (Gehäuse-Sensor) als Referenzquelle zur Vermeidung von Verfälschungen durch Elektronik-Abwärme.
+  - Senkung der Berechnungsschwelle von **1,0 K auf 0,3 K** zur Verbesserung der Messgenauigkeit bei geringen Temperaturunterschieden (Übergangszeit).
+
+### Added
+- **Diagnose-Sensor**: Neuer Text-Sensor `WRG Referenz-Messpunkt` zur transparenten Anzeige der verwendeten Temperaturquelle (SCD41 vs. BME680).
+
 ### Added
 - **Priorisierte Diagnose-Blinkcodes**: Die Master-LED signalisiert nun verschiedene Fehlerzustände über ein mehrstufiges Blink-System (Prioritäts-Ladder):
   1. **2 Pulse (Höchste Prio)**: ESP-NOW Peer-Synchronisierungsfehler.

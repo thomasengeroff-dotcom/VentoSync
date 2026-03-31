@@ -26,11 +26,11 @@
 #include "ventilation_logic.h"
 
 /// @brief Calculates Wärmerückgewinnung (heat recovery) efficiency.
-/// Returns 0 when the indoor/outdoor ΔT is < 1 °C, clamped to [0, 100] %.
+/// Returns 0 when the indoor/outdoor ΔT is < 0.3 °C, clamped to [0, 100] %.
 float VentilationLogic::calculate_heat_recovery_efficiency(float t_raum, float t_zuluft, float t_aussen) {
   // Efficiency = (T_supply - T_outside) / (T_indoor - T_outside) * 100
   // Avoid division by zero
-  if (std::abs(t_raum - t_aussen) < 1.0) {
+  if (std::abs(t_raum - t_aussen) < 0.3) {
     return 0.0;
   }
   float eff = (t_zuluft - t_aussen) / (t_raum - t_aussen) * 100.0;
