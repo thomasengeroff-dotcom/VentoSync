@@ -58,13 +58,13 @@ inline void check_master_led_error() {
   float target_brightness = 0.0f;
 
   if (peer_sync_error) {
-    target_effect = "Error Sync 2-Pulse";
+    target_effect = "Error Peer";
     target_brightness = 1.0f;
   } else if (!is_connected) {
-    target_effect = "Error Wifi 3-Pulse";
+    target_effect = "Error WiFi";
     target_brightness = 1.0f;
   } else if (thermal_warning) {
-    target_effect = "Error Thermal 4-Pulse";
+    target_effect = "Warning Safety";
     target_brightness = 1.0f;
   }
 

@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.32] - 2026-04-01
+### Fixed
+- **PID-Optimierung**: Verknüpfung der CO2-Automatik mit dem PID-Regler-Modus (OFF/COOL). Dies stoppt Hintergrundberechnungen und Log-Einträge ("PID CO2 Automatik >> Mode: COOL"), wenn die Automatik deaktiviert ist.
+- **Master-LED Fix**: Behebung eines Fehlers, bei dem die Master-LED dauerhaft leuchtete (Ursache: Mismatch bei Effekt-Namen und Lampen-Test beim Booten).
+
 ## [0.7.31] - 2026-04-01
 ### Added
 - **ESP-NOW Protokoll v7**: Erweiterung des Kommunikations-Pakets um Echtzeit-Daten für Lüfter-Drehzahl (RPM), Board-Temperatur (BMP390), Raum-Temperatur (SCD41/BME680) und PID-Anforderung.

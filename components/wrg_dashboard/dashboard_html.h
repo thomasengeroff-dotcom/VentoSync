@@ -94,7 +94,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       <!-- Status & Sensors -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
         <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Aktuelle Sensordaten</h2>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Raumtemperatur:</span> <span class="font-medium text-lg" id="val_temperature">-- °C</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Board-Temperatur:</span> <span class="font-medium text-lg" id="val_temperature">-- °C</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftdruck:</span> <span class="font-medium text-lg" id="val_pressure">-- hPa</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Feuchtigkeit (Außen):</span> <span class="font-medium text-lg" id="val_outdoor_humidity">-- %</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Zuluft:</span> <span class="font-medium text-lg" id="val_temp_zuluft">-- °C</span></div>

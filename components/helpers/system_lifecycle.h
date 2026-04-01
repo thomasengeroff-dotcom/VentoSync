@@ -173,7 +173,6 @@ inline void run_led_self_test() {
 
   status_led_mode_vent->turn_on().perform();
   status_led_power->turn_on().perform();
-  status_led_master->turn_on().perform();
 
   // 2. Turn on all level indicator LEDs
   if (status_led_l1) status_led_l1->turn_on().perform();

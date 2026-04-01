@@ -112,12 +112,20 @@ switch:
             ESP_LOGW("co2_auto", "No CO2 sensor available (SCD41/BME680) — CO2 Auto Mode cannot be enabled");
           } else {
             id(co2_auto_enabled) = true;
+            // Activate PID controller (Intent: CO2 Reduction)
+            auto call = id(pid_co2).make_call();
+            call.set_mode(esphome::climate::CLIMATE_MODE_COOL); // CLIMATE_MODE_COOL is an ESPHome variable and cannot be renamed
+            call.perform();
             sync_settings_to_peers();
             ESP_LOGI("co2_auto", "CO2 Auto Mode enabled");
           }
     turn_off_action:
       - lambda: |-
           id(co2_auto_enabled) = false;
+          // Deactivate PID controller completely to stop logging and calculations
+          auto call = id(pid_co2).make_call();
+          call.set_mode(esphome::climate::CLIMATE_MODE_OFF);
+          call.perform();
           sync_settings_to_peers();
           ESP_LOGI("co2_auto", "CO2 Auto Mode disabled");
 
