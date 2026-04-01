@@ -1,6 +1,6 @@
 # ==========================================================================
 # WRG Wohnraumlüftung – NTC TEMPERATURE SENSORS (Analog)
-# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+# https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # File:        sensor_NTC.yaml
 # Description: Configuration for interior (Zuluft) and exterior (Abluft) 

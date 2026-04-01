@@ -1,6 +1,6 @@
-# Home Assistant Entitäten: ESPHome-Wohnraumlueftung
+# Home Assistant Entitäten: VentoSync
 
-Diese Datei listet alle Home Assistant Entitäten auf, die durch die Konfiguration `esp_wohnraumlueftung.yaml` (und ihre inkludierten Packages) bereitgestellt werden. Sie ist konzeptionell nach Themen gruppiert, um eine Basis für saubere Benennung und Integration in Dashboards zu bieten.
+Diese Datei listet alle Home Assistant Entitäten auf, die durch die Konfiguration `ventosync.yaml` (und ihre inkludierten Packages) bereitgestellt werden. Sie ist konzeptionell nach Themen gruppiert, um eine Basis für saubere Benennung und Integration in Dashboards zu bieten.
 
 ## 1. Steuerung & Betriebsmodus (Lüftung)
 

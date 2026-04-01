@@ -2,7 +2,7 @@
 description: Run any ESPHome command (e.g., compile, config, upload) using Python 3.13.
 ---
 
-1. Ensure you have an ESPHome configuration file (e.g., `esp_wohnraumlueftung.yaml`).
+1. Ensure you have an ESPHome configuration file (e.g., `ventosync.yaml`).
 // turbo
 2. Run the ESPHome command:
 ```powershell

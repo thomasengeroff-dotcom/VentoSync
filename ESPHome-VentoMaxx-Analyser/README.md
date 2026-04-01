@@ -28,7 +28,7 @@ GND (VentoMaxx) ------------------------------------+---- GND (XIAO)
 
 ## Software & Konfiguration
 
-Die Konfiguration erfolgt über die Datei [esp_ventomaxx_analyser.yaml](file:///c:/Users/thomas.engeroff/Documents/ESPHome-Projekte/ESPHome-Wohnraumlueftung/ESPHome-VentoMaxx-Analyser/esp_ventomaxx_analyser.yaml).
+Die Konfiguration erfolgt über die Datei [esp_ventomaxx_analyser.yaml](file:///c:/Users/thomas.engeroff/Documents/ESPHome-Projekte/VentoSync/ESPHome-VentoMaxx-Analyser/esp_ventomaxx_analyser.yaml).
 
 ### Funktionen im YAML
 
@@ -39,7 +39,7 @@ Die Konfiguration erfolgt über die Datei [esp_ventomaxx_analyser.yaml](file:///
 
 ## Ergebnisse der Analyse
 
-Die detaillierten Messergebnisse und die daraus abgeleiteten Anpassungen für die Haupt-Steuerung sind im Dokument [PWM_ANALYSIS.md](file:///c:/Users/thomas.engeroff/Documents/ESPHome-Projekte/ESPHome-Wohnraumlueftung/ESPHome-VentoMaxx-Analyser/PWM_ANALYSIS.md) dokumentiert.
+Die detaillierten Messergebnisse und die daraus abgeleiteten Anpassungen für die Haupt-Steuerung sind im Dokument [PWM_ANALYSIS.md](file:///c:/Users/thomas.engeroff/Documents/ESPHome-Projekte/VentoSync/ESPHome-VentoMaxx-Analyser/PWM_ANALYSIS.md) dokumentiert.
 
 > [!IMPORTANT]
 > Schließe den Analyser niemals ohne Spannungsteiler an die 12V der Originalsteuerung an, da dies den ESP32-C6 sofort zerstören würde!

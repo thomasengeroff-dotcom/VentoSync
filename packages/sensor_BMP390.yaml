@@ -1,6 +1,6 @@
 # ==========================================================================
 # WRG Wohnraumlüftung – BMP390 Temperature & Pressure Sensor
-# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+# https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # File:        sensor_BMP390.yaml
 # Description: Configuration for BMP390 sensor and safety automation.

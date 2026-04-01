@@ -119,7 +119,7 @@ def after_build(source, target, env):
             print(f">>> POST-BUILD: Updated {manifest_path}")
 
             # Define Samba target - project specific folder
-            project_name = "wohnraumlueftung"
+            project_name = "ventosync"
             smb_dir = os.path.join(r"\\192.168.178.45\config\www\firmware", project_name)
             smb_firmware = os.path.join(smb_dir, "firmware.bin")
             smb_manifest = os.path.join(smb_dir, "manifest.json")

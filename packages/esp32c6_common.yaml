@@ -1,6 +1,6 @@
 # ==========================================================================
 # WRG Wohnraumlüftung – ESPHome Custom Component
-# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+# https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
 #
@@ -38,7 +38,7 @@ esphome:
   name: "${device_name}"
   friendly_name: "${friendly_name}"
   project:
-    name: "thomasengeroff.wohnraumlueftung"
+    name: "thomasengeroff.ventosync"
     version: "${project_version}"
   # Force specific flash mode for better stability with C6
   platformio_options:
@@ -120,7 +120,7 @@ update:
   - platform: http_request
     name: "Firmware Update"
     # The /local/ folder corresponds to the "www" folder in the Home Assistant Samba Share
-    source: "http://192.168.178.45:8123/local/firmware/wohnraumlueftung/manifest.json"
+    source: "http://192.168.178.45:8123/local/firmware/ventosync/manifest.json"
     update_interval: 2h
 
 # ---------------------------------------------------------

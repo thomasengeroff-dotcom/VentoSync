@@ -52,7 +52,7 @@ Dieses Dokument spezifiziert die Hardware-Komponenten, die Verkabelung für den 
 
 ## 1. Detaillierte BOM (Bill of Materials)
 
-Status: **Final (22.02.2026)** - ✅ Verified (Passend zur Schematic: `EasyEDA-Pro\SCH_ESPHome Wohnraumlueftung PWM_2026-02-22.pdf`)
+Status: **Final (22.02.2026)** - ✅ Verified (Passend zur Schematic: `EasyEDA-Pro\SCH_ESPHome VentoSync PWM_2026-02-22.pdf`)
 
 | Nr. | Menge | Wert / Bauteil | Designator | Footprint | Hersteller Part | Notiz |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

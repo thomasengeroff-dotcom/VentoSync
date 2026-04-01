@@ -40,7 +40,7 @@ Statt die Geräte-IDs fest im YAML-Code zu definieren, können alle Lüftungsger
 Alle Geräte erhalten die **gleiche** Firmware:
 
 ```bash
-esphome run esp_wohnraumlueftung.yaml
+esphome run ventosync.yaml
 ```
 
 ### 2. In Home Assistant einbinden

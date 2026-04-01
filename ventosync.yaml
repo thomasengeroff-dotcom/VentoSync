@@ -1,6 +1,5 @@
-# ==========================================================================
-# WRG Wohnraumlüftung – ESPHome Custom Component
-# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+# VentoSync – Advanced ESPHome-based smart HRV
+# https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
 #
@@ -17,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# File:        esp_wohnraumlueftung.yaml
+# File:        ventosync.yaml
 # Description: Main ESPHome configuration for the room ventilation system.
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
@@ -25,8 +24,8 @@
 # Modified:    2026-03-21
 # ==========================================================================
 substitutions:
-  device_name: espwrglueftung
-  friendly_name: "ESP-WRG-Lüftung"
+  device_name: ventosync
+  friendly_name: "VentoSync - Smart HRV"
 
   # VENTILATION CONFIG - Default Values
   # These are initial values. The actual configuration can be changed

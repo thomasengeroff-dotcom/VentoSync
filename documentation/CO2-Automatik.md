@@ -140,13 +140,13 @@ das Bedienpanel kennt diese Funktion nicht.
 | :--- | :--- |
 | `components/ventilation_logic/ventilation_logic.h/.cpp` | Pure C++ Logik: `get_co2_fan_level()`, `get_co2_classification()` |
 | `automation_helpers.h` | Inline-Wrapper: `apply_co2_auto_control()` |
-| `esp_wohnraumlueftung.yaml` | Globals, Switch, Slider, Text-Sensor, Interval (30s) |
+| `ventosync.yaml` | Globals, Switch, Slider, Text-Sensor, Interval (30s) |
 
 ---
 
 ## YAML-Konfiguration
 
-Die folgenden Elemente werden automatisch in `esp_wohnraumlueftung.yaml` bereitgestellt:
+Die folgenden Elemente werden automatisch in `ventosync.yaml` bereitgestellt:
 
 ```yaml
 # Globals (persistent)

@@ -1,4 +1,4 @@
-# 🌬️ Smart Decentralized Residential Ventilation with Heat Recovery based on ESP32-C6 and ESPHome for the VentoMaxx V-WRG Series
+# 🌬️ VentoSync - Advanced ESPHome-based smart HRV for VentoMaxx V-WRG Series based on ESP32-C6
 
 ## 🚀 Summary & Overview
 
@@ -248,7 +248,7 @@ In addition, I have developed an SCD41 PCB that positions the SCD41 CO2 sensor p
 | **I/O Expander** | **MCP23017** (I2C) for VentoMaxx panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) for dimmable LEDs in VentoMaxx panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
 
-The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](EasyEDA-Pro) subfolder in the [BOM](EasyEDA-Pro/BOM_ESPHome%20Wohnraumlueftung%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv).
+The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](EasyEDA-Pro) subfolder in the [BOM](EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv).
 
 ### 🖱️ User Interface
 
@@ -324,7 +324,7 @@ graph TD
 
 ### Configuration
 
-1. Copy the contents of `esp_wohnraumlueftung.yaml` into your ESPHome instance.
+1. Copy the contents of `ventosync.yaml` into your ESPHome instance.
 2. Create a `secrets.yaml` with your Wi-Fi data:
 
 ```yaml
@@ -527,7 +527,7 @@ automation:
   - alias: "Filter Change Notification"
     trigger:
       - platform: state
-        entity_id: binary_sensor.espwohnraumlueftung_filterwechsel_alarm
+        entity_id: binary_sensor.ventosync_filterwechsel_alarm
         to: "on"
     action:
       - service: notify.mobile_app_<your_device>
@@ -693,8 +693,8 @@ This documentation contains:
 ## 📁 Project Structure
 
 ```text
-ESPHome-Wohnraumlueftung/
-├── esp_wohnraumlueftung.yaml      # Main configuration (minimal)
+VentoSync/
+├── ventosync.yaml                 # Main configuration (minimal)
 ├── esp32c6_common.yaml            # Common ESP32-C6 settings
 ├── device_config.yaml             # Dynamic device configuration
 ├── secrets.yaml                   # Wi-Fi data (Git-ignored)
@@ -736,7 +736,7 @@ The firmware follows a **multi-stage modular architectural approach**, maximizin
 
 #### **1. YAML Modularization (Packages)**
 
-The formerly enormous main file `esp_wohnraumlueftung.yaml` was drastically slimmed down to simplify readability and maintenance. The project intensively uses the ESPHome `packages:` function to outsource self-contained logic building blocks into separate YAML files:
+The formerly enormous main file `ventosync.yaml` was drastically slimmed down to simplify readability and maintenance. The project intensively uses the ESPHome `packages:` function to outsource self-contained logic building blocks into separate YAML files:
 
 - **`hardware_io.yaml`**: Encapsulates the entire physical hardware. Includes I2C buses, port expanders (MCP23017, PCA9685), basic pinouts, and power toggles.
 - **`sensors_climate.yaml`**: Contains the central measurement periphery (SCD41 CO2, BMP390 Pressure, NTC temperature probes) and climate-based calculations (e.g., efficiency of heat recovery).
@@ -744,7 +744,7 @@ The formerly enormous main file `esp_wohnraumlueftung.yaml` was drastically slim
 - **`ui_controls.yaml`**: Isolates all entities that appear as controls in Home Assistant (sliders for timer and setup, dropdowns for mode selection, as well as logical LED lights).
 - **`logic_automation.yaml`**: The "brain" when it comes to processes. This is where the complex PID climate controllers, interval-based automations, cyclic fan ramp scripts, and the input logic of the hardware buttons on the control panel reside.
 
-The main file (`esp_wohnraumlueftung.yaml`) now only acts as the "glue" that defines base variables, loads C++ dependencies, and merges these four module files together.
+The main file (`ventosync.yaml`) now only acts as the "glue" that defines base variables, loads C++ dependencies, and merges these four module files together.
 
 #### **2. `automation_helpers.h` - Central Helper Library**
 
@@ -862,14 +862,14 @@ py -3.13 -m pip install --upgrade esphome
 
 ### 2. Compiling & Flashing Firmware
 
-Compile the firmware and upload it to the device. Replace `esp_wohnraumlueftung.yaml` with the name of your YAML file.
+Compile the firmware and upload it to the device. Replace `ventosync.yaml` with the name of your YAML file.
 
 ```bash
 # Compiling
-py -3.13 -m esphome compile esp_wohnraumlueftung.yaml
+py -3.13 -m esphome compile ventosync.yaml
 
 # Or flash directly (with OTA update via IP)
-py -3.13 -m esphome upload esp_wohnraumlueftung.yaml --device <IP-Address>
+py -3.13 -m esphome upload ventosync.yaml --device <IP-Address>
 ```
 
 ### 3. OTA Updates

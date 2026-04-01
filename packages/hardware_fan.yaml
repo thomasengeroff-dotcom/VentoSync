@@ -1,6 +1,6 @@
 # ==========================================================================
 # WRG Wohnraumlüftung – FAN HARDWARE & CONTROL
-# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+# https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # File:        hardware_fan.yaml
 # Description: Configuration for fan PWM output, tachometer sensors, 

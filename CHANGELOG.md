@@ -202,7 +202,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - Neuerstellung von `packages/sensor_LD2450.yaml` (Radar-Präsenzerkennung).
   - Umbenennung von `packages/BME680.yaml` in `packages/sensor_BME680.yaml` zur Vereinheitlichung.
   - Bereinigung der `packages/sensors_climate.yaml` (Entfernung von Radar-Entitäten).
-  - Update der Hauptkonfiguration `esp_wohnraumlueftung.yaml` mit den neuen Pfaden.
+  - Update der Hauptkonfiguration `ventosync.yaml` mit den neuen Pfaden.
 
 ## [0.6.65] - 2026-03-27
 
@@ -467,9 +467,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - Lüfter PWM und Tacho auf `D8` und `D9` verschoben.
 - **Dokumentations-Update**: `Hardware-Setup-Readme.md` und `Readme.md` (inkl. Mermaid-Diagramm) umfassend überarbeitet, um die neuen Pin-Zuweisungen (sowohl ESP32 als auch I/O-Expander) fehlerfrei abzubilden. Alle alten Interrupt (INTB) Hinweise des MCP23017 entfernt.
 - **BME680 Entfernung**: BME680-spezifischer IAQ- und BSEC-Code (`get_iaq_classification`, `get_iaq_traffic_light_data`) aus C++-Komponenten (`ventilation_logic`, `automation_helpers.h`) und Unit-Tests restlos entfernt, da der Sensor durch SCD41 / BMP390 ersetzt wurde.
-- **SCD41 Konfiguration**: Zusätzliche Sensor-Parameter für SCD41 in `esp_wohnraumlueftung.yaml` ergänzt (`temperature_offset`, `altitude_compensation`, `automatic_self_calibration`).
+- **SCD41 Konfiguration**: Zusätzliche Sensor-Parameter für SCD41 in `ventosync.yaml` ergänzt (`temperature_offset`, `altitude_compensation`, `automatic_self_calibration`).
 - **Lüfterkompatibilität**: Vollständige Entfernung der obsoleten "3-Pin Dual-GND" (VarioPro) Lüftersteuerung aus dem ESPHome-Code und der Dokumentation. Das System unterstützt nun ausschließlich "4-Pin PWM" Lüfter (AxiRev) sowie "3-Pin PWM" Lüfter (ohne Tacho-Signal).
-- **GPIO Pin-Mapping**: Korrektur der Hardware-Zuweisungen (physische D-Pins zu internen GPIO-Pins) für das Seeed Studio XIAO ESP32C6 Board in `esp_wohnraumlueftung.yaml` (betrifft I2C, Fan PWM, Tacho, NTCs).
+- **GPIO Pin-Mapping**: Korrektur der Hardware-Zuweisungen (physische D-Pins zu internen GPIO-Pins) für das Seeed Studio XIAO ESP32C6 Board in `ventosync.yaml` (betrifft I2C, Fan PWM, Tacho, NTCs).
 - **Fan Logic Update**: C++ Helper (`automation_helpers.h`) vereinfacht durch Entfernung der Dual-GND Logik und alter Variablen (`fan_mode_select`, `fan_direction`).
 - **Dokumentations-Update**: Umfangreiche Aktualisierung von `Readme.md`, `Hardware-Setup-Readme.md`, `Anleitung-Fan-Circuit.md` und `Technical-Details.md` passend zu den neuen Lüfter-Spezifikationen und Pin-Belegungen.
 - **Refactoring**: komplette Fan-Logik (`set_fan_speed_and_direction`, `fan_speed_update`) aus YAML-Lambdas in C++ Helper-Funktionen (`set_fan_logic`, `update_fan_logic`) in `automation_helpers.h` ausgelagert.
@@ -484,7 +484,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - **I2C Bus Hardware**:
   - **ESD Protection**: **UMW USBLC6-2SC6** (SOT-23-6) als Schutzdiode validiert (<1pF, optimiert für I2C/Data). Empfohlen: 1x pro Connector direkt am Eingang.
   - **Pull-Up Resistors**: **4.7kΩ** (0402, z.B. FRC0402F4701TS) als Standardwert bestätigt.
-- **Cleanup**: `esp_wohnraumlueftung.yaml` bereinigt und Inline-Logik durch einfache Funktionsaufrufe ersetzt.
+- **Cleanup**: `ventosync.yaml` bereinigt und Inline-Logik durch einfache Funktionsaufrufe ersetzt.
 - **Readme**: Update mit Verweis auf KI-Lüftungskonzept.
 - **Dokumentation**: NTC-Sensor-Spezifikationen in `Readme.md` tabellarisch dargestellt und Datenblatt-Link ergänzt.
 - **ESPHome Build (März 2026)**: Erfolgreicher Kompiliertest aller neuen Features (Radar, Master LED, Filterwechsel-Alarm). RAM: 12.5%, Flash: 69.1%.
@@ -492,7 +492,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ### Fixed
 
 - **Start-Modus Bugfix (UI vs. Backend)**: Ein Bug wurde behoben, bei dem das System nach einem Neustart nicht im korrekten "Smart-Automatik" Modus gestartet ist. Obwohl das Backend den Modus "Automatik" vorbereitete, hat das Home-Assistant-Dropdown (`luefter_modus`) durch seine fehlerhafte `initial_option` ("Wärmerückgewinnung") beim Booten ein Event ausgelöst und die Automatik ungewollt überschrieben. Dies wurde in `ui_controls.yaml` korrigiert, sodass beide Systeme nun synchron auf "Automatik" starten.
-- **BMP390 Konfiguration**: I2C-Adresse für BMP390 in `esp_wohnraumlueftung.yaml` fest auf `0x76` korrigiert und ungültige `bmp3xx_i2c` Top-Level-Konfiguration entfernt.
+- **BMP390 Konfiguration**: I2C-Adresse für BMP390 in `ventosync.yaml` fest auf `0x76` korrigiert und ungültige `bmp3xx_i2c` Top-Level-Konfiguration entfernt.
 - **Kompilierung**: `RestoringGlobalsComponent` Typ-Konflikt in `automation_helpers.h` behoben (`co2_auto_enabled`, `co2_min/max_fan_level`).
 - **Validierung**: `switch.template` Fehler bei `co2_auto_switch` korrigiert (redundante `component.update` Calls entfernt).
 - **WiFi-Check auf ESP-IDF**: `WiFi.isConnected()` (Arduino-only) durch `esphome::wifi::global_wifi_component->is_connected()` ersetzt, um Kompatibilität mit ESP-IDF Framework sicherzustellen.
@@ -624,13 +624,13 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Fixed
 
-- 5 Lambda-Syntax-Fehler („Unresolved tag: !lambda") in `esp_wohnraumlueftung.yaml` — ESPHome erfordert YAML Block-Scalar-Format (`|-`) statt Quoted Strings.
+- 5 Lambda-Syntax-Fehler („Unresolved tag: !lambda") in `ventosync.yaml` — ESPHome erfordert YAML Block-Scalar-Format (`|-`) statt Quoted Strings.
 
 ### Changed
 
 - Logging auf DEBUG-Level reduziert (weniger Spam).
 
-[0.4.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung/releases/tag/v0.1.0
+[0.4.0]: https://github.com/thomasengeroff-dotcom/VentoSync/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/thomasengeroff-dotcom/VentoSync/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/thomasengeroff-dotcom/VentoSync/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/thomasengeroff-dotcom/VentoSync/releases/tag/v0.1.0

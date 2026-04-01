@@ -28,4 +28,4 @@ jobs:
         run: pip install esphome==2026.3.1
 
       - name: Verify Configuration
-        run: esphome config esp_wohnraumlueftung.yaml
+        run: esphome config ventosync.yaml

@@ -1,6 +1,6 @@
 # ==========================================================================
 # WRG Wohnraumlüftung – SCD41 CO2, Temperature & Humidity Sensor
-# https://github.com/thomasengeroff-dotcom/ESPHome-Wohnraumlueftung
+# https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # File:        sensor_SCD41.yaml
 # Description: Configuration for SCD41 CO2 sensor.
