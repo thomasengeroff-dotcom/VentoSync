@@ -40,14 +40,32 @@ inline void check_master_led_error() {
   static std::string last_active_effect = "__none__";
   static float last_active_brightness = -1.0f;
 
-  bool is_connected = (esphome::wifi::global_wifi_component != nullptr) && 
-                      esphome::wifi::global_wifi_component->is_connected();
+  // Robust Connection Check (Network + API Fallback)
+  // Use ESPHome native network abstraction + API state to prevent false positives.
+  bool network_up = esphome::network::is_connected();
+  bool api_up = (esphome::api::global_api_server != nullptr) && 
+                esphome::api::global_api_server->is_connected();
+  
+  bool is_functionally_connected = network_up || api_up;
+  
+  // Implement 30s Hysteresis to suppress "phantom" errors during brief signal drops (roaming)
+  static uint32_t last_connected_ms = millis();
+  if (is_functionally_connected) {
+    last_connected_ms = millis();
+  }
+  
+  // LED Error only triggers if offline for more than 30 seconds
+  bool wifi_error_triggered = (millis() - last_connected_ms > 30000);
   
   bool peer_sync_error = false;
-  if (ventilation_ctrl != nullptr) {
-    // If we have peers expected but none seen for 5 minutes
+  bool peer_check_active = (peer_check_enabled != nullptr) && peer_check_enabled->value();
+  
+  if (ventilation_ctrl != nullptr && peer_check_active) {
+    // If we have peers expected but none seen for 3 minutes (Reduced from 5min)
+    // We only trigger this after the system has been up for at least 3 minutes to allow for discovery.
     if (ventilation_ctrl->has_peer_pid_demand && 
-        (millis() - ventilation_ctrl->last_peer_pid_demand_time > 300000)) {
+        (millis() > 180000) &&
+        (millis() - ventilation_ctrl->last_peer_pid_demand_time > 180000)) {
       peer_sync_error = true;
     }
   }
@@ -60,7 +78,7 @@ inline void check_master_led_error() {
   if (peer_sync_error) {
     target_effect = "Error Peer";
     target_brightness = 1.0f;
-  } else if (!is_connected) {
+  } else if (wifi_error_triggered) {
     target_effect = "Error WiFi";
     target_brightness = 1.0f;
   } else if (thermal_warning) {

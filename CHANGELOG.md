@@ -4,10 +4,12 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.7.32] - 2026-04-01
+## [0.7.35] - 2026-04-01
 ### Fixed
-- **PID-Optimierung**: Verknüpfung der CO2-Automatik mit dem PID-Regler-Modus (OFF/COOL). Dies stoppt Hintergrundberechnungen und Log-Einträge ("PID CO2 Automatik >> Mode: COOL"), wenn die Automatik deaktiviert ist.
-- **Master-LED Fix**: Behebung eines Fehlers, bei dem die Master-LED dauerhaft leuchtete (Ursache: Mismatch bei Effekt-Namen und Lampen-Test beim Booten).
+- **Peer-Diagnose Härtung**: Der Peer-Synchronisationsfehler (2x Blinken) respektiert nun den "Peerprüfung" Schalter im Dashboard. 
+- **Timeout-Optimierung**: Reduzierung des Peer-Timeouts von 5 auf 3 Minuten für eine schnellere Fehlererkennung bei gleichzeitig minimierten Fehlalarmen durch eine 3-minütige Einschalt-Hysterese.
+
+## [0.7.34] - 2026-04-01
 
 ## [0.7.31] - 2026-04-01
 ### Added
