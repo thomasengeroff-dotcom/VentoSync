@@ -58,7 +58,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static const uint8_t PROTOCOL_VERSION = 6; // Bumped: current_mode_index added
+static const uint8_t PROTOCOL_VERSION = 7; // Bumped: added RPM, Board-T, Room-T
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
 /// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
@@ -83,6 +83,9 @@ struct __attribute__((packed)) VentilationPacket {
   float t_in;                ///< Sender's local indoor temperature (or NAN).
   float t_out;               ///< Sender's local outdoor temperature (or NAN).
   float pid_demand;          ///< Sender's local evaluated PID demand (0.0–1.0).
+  float fan_rpm;             ///< Sender's current fan RPM.
+  float board_temp;          ///< Sender's board temperature (BMP390).
+  float room_temp;           ///< Sender's room temperature (SCD41/BME680).
 
   // Control & Settings Synced States
   uint8_t fan_intensity; ///< Current 1-10 level
@@ -113,6 +116,9 @@ struct PeerState {
   float t_in;
   float t_out;
   float pid_demand;
+  float fan_rpm;
+  float board_temp;
+  float room_temp;
 };
 
 // ---------------------------------------------------------
@@ -186,6 +192,10 @@ public:
   // --- HARDWARE REFS (set by codegen) ---
   fan::Fan *main_fan{nullptr};                ///< ESPHome fan component.
   switch_::Switch *direction_switch{nullptr}; ///< ON = intake, OFF = exhaust.
+  sensor::Sensor *fan_rpm_sensor_{nullptr};   ///< Local RPM sensor.
+  sensor::Sensor *board_temp_sensor_{nullptr}; ///< Local board temp (BMP390).
+  sensor::Sensor *scd41_temp_sensor_{nullptr}; ///< Local room temp (SCD41).
+  sensor::Sensor *bme680_temp_sensor_{nullptr}; ///< Fallback room temp (BME680).
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
   void set_floor_id(uint8_t id) { floor_id = id; }   ///< Set floor group.
@@ -205,6 +215,10 @@ public:
   void set_direction_switch(switch_::Switch *sw) {
     direction_switch = sw;
   } ///< Bind the direction switch.
+  void set_fan_rpm_sensor(sensor::Sensor *s) { fan_rpm_sensor_ = s; }
+  void set_board_temp_sensor(sensor::Sensor *s) { board_temp_sensor_ = s; }
+  void set_scd41_temp_sensor(sensor::Sensor *s) { scd41_temp_sensor_ = s; }
+  void set_bme680_temp_sensor(sensor::Sensor *s) { bme680_temp_sensor_ = s; }
 
   VentilationController() {}
 
@@ -387,6 +401,9 @@ public:
         peer.t_in = pkt->t_in;
         peer.t_out = pkt->t_out;
         peer.pid_demand = pkt->pid_demand;
+        peer.fan_rpm = pkt->fan_rpm;
+        peer.board_temp = pkt->board_temp;
+        peer.room_temp = pkt->room_temp;
         found_peer = true;
         break;
       }
@@ -401,6 +418,9 @@ public:
       new_peer.t_in = pkt->t_in;
       new_peer.t_out = pkt->t_out;
       new_peer.pid_demand = pkt->pid_demand;
+      new_peer.fan_rpm = pkt->fan_rpm;
+      new_peer.board_temp = pkt->board_temp;
+      new_peer.room_temp = pkt->room_temp;
       peers.push_back(new_peer);
     }
 
@@ -560,9 +580,23 @@ public:
     pkt.cycle_pos_ms = state_machine.get_cycle_pos(millis());
     pkt.phase_state = state_machine.global_phase;
 
+    // Fill sensor data from local components if bound
+    pkt.fan_rpm = (fan_rpm_sensor_ && fan_rpm_sensor_->has_state()) ? fan_rpm_sensor_->state : (float)NAN;
+    pkt.board_temp = (board_temp_sensor_ && board_temp_sensor_->has_state()) ? board_temp_sensor_->state : (float)NAN;
+    
+    // Room Temp Logic: SCD41 (Primary) -> BME680 (Fallback)
+    float r_temp = (float)NAN;
+    if (scd41_temp_sensor_ && scd41_temp_sensor_->has_state()) {
+        r_temp = scd41_temp_sensor_->state;
+    } else if (bme680_temp_sensor_ && bme680_temp_sensor_->has_state()) {
+        r_temp = bme680_temp_sensor_->state;
+    }
+    pkt.room_temp = r_temp;
+    
+    // Sync PID demand and NTC values
+    pkt.pid_demand = local_pid_demand;
     pkt.t_in = local_t_in;
     pkt.t_out = local_t_out;
-    pkt.pid_demand = local_pid_demand;
 
     std::vector<uint8_t> data(sizeof(VentilationPacket));
     memcpy(data.data(), &pkt, sizeof(VentilationPacket));

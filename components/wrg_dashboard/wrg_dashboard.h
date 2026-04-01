@@ -68,6 +68,7 @@ public:
   void set_effective_co2(sensor::Sensor *s) { effective_co2_ = s; }
   void set_scd41_temperature(sensor::Sensor *s) { scd41_temperature_ = s; }
   void set_scd41_humidity(sensor::Sensor *s) { scd41_humidity_ = s; }
+  void set_bme680_temperature(sensor::Sensor *s) { bme680_temperature_ = s; }
   void set_temp_zuluft(sensor::Sensor *s) { temp_zuluft_ = s; }
   void set_temp_abluft(sensor::Sensor *s) { temp_abluft_ = s; }
   void set_heat_recovery_efficiency(sensor::Sensor *s) {
@@ -146,6 +147,7 @@ protected:
   sensor::Sensor *effective_co2_{nullptr};
   sensor::Sensor *scd41_temperature_{nullptr};
   sensor::Sensor *scd41_humidity_{nullptr};
+  sensor::Sensor *bme680_temperature_{nullptr};
   sensor::Sensor *temp_zuluft_{nullptr};
   sensor::Sensor *temp_abluft_{nullptr};
   sensor::Sensor *heat_recovery_efficiency_{nullptr};

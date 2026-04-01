@@ -357,22 +357,26 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             localPhaseBadge = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
         }
         
-        const localTIn = (data.temperature !== null && data.temperature !== undefined) ? Number(data.temperature).toFixed(1) + " °C" : "--";
-        const localTOut = (data.temp_abluft !== null && data.temp_abluft !== undefined) ? Number(data.temp_abluft).toFixed(1) + " °C" : "--";
-        
+        const localRPM = (data.fan_rpm !== null && data.fan_rpm !== undefined && !isNaN(data.fan_rpm)) ? Number(data.fan_rpm).toFixed(0) : "--";
+        const localBoardT = (data.temperature !== null && data.temperature !== undefined && !isNaN(data.temperature)) ? Number(data.temperature).toFixed(1) + " °C" : "--";
+        const localRoomT = (data.room_temp !== null && data.room_temp !== undefined && !isNaN(data.room_temp)) ? Number(data.room_temp).toFixed(1) + " °C" : "--";
+        const localPID = (data.pid_demand !== null && data.pid_demand !== undefined && !isNaN(data.pid_demand)) ? (Math.round(data.pid_demand * 100) + "%") : "--";
+        const localMode = data.luefter_modus === 'Wärmerückgewinnung' ? 'WRG' : (data.luefter_modus || '--');
+
         let html = `<div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
             <div class="font-bold text-gray-300 mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
               <span>Gerät ${sanitizeHTML(String(data.device_id || "--"))} (lokales Gerät)</span>
               <span class="w-2 h-2 rounded-full bg-gray-400"></span>
             </div>
             <div class="flex justify-between text-sm mb-2">
-                <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(String(data.luefter_modus || "--"))}</strong></span>
+                <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(localMode)}</strong></span>
                 <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(data.fan_intensity_display || "--"))}</strong> ${localPhaseBadge}</span>
             </div>
-            <div class="flex justify-between text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
-                <span title="Temp In">In: ${localTIn}</span>
-                <span title="Temp Out">Out: ${localTOut}</span>
-                <span title="PID Demand" class="text-gray-500">PID: --</span>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
+                <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${localRPM}</strong></div>
+                <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${localBoardT}</strong></div>
+                <div class="flex justify-between"><span>Raum-temp:</span> <strong class="text-gray-400">${localRoomT}</strong></div>
+                <div class="flex justify-between"><span>PID:</span> <strong class="text-gray-400">${localPID}</strong></div>
             </div>
         </div>`;
 
@@ -381,9 +385,11 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             const modeNames = ["Aus", "WRG", "Durchlüften", "Stoßlüftung"];
             const mode = peer.mode >= 0 && peer.mode <= 3 ? modeNames[peer.mode] : "Unbekannt";
             const phase = peer.phase ? "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>" : "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
-            const tIn = (peer.t_in !== undefined && peer.t_in !== null) ? peer.t_in.toFixed(1) + " °C" : "--";
-            const tOut = (peer.t_out !== undefined && peer.t_out !== null) ? peer.t_out.toFixed(1) + " °C" : "--";
-            const pid = peer.pid_demand !== undefined && peer.pid_demand !== null ? (Math.round(peer.pid_demand*100) + "%") : "--";
+            
+            const rpm = (peer.rpm !== undefined && peer.rpm !== null && !isNaN(peer.rpm)) ? Number(peer.rpm).toFixed(0) : "--";
+            const boardT = (peer.board_t !== undefined && peer.board_t !== null && !isNaN(peer.board_t)) ? Number(peer.board_t).toFixed(1) + " °C" : "--";
+            const roomT = (peer.room_t !== undefined && peer.room_t !== null && !isNaN(peer.room_t)) ? Number(peer.room_t).toFixed(1) + " °C" : "--";
+            const pid = (peer.pid_demand !== undefined && peer.pid_demand !== null && !isNaN(peer.pid_demand)) ? (Math.round(peer.pid_demand * 100) + "%") : "--";
             
             html += `<div class="bg-gray-800/80 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
                 <div class="font-bold text-white mb-3 pb-2 border-b border-gray-700 flex justify-between items-center">
@@ -394,10 +400,11 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
                     <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(mode)}</strong></span>
                     <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(peer.speed))}</strong> ${phase}</span>
                 </div>
-                <div class="flex justify-between text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
-                    <span title="Temp In">In: ${tIn}</span>
-                    <span title="Temp Out">Out: ${tOut}</span>
-                    <span title="PID Demand" class="text-accent/80">PID: ${pid}</span>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
+                    <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${rpm}</strong></div>
+                    <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${boardT}</strong></div>
+                    <div class="flex justify-between"><span>Raum-temp:</span> <strong class="text-gray-400">${roomT}</strong></div>
+                    <div class="flex justify-between"><span>PID:</span> <strong class="text-accent/80">${pid}</strong></div>
                 </div>
             </div>`;
           });

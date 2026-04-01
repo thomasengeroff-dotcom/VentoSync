@@ -4,6 +4,20 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.31] - 2026-04-01
+### Added
+- **ESP-NOW Protokoll v7**: Erweiterung des Kommunikations-Pakets um Echtzeit-Daten für Lüfter-Drehzahl (RPM), Board-Temperatur (BMP390), Raum-Temperatur (SCD41/BME680) und PID-Anforderung.
+- **Dashboard-Modernisierung**: Komplette Überarbeitung der Peer-Ansicht ("Verbundene Geräte") mit neuem Diagnose-Layout.
+- **Intelligente Temperatur-Logik**: Implementierung eines automatischen Fallbacks für die Raumtemperatur (SCD41 bevorzugt, BME680 als Ersatz).
+
+### Changed
+- **UI-Standardisierung**: Umbenennung des Modus "Wärmerückgewinnung" in das kompaktere "WRG" in der gesamten Weboberfläche.
+- **Peer-Visualisierung**: Ersetzung der NTC-Werte ("In/Out") durch ein hochauflösendes Diagnose-Gitter (RPM, PID, Board- & Raum-Temp) für alle vernetzten Geräte.
+
+### Fixed
+- **System-Stabilität**: Härtung der Sensor-Abfragen gegen fehlende Hardware (Nullpointer-Schutz und NaN-Handling) in der `ventilation_group`.
+- **JS-Robustheit**: Absicherung der Dashboard-Anzeige gegen fehlerhafte oder fehlende Sensor-Daten durch verbesserte Validierung.
+
 ## [0.7.30] - 2026-04-01
 ### Fixed
 - **Log-Bereinigung**: Deaktivierung des sekündlichen Debug-Spams ("0.00 pulses/min") der `pulse_counter`-Komponente für Lüfter ohne physischen Tacho-Anschluss.

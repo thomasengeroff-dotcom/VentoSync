@@ -206,6 +206,10 @@ ventilation_group:
   is_phase_a: ${is_phase_a}
   main_fan: lueftung_fan
   direction_switch: fan_direction
+  fan_rpm_sensor: fan_rpm
+  board_temp_sensor: temperature
+  scd41_temp_sensor: scd41_temperature
+  bme680_temp_sensor: bme680_temperature
 
 # Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
 ventilation_logic:
@@ -262,6 +266,7 @@ wrg_dashboard:
   effective_co2_id: effective_co2
   scd41_temperature_id: scd41_temperature
   scd41_humidity_id: scd41_humidity
+  bme680_temperature_id: bme680_temperature
   temp_zuluft_id: temp_zuluft
   temp_abluft_id: temp_abluft
   heat_recovery_efficiency_id: heat_recovery_efficiency

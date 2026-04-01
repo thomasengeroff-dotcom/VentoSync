@@ -168,10 +168,19 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
       get_f(this->effective_co2_ ? this->effective_co2_ : this->scd41_co2_);
   doc["scd41_temperature"] = get_f(this->scd41_temperature_);
   doc["scd41_humidity"] = get_f(this->scd41_humidity_);
+  
+  float local_room_t = get_f(this->scd41_temperature_);
+  if (std::isnan(local_room_t)) {
+    local_room_t = get_f(this->bme680_temperature_);
+  }
+  if (!std::isnan(local_room_t)) {
+    doc["room_temp"] = local_room_t;
+  }
   doc["temp_zuluft"] = get_f(this->temp_zuluft_);
   doc["temp_abluft"] = get_f(this->temp_abluft_);
   doc["heat_recovery_efficiency"] = get_f(this->heat_recovery_efficiency_);
   doc["fan_rpm"] = get_f(this->fan_rpm_);
+  doc["pid_demand"] = (this->ventilation_ctrl_ != nullptr) ? this->ventilation_ctrl_->local_pid_demand : (float)NAN;
   doc["filter_operating_days"] = get_f(this->filter_operating_days_);
 
   doc["device_id"] = get_t(this->device_id_);
@@ -218,6 +227,12 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
           p["t_out"] = peer.t_out;
         if (!std::isnan(peer.pid_demand))
           p["pid_demand"] = peer.pid_demand;
+        if (!std::isnan(peer.fan_rpm))
+          p["rpm"] = peer.fan_rpm;
+        if (!std::isnan(peer.board_temp))
+          p["board_t"] = peer.board_temp;
+        if (!std::isnan(peer.room_temp))
+          p["room_t"] = peer.room_temp;
       }
     }
   }
