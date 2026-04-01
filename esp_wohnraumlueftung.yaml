@@ -305,4 +305,11 @@ text_sensor:
     lambda: |-
       std::string list = id(espnow_peers);
       if (list.empty()) return std::string("Keine Peers");
+      
+      // Add space after comma for better line wrapping in Home Assistant
+      size_t pos = 0;
+      while ((pos = list.find(",", pos)) != std::string::npos) {
+          list.insert(pos + 1, " ");
+          pos += 2;
+      }
       return list;

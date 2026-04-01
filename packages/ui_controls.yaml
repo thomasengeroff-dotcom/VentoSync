@@ -299,7 +299,7 @@ number:
 
   # -- Presence (Radar) Slider Behavior --
   - platform: template
-    name: "Anwesenheit Lüfter-Anpassung"
+    name: "Radar Lüfter-Anpassung"
     id: auto_presence_slider
     icon: mdi:fan-auto
     min_value: -5
@@ -319,7 +319,7 @@ number:
 # ---------------------------------------------------------
 text_sensor:
   - platform: template
-    name: "Aktuelle Luftrichtung"
+    name: "Lüfter Richtung"
     id: direction_display
     icon: "mdi:directions-fork"
     lambda: |-
@@ -384,7 +384,7 @@ sensor:
 
 button:
   - platform: template
-    name: "Filter gewechselt (Reset)"
+    name: "Filterwechsel (Reset)"
     id: filter_reset_btn
     icon: "mdi:restart"
     entity_category: config

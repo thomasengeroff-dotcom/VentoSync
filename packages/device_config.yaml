@@ -41,7 +41,7 @@ substitutions:
 
 number:
   - platform: template
-    name: "Stockwerk (Floor ID)"
+    name: "ID Stockwerk"
     id: config_floor_id
     icon: "mdi:office-building"
     min_value: 0
@@ -62,7 +62,7 @@ number:
             send_discovery_broadcast(); // Trigger discovery broadcast
 
   - platform: template
-    name: "Raum (Room ID)"
+    name: "ID Raum"
     id: config_room_id
     icon: "mdi:door"
     min_value: 0
@@ -83,7 +83,7 @@ number:
             send_discovery_broadcast(); // Trigger discovery broadcast
 
   - platform: template
-    name: "Geräte-ID (Device ID)"
+    name: "ID Gerät"
     id: config_device_id
     icon: "mdi:numeric"
     min_value: 1
@@ -218,7 +218,7 @@ button:
 # Expose configuration values as sensors for automation
 sensor:
   - platform: template
-    name: "Aktuelle Floor ID"
+    name: "ID Stockwerk"
     id: current_floor_id
     icon: "mdi:office-building"
     entity_category: diagnostic
@@ -227,7 +227,7 @@ sensor:
     update_interval: 60s
 
   - platform: template
-    name: "Aktuelle Room ID"
+    name: "ID Raum"
     id: current_room_id
     icon: "mdi:door"
     entity_category: diagnostic
@@ -236,7 +236,7 @@ sensor:
     update_interval: 60s
 
   - platform: template
-    name: "Aktuelle Device ID"
+    name: "ID Gerät"
     id: current_device_id
     icon: "mdi:numeric"
     entity_category: diagnostic

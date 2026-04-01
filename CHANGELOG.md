@@ -4,6 +4,22 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.39] - 2026-04-01
+### Changed
+- **UI & Entitäten-Bereinigung**: Umfassende Umbenennung von Entitäten für bessere Klarheit in Home Assistant (z.B. "Lüfter Richtung", "WRG Effizienz").
+- **Kategorisierung**: Umzug von Wartungs-Buttons (BME680 Reset) in die Kategorie "Konfiguration".
+- **Präfix-Entfernung**: Entfernung des Gerätenamens aus allen Diagnose-Entitäten für eine sauberere Ansicht.
+- **ESP-NOW Peers**: Formatierung der Anzeige mit Leerzeichen nach Kommas für bessere Zeilenumbrüche.
+- **Bereinigung**: Entfernung des redundanten "System Reboot" Buttons.
+
+## [0.7.39] - 2026-04-01
+### Changed
+- **UI & Entitäten-Bereinigung**: Umfassende Umbenennung von Entitäten für bessere Klarheit in Home Assistant (z.B. "Lüfter Richtung", "WRG Effizienz").
+- **Kategorisierung**: Umzug von Wartungs-Buttons (BME680 Reset) in die Kategorie "Konfiguration".
+- **Präfix-Entfernung**: Entfernung des Gerätenamens aus allen Diagnose-Entitäten für eine sauberere Ansicht.
+- **ESP-NOW Peers**: Formatierung der Anzeige mit Leerzeichen nach Kommas für bessere Zeilenumbrüche.
+- **Bereinigung**: Entfernung des redundanten "System Reboot" Buttons.
+
 ## [0.7.37] - 2026-04-01
 ### Fixed
 - **Boot-Log Optimierung**: Hinzufügen einer `on_boot` Synchronisierung für die PID-Regler. Dies verhindert, dass der CO2-Regler beim Systemstart unnötig im Modus `COOL` initialisiert wird und Log-Einträge erzeugt, wenn die Automatik deaktiviert ist.

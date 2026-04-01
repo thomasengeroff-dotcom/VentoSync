@@ -271,7 +271,7 @@ binary_sensor:
         then:
           - lambda: |-
               handle_button_power_long_click();
-          - button.press: system_reboot
+          - button.press: force_restart_button
   # Button Mode (Right) - Mode Control (MCP23017 GPA1)
   - platform: gpio
     pin:
@@ -320,10 +320,7 @@ binary_sensor:
       - script.stop: intensity_hold_handler
       - lambda: sync_settings_to_peers();
 
-button:
-  - platform: restart
-    id: system_reboot
-    name: "System Reboot"
+
 
 esphome:
   on_boot:

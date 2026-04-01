@@ -33,7 +33,7 @@ sensor:
 
   - platform: ntc
     sensor: ntc_innen_resistance
-    name: "Temperatur Zuluft (Innen)"
+    name: "WRG Temperatur Zuluft (Innen)"
     id: temp_zuluft
     calibration:
       b_constant: 3976 # Beta coefficient from datasheet
@@ -65,7 +65,7 @@ sensor:
 
   - platform: ntc
     sensor: ntc_aussen_resistance
-    name: "Temperatur Abluft (Außen)"
+    name: "WRG Temperatur Abluft (Außen)"
     id: temp_abluft
     calibration:
       b_constant: 3976 # Beta coefficient from datasheet

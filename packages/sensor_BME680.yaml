@@ -358,7 +358,7 @@ button:
   - platform: template
     name: "BME680 Basiswert zurücksetzen"
     icon: "mdi:restart"
-    entity_category: "diagnostic"
+    entity_category: "config"
     on_press:
       then:
         - lambda: |-

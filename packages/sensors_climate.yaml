@@ -43,7 +43,7 @@ sensor:
   # Calculates the efficiency of heat recovery based on temperature difference
   # Formula: Efficiency = (T_zuluft - T_außen) / (T_raum - T_außen) * 100%
   - platform: template
-    name: "Wärmerückgewinnung Effizienz"
+    name: "WRG Effizienz"
     id: heat_recovery_efficiency
     unit_of_measurement: "%"
     state_class: "measurement"

@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.38"
+  project_version: "0.7.40"
 
 globals:
   - id: thermal_warning_active
@@ -118,7 +118,7 @@ http_request:
 
 update:
   - platform: http_request
-    name: "${device_name} Firmware Update"
+    name: "Firmware Update"
     # The /local/ folder corresponds to the "www" folder in the Home Assistant Samba Share
     source: "http://192.168.178.45:8123/local/firmware/wohnraumlueftung/manifest.json"
     update_interval: 2h
@@ -173,7 +173,7 @@ time:
 sensor:
   # Monitors WiFi connection quality (-50dBm is great, -90dBm is unusable)
   - platform: wifi_signal
-    name: "${device_name} WLAN Signal"
+    name: "WLAN Signal"
     id: sensor_wifi_signal
     update_interval: 60s
     accuracy_decimals: 0
@@ -181,7 +181,7 @@ sensor:
 
   # -- Diagnostic: Watchdog Restarts --
   - platform: template
-    name: "${device_name} Watchdog Restarts"
+    name: "Watchdog Restarts"
     id: watchdog_restarts
     unit_of_measurement: "reboots"
     icon: "mdi:restart-alert"
@@ -191,13 +191,13 @@ sensor:
   # Internal RAM monitoring
   - platform: debug
     free:
-      name: "${device_name} Freier Speicher (RAM)"
+      name: "Freier Speicher (RAM)"
       id: sensor_free_ram
       entity_category: diagnostic
 
   # WiFi Channel diagnostic
   - platform: template
-    name: "${device_name} WLAN Kanal"
+    name: "WLAN Kanal"
     id: sensor_wifi_channel
     lambda: |-
       return (float)id(wifi_component).get_wifi_channel();
@@ -207,7 +207,7 @@ sensor:
 
   # Tracks how long the device has been running without crash/reboot
   - platform: uptime
-    name: "${device_name} Laufzeit"
+    name: "Laufzeit"
     id: sensor_uptime
     unit_of_measurement: h
     update_interval: 300s
@@ -222,19 +222,19 @@ sensor:
 text_sensor:
   # Reports current firmware version (useful to check if update worked)
   - platform: version
-    name: "${device_name} ESPHome Version"
+    name: "ESPHome Version"
 
   # Reports current IP and connected SSID
   - platform: wifi_info
     ip_address:
-      name: "${device_name} ip"
+      name: "IP-Adresse"
       id: sensor_ip_address
     ssid:
-      name: "${device_name} ssid"
+      name: "WLAN SSID"
 
   # Custom Project Version (auto-incremented on compile)
   - platform: template
-    name: "${device_name} Projektversion"
+    name: "Projektversion"
     id: text_project_version
     icon: "mdi:tag-outline"
     entity_category: diagnostic
