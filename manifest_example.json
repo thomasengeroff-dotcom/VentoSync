@@ -1,11 +1,11 @@
 {
   "name": "thomasengeroff.wohnraumlueftung",
-  "version": "0.7.27",
+  "version": "0.7.28",
   "builds": [
     {
       "chipFamily": "ESP32-C6",
       "ota": {
-        "md5": "7a9e0fcd1849e1cfee3b3c850d65eda4",
+        "md5": "79847ef0bec6445e79e101b706a66acc",
         "path": "firmware.bin",
         "summary": "Neueste Features und Bugfixes"
       }
