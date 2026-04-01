@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.21"
+  project_version: "0.7.27"
 
 globals:
   - id: thermal_warning_active
@@ -60,6 +60,15 @@ esp32:
       # Increases max open sockets for Web-Dashboard SSE connections
       CONFIG_LWIP_MAX_SOCKETS: "16"
       CONFIG_VFS_SUPPORT_IO: "y"
+      # Watchdog-Einstellungen optimieren:
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "15"  # Kürzerer WDT (Standard ist oft 5s, aber mit I2C/WiFi-Last sind 15s sicher)
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: "y"
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: "y"
+      
+      # Zusätzliche Optionen für bessere Stabilität (aus Benutzer-Diagnose):
+      CONFIG_ESP_TASK_WDT_INIT: "y"
+      CONFIG_FREERTOS_WDT_EN: "y"
+      CONFIG_FREERTOS_WDT_CHECK_IDLE_TASK: "y"
 
 # ---------------------------------------------------------
 # LOGGING & DEBUGGING
@@ -67,7 +76,14 @@ esp32:
 # Enables serial logging over USB-C
 logger:
   hardware_uart: USB_SERIAL_JTAG
-  level: INFO # Reduced from DEBUG for performance
+  level: DEBUG  # Erhöht für bessere Diagnose-Daten während der Fehlersuche
+  logs:
+    sensor: ERROR    # Reduziere andere Logs zur Performance-Schonung
+    binary_sensor: ERROR
+    switch: ERROR
+    # Fokus auf Lüftungssteuerung:
+    vent: DEBUG
+    vent_sync: DEBUG
 
 # Enables memory and system diagnostics
 debug:
@@ -161,6 +177,15 @@ sensor:
     update_interval: 60s
     accuracy_decimals: 0
     entity_category: diagnostic
+
+  # -- Diagnostic: Watchdog Restarts --
+  - platform: template
+    name: "${device_name} Watchdog Restarts"
+    id: watchdog_restarts
+    unit_of_measurement: "reboots"
+    icon: "mdi:restart-alert"
+    entity_category: diagnostic
+    update_interval: never
 
   # Internal RAM monitoring
   - platform: debug

@@ -172,7 +172,8 @@ inline void update_fan_logic() {
   if (ventilation_ctrl != nullptr) {
     const uint32_t dynamic_cycle_ms = VentilationLogic::calculate_dynamic_cycle_duration(intensity);
     if (ventilation_ctrl->state_machine.cycle_duration_ms != dynamic_cycle_ms) {
-      ventilation_ctrl->set_cycle_duration(dynamic_cycle_ms);
+      // W7: Pass false to skip redundant update_hardware() call since we are already in one.
+      ventilation_ctrl->set_cycle_duration(dynamic_cycle_ms, false);
     }
   }
 

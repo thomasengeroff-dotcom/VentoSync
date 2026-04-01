@@ -395,3 +395,8 @@ button:
           id(filter_change_alarm).publish_state(false);
           id(filter_operating_days_sensor).publish_state(0);
           ESP_LOGI("filter", "Filter counters reset. Timestamp: %d", id(filter_last_change_ts));
+
+  - platform: restart
+    name: "ESP Neustart erzwingen"
+    id: force_restart_button
+    entity_category: config

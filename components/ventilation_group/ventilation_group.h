@@ -33,6 +33,7 @@
 #include "ventilation_state_machine.h"
 #include <cmath>
 #include <vector>
+#include <esp_task_wdt.h>
 
 // Forward declaration of the global fan update function (defined in
 // automation_helpers.h)
@@ -137,6 +138,7 @@ public:
   uint32_t sync_interval_ms =
       60000; ///< Auto-sync broadcast interval (default 1 min for dashboard).
   uint8_t current_fan_intensity = 5; ///< Cached fan intensity (1–10).
+  uint32_t last_loop_ms{0};           ///< Activity timestamp for health monitoring.
 
   // --- TEMPERATURE SENSOR SHARING ---
   float local_t_in =
@@ -213,6 +215,10 @@ public:
         "vent",
         "Ventilation Group Setup: Floor %d, Room %d, Device %d, Phase %s",
         floor_id, room_id, device_id, is_phase_a ? "A" : "B");
+        
+    // Register the current task (ESPHome main loop) with the ESP-IDF Task Watchdog (TWDT)
+    esp_task_wdt_add(NULL); 
+    
     pending_broadcast = true; // Announce presence on boot
   }
 
@@ -261,18 +267,27 @@ public:
         ++it;
       }
     }
+
+    // 5. Watchdog Feed
+    // This ensures that the ESP reboots if the main loop hangs for longer 
+    // than the configured CONFIG_ESP_TASK_WDT_TIMEOUT_S (15s).
+    esp_task_wdt_reset();
+    
+    last_loop_ms = now;
   }
 
   // --- ACTIONS ---
 
   /// @brief Updates the half-cycle duration and refreshes hardware / notifies
   /// peers.
-  void set_cycle_duration(uint32_t ms) {
+  void set_cycle_duration(uint32_t ms, bool refresh_hw = true) {
     if (ms == state_machine.cycle_duration_ms)
       return;
     state_machine.set_cycle_duration(ms);
     ESP_LOGI("vent", "Cycle duration updated to %d ms", ms);
-    update_hardware();
+    if (refresh_hw) {
+      update_hardware();
+    }
     pending_broadcast = true;
   }
 

@@ -32,6 +32,11 @@ globals:
     initial_value: "true" # Start by incrementing up to 10
     restore_value: no
 
+  - id: watchdog_restarts_count
+    type: int
+    initial_value: '0'
+    restore_value: yes
+
 # ---------------------------------------------------------
 # PID CLIMATE CONTROLLERS (Internal)
 # ---------------------------------------------------------
@@ -312,6 +317,20 @@ button:
     id: system_reboot
     name: "System Reboot"
 
+esphome:
+  on_boot:
+    priority: -10 # Run after all components are initialized
+    then:
+      - lambda: |-
+          #include <esp_system.h>
+          // Detect Watchdog resets and increment counter
+          esp_reset_reason_t reason = esp_reset_reason();
+          if (reason == ESP_RST_WDT || reason == ESP_RST_TASK_WDT) {
+            id(watchdog_restarts_count)++;
+            ESP_LOGW("system", "WATCHDOG RESET DETECTED! Total: %d", id(watchdog_restarts_count));
+          }
+          id(watchdog_restarts).publish_state(id(watchdog_restarts_count));
+
 # ---------------------------------------------------------
 # VENTILATION CONTROL
 # ---------------------------------------------------------
@@ -391,3 +410,25 @@ interval:
     then:
       - lambda: |-
           update_filter_analytics();
+
+  # Health Check: Automated Reboot if the loop is effectively "zombie"
+  # (No logic updates triggered from the main loop for 10 minutes)
+  - interval: 300s
+    id: health_check_timer
+    then:
+      - lambda: |-
+          #include <esp_task_wdt.h>
+          #include <esp_system.h>
+          auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
+          uint32_t now = millis();
+          
+          if (v->last_loop_ms == 0) return; // Wait for first loop
+          
+          // We check if the VentilationController::loop() has been running.
+          // If the last loop timestamp is older than 10 minutes, the brain is frozen.
+          if (now - v->last_loop_ms > 600000) { 
+            ESP_LOGE("health", "CRITICAL: Brain freeze detected (loop stalled). Forcing recovery.");
+            esp_task_wdt_reset(); // feed once to allow log buffer to flush
+            delay(200);
+            esp_restart();
+          }

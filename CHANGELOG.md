@@ -4,6 +4,19 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.27] - 2026-04-01
+### Added
+- **System-Härtung (Watchdog)**: Implementierung eines gestuften Sicherheits-Konzepts gegen "Zombie-Zustände" (ESP ist online, aber interne Tasks hängen).
+  - ESP-IDF Task Watchdog (TWDT) auf **15s** verkürzt mit Idle-Task Monitoring auf beiden Cores.
+  - Aktivierung der Kernel-Flags `CONFIG_ESP_TASK_WDT_INIT` und `CONFIG_FREERTOS_WDT_EN` für maximale Ausfallsicherheit.
+  - Neuer Diagnose-Sensor `Watchdog Restarts` (persistent via NVS) zur Überwachung unerwarteter Neustarts in Home Assistant.
+- **Automatisierte Selbstheilung (Health Check)**: Einführung eines 10-Minuten-Timers, der die Aktivität des Haupt-Loops überwacht und bei einem "Brain Freeze" (Logik-Hängern) einen automatischen Neustart erzwingt.
+
+### Fixed
+- **Blockierender Code**: Entfernung eines `delay()`-Aufrufs in der `network_sync.h`, der den Systemstart verzögern konnte.
+- **Endlosschleife (Rekursion)**: Behebung einer zirkulären Abhängigkeit zwischen Fan-Logik und Hardware-Aktualisierung in `fan_control.h`, die zu System-Hängern führen konnte.
+- **Framework-Kompatibilität**: Umstellung des Reset-Befehls auf `esp_restart()` für volle Kompatibilität mit dem ESP-IDF Framework.
+
 ## [0.7.21] - 2026-03-31
 ### Fixed
 - **System-Stabilität**: Einführung einer "Stateful"-Logik in der `led_feedback.h`, um I2C-Bus-Flutungen durch redundante LED-Befehle zu verhindern.

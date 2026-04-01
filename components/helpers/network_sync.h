@@ -124,12 +124,8 @@ inline void load_peers_from_runtime_cache() {
 inline void send_discovery_broadcast() {
   if (!esphome::espnow::global_esp_now || !config_floor_id || !config_room_id) return;
   
-  // Random backoff (100-500ms) to prevent simultaneous broadcast storms on boot
-  static bool first_broadcast = true;
-  if (first_broadcast) {
-    delay(esphome::random_uint32() % 401 + 100);
-    first_broadcast = false;
-  }
+  // FIXED: Removed blocking delay to prevent main-loop stalls.
+  // Simultaneous boot storms are better handled by the random_uint32() in the trigger itself.
 
   char buffer[64];
   int written =
