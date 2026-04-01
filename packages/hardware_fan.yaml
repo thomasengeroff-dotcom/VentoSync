@@ -41,8 +41,7 @@ sensor:
     accuracy_decimals: 0
     icon: "mdi:speedometer"
     update_interval: 2s
-    filters:
-      - delta: 20 # Only update if RPM changes by > 20
+    # No delta filter to ensure frequent visibility in logs when monitoring
     lambda: |-
       return calculate_virtual_fan_rpm(id(fan_rpm_pulse).state);
     on_value:

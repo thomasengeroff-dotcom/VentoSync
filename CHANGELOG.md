@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.7.30] - 2026-04-01
+### Fixed
+- **Log-Bereinigung**: Deaktivierung des sekündlichen Debug-Spams ("0.00 pulses/min") der `pulse_counter`-Komponente für Lüfter ohne physischen Tacho-Anschluss.
+- **RPM-Diagnose**: Der Sensor für die **virtuelle Drehzahl** (berechnet aus PWM & Richtung) loggt nun ohne Delta-Filter, um in der Konsole eine konsistente Echtzeit-Rückmeldung der Lüfteraktivität zu geben.
+
 ## [0.7.28] - 2026-04-01
 ### Fixed
 - **Log-Spam & I2C-Optimierung**: Die LED-Ansteuerung (`update_leds_logic`) wurde komplett auf eine **statusbewusste (stateful) Logik** umgestellt. Hardware-Befehle werden nun nur noch gesendet, wenn sich der Zustand (Modus, Helligkeit, UI-Aktivität) tatsächlich ändert. Dies stoppt das wiederholte Auftreten von "Setting"-Logs bei Sensor-Updates.

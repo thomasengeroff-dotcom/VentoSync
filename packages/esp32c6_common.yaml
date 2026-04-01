@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.7.28"
+  project_version: "0.7.30"
 
 globals:
   - id: thermal_warning_active
@@ -81,6 +81,7 @@ logger:
     sensor: ERROR    # Reduziere andere Logs zur Performance-Schonung
     binary_sensor: ERROR
     switch: ERROR
+    pulse_counter: NONE # Verhindert "0.00" Spam bei Lüftern ohne Tacho
     # Fokus auf Lüftungssteuerung:
     vent: DEBUG
     vent_sync: DEBUG
