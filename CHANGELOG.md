@@ -4,12 +4,14 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.7.35] - 2026-04-01
+## [0.7.37] - 2026-04-01
+### Fixed
+- **Boot-Log Optimierung**: Hinzufügen einer `on_boot` Synchronisierung für die PID-Regler. Dies verhindert, dass der CO2-Regler beim Systemstart unnötig im Modus `COOL` initialisiert wird und Log-Einträge erzeugt, wenn die Automatik deaktiviert ist.
+
+## [0.7.36] - 2026-04-01
 ### Fixed
 - **Peer-Diagnose Härtung**: Der Peer-Synchronisationsfehler (2x Blinken) respektiert nun den "Peerprüfung" Schalter im Dashboard. 
 - **Timeout-Optimierung**: Reduzierung des Peer-Timeouts von 5 auf 3 Minuten für eine schnellere Fehlererkennung bei gleichzeitig minimierten Fehlalarmen durch eine 3-minütige Einschalt-Hysterese.
-
-## [0.7.34] - 2026-04-01
 
 ## [0.7.31] - 2026-04-01
 ### Added

@@ -327,7 +327,7 @@ button:
 
 esphome:
   on_boot:
-    priority: -10 # Run after all components are initialized
+    priority: -11 # Run after all components are initialized
     then:
       - lambda: |-
           #include <esp_system.h>
@@ -338,6 +338,16 @@ esphome:
             ESP_LOGW("system", "WATCHDOG RESET DETECTED! Total: %d", id(watchdog_restarts_count));
           }
           id(watchdog_restarts).publish_state(id(watchdog_restarts_count));
+          
+          // --- PID Mode Synchronization ---
+          // Ensure PID controllers match the restored automation states immediately after boot.
+          // This prevents initial log spam and background calculations if the user disabled them.
+          if (!id(co2_auto_enabled)) {
+            auto call = id(pid_co2).make_call();
+            call.set_mode(esphome::climate::CLIMATE_MODE_OFF);
+            call.perform();
+            ESP_LOGD("system", "PID CO2 initialized as OFF (Restored state)");
+          }
 
 # ---------------------------------------------------------
 # VENTILATION CONTROL
