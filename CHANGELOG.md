@@ -4,6 +4,14 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.10] - 2026-04-03
+### Changed
+- **Fan-Control Refactoring**: `calculate_automatic_pid_demand()` entfernt (Toter Code), da die Demand-Berechnung nun zentral in `auto_mode.h` erfolgt.
+- **Tacho-Konsistenz**: `calculate_virtual_fan_rpm()` liefert nun auch bei physischen Tacho-Werten ein korrektes Vorzeichen (negativ für Abluft) für eine konsistente Anzeige im Dashboard.
+- **Optimierung der Fan-Logik**: Race-Condition im Logging behoben durch Caching der Basisgeschwindigkeit. 
+- **Robustheit**: Manueller Demand wird nun direkt in `calculate_manual_demand()` geclampt (1.0 - 10.0), um Überlauf durch Präsenzerkennung zu verhindern.
+- **Wärmerückgewinnung**: Refactoring der Effizienzberechnung in `climate.h` für bessere Stabilität und sauberere Sensorhandhabung.
+
 ## [0.8.5] - 2026-04-03
 ### Changed
 - **Auto-Modus Optimierung (Akustik)**: Einführung von Soft-Ramping (max. ±1 Stufe pro 10s) für einen akustisch unauffälligen Betrieb bei Demand-Schwankungen.

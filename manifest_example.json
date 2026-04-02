@@ -1,11 +1,11 @@
 {
   "name": "thomasengeroff.ventosync",
-  "version": "0.8.9",
+  "version": "0.8.11",
   "builds": [
     {
       "chipFamily": "ESP32-C6",
       "ota": {
-        "md5": "80cefd48ec6976952efc39cd8a185d47",
+        "md5": "9915496ffec6f9cd59673c65db422958",
         "path": "firmware.bin",
         "summary": "Neueste Features und Bugfixes"
       }

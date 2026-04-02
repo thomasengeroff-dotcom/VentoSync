@@ -229,103 +229,16 @@ parse_mac_local(const std::string &str) {
 /** @brief Helper to check if a MAC matches the local device. */
 inline float last_fan_pwm_level = 0.5f; // Default: Stop
 
-/// @name NTC Stabilization Logic
+/// @name NTC Stabilization State
 /// @{
-
-// Stabilization parameter constants
-static const float NTC_MAX_DEVIATION = 0.3f; // Max allowed deviation in window
-
-// State for each NTC sensor (0 = zuluft, 1 = abluft)
 // FIXED #9: Changed static→inline for mutable state (C++17, safe for single TU)
 inline std::deque<float> ntc_history[2];
 inline uint32_t last_direction_change_time = 0;
-
-/// Call this when fan direction (switch) changes
-inline void notify_fan_direction_changed() {
-  last_direction_change_time = millis();
-  ntc_history[0].clear();
-  ntc_history[1].clear();
-  ESP_LOGD("ntc_filter",
-           "Fan direction changed. Resetting NTC history buffers.");
-}
-
-/// NTC Sliding Window Stabilization Filter
-/// @param sensor_idx 0 for temp_zuluft, 1 for temp_abluft
-/// @param new_value The raw value reported by the physical NTC component
-/// @return The original value if stable, else empty optional to discard update
-inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
-                                                  float new_value) {
-  if (ventilation_ctrl == nullptr ||
-      ventilation_ctrl->state_machine.cycle_duration_ms == 0) {
-    return new_value; // Fallback if controller is not bound
-  }
-
-  uint32_t cycle_duration_ms =
-      ventilation_ctrl->state_machine.cycle_duration_ms;
-
-  // FIXED W1: Warn if cycle is too short for meaningful NTC stabilization.
-  // Theoretical minimum for the dynamic cycle (Level 10 = 50s) is well above
-  // 30s. If this fires, something is wrong with the cycle configuration.
-  if (cycle_duration_ms < 30000) {
-    ESP_LOGW("ntc_filter",
-             "cycle_duration_ms=%u is very short (<30s). NTC stabilization "
-             "filter may never pass a value.",
-             cycle_duration_ms);
-  }
-
-  // Dynamic wait time: 40% of the cycle (was 60%), but minimum 15 seconds (was
-  // 20)
-  uint32_t wait_time_ms =
-      std::max((uint32_t)15000, (uint32_t)(cycle_duration_ms * 0.4f));
-
-  // Safety check so we don't wait longer than the cycle itself minus 5s
-  if (wait_time_ms >= cycle_duration_ms) {
-    wait_time_ms = cycle_duration_ms > 5000 ? cycle_duration_ms - 5000 : 0;
-  }
-
-  // FIXED W5: Use a smaller, fixed window of 3 samples (9s) for stability.
-  // Dynamic window based on remaining time was too restrictive, often
-  // preventing any value from being published during the 70s cycle.
-  const size_t target_window_size = 3;
-
-  // 1. Check if we are still within the mandatory thermal adjustment wait time
-  if (millis() - last_direction_change_time < wait_time_ms) {
-    return {}; // Discard value while ceramic adjusts
-  }
-
-  // 2. Add current value to history window
-  auto &history = ntc_history[sensor_idx];
-  history.push_back(new_value);
-
-  // Maintain maximum window size limit
-  while (history.size() > target_window_size) {
-    history.pop_front();
-  }
-
-  // 3. Wait until the window is full for a reliable stabilization check
-  if (history.size() < target_window_size) {
-    return {}; // Discard value while checking buffer window fills up
-  }
-
-  // 4. Calculate deviation
-  auto [min_it, max_it] = std::minmax_element(history.begin(), history.end());
-  float min_val = *min_it;
-  float max_val = *max_it;
-
-  // 5. Evaluate stability
-  if ((max_val - min_val) <= NTC_MAX_DEVIATION) {
-    // Temperature is stable!
-    return new_value;
-  } else {
-    // Still fluctuating, keep last known state
-    return {};
-  }
-}
 /// @}
 
-/// @brief Returns a human-readable German CO2 classification.
-
 // --- FORWARD DECLARATIONS ---
+inline void notify_fan_direction_changed();
+inline esphome::optional<float> filter_ntc_stable(int sensor_idx, float new_value);
 inline bool is_local_mac(const uint8_t *mac);
 inline void register_peer_dynamic(const uint8_t *mac);
 inline void load_peers_from_runtime_cache();

@@ -54,38 +54,6 @@ inline float level_to_speed(float level) {
 }
 
 /**
- * @brief Extracts base parameters for automatic speed calculations.
- * Ensures safe null-checking handling for all relevant sensors.
- */
-inline float calculate_automatic_pid_demand(uint32_t now) {
-  float max_pid_demand = 0.0f;
-
-  if (co2_pid_result != nullptr) {
-    const float co2_val = co2_pid_result->value();
-    if (!std::isnan(co2_val)) {
-      max_pid_demand = std::max(max_pid_demand, co2_val);
-    }
-  }
-  
-  if (humidity_pid_result != nullptr) {
-    const float hum_val = humidity_pid_result->value();
-    if (!std::isnan(hum_val)) {
-      max_pid_demand = std::max(max_pid_demand, hum_val);
-    }
-  }
-  
-  if (ventilation_ctrl != nullptr) {
-    if (ventilation_ctrl->has_peer_pid_demand &&
-        !std::isnan(ventilation_ctrl->last_peer_pid_demand) &&
-        (now - ventilation_ctrl->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
-      max_pid_demand = std::max(max_pid_demand, ventilation_ctrl->last_peer_pid_demand);
-    }
-  }
-  
-  return std::clamp(max_pid_demand, 0.0f, 1.0f);
-}
-
-/**
  * @brief Extracts base parameters for manual speed calculations (with presence compensation).
  * @param base_intensity Current UI slider intensity
  */
@@ -97,13 +65,11 @@ inline float calculate_manual_demand(float base_intensity) {
       const float comp = static_cast<float>(auto_presence_val->value());
       if (comp != 0.0f) {
         intensity += comp;
-        if (fan_intensity_level != nullptr) {
-           ESP_LOGD("fan", "Applying presence compensation: %.1f (Base: %d)", comp, fan_intensity_level->value());
-        }
+        ESP_LOGD("fan", "Applying presence compensation: %.1f (Base: %.1f)", comp, base_intensity);
       }
     }
   }
-  return intensity;
+  return std::clamp(intensity, 1.0f, 10.0f);
 }
 
 /**
@@ -115,17 +81,13 @@ inline float get_current_target_speed() {
 
   float intensity = static_cast<float>(fan_intensity_level->value());
 
-  if (auto_mode_active != nullptr && auto_mode_active->value()) {
-    // Automatik Mode: Use the intensity level already committed by evaluate_auto_mode().
-    // This avoids a competing PID recalculation that could produce a different result
-    // and cause oscillation between the two independent 10s interval paths.
-    // evaluate_auto_mode() is the single source of truth for auto-mode intensity.
-  } else {
-    // Manual Modes (WRG, Ventilation, Stoßlüftung): apply presence compensation
+  // Only apply presence compensation in manual modes.
+  // In Automatic mode, evaluate_auto_mode() already handles all factors.
+  if (auto_mode_active == nullptr || !auto_mode_active->value()) {
     intensity = calculate_manual_demand(intensity);
   }
 
-  // Clamp to valid 1.0-10.0 level domain
+  // Final safety clamp to valid 1.0-10.0 level domain
   intensity = std::clamp(intensity, 1.00f, 10.00f);
   return level_to_speed(intensity);
 }
@@ -137,7 +99,9 @@ inline float get_current_target_speed() {
  */
 inline float calculate_virtual_fan_rpm(float raw_rpm) {
   if (raw_rpm > MIN_PHYSICAL_RPM) { // Real tacho valid signal
-    return raw_rpm;
+    // Apply direction sign (negative for exhaust)
+    const bool is_intake = (fan_direction != nullptr && fan_direction->state);
+    return is_intake ? raw_rpm : -raw_rpm;
   }
 
   const uint32_t now = millis();
@@ -176,7 +140,8 @@ inline void update_fan_logic() {
   }
 
   // 2. Base Speed Calculation
-  float speed = get_current_target_speed();
+  const float base_speed = get_current_target_speed();
+  float speed = base_speed;
 
   // 3. Hardware Ramping Application
   if (ventilation_ctrl != nullptr) {
@@ -187,7 +152,7 @@ inline void update_fan_logic() {
     if (state.ramp_factor < RAMPING_UPPER_BOUND && state.ramp_factor > RAMPING_LOWER_BOUND &&
         (now - ventilation_ctrl->last_ramp_log_ms > 1000)) {
       ESP_LOGD("fan_ramp", "Ramping speed: %.2f (Base: %.2f, Factor: %.2f)",
-               speed, get_current_target_speed(), state.ramp_factor);
+               speed, base_speed, state.ramp_factor);
       ventilation_ctrl->last_ramp_log_ms = now;
     }
   }
@@ -199,6 +164,17 @@ inline void update_fan_logic() {
   const int direction = (fan_direction != nullptr && fan_direction->state) ? 1 : 0;
 
   set_fan_logic(speed, direction);
+}
+
+/**
+ * @brief Call this when fan direction (switch) changes to reset thermal stabilization.
+ */
+inline void notify_fan_direction_changed() {
+  last_direction_change_time = millis();
+  ntc_history[0].clear();
+  ntc_history[1].clear();
+  ESP_LOGD("ntc_filter",
+           "Fan direction changed. Resetting NTC history buffers.");
 }
 
 /**
