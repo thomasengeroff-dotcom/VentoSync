@@ -37,36 +37,33 @@ inline int get_co2_fan_level(float co2_ppm, int current_level, int min_level,
                                              max_level);
 }
 
-/// @brief Applies CO2-based auto-control if enabled and SCD41 is connected.
-/// Checks sensor availability (NaN = not connected), calculates target level,
-/// and applies it only if it differs from the current level (gradual change).
-// Legacy CO2 control removed in favor of evaluate_auto_mode()
-
 /// @brief Calculates Wärmerückgewinnung (heat recovery) efficiency safely.
 /// Only performs calculation during stable Intake (Zuluft) phase in WRG mode.
+/// Returns current_eff (hold) when conditions are not met.
 inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
-                                                float t_aussen, float current_eff) {
-  if (ventilation_ctrl == nullptr) {
+                                                float t_aussen,
+                                                float current_eff) {
+  if (ventilation_ctrl == nullptr)
     return NAN;
-  }
 
-  // Only calculate during stable WRG Intake phase
-  const bool is_wrg = ventilation_ctrl->state_machine.current_mode == esphome::MODE_ECO_RECOVERY;
-  const bool is_intake = ventilation_ctrl->state_machine.get_target_state(millis()).direction_in;
+  const uint32_t now = millis();
+  const auto mode = ventilation_ctrl->state_machine.current_mode;
+  const auto hw = ventilation_ctrl->state_machine.get_target_state(now);
+
+  const bool is_wrg = (mode == esphome::MODE_ECO_RECOVERY);
+  const bool is_intake = hw.direction_in;
 
   // Thermal stabilization: Wait at least 30s into the cycle before sampling
-  const uint32_t stable_time_ms = 30000;
-  const bool is_stable = (millis() - last_direction_change_time) > stable_time_ms;
+  constexpr uint32_t stable_time_ms = 30000;
+  const bool is_stable = (now - last_direction_change_time) > stable_time_ms;
 
   if (is_wrg && is_intake && is_stable) {
     if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
-      return current_eff; // Keep last value if sensors are missing
+      return current_eff;
     }
-    return VentilationLogic::calculate_heat_recovery_efficiency(t_raum, t_zuluft, t_aussen);
+    return VentilationLogic::calculate_heat_recovery_efficiency(
+        t_raum, t_zuluft, t_aussen);
   }
 
-  // Outside stable intake phase: Hold the last valid efficiency value
-  return std::isnan(current_eff) ? 0.0f : current_eff;
+  return current_eff; // Hold last value outside stable intake phase
 }
-
-/// @brief Core logic for the new Standard-Automatik mode.
