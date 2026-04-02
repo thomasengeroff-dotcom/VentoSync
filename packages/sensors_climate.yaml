@@ -79,7 +79,11 @@ sensor:
       if (!std::isnan(id(scd41_co2).state)) {
         return id(scd41_co2).state;
       }
-      return id(iaq_co2eq).state;
+      if (!std::isnan(id(iaq_co2eq).state)) {
+        return id(iaq_co2eq).state;
+      }
+      // Hold last valid state if both sensors are NAN (prevents PID oscillation)
+      return id(effective_co2).state;
 
 # ---------------------------------------------------------
 # TEXT SENSORS (Status & Classification)

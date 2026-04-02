@@ -125,34 +125,64 @@ inline float calculate_combined_demand(uint32_t now) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return 0.0f;
 
-  float max_demand = 0.0f;
+  float max_demand = NAN;
+  bool has_any_local_data = false;
 
   // 1. CO2 Demand
   if (co2_auto_enabled != nullptr && co2_auto_enabled->value() && co2_pid_result != nullptr) {
-    max_demand = std::max(max_demand, co2_pid_result->value());
+    const float co2_val = co2_pid_result->value();
+    if (!std::isnan(co2_val)) {
+      max_demand = co2_val;
+      has_any_local_data = true;
+    }
   }
 
   // 2. Humidity Demand (Outdoor Check)
   if (scd41_humidity != nullptr && outdoor_humidity != nullptr && humidity_pid_result != nullptr) {
     const float in_hum = scd41_humidity->state;
     const float out_hum = outdoor_humidity->state;
-    if (!std::isnan(in_hum) && !std::isnan(out_hum) && out_hum < in_hum) {
-      max_demand = std::max(max_demand, humidity_pid_result->value());
+    const float hum_pid_val = humidity_pid_result->value();
+    if (!std::isnan(in_hum) && !std::isnan(out_hum) && out_hum < in_hum && !std::isnan(hum_pid_val)) {
+      if (!has_any_local_data || hum_pid_val > max_demand) {
+        max_demand = hum_pid_val;
+        has_any_local_data = true;
+      }
+    } else if (!std::isnan(in_hum) && !std::isnan(out_hum)) {
+       // We have valid humidity data, but it doesn't require ventilation.
+       // Only initialize to 0.0 if not already set by CO2.
+       if (!has_any_local_data) {
+         max_demand = 0.0f;
+         has_any_local_data = true;
+       }
     }
   }
 
-  // 3. Network Sync Trigger
-  if (std::abs(max_demand - v->local_pid_demand) > PID_SYNC_THRESHOLD) {
-    v->trigger_sync();
+  // Default to 0.0 if we have sensors but they report "no demand"
+  if (!has_any_local_data && co2_auto_enabled != nullptr && co2_auto_enabled->value()) {
+     // CO2 is enabled but result is NAN? We stay at NAN.
+  } else if (!has_any_local_data) {
+     // No sensors enabled or giving data? Default to 0.0 to allow baseline operation
+     // unless we want to stick to NAN to hold the state.
+     // By returning NAN here, we trigger the "hold state" guard in evaluate_auto_mode.
   }
-  v->local_pid_demand = max_demand;
 
-  // 4. Peer Integration (Symmetric group behavior)
+  // 3. Peer Integration (Symmetric group behavior)
   if (!std::isnan(v->last_peer_pid_demand) && (now - v->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
-    max_demand = std::max(max_demand, v->last_peer_pid_demand);
+    if (std::isnan(max_demand) || v->last_peer_pid_demand > max_demand) {
+      max_demand = v->last_peer_pid_demand;
+    }
   }
 
-  return std::clamp(max_demand, 0.0f, 1.0f);
+  // 4. Network Sync Trigger (Only if we have a valid new value)
+  if (!std::isnan(max_demand)) {
+    if (std::abs(max_demand - v->local_pid_demand) > PID_SYNC_THRESHOLD) {
+      v->trigger_sync();
+    }
+    v->local_pid_demand = max_demand;
+    return std::clamp(max_demand, 0.0f, 1.0f);
+  }
+
+  return NAN;
 }
 
 } // namespace auto_mode
@@ -169,7 +199,7 @@ inline void evaluate_auto_mode() {
   const uint32_t now = millis();
 
   // 1. Climate Sensor Fusion
-  float eff_in, eff_out;
+  float eff_in = NAN, eff_out = NAN;
   auto_mode::get_effective_temperatures(now, eff_in, eff_out);
 
   // 2. Mode Management (Summer Cooling)
@@ -182,10 +212,17 @@ inline void evaluate_auto_mode() {
 
   // 3. Air Quality Power Management
   float demand = auto_mode::calculate_combined_demand(now);
+
+  // FIXED: If demand is NAN (e.g., all sensors offline/unstable), we abort to hold the last state
+  if (std::isnan(demand)) {
+     ESP_LOGV("auto_mode", "Demand is NAN, skipping update to hold last state.");
+     return;
+  }
   
   // 4. Calculate Intensity level (1-10) for UI feedback
-  const int min_l = static_cast<int>(automatik_min_fan_level->value());
-  const int max_l = static_cast<int>(automatik_max_fan_level->value());
+  int min_l = static_cast<int>(automatik_min_fan_level->value());
+  int max_l = static_cast<int>(automatik_max_fan_level->value());
+  if (min_l > max_l) std::swap(min_l, max_l);
   
   int target_level = min_l;
   if (demand > 0.01f) {
