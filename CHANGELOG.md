@@ -4,6 +4,14 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.5] - 2026-04-03
+### Changed
+- **Auto-Modus Optimierung (Akustik)**: Einführung von Soft-Ramping (max. ±1 Stufe pro 10s) für einen akustisch unauffälligen Betrieb bei Demand-Schwankungen.
+- **Hysterese-Verfeinerung**: Implementierung eines 25% Hysterese-Bandes an den Stufengrenzen zur Vermeidung von schnellem Hin- und Herschalten ("Ping-Pong-Effekt").
+- **Race Condition Protection**: Ein 2-Sekunden Rate-Limiter in `evaluate_auto_mode()` verhindert Mehrfachausführungen durch konkurrierende Trigger (Timer vs. Netzwerk).
+- **Zentralisierung des Hysterese-Status**: `co2_is_controlling` wurde zu einem Klassen-Member verschoben, um die Konsistenz des Regelkreises bei re-entranten Aufrufen zu sichern.
+- **Ramping-Boost**: Erlaubt einen einmaligen Sprung von ±2 Stufen direkt nach einem Moduswechsel (z.B. Sommerkühlung), für eine schnellere Reaktion bei stabilen Zielzuständen.
+
 ## [0.8.3] - 2026-04-03
 ### Changed
 - **Status-LED Helligkeit**: Der minimale Dimmbereich der Status-LEDs wurde von 10% auf 5% gesenkt, um eine noch dezentere Anzeige in sehr dunklen Räumen zu ermöglichen.

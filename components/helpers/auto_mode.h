@@ -49,7 +49,7 @@ inline bool is_system_ready() {
 }
 
 /** @brief Combines local and peer sensor data to determine effective room temperatures. */
-inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_out) {
+inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_out, esphome::VentilationMode current_mode) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
 
@@ -63,9 +63,9 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
 
   // 2. Map NTC sensors based on current ventilation direction
   // Safe by-value return structure (no null pointer risk possible here in C++)
-  const int internal_mode = v->state_machine.current_mode;
   const esphome::HardwareState hw_state = v->state_machine.get_target_state(now);
   const bool is_intake = hw_state.direction_in;
+  const int internal_mode = (int)current_mode;
 
   if (internal_mode == esphome::MODE_VENTILATION) {
     if (is_intake) {
@@ -130,10 +130,6 @@ inline float calculate_combined_demand(uint32_t now) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return 0.0f;
 
-  // Hysteresis state: once CO2 takes over, it stays the sole controller
-  // until its demand drops below a lower release threshold.
-  static bool co2_is_controlling = false;
-
   // Thresholds for hysteresis
   constexpr float CO2_GRAB_THRESHOLD   = 0.01f;  // CO2 takes exclusive control
   constexpr float CO2_RELEASE_THRESHOLD = 0.005f; // CO2 releases control to humidity
@@ -168,22 +164,22 @@ inline float calculate_combined_demand(uint32_t now) {
   }
 
   // 3. CO2 Priority Logic with Hysteresis
-  if (co2_is_controlling) {
+  if (v->co2_is_controlling) {
     // CO2 is currently in control — only release when demand drops below lower threshold
     if (co2_demand < CO2_RELEASE_THRESHOLD && has_co2_data) {
-      co2_is_controlling = false;
+      v->co2_is_controlling = false;
       ESP_LOGD("auto_mode", "CO2 demand released (%.3f < %.3f), humidity PID enabled", co2_demand, CO2_RELEASE_THRESHOLD);
     }
   } else {
     // CO2 is not in control — grab if demand exceeds upper threshold
     if (co2_demand >= CO2_GRAB_THRESHOLD) {
-      co2_is_controlling = true;
+      v->co2_is_controlling = true;
       ESP_LOGD("auto_mode", "CO2 demand grabbed control (%.3f >= %.3f), humidity PID suppressed", co2_demand, CO2_GRAB_THRESHOLD);
     }
   }
 
   // 4. Select demand based on priority
-  if (co2_is_controlling) {
+  if (v->co2_is_controlling) {
     // CO2 is the sole controller
     local_demand = co2_demand;
   } else if (has_hum_data) {
@@ -202,12 +198,9 @@ inline float calculate_combined_demand(uint32_t now) {
     }
   }
 
-  // 6. Network Sync Trigger (Only if we have a valid new value)
+  // 6. Network Sync Logic
   if (!std::isnan(local_demand)) {
-    if (std::abs(local_demand - v->local_pid_demand) > PID_SYNC_THRESHOLD) {
-      v->trigger_sync();
-    }
-    v->local_pid_demand = local_demand;
+    v->local_pid_demand = local_demand; // Update value for 60s heartbeat
     return std::clamp(local_demand, 0.0f, 1.0f);
   }
 
@@ -227,16 +220,26 @@ inline void evaluate_auto_mode() {
   // v is guaranteed non-null by is_system_ready()
   const uint32_t now = millis();
 
-  // 1. Climate Sensor Fusion
-  float eff_in = NAN, eff_out = NAN;
-  auto_mode::get_effective_temperatures(now, eff_in, eff_out);
+  // Rate-limiting: Prevent multiple calls (e.g., from timer + network handler) 
+  // from bypassing ramping limits.
+  static uint32_t last_eval_ms = 0;
+  if (now - last_eval_ms < 2000) return; // Allow max once per 2 seconds
+  last_eval_ms = now;
 
-  // 2. Mode Management (Summer Cooling)
+  // 1. Snapshot common states to avoid race conditions during evaluation
   esphome::VentilationMode current_mode = (esphome::VentilationMode)v->state_machine.current_mode;
+  int current_level = static_cast<int>(fan_intensity_level->value());
+
+  // 2. Climate Sensor Fusion
+  float eff_in = NAN, eff_out = NAN;
+  auto_mode::get_effective_temperatures(now, eff_in, eff_out, current_mode);
+
+  // 3. Mode Management (Summer Cooling)
   esphome::VentilationMode target_mode = auto_mode::determine_auto_operating_mode(eff_in, eff_out, current_mode);
   
   if (current_mode != target_mode) {
     v->set_mode(target_mode);
+    current_mode = target_mode; // Update local snapshot for correct demand mapping
   }
 
   // 3. Air Quality Power Management
@@ -248,35 +251,60 @@ inline void evaluate_auto_mode() {
      return;
   }
   
-  // 4. Calculate Intensity level (1-10) for UI feedback
+  // 5. Calculate target level with hysteresis and ramping
   int min_l = static_cast<int>(automatik_min_fan_level->value());
   int max_l = static_cast<int>(automatik_max_fan_level->value());
   if (min_l > max_l) std::swap(min_l, max_l);
   
   int target_level = min_l;
-  if (demand > 0.01f) {
-    float scaled = static_cast<float>(min_l) + demand * static_cast<float>(max_l - min_l);
-    target_level = std::clamp(static_cast<int>(std::round(scaled)), 1, 10);
-    ESP_LOGD("auto_mode", "Demand=%.2f -> Level %d", demand, target_level);
+  float scaled = static_cast<float>(min_l) + demand * static_cast<float>(max_l - min_l);
+  int raw_target = std::clamp(static_cast<int>(std::round(scaled)), 1, 10);
+  
+  // Hysteresis: Only change level if demand clearly crosses the boundary
+  static constexpr float LEVEL_HYSTERESIS = 0.25f; // 25% of one level step
+  float step_size = (max_l > min_l) ? 1.0f / static_cast<float>(max_l - min_l) : 1.0f;
+  float hysteresis_band = step_size * LEVEL_HYSTERESIS;
+  
+  // Current demand center relative to current level
+  float current_demand_center = static_cast<float>(current_level - min_l) * step_size;
+
+  if (demand > current_demand_center + step_size * 0.5f + hysteresis_band) {
+    target_level = raw_target; // Clearly above -> go up
+  } else if (demand < current_demand_center - step_size * 0.5f - hysteresis_band) {
+    target_level = raw_target; // Clearly below -> go down
+  } else {
+    target_level = current_level; // Within hysteresis band -> hold
   }
 
-  // 5. Commit State Updates
-  if (fan_intensity_level->value() != target_level) {
-    // Use the established project pattern for GlobalsComponent: ->value() = ...
+  // Soft Ramping: Maximum ±1 level per evaluation cycle (10s)
+  // Boost: Allow ±2 steps if mode just changed to reach target faster
+  static bool first_eval = true;
+  static esphome::VentilationMode last_committed_mode = esphome::MODE_OFF;
+  int max_ramp_step = 1;
+  
+  if (first_eval) {
+    last_committed_mode = current_mode;
+    first_eval = false;
+  } else if (current_mode != last_committed_mode) {
+    max_ramp_step = 2;
+    last_committed_mode = current_mode;
+  }
+
+  if (target_level > current_level) {
+    target_level = std::min(target_level, current_level + max_ramp_step);
+  } else if (target_level < current_level) {
+    target_level = std::max(target_level, current_level - max_ramp_step);
+  }
+
+  // 6. Commit State Updates
+  if (current_level != target_level) {
     fan_intensity_level->value() = target_level;
-    
-    // For TemplateNumber, we must use publish_state to update the UI entity
     fan_intensity_display->publish_state(target_level);
-    
-    // Issue #5 FIX: Direct assignment instead of v->set_fan_intensity() to avoid
-    // triggering pending_broadcast on every 10s PID tick. The 60s heartbeat
-    // broadcast and the PID sync threshold in calculate_combined_demand() already
-    // ensure peers stay informed of significant changes.
     v->current_fan_intensity = target_level;
     
     fan_speed_update->execute();
     update_leds->execute();
     
-    ESP_LOGI("auto_mode", "Automatic mode adjusted level to %d", target_level);
+    ESP_LOGI("auto_mode", "Automatic level ramped %d -> %d (demand=%.2f)", current_level, target_level, demand);
   }
 }

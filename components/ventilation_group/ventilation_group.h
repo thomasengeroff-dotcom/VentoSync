@@ -175,6 +175,8 @@ public:
   /// last_peer_pid_demand_time == 0 is used as a sentinel after 49.7 days.
   bool has_peer_pid_demand =
       false; ///< True once any peer PID demand has been received.
+  bool co2_is_controlling =
+      false; ///< Hysteresis state for CO2 priority (runtime only).
 
   // --- PEER TRACKING (For Dashboard) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
