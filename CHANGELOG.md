@@ -4,7 +4,7 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.8.0] - 2026-04-02
+## [0.7.42] - 2026-04-02
 ### Fixed
 - **NaN-Härtung**: Absicherung aller PID-Anforderungsberechnungen in `auto_mode.h` und `fan_control.h` gegen `NaN`-Werte. Bei Sensorausfällen (z.B. SCD41/BME680 Glitches) hält das System nun den letzten gültigen Zustand ("Hold-Last-State"), anstatt auf die minimalste Stufe abzufallen. Dies eliminiert das "Yo-Yo"-Verhalten des Lüfters.
 - **Steuerungs-Autorität**: Konsolidierung der Intensitätsberechnung auf `evaluate_auto_mode()` als einzige "Source of Truth". Das unabhängige 10s-Intervall `fan_speed_update` nutzt nun den bereits berechneten Level, was Oszillationen durch konkurrierende Berechnungswege verhindert.

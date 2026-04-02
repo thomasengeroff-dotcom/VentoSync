@@ -227,7 +227,7 @@ number:
     id: automatik_min_luefterstufe
     icon: "mdi:water-percent"
     min_value: 1
-    max_value: 10
+    max_value: 3
     step: 1
     mode: slider
     optimistic: true
@@ -245,7 +245,7 @@ number:
     name: "Automatik Max Lüfterstufe"
     id: automatik_max_luefterstufe
     icon: "mdi:volume-off"
-    min_value: 1
+    min_value: 5
     max_value: 10
     step: 1
     mode: slider
