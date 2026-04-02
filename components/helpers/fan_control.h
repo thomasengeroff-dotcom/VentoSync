@@ -24,7 +24,7 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 // --- Constants ---
 constexpr float MIN_PHYSICAL_RPM = 10.0f; // Minimum valid RPM reading from tacho

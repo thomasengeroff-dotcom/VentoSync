@@ -62,8 +62,14 @@ external_components:
 
 esphome:
   includes:
-    - components/automation_helpers.h # Helper functions logic
-    - components/helpers
+    - components/helpers/globals.h
+    - components/helpers/network_sync.h
+    - components/helpers/climate.h
+    - components/helpers/auto_mode.h
+    - components/helpers/fan_control.h
+    - components/helpers/system_lifecycle.h
+    - components/helpers/led_feedback.h
+    - components/helpers/user_input.h
   on_boot:
     - priority: -10.0 # -10 ensure WiFi and NVS are ready before syncing.
       then:

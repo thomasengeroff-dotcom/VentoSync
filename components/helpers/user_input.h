@@ -24,7 +24,7 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 inline void set_ventilation_timer(float value) {
   if (ventilation_ctrl == nullptr) return;

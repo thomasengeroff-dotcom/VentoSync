@@ -12,8 +12,8 @@ external_components:
 
 esphome:
   includes:
-    - ../components/automation_helpers.h
-    - ../components/helpers
+    - ../components/helpers/led_feedback.h
+    - ../components/helpers/user_input.h
   on_boot:
     priority: 500
     then:

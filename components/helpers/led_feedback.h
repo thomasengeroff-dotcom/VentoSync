@@ -24,7 +24,7 @@
 // Modified:    2026-04-01
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 /**
  * @brief Checks for error conditions and blinks the Master LED accordingly.

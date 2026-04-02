@@ -24,7 +24,7 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 // --- Constants ---
 constexpr uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};

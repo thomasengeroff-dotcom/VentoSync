@@ -24,7 +24,7 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 /**
  * @brief Logic for the Ventilation Auto Mode Controller.

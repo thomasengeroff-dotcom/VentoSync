@@ -24,7 +24,7 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 inline void update_filter_analytics() {
   if (system_on == nullptr || ventilation_enabled == nullptr || filter_operating_hours == nullptr) return;

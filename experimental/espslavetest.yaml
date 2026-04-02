@@ -24,8 +24,8 @@ external_components:
 
 esphome:
   includes:
-    - ../components/automation_helpers.h
-    - ../components/helpers
+    - ../components/helpers/globals.h
+    - ../components/helpers/led_feedback.h
   on_boot:
     priority: 600
     then:

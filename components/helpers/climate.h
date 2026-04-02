@@ -24,7 +24,7 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
-#include "helpers/globals.h"
+#include "globals.h"
 
 inline std::string get_co2_classification(float co2_ppm) {
   return VentilationLogic::get_co2_classification(co2_ppm);
