@@ -213,7 +213,7 @@ inline float calculate_combined_demand(uint32_t now) {
  * @brief Main entry point for the automatic ventilation logic.
  * Called periodically from YAML.
  */
-inline void evaluate_auto_mode() {
+inline void evaluate_auto_mode(bool force) {
   if (!auto_mode::is_system_ready()) return;
 
   auto *v = ventilation_ctrl;
@@ -223,7 +223,7 @@ inline void evaluate_auto_mode() {
   // Rate-limiting: Prevent multiple calls (e.g., from timer + network handler) 
   // from bypassing ramping limits.
   static uint32_t last_eval_ms = 0;
-  if (now - last_eval_ms < 2000) return; // Allow max once per 2 seconds
+  if (!force && now - last_eval_ms < 2000) return; // Allow max once per 2 seconds
   last_eval_ms = now;
 
   // 1. Snapshot common states to avoid race conditions during evaluation

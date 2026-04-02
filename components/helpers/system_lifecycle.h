@@ -29,9 +29,20 @@
 inline void update_filter_analytics() {
   if (system_on == nullptr || ventilation_enabled == nullptr || filter_operating_hours == nullptr) return;
 
-  if (system_on->value() && ventilation_enabled->value()) {
-    filter_operating_hours->value() += (1.0f / 60.0f);
+  static uint32_t last_update_ms = 0;
+  const uint32_t now_ms = millis();
+
+  if (last_update_ms == 0) {
+    last_update_ms = now_ms;
+    return;
   }
+
+  if (system_on->value() && ventilation_enabled->value()) {
+    const uint32_t elapsed_ms = now_ms - last_update_ms;
+    // 3.6M ms = 1 hour
+    filter_operating_hours->value() += static_cast<float>(elapsed_ms) / 3600000.0f;
+  }
+  last_update_ms = now_ms;
 
   if (sntp_time == nullptr || filter_last_change_ts == nullptr) return;
   auto now = sntp_time->now();
@@ -66,8 +77,7 @@ inline void cycle_operating_mode(int mode_index) {
     
     // Proper ESPHome state management interaction
     v->set_mode(esphome::MODE_ECO_RECOVERY);
-    v->pending_broadcast = true;
-    evaluate_auto_mode(); // Immediate PID/sensor eval
+    evaluate_auto_mode(true); // Force immediate PID evaluation
     break;
 
   case 1: // Wärmerückgewinnung (manual)
@@ -75,7 +85,6 @@ inline void cycle_operating_mode(int mode_index) {
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     v->set_mode(esphome::MODE_ECO_RECOVERY);
-    v->pending_broadcast = true;
     break;
 
   case 2: // Durchlüften — timer from vent_timer number component
@@ -102,9 +111,18 @@ inline void cycle_operating_mode(int mode_index) {
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = false;
     
     v->set_mode(esphome::MODE_OFF);
+    
+    // UI: Visible fan status OFF
     if (lueftung_fan != nullptr) lueftung_fan->turn_off().perform();
-    if (fan_pwm_primary != nullptr) fan_pwm_primary->set_level(0.5f); // Neutral stop for VarioPro
+    // Hardware: VarioPro motor controller requires 50% PWM as "stop" signal.
+    // 0% PWM would be interpreted as "full reverse" by the inverter.
+    if (fan_pwm_primary != nullptr) fan_pwm_primary->set_level(0.5f);
     break;
+  }
+
+  // Update state trackers for networking and UI persistence
+  if (current_mode_index != nullptr) {
+    current_mode_index->value() = mode_index;
   }
 
   // Sync HA select dropdown
@@ -126,10 +144,9 @@ inline void cycle_operating_mode(int mode_index) {
 }
 
 
-/// @brief Refreshes all status LEDs based on system_on, current mode, and fan
-/// level. Maps fan intensity 1–10 onto the 5 level LEDs and toggles the two
-/// mode LEDs. ALL LEDs (except Master error blink and Power LED) turn off when
-/// ui_active is false. Power LED dims to 20% when ui_active is false.
+/// @brief Synchronizes YAML configuration (floor, room, device IDs and phase)
+/// to the ventilation controller instance. Ensuring IDs are valid (non-zero)
+/// before syncing to prevent network collisions during the boot phase.
 inline void sync_config_to_controller() {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
@@ -138,16 +155,16 @@ inline void sync_config_to_controller() {
   uint8_t room = (config_room_id != nullptr && !std::isnan(config_room_id->state)) ? (uint8_t)config_room_id->state : 0;
   uint8_t dev = (config_device_id != nullptr && !std::isnan(config_device_id->state)) ? (uint8_t)config_device_id->state : 0;
 
-  // Guard: If IDs are not yet restored or set to 0, use safe defaults 
-  // to avoid sending as "Device 0" which breaks synchronization.
-  if (floor > 0) v->set_floor_id(floor);
-  if (room > 0) v->set_room_id(room);
-  
-  if (dev > 0) {
-    v->set_device_id(dev);
-  } else {
-    ESP_LOGW("boot", "Device ID is still 0 or NaN — ignoring sync to prevent ID collisions.");
+  // Abort if NVS has not yet restored valid non-zero IDs
+  if (floor == 0 || room == 0 || dev == 0) {
+    ESP_LOGW("boot", "Config IDs not yet restored (F:%d R:%d D:%d) — skipping controller sync.", 
+             floor, room, dev);
+    return;
   }
+
+  v->set_floor_id(floor);
+  v->set_room_id(room);
+  v->set_device_id(dev);
 
   if (config_phase != nullptr) {
     bool is_phase_a = (std::string(config_phase->current_option()) == "Phase A (Startet mit Zuluft)");
@@ -158,7 +175,8 @@ inline void sync_config_to_controller() {
            v->floor_id, v->room_id, v->device_id);
 }
 
-/// @brief Runs a 3-second visual self-test by turning on all physical status LEDs.
+/// @brief Turns on all status LEDs for visual self-test.
+/// The caller (YAML script) is responsible for turning them off after a delay.
 inline void run_led_self_test() {
   if (status_led_mode_wrg == nullptr || status_led_mode_vent == nullptr ||
       status_led_power == nullptr || status_led_master == nullptr) {

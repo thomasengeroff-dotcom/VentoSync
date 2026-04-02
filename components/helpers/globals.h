@@ -344,7 +344,7 @@ inline void handle_button_power_short_click();
 inline void handle_button_power_long_click();
 inline void handle_button_level_click();
 inline void handle_intensity_bounce();
-inline void evaluate_auto_mode();
+inline void evaluate_auto_mode(bool force = false);
 inline void update_filter_analytics();
 inline void cycle_operating_mode(int mode_index);
 inline void sync_config_to_controller();
