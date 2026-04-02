@@ -351,11 +351,7 @@ interval:
           then:
             - lambda: |-
                 auto data = build_and_populate_packet(esphome::MSG_SYNC);
-                // Immediate changes via broadcast (robust)
-                uint8_t broadcast_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-                esphome::espnow::global_esp_now->send(
-                    broadcast_mac, data, [](esp_err_t err) {});
-                // Additionally via unicast for reliable delivery
+                // Unified state sync via UNICAST for registered room members
                 send_sync_to_all_peers(data);
                 // build_and_populate_packet/build_packet set pending_broadcast to false
 

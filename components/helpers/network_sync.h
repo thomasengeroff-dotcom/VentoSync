@@ -227,21 +227,21 @@ inline bool handle_discovery_payload(const std::string &payload,
   return false;
 }
 
-/** @brief Sends a sync packet to all registered peers via room-wide broadcast. */
+/** @brief Sends a sync packet to all registered peers via UNICAST. */
 inline void sync_settings_to_peers() {
   if (ventilation_ctrl == nullptr || !esphome::espnow::global_esp_now) return;
   
-  // Broadcast loop guard (max 1 per 500ms)
+  // Rate-limit beibehalten (max 1 per 500ms)
   static uint32_t last_settings_sync = 0;
   if (millis() - last_settings_sync < 500) {
-    ESP_LOGI("vent_sync", "Settings sync broadcast suppressed (loop prevention)");
+    ESP_LOGI("vent_sync", "Settings sync suppressed (loop prevention)");
     return;
   }
   last_settings_sync = millis();
 
   auto data = build_and_populate_packet(esphome::MSG_STATE);
-  esphome::espnow::global_esp_now->send(BROADCAST_MAC, data, [](esp_err_t err) {});
-  ESP_LOGI("vent_sync", "Sent state change via BROADCAST to room members.");
+  send_sync_to_all_peers(data);
+  ESP_LOGI("vent_sync", "Sent state change via UNICAST to %s", espnow_peers ? espnow_peers->value().c_str() : "no peers");
 }
 
 namespace espnow_handler {
@@ -279,15 +279,15 @@ namespace espnow_handler {
     return true;
   }
 
-inline void handle_status_request(const esphome::VentilationPacket *pkt) {
+inline void handle_status_request(const esphome::VentilationPacket *pkt, const uint8_t *src_mac) {
   if (config_floor_id != nullptr && config_room_id != nullptr &&
       pkt->floor_id == (int)config_floor_id->state &&
       pkt->room_id == (int)config_room_id->state) {
-    ESP_LOGI("vent_sync", "Status request from peer %d. Sending response...",
+    ESP_LOGI("vent_sync", "Status request from peer %d. Sending UNICAST response...",
              pkt->device_id);
     auto resp = build_and_populate_packet(esphome::MSG_STATUS_RESPONSE);
     if (esphome::espnow::global_esp_now) {
-      esphome::espnow::global_esp_now->send(BROADCAST_MAC, resp,
+      esphome::espnow::global_esp_now->send(src_mac, resp,
                                             [](esp_err_t err) {});
     }
   }
@@ -458,7 +458,7 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
  * events and executes lambda callbacks within the main loop() context. Global
  * variable modifications here are safe from concurrent HW interrupts.
  */
-inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
+inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
   if (!espnow_handler::validate_packet(data))
     return;
 
@@ -470,7 +470,7 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data) {
 
   if (static_cast<esphome::MessageType>(pkt->msg_type) ==
       esphome::MSG_STATUS_REQUEST) {
-    espnow_handler::handle_status_request(pkt);
+    espnow_handler::handle_status_request(pkt, src_mac);
     return;
   }
 

@@ -226,7 +226,7 @@ espnow:
           return;
         }
         std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet);
+        handle_espnow_receive(packet, info.src_addr);
 
   # For robustness, we also handle registered peers (e.g. if we add them dynamically)
   on_receive:
@@ -236,7 +236,7 @@ espnow:
           return;
         }
         std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet);
+        handle_espnow_receive(packet, info.src_addr);
 
   on_unknown_peer:
     - lambda: |-
@@ -245,7 +245,7 @@ espnow:
           return;
         }
         std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet);
+        handle_espnow_receive(packet, info.src_addr);
 
 # ---------------------------------------------------------
 # CUSTOM WRG DASHBOARD

@@ -207,7 +207,7 @@ number:
     id: led_max_brightness_config
     icon: "mdi:brightness-6"
     unit_of_measurement: "%"
-    min_value: 10
+    min_value: 5
     max_value: 100
     step: 5
     initial_value: 80

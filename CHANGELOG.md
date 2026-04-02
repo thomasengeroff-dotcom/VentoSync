@@ -4,6 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.3] - 2026-04-03
+### Changed
+- **Status-LED Helligkeit**: Der minimale Dimmbereich der Status-LEDs wurde von 10% auf 5% gesenkt, um eine noch dezentere Anzeige in sehr dunklen Räumen zu ermöglichen.
+
+## [0.8.2] - 2026-04-02
+### Changed
+- **ESP-NOW Unicast-Refactoring**: Umstellung der Zustandssynchronisation von BROADCAST auf gezielten UNICAST. Dies reduziert die Netzwerklast und verhindert, dass Steuerungsbefehle (Modus, Intensität) fälschlicherweise von Geräten in benachbarten Räumen auf demselben Kanal verarbeitet werden.
+- **Zielgerichtete Status-Antworten**: `handle_status_request()` antwortet nun direkt per UNICAST an den anfragenden Peer, anstatt eine Antwort an das gesamte Netzwerk zu senden.
+- **Bereinigung der Sync-Logik**: Entfernung redundanter BROADCAST-Pakete für das periodische Heartbeat-Interval (`MSG_SYNC`) in der `logic_automation.yaml`.
+
 ## [0.8.1] - 2026-04-02
 ### Changed
 - **Internationalization (Documentation)**: Full translation and normalization of the project's documentation into English.
