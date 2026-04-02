@@ -391,7 +391,20 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
   if (v == nullptr)
     return;
 
-  if (fan_intensity_level != nullptr && fan_intensity_display != nullptr &&
+  // Issue #3 FIX: Propagate auto_mode_active from the sender's mode index.
+  // Devices in the same room must always share the same operating mode.
+  // current_mode_index == 0 means "Automatik" on the sender.
+  bool sender_in_auto = (pkt->current_mode_index == 0);
+  if (auto_mode_active != nullptr && auto_mode_active->value() != sender_in_auto) {
+    auto_mode_active->value() = sender_in_auto;
+    ESP_LOGI("vent_sync", "Synced auto_mode_active to %s (from peer mode_index %d)",
+             sender_in_auto ? "ON" : "OFF", pkt->current_mode_index);
+  }
+
+  // Issue #4 FIX: Only override fan intensity from peer in manual modes.
+  // In Automatik mode, the local PID controller is the authority for intensity.
+  bool is_auto = (auto_mode_active != nullptr && auto_mode_active->value());
+  if (!is_auto && fan_intensity_level != nullptr && fan_intensity_display != nullptr &&
       (v->current_fan_intensity != fan_intensity_level->value() || force)) {
     fan_intensity_level->value() = v->current_fan_intensity;
     fan_intensity_display->publish_state(v->current_fan_intensity);

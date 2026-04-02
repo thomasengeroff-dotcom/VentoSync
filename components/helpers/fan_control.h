@@ -61,15 +61,22 @@ inline float calculate_automatic_pid_demand(uint32_t now) {
   float max_pid_demand = 0.0f;
 
   if (co2_auto_enabled != nullptr && co2_auto_enabled->value() && co2_pid_result != nullptr) {
-    max_pid_demand = std::max(max_pid_demand, co2_pid_result->value());
+    const float co2_val = co2_pid_result->value();
+    if (!std::isnan(co2_val)) {
+      max_pid_demand = std::max(max_pid_demand, co2_val);
+    }
   }
   
   if (humidity_pid_result != nullptr) {
-    max_pid_demand = std::max(max_pid_demand, humidity_pid_result->value());
+    const float hum_val = humidity_pid_result->value();
+    if (!std::isnan(hum_val)) {
+      max_pid_demand = std::max(max_pid_demand, hum_val);
+    }
   }
   
   if (ventilation_ctrl != nullptr) {
     if (ventilation_ctrl->has_peer_pid_demand &&
+        !std::isnan(ventilation_ctrl->last_peer_pid_demand) &&
         (now - ventilation_ctrl->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
       max_pid_demand = std::max(max_pid_demand, ventilation_ctrl->last_peer_pid_demand);
     }
@@ -106,24 +113,15 @@ inline float calculate_manual_demand(float base_intensity) {
 inline float get_current_target_speed() {
   if (fan_intensity_level == nullptr) return 0.0f;
 
-  const uint32_t now = millis();
   float intensity = static_cast<float>(fan_intensity_level->value());
 
   if (auto_mode_active != nullptr && auto_mode_active->value()) {
-    // 1. Automatik Mode (PID based)
-    const float max_pid_demand = calculate_automatic_pid_demand(now);
-    
-    // Safely retrieve min/max levels
-    const float min_l = (automatik_min_fan_level != nullptr) ? static_cast<float>(automatik_min_fan_level->value()) : 1.0f;
-    const float max_l = (automatik_max_fan_level != nullptr) ? static_cast<float>(automatik_max_fan_level->value()) : 10.0f;
-
-    if (max_pid_demand > 0.01f) {
-      intensity = min_l + max_pid_demand * (max_l - min_l);
-    } else {
-      intensity = min_l;
-    }
+    // Automatik Mode: Use the intensity level already committed by evaluate_auto_mode().
+    // This avoids a competing PID recalculation that could produce a different result
+    // and cause oscillation between the two independent 10s interval paths.
+    // evaluate_auto_mode() is the single source of truth for auto-mode intensity.
   } else {
-    // 2. Manual Modes (WRG, Ventilation, Stoßlüftung)
+    // Manual Modes (WRG, Ventilation, Stoßlüftung): apply presence compensation
     intensity = calculate_manual_demand(intensity);
   }
 

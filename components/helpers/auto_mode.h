@@ -239,8 +239,12 @@ inline void evaluate_auto_mode() {
     // For TemplateNumber, we must use publish_state to update the UI entity
     fan_intensity_display->publish_state(target_level);
     
-    // Inform the controller and trigger hardware updates
-    v->set_fan_intensity(target_level);
+    // Issue #5 FIX: Direct assignment instead of v->set_fan_intensity() to avoid
+    // triggering pending_broadcast on every 10s PID tick. The 60s heartbeat
+    // broadcast and the PID sync threshold in calculate_combined_demand() already
+    // ensure peers stay informed of significant changes.
+    v->current_fan_intensity = target_level;
+    
     fan_speed_update->execute();
     update_leds->execute();
     

@@ -4,16 +4,16 @@
 # Damit das Skript sofort abbricht, falls ein Upload hart fehlschlägt:
 set -e
 
-echo "=================================================="
-echo "🚀 Starte Upload auf Gerät WRG 12V Test (192.168.178.225)..."
-echo "=================================================="
-esphome upload ventosync.yaml --device 192.168.178.225
+#echo "=================================================="
+#echo "🚀 Starte Upload auf Gerät WRG 12V Test (192.168.178.225)..."
+#echo "=================================================="
+#esphome upload ventosync.yaml --device 192.168.178.225
 
 echo ""
 echo "=================================================="
 echo "🚀 Starte Upload auf Gerät WRG Büro (192.168.178.237)..."
 echo "=================================================="
-esphome upload ventosync.yaml --device 192.168.178.237
+esphome upload ventosync.yaml --device 192.168.178.206
 
 echo ""
 echo "=================================================="

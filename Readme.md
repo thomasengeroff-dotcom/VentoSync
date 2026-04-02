@@ -830,6 +830,13 @@ To simplify software maintenance and ensure that every firmware change is tracea
   - ✅ **Real-time Graphs**: Expansion of the Chart.js integration for smooth visualization of CO2, humidity, temp, and RPM.
   - ✅ **Code Health**: Cleanup of dashboard backend logic, fixing type-mismatch errors in C++ lambdas, and removal of deprecated warnings.
 
+- **Stability & Oscillation Fixes (April 2026)**:
+  - ✅ **NaN-Safe PID Control**: Hardened demand calculation against invalid sensor data (`NaN`) in both `auto_mode.h` and `fan_control.h`. The system now holds the last valid state if sensors fail, preventing erratic fan toggling.
+  - ✅ **Unified Control Authority**: Unified intensity calculation to a single source of truth (`evaluate_auto_mode`), eliminating race conditions and fighting between independent 10s update intervals.
+  - ✅ **Smart Group Sync**: Automatic propagation of `Automatik` mode across peer devices via ESP-NOW. Peers now correctly mirror the active mode and its configuration in real-time.
+  - ✅ **Broadcast Optimization**: Reduced network jitter and eliminated recursive broadcast cascades by optimizing state-sync triggers during PID adjustments.
+  - ✅ **Config Safety**: Added validation for min/max fan levels (swap-guard) to prevent inverted scaling on UI misconfiguration.
+
 - **Protocol v4 & Stability (March 2026)**:
   - ✅ **ESP-NOW v4 Upgrade**: Introduction of a magic header (`0x42`) and protocol versioning to avoid incompatibilities.
   - ✅ **Real-time Settings Sync**: Full mirroring of all user configurations (CO2 limits, fan levels, timers) via unicast.

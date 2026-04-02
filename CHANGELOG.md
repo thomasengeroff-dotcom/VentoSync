@@ -4,13 +4,13 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.7.39] - 2026-04-01
-### Changed
-- **UI & Entitäten-Bereinigung**: Umfassende Umbenennung von Entitäten für bessere Klarheit in Home Assistant (z.B. "Lüfter Richtung", "WRG Effizienz").
-- **Kategorisierung**: Umzug von Wartungs-Buttons (BME680 Reset) in die Kategorie "Konfiguration".
-- **Präfix-Entfernung**: Entfernung des Gerätenamens aus allen Diagnose-Entitäten für eine sauberere Ansicht.
-- **ESP-NOW Peers**: Formatierung der Anzeige mit Leerzeichen nach Kommas für bessere Zeilenumbrüche.
-- **Bereinigung**: Entfernung des redundanten "System Reboot" Buttons.
+## [0.8.0] - 2026-04-02
+### Fixed
+- **NaN-Härtung**: Absicherung aller PID-Anforderungsberechnungen in `auto_mode.h` und `fan_control.h` gegen `NaN`-Werte. Bei Sensorausfällen (z.B. SCD41/BME680 Glitches) hält das System nun den letzten gültigen Zustand ("Hold-Last-State"), anstatt auf die minimalste Stufe abzufallen. Dies eliminiert das "Yo-Yo"-Verhalten des Lüfters.
+- **Steuerungs-Autorität**: Konsolidierung der Intensitätsberechnung auf `evaluate_auto_mode()` als einzige "Source of Truth". Das unabhängige 10s-Intervall `fan_speed_update` nutzt nun den bereits berechneten Level, was Oszillationen durch konkurrierende Berechnungswege verhindert.
+- **ESP-NOW Synchronisation**: Übertragung des `auto_mode_active` Status an Peers via `current_mode_index`. Peers im selben Raum synchronisieren nun zuverlässig den Automatik-Modus und ignorieren externe Intensitäts-Overrides, wenn sie selbst im PID-Modus sind.
+- **Broadcast-Optimierung**: Umstellung auf direkte Zuweisung der Lüfterintensität im Auto-Modus. Dies verhindert rekursive Broadcast-Kaskaden (Ping-Pong-Effekt) bei jeder PID-Anpassung und schont die Netzwerk-Bandbreite.
+- **Konfigurations-Sicherheit**: Implementierung eines Swap-Guards für die `Min/Max Lüfterstufe`. Bei Fehlkonfiguration (Min > Max) korrigiert das System die Werte intern, um eine invertierte Kennlinie zu vermeiden.
 
 ## [0.7.39] - 2026-04-01
 ### Changed

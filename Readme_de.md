@@ -831,6 +831,13 @@ Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-
   - ✅ **Echtzeit-Graphen**: Erweiterung der Chart.js Integration für flüssige Visualisierung von CO2, Feuchte, Temp und RPM.
   - ✅ **Code-Health**: Bereinigung der Dashboard-Backend-Logik, Behebung von Typ-Mismatch Fehlern in C++ Lambdas und Entfernung von Deprecated-Warnungen.
 
+- **Stabilitäts- & Oszillations-Fixes (April 2026)**:
+  - ✅ **NaN-Sichere PID-Steuerung**: Härtung der Bedarfsberechnung gegen ungültige Sensordaten (`NaN`) in `auto_mode.h` und `fan_control.h`. Das System hält den letzten gültigen Status bei Sensorausfällen und verhindert so das unkontrollierte Schalten des Lüfters.
+  - ✅ **Einheitliche Steuerungsautorität**: Zusammenführung der Intensitätsberechnung auf eine einzige "Source of Truth" (`evaluate_auto_mode`), um Race-Conditions und Konflikte zwischen unabhängigen 10s Update-Intervallen zu eliminieren.
+  - ✅ **Smart Group Sync**: Automatische Übertragung des `Automatik`-Modus an alle Geräte im Raum via ESP-NOW. Peers spiegeln nun den aktiven Modus und dessen Konfiguration korrekt in Echtzeit wider.
+  - ✅ **Broadcast-Optimierung**: Reduzierung von Netzwerk-Jitter und Eliminierung rekursiver Broadcast-Kaskaden durch optimierte Status-Sync-Trigger während PID-Anpassungen.
+  - ✅ **Konfigurations-Sicherheit**: Validierung von Min/Max-Lüfterstufen (Swap-Guard) zur Vermeidung von invertierter Skalierung bei Fehlkonfigurationen in der UI.
+
 - **Protocol v4 & Stability (März 2026)**:
   - ✅ **ESP-NOW v4 Upgrade**: Einführung von Magic Header (`0x42`) und Protokoll-Versionierung zur Vermeidung von Inkompatibilitäten.
   - ✅ **Echtzeit-Settings-Sync**: Vollständiges Mirroring aller Benutzer-Konfigurationen (CO2-Grenzwerte, Fan-Levels, Timer) via Unicast.
