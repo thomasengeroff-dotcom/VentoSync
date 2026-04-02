@@ -4,6 +4,12 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.1] - 2026-04-02
+### Changed
+- **Internationalization (Documentation)**: Full translation and normalization of the project's documentation into English.
+- **Filename Normalization**: Renamed English documentation files to descriptive English filenames (e.g., `Fan-Interface-Guide_en.md`, `VentoMaxx-Comparison_en.md`) for better clarity.
+- **Link Updating**: Comprehensive update of the main `Readme_en.md` and internal documentation to ensure all links point correctly to the new English versions.
+
 ## [0.8.0] - 2026-04-02
 ### Changed
 - **Prio-Steuerung (CO2 vor Feuchte)**: Grundlegende Umstellung der Automatik-Logik. CO2-Werte haben nun immer Priorität vor der Luftfeuchtigkeit. Nur wenn der CO2-Bedarf gedeckt ist, greift die Feuchtigkeits-Regelung.

@@ -42,9 +42,10 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 ## Motivation
 
 Many years ago, as part of a house renovation, I installed the V-WRG decentralized residential ventilation from Ventomaxx (10 units) and was very satisfied with it. However, the proprietary control and the lack of integration into my smart home system always bothered me. Therefore, I decided to develop my own circuit board (PCB) including control software based on ESPHome, as there was no ready-made solution. This solution is open source and is intended to help other users who are in the same situation as I was.
-For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD41), which is integrated directly into the board (via a small additional PCB; Note: Currently the BME680 serves as a fallback, as the SCD41 PCB is still in production). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German.
+For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD41), which is integrated directly into the board (via a small additional PCB; Note: Currently the BME680 serves as a fallback, as the SCD41 PCB is still in production). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). 
+All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German (for now).
 Since the ventilation units in the various rooms are usually in a very central position, I also use them directly for presence detection via a radar sensor, which can be mounted invisibly hidden behind the cover of the ventilation unit. The presence sensor is used for controlling the ventilation intensity in standard automatic mode and can also be used in Home Assistant for any other automations.
-According to my research, the range of functions of this custom development goes beyond everything currently found on the ventilation unit market!
+According to my research, the range of functionalities of this custom development goes beyond everything currently found on the ventilation unit market!
 
 ---
 
@@ -55,16 +56,16 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | | VentoMaxx (Original) | ESPHome Smart WRG |
 | :--- | :---: | :---: |
 | Operating Modes | 3 | **5+** (incl. automation) |
-| Sensors | 0-1 (opt. VOC) | **6** (CO2, Temp, Hum, Press, Radar, Tach) |
+| Sensors | 0-1 (opt. VOC) | **6+** (CO2, Temp, Hum, Press, Radar, Tach, extendable by any I2C and UART sensors) |
 | Fan Control | 3 fixed levels | **10 levels + stepless (PID)** |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
 | Synchronization | Control cable | ✅ Wireless (**ESP-NOW Protocol v4**) & Real-time Sync |
 | Versioning | Manual | ✅ Fully automatic (Patch-Level) |
 | Updates | Service technician | ✅ Over-the-Air (OTA) |
-| License | Proprietary | ✅ Open Source (MIT) |
+| License | Proprietary | ✅ GNU GENERAL PUBLIC LICENSE (Version 3) |
 
- **You can find the full feature-for-feature comparison with all technical details in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
+ **You can find the full feature-for-feature comparison with all technical details in [📄 Comparison-VentoMaxx.md](documentation/VentoMaxx-Comparison_en.md).**
 
 ---
 
@@ -210,7 +211,7 @@ The following "Advanced Automation" functions are in preparation:
   - Continuous monitoring of the fan speed via tachometer signal for constant volume flow and error detection (only for 4-PIN PWM fans).
 
 - **AI-Powered Ventilation Control**:
-  - Proactive AI-powered ventilation control based on historical data and external forecasts (weather, CO2, humidity). See [📄 AI-Powered-Ventilation-Control](documentation/KI-gestützte-Lüftungssteuerung.md) for details.
+  - Proactive AI-powered ventilation control based on historical data and external forecasts (weather, CO2, humidity). See [📄 AI-Powered-Ventilation-Control](documentation/AI-Powered-Ventilation-Control_en.md) for details.
 
 ## 🖱️ Custom Circuit Board - PCB
 
@@ -240,7 +241,7 @@ In addition, I have developed an SCD41 PCB that positions the SCD41 CO2 sensor p
 
 | Component | Description | Documentation |
 | :--- | :--- | :--- |
-| **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. *The technical connection is described in the following document: [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)* | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. *The technical connection is described in the following document: [Fan-Interface-Guide_en.md](documentation/Fan-Interface-Guide_en.md)* | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2 sensor (Real CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch high-precision barometric pressure sensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch gas sensor (fallback for IAQ/air quality) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
@@ -421,7 +422,7 @@ The device cycles through the programs via the **Mode button (M)**. Upon **power
 > **Option A (Weather Service):** Create a template sensor based on your weather integration (e.g., OpenWeatherMap).
 > **Option B (Local Sensor):** Create a template sensor (alias) or adapt the entity ID in the YAML.
 > *Without this sensor, dehumidification still works, but the outdoor check is simply skipped.*
-For details, see [Feuchte-Management-HA-Sensor.md](documentation/Feuchte-Management-HA-Sensor.md)
+For details, see [Humidity-Management_en.md](documentation/Humidity-Management_en.md)
 
 ---
 
@@ -470,7 +471,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **CO2 Limit**: `number.auto_co2_threshold` (enabled by default)
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 
-👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Entities_Documentation.md](documentation/Entities_Documentation.md)**.
+👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Home-Assistant-Entities_en.md](documentation/Home-Assistant-Entities_en.md)**.
 
 #### 📊 Fan Speed per Level (VentoMaxx V-Curve)
 
@@ -678,7 +679,7 @@ Device A: Phase B (Exhaust) ←→  Device B: Phase A (Supply)
 
 Detailed technical information about sensor optimizations, ESPHome YAML syntax, I²C configuration, and other technical aspects can be found in the separate documentation:
 
-📄 **[Technical-Details.md](documentation/Technical-Details.md)**
+📄 **[Technical-Details-Optimizations_en.md](documentation/Technical-Details-Optimizations_en.md)**
 
 This documentation contains:
 
