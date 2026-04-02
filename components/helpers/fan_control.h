@@ -60,7 +60,7 @@ inline float level_to_speed(float level) {
 inline float calculate_automatic_pid_demand(uint32_t now) {
   float max_pid_demand = 0.0f;
 
-  if (co2_auto_enabled != nullptr && co2_auto_enabled->value() && co2_pid_result != nullptr) {
+  if (co2_pid_result != nullptr) {
     const float co2_val = co2_pid_result->value();
     if (!std::isnan(co2_val)) {
       max_pid_demand = std::max(max_pid_demand, co2_val);

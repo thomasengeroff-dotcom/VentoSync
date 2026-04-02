@@ -268,7 +268,6 @@ build_and_populate_packet(esphome::MessageType type) {
 
   // Populate all HA configurations with null checks
   pkt->current_mode_index = current_mode_index != nullptr ? current_mode_index->value() : 0;
-  pkt->co2_auto_enabled = co2_auto_enabled != nullptr ? co2_auto_enabled->value() : true;
   pkt->automatik_min_fan_level = automatik_min_fan_level != nullptr ? (uint8_t)automatik_min_fan_level->value() : 2;
   pkt->automatik_max_fan_level = automatik_max_fan_level != nullptr ? (uint8_t)automatik_max_fan_level->value() : 7;
   pkt->auto_co2_threshold_val = auto_co2_threshold_val != nullptr ? (uint16_t)auto_co2_threshold_val->value() : 1000;

@@ -98,37 +98,6 @@ switch:
           id(fan_direction).publish_state(false);
       - script.execute: fan_speed_update
 
-  # CO2-based adaptive fan control (on/off)
-  - platform: template
-    name: "Automatik CO2"
-    id: automatik_co2
-    icon: "mdi:molecule-co2"
-    optimistic: false
-    lambda: |-
-      return id(co2_auto_enabled);
-    turn_on_action:
-      - lambda: |-
-          if (std::isnan(id(effective_co2).state)) {
-            ESP_LOGW("co2_auto", "No CO2 sensor available (SCD41/BME680) — CO2 Auto Mode cannot be enabled");
-          } else {
-            id(co2_auto_enabled) = true;
-            // Activate PID controller (Intent: CO2 Reduction)
-            auto call = id(pid_co2).make_call();
-            call.set_mode(esphome::climate::CLIMATE_MODE_COOL); // CLIMATE_MODE_COOL is an ESPHome variable and cannot be renamed
-            call.perform();
-            sync_settings_to_peers();
-            ESP_LOGI("co2_auto", "CO2 Auto Mode enabled");
-          }
-    turn_off_action:
-      - lambda: |-
-          id(co2_auto_enabled) = false;
-          // Deactivate PID controller completely to stop logging and calculations
-          auto call = id(pid_co2).make_call();
-          call.set_mode(esphome::climate::CLIMATE_MODE_OFF);
-          call.perform();
-          sync_settings_to_peers();
-          ESP_LOGI("co2_auto", "CO2 Auto Mode disabled");
-
   # ESP-NOW Peer Check (disable to suppress Master LED blinking without peers)
   - platform: template
     name: "ESP-NOW Peerprüfung"
@@ -337,13 +306,16 @@ esphome:
           id(watchdog_restarts).publish_state(id(watchdog_restarts_count));
           
           // --- PID Mode Synchronization ---
-          // Ensure PID controllers match the restored automation states immediately after boot.
-          // This prevents initial log spam and background calculations if the user disabled them.
-          if (!id(co2_auto_enabled)) {
-            auto call = id(pid_co2).make_call();
-            call.set_mode(esphome::climate::CLIMATE_MODE_OFF);
-            call.perform();
-            ESP_LOGD("system", "PID CO2 initialized as OFF (Restored state)");
+          // Both PID controllers are always active in Automatik mode.
+          // Ensure they start in COOL mode to begin regulation immediately.
+          {
+            auto call_co2 = id(pid_co2).make_call();
+            call_co2.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+            call_co2.perform();
+            auto call_hum = id(pid_humidity).make_call();
+            call_hum.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+            call_hum.perform();
+            ESP_LOGD("system", "PID controllers initialized (CO2 + Humidity)");
           }
 
 # ---------------------------------------------------------

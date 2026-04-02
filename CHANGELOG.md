@@ -4,6 +4,13 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.0] - 2026-04-02
+### Changed
+- **Prio-Steuerung (CO2 vor Feuchte)**: Grundlegende Umstellung der Automatik-Logik. CO2-Werte haben nun immer Priorität vor der Luftfeuchtigkeit. Nur wenn der CO2-Bedarf gedeckt ist, greift die Feuchtigkeits-Regelung.
+- **Hysterese-Härtung**: Implementierung einer intelligenten Hysterese beim Wechsel zwischen CO2- und Feuchtigkeits-PID, um "Ping-Pong"-Effekte und unnötige Drehzahländerungen zu vermeiden.
+- **Vereinfachung**: Entfernung des separaten "Automatik CO2" Schalters. Die adaptive Regelung ist nun integraler und permanenter Bestandteil des Automatik-Modus.
+- **Protokoll-Update**: Bereinigung des ESP-NOW Datenpakets (`VentilationPacket`). Dies ist ein Breaking Change, der ein Update aller Geräte in der Gruppe erfordert.
+
 ## [0.7.42] - 2026-04-02
 ### Fixed
 - **NaN-Härtung**: Absicherung aller PID-Anforderungsberechnungen in `auto_mode.h` und `fan_control.h` gegen `NaN`-Werte. Bei Sensorausfällen (z.B. SCD41/BME680 Glitches) hält das System nun den letzten gültigen Zustand ("Hold-Last-State"), anstatt auf die minimalste Stufe abzufallen. Dies eliminiert das "Yo-Yo"-Verhalten des Lüfters.

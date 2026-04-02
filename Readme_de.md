@@ -410,8 +410,8 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 **Logik im Detail:**
 
 - **Grundbetrieb:** Wärmerückgewinnung (`MODE_ECO_RECOVERY`) auf Mindestlüfterstufe (`co2_min_fan_level`, Standard: 2). Die Wechselintervalle (Zyklusdauer) passen sich dabei dynamisch der aktuellen Lüfterstufe an (sanfte 70 Sekunden auf Stufe 1 bis schnelle 50 Sekunden auf Stufe 10) inkl. synchronisiertem NTC-Zeitfenster.
-- **Adaptive Automatik (CO2):** Steigt der CO2-Wert über den HA-Grenzwert, regelt ein PID-Regler die Lüfterleistung **stufenlos** und lautlos hoch. Ein konfigurierbarer Min-/Max-Level (`automatik_min_fan_level`) begrenzt dabei das Anpassungsfenster.
-- **💧 Feuchte-Management:** Bei Überschreitung des Feuchte-Grenzwerts (Default 60%) regelt ein eigener PID-Regler (`pid_humidity`) die Leistung hoch (Schimmelprävention). Eine intelligente Hysterese (`±2%`) verhindert "Rapid Cycling". **Outdoor Check:** Es wird nur entfeuchtet, wenn die Außenluft trockener ist als die Innenluft (`out_hum < in_hum`).
+- **Adaptive Automatik (CO2-Priorisierung):** CO2 hat immer Vorrang. Steigt der CO2-Wert über den HA-Grenzwert, regelt ein PID-Regler die Lüfterleistung **exklusiv** und lautlos hoch — die Luftfeuchtigkeit wird während dieser Zeit ignoriert. Ein konfigurierbarer Min-/Max-Level (`automatik_min_fan_level`) begrenzt das Anpassungsfenster.
+- **💧 Feuchtigkeitsmanagement:** Erst wenn der CO2-Bedarf gedeckt ist (Wert unter Grenzwert), übernimmt die Feuchtigkeits-Regelung. Steigt die Luftfeuchtigkeit über das Limit (Standard 60%), erhöht der separate PID-Regler (`pid_humidity`) die Leistung (Schimmelschutz). Eine intelligente Hysterese verhindert ein Hin- und Her-Schalten zwischen CO2- und Feuchtigkeitssteuerung. **Outdoor Check:** Es wird nur entfeuchtet, wenn die Außenluft trockener ist als die Innenluft (`out_hum < in_hum`).
 - **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich wechselt das System automatisch in `Durchlüften`. Sobald es außen wieder wärmer wird, kehrt es zu WRG zurück.
 - **Anwesenheit (Manuelle Modi):** In den Modi WRG, Durchlüften und Stoßlüftung wird die Lüfterstärke bei erkannter Präsenz dynamisch angepasst (Slider `-5` bis `+5`). Dies erlaubt einen bedarfsgerechten "Präsenz-Boost" ohne die Automatik-Regelung zu beeinflussen.
 - **🌱 Energiespar-Modus (Light Sleep):** Wenn das System ausgeschaltet wird (Modus `Aus`), wechselt der ESP32-C6 in einen stromsparenden Light Sleep. Dabei wird das WLAN deaktiviert und der LED-Treiber (PCA9685) via Hardware-Pin komplett abgeschaltet. Das Gerät bleibt über den physischen Power-Button jederzeit weckbar. Beim Aufwecken synchronisiert es sich automatisch direkt mit dem aktuellen Status der restlichen Lüftungsgruppe.
@@ -469,7 +469,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **Modus**: Auswahl (Smart-Automatik / Eco Recovery / Ventilation / Off)
 - **Timer**: Konfiguration für "Durchlüften" (Standard: 30 Min)
 - **LED-Helligkeit**: `number.max_led_brightness` (0-100%, Standard: 80%) zur Begrenzung der maximalen Panel-Helligkeit.
-- **CO2-Grenzwert**: `number.auto_co2_threshold` (Standard aktiv)
+- **CO2-Grenzwert**: `number.auto_co2_threshold` (Im Automatik-Modus immer aktiv)
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
 👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/Entities_Documentation.md)**.

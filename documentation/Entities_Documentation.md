@@ -27,12 +27,9 @@ Diese Entitäten dienen der primären Steuerung des Lüfters und des Betriebsmod
 
 Mit diesen Entitäten wird das Verhalten des "Automatik" Modus konfiguriert.
 
-* **`switch.automatik_co2`** ("CO2 Automatik")
-  * *Typ:* Switch
-  * *Dokumentation:* Aktiviert oder deaktiviert den PID-Regler, der die Lüftergeschwindigkeit dynamisch basierend auf dem aktuellen CO2-Wert steuert.
 * **`number.auto_co2_threshold`** ("Automatik: CO2 Grenzwert")
   * *Typ:* Number (Slider)
-  * *Dokumentation:* Setzt den Ziel-CO2-Wert (Setpoint) in ppm für den PID-Regler.
+  * *Dokumentation:* Setzt den Ziel-CO2-Wert (Setpoint) in ppm für den PID-Regler. Die CO2-Regelung ist im Automatik-Modus immer aktiv und hat Priorität vor der Feuchtigkeitsregelung.
 * **`number.auto_humidity_threshold`** ("Automatik: Feuchte Grenzwert")
   * *Typ:* Number (Slider)
   * *Dokumentation:* Ein optionaler Feuchtigkeitsgrenzwert (%), ab dem die Lüftung ebenfalls hochregelt.

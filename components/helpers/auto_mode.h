@@ -120,66 +120,95 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
   }
 }
 
-/** @brief Aggregates PID demands from CO2 and Humidity, integrating peer data. */
+/** @brief Aggregates PID demands with CO2 priority over humidity, integrating peer data.
+ *
+ * CO2 always takes priority: when CO2 demand is active, humidity is ignored.
+ * Humidity PID only contributes when CO2 demand has fully subsided.
+ * Hysteresis prevents ping-pong: CO2 "grabs" control at 0.01 and "releases" at 0.005.
+ */
 inline float calculate_combined_demand(uint32_t now) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return 0.0f;
 
-  float max_demand = NAN;
-  bool has_any_local_data = false;
+  // Hysteresis state: once CO2 takes over, it stays the sole controller
+  // until its demand drops below a lower release threshold.
+  static bool co2_is_controlling = false;
 
-  // 1. CO2 Demand
-  if (co2_auto_enabled != nullptr && co2_auto_enabled->value() && co2_pid_result != nullptr) {
+  // Thresholds for hysteresis
+  constexpr float CO2_GRAB_THRESHOLD   = 0.01f;  // CO2 takes exclusive control
+  constexpr float CO2_RELEASE_THRESHOLD = 0.005f; // CO2 releases control to humidity
+
+  float local_demand = NAN;
+
+  // 1. CO2 Demand (always evaluated)
+  float co2_demand = 0.0f;
+  bool has_co2_data = false;
+  if (co2_pid_result != nullptr) {
     const float co2_val = co2_pid_result->value();
     if (!std::isnan(co2_val)) {
-      max_demand = co2_val;
-      has_any_local_data = true;
+      co2_demand = std::max(0.0f, co2_val);
+      has_co2_data = true;
     }
   }
 
-  // 2. Humidity Demand (Outdoor Check)
+  // 2. Humidity Demand (always evaluated, but only used when CO2 is satisfied)
+  float hum_demand = 0.0f;
+  bool has_hum_data = false;
   if (scd41_humidity != nullptr && outdoor_humidity != nullptr && humidity_pid_result != nullptr) {
     const float in_hum = scd41_humidity->state;
     const float out_hum = outdoor_humidity->state;
     const float hum_pid_val = humidity_pid_result->value();
-    if (!std::isnan(in_hum) && !std::isnan(out_hum) && out_hum < in_hum && !std::isnan(hum_pid_val)) {
-      if (!has_any_local_data || hum_pid_val > max_demand) {
-        max_demand = hum_pid_val;
-        has_any_local_data = true;
+    if (!std::isnan(in_hum) && !std::isnan(out_hum) && !std::isnan(hum_pid_val)) {
+      has_hum_data = true;
+      // Only apply humidity demand if outside air is drier (ventilation would help)
+      if (out_hum < in_hum) {
+        hum_demand = std::max(0.0f, hum_pid_val);
       }
-    } else if (!std::isnan(in_hum) && !std::isnan(out_hum)) {
-       // We have valid humidity data, but it doesn't require ventilation.
-       // Only initialize to 0.0 if not already set by CO2.
-       if (!has_any_local_data) {
-         max_demand = 0.0f;
-         has_any_local_data = true;
-       }
     }
   }
 
-  // Default to 0.0 if we have sensors but they report "no demand"
-  if (!has_any_local_data && co2_auto_enabled != nullptr && co2_auto_enabled->value()) {
-     // CO2 is enabled but result is NAN? We stay at NAN.
-  } else if (!has_any_local_data) {
-     // No sensors enabled or giving data? Default to 0.0 to allow baseline operation
-     // unless we want to stick to NAN to hold the state.
-     // By returning NAN here, we trigger the "hold state" guard in evaluate_auto_mode.
+  // 3. CO2 Priority Logic with Hysteresis
+  if (co2_is_controlling) {
+    // CO2 is currently in control — only release when demand drops below lower threshold
+    if (co2_demand < CO2_RELEASE_THRESHOLD && has_co2_data) {
+      co2_is_controlling = false;
+      ESP_LOGD("auto_mode", "CO2 demand released (%.3f < %.3f), humidity PID enabled", co2_demand, CO2_RELEASE_THRESHOLD);
+    }
+  } else {
+    // CO2 is not in control — grab if demand exceeds upper threshold
+    if (co2_demand >= CO2_GRAB_THRESHOLD) {
+      co2_is_controlling = true;
+      ESP_LOGD("auto_mode", "CO2 demand grabbed control (%.3f >= %.3f), humidity PID suppressed", co2_demand, CO2_GRAB_THRESHOLD);
+    }
   }
 
-  // 3. Peer Integration (Symmetric group behavior)
+  // 4. Select demand based on priority
+  if (co2_is_controlling) {
+    // CO2 is the sole controller
+    local_demand = co2_demand;
+  } else if (has_hum_data) {
+    // CO2 is satisfied, use humidity demand
+    local_demand = hum_demand;
+  } else if (has_co2_data) {
+    // Have CO2 data but no humidity data — use CO2 (even if near zero)
+    local_demand = co2_demand;
+  }
+  // else: local_demand stays NAN → triggers "hold state" guard
+
+  // 5. Peer Integration (Symmetric group behavior)
   if (!std::isnan(v->last_peer_pid_demand) && (now - v->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
-    if (std::isnan(max_demand) || v->last_peer_pid_demand > max_demand) {
-      max_demand = v->last_peer_pid_demand;
+    if (std::isnan(local_demand) || v->last_peer_pid_demand > local_demand) {
+      local_demand = v->last_peer_pid_demand;
     }
   }
 
-  // 4. Network Sync Trigger (Only if we have a valid new value)
-  if (!std::isnan(max_demand)) {
-    if (std::abs(max_demand - v->local_pid_demand) > PID_SYNC_THRESHOLD) {
+  // 6. Network Sync Trigger (Only if we have a valid new value)
+  if (!std::isnan(local_demand)) {
+    if (std::abs(local_demand - v->local_pid_demand) > PID_SYNC_THRESHOLD) {
       v->trigger_sync();
     }
-    v->local_pid_demand = max_demand;
-    return std::clamp(max_demand, 0.0f, 1.0f);
+    v->local_pid_demand = local_demand;
+    return std::clamp(local_demand, 0.0f, 1.0f);
   }
 
   return NAN;

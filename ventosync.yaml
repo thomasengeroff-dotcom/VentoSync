@@ -115,12 +115,6 @@ globals:
     initial_value: '""'
     restore_value: true
 
-  # CO2 auto-control enabled (only functional when SCD41 is connected)
-  - id: co2_auto_enabled
-    type: bool
-    initial_value: "true" # Default: enabled in Smart-Automatik
-    restore_value: true
-
   # Automatik: min fan level (moisture protection / DIN 1946-6 Feuchteschutz)
   - id: automatik_min_fan_level
     type: int

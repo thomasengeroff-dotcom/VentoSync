@@ -87,8 +87,6 @@ extern esphome::globals::RestoringGlobalsComponent<int>
     *current_mode_index; ///< Active mode index (0–3).
 extern esphome::globals::RestoringGlobalsComponent<int>
     *fan_intensity_level; ///< Fan intensity (1–10).
-extern esphome::globals::RestoringGlobalsComponent<bool>
-    *co2_auto_enabled; ///< CO2 auto-control enabled flag.
 extern esphome::globals::RestoringGlobalsComponent<int>
     *automatik_min_fan_level; ///< Min fan level for auto control (moisture
                               ///< protection).
@@ -116,8 +114,6 @@ extern esphome::template_::TemplateNumber
     *vent_timer; ///< Ventilation timer (minutes).
 extern esphome::template_::TemplateNumber
     *fan_intensity_display; ///< Fan intensity display number.
-extern esphome::template_::TemplateSwitch
-    *automatik_co2; ///< CO2 auto-control on/off switch.
 extern esphome::template_::TemplateNumber
     *automatik_min_luefterstufe; ///< Min fan level for automated modes.
 extern esphome::template_::TemplateNumber

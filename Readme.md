@@ -410,8 +410,8 @@ The device cycles through the programs via the **Mode button (M)**. Upon **power
 **Logic in Detail:**
 
 - **Basic Operation:** Heat recovery (`MODE_ECO_RECOVERY`) at minimum fan level (`CO2_min_fan_level`, default: 2). The change intervals (cycle duration) adapt dynamically to the current fan level (gentle 70 seconds at level 1 to fast 50 seconds at level 10) including a synchronized NTC time window.
-- **Adaptive Auto (CO2):** If the CO2 value rises above the HA limit, a PID controller regulates the fan power **steplessly** and silently up. A configurable min/max level (`automatik_min_fan_level`) limits the adjustment window.
-- **💧 Humidity Management:** If the humidity limit is exceeded (default 60%), a separate PID controller (`PID_humidity`) increases the power (mold prevention). Intelligent hysteresis (`±2%`) prevents "Rapid Cycling". **Outdoor Check:** Dehumidification only occurs if the outside air is drier than the inside air (`out_hum < in_hum`).
+- **Adaptive Auto (CO2 Priority):** CO2 always has priority. If the CO2 value rises above the HA limit, a PID controller **exclusively** regulates the fan power **steplessly** and silently up — humidity is ignored during this time. A configurable min/max level (`automatik_min_fan_level`) limits the adjustment window.
+- **💧 Humidity Management:** Only when CO2 is satisfied (below threshold), the humidity PID controller takes over. If the humidity limit is exceeded (default 60%), the separate PID controller (`PID_humidity`) increases the power (mold prevention). Intelligent hysteresis prevents rapid switching between CO2 and humidity control. **Outdoor Check:** Dehumidification only occurs if the outside air is drier than the inside air (`out_hum < in_hum`).
 - **Summer Cooling:** If indoor temperature > 22°C and the outdoor area is cooler, the system automatically switches to `Ventilation`. As soon as it gets warmer outside again, it returns to Heat Recovery.
 - **Presence (Manual Modes):** In Heat Recovery, Ventilation, and Boost Ventilation modes, the fan strength is dynamically adjusted when presence is detected (slider `-5` to `+5`). This allows for demand-based "presence boost" without affecting the automatic control.
 - **🌱 Energy Saving Mode (Light Sleep):** When the system is switched off (Mode `Off`), the ESP32-C6 switches to a power-saving Light Sleep. In this state, Wi-Fi is deactivated and the LED driver (PCA9685) is completely switched off via a hardware pin. The device remains wakeable at any time via the physical power button. Upon waking up, it automatically synchronizes directly with the current status of the rest of the ventilation group.
@@ -469,7 +469,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **Mode**: Selection (Standard Automatic / Eco Recovery / Ventilation / Off)
 - **Timer**: Configuration for "Ventilation" (default: 30 min)
 - **LED Brightness**: `number.max_led_brightness` (0-100%, default: 80%) to limit the maximum panel brightness.
-- **CO2 Limit**: `number.auto_CO2_threshold` (enabled by default)
+- **CO2 Limit**: `number.auto_CO2_threshold` (always active in Automatik mode)
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 
 👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Entities_Documentation.md](documentation/Entities_Documentation.md)**.

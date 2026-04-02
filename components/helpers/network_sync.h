@@ -297,16 +297,7 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   bool dirty = false;
   auto *v = ventilation_ctrl;
 
-  // 1. CO2 Automatik (Switch)
-  if (co2_auto_enabled != nullptr && automatik_co2 != nullptr &&
-      pkt->co2_auto_enabled != co2_auto_enabled->value()) {
-    co2_auto_enabled->value() = pkt->co2_auto_enabled;
-    automatik_co2->publish_state(pkt->co2_auto_enabled);
-    ESP_LOGI("vent_sync", "Synced co2_auto_enabled: %d", pkt->co2_auto_enabled);
-    dirty = true;
-  }
-
-  // 2. Automatik Min/Max Levels (Sliders 1-10)
+  // 1. Automatik Min/Max Levels (Sliders)
   if (automatik_min_fan_level != nullptr &&
       automatik_min_luefterstufe != nullptr &&
       pkt->automatik_min_fan_level >= 1 && pkt->automatik_min_fan_level <= 10 &&

@@ -91,7 +91,6 @@ struct __attribute__((packed)) VentilationPacket {
   uint8_t fan_intensity; ///< Current 1-10 level
 
   // Automatik Config payload
-  bool co2_auto_enabled;               ///< Is CO2 control active?
   uint8_t automatik_min_fan_level;     ///< 1-10 minimum level
   uint8_t automatik_max_fan_level;     ///< 1-10 maximum level
   uint16_t auto_co2_threshold_val;     ///< Setpoint, e.g. 1000 ppm (16-bit)
