@@ -483,19 +483,21 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 | **Function** | Fan **STOP** | Direction A (Exhaust / Out) | Direction B (Supply / In) |
 | **Speed** | 0 RPM | increases with distance from 50% | increases with distance from 50% |
 
-| Level | Performance | PWM Dir A (Exhaust) | PWM Dir B (Supply) |
-| :---: | :---: | :---: | :---: |
-| **OFF** | 0 % | 50.0 % | 50.0 % |
-| **1** | 10 % | 30.0 % | 70.0 % |
-| **2** | 20 % | 27.2 % | 72.8 % |
-| **3** | 30 % | 24.4 % | 75.6 % |
-| **4** | 40 % | 21.7 % | 78.3 % |
-| **5** | 50 % | 18.9 % | 81.1 % |
-| **6** | 60 % | 16.1 % | 83.9 % |
-| **7** | 70 % | 13.3 % | 86.7 % |
-| **8** | 80 % | 10.6 % | 89.4 % |
-| **9** | 90 % | 7.8 % | 92.2 % |
-| **10** | 100 % | 5.0 % | 95.0 % |
+| Level | Performance | PWM Dir A (Exhaust) | PWM Dir B (Supply) | RPM (approx.) |
+| :---: | :---: | :---: | :---: | :---: |
+| **OFF** | 0 % | 50.0 % | 50.0 % | 0 |
+| **1** | 10 % | 30.0 % | 70.0 % | 420 |
+| **2** | 16 % | 27.2 % | 72.8 % | 672 |
+| **3** | 23 % | 24.4 % | 75.6 % | 966 |
+| **4** | 31 % | 21.7 % | 78.3 % | 1302 |
+| **5** | 40 % | 18.9 % | 81.1 % | 1680 |
+| **6** | 50 % | 16.1 % | 83.9 % | 2100 |
+| **7** | 61 % | 13.3 % | 86.7 % | 2562 |
+| **8** | 73 % | 10.6 % | 89.4 % | 3066 |
+| **9** | 86 % | 7.8 % | 92.2 % | 3612 |
+| **10** | 100 % | 5.0 % | 95.0 % | 4200 |
+
+The RPM range is optimized to allow for finer steps at low levels, while the power increases more rapidly at higher levels.
 
 > ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM never at 50% = stop). In Standard Automatic mode (PID), the speed is regulated steplessly between `CO2_min_fan_level` and `CO2_max_fan_level`.
 > 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery/Boost Ventilation), the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.

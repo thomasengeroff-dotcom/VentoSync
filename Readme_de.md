@@ -478,25 +478,22 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 
 Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **einzelnes PWM-Signal** gesteuert. Die Kennlinie folgt einer V-Form (gemessen via Oszilloskop), wobei 50% PWM den Stillstand markiert:
 
-| | **50 % PWM** | **30 % → 5 % PWM** | **70 % → 95 % PWM** |
-|---|---|---|---|
-| **Funktion** | Lüfter **STOP** | Richtung A (Abluft / Raus) | Richtung B (Zuluft / Rein) |
-| **Drehzahl** | 0 RPM | steigt mit Abstand zu 50% | steigt mit Abstand zu 50% |
 
-| Stufe | Leistung | PWM Dir A (Abluft) | PWM Dir B (Zuluft) |
-| :---: | :---: | :---: | :---: |
-| **OFF** | 0 % | 50.0 % | 50.0 % |
-| **1** | 10 % | 30.0 % | 70.0 % |
-| **2** | 20 % | 27.2 % | 72.8 % |
-| **3** | 30 % | 24.4 % | 75.6 % |
-| **4** | 40 % | 21.7 % | 78.3 % |
-| **5** | 50 % | 18.9 % | 81.1 % |
-| **6** | 60 % | 16.1 % | 83.9 % |
-| **7** | 70 % | 13.3 % | 86.7 % |
-| **8** | 80 % | 10.6 % | 89.4 % |
-| **9** | 90 % | 7.8 % | 92.2 % |
-| **10** | 100 % | 5.0 % | 95.0 % |
+| Stufe | Leistung | PWM Dir A (Abluft) | PWM Dir B (Zuluft) | RPM (ca.) |
+| :---: | :---: | :---: | :---: | :---: |
+| **OFF** | 0 % | 50.0 % | 50.0 % | 0 |
+| **1** | 10 % | 30.0 % | 70.0 % | 420 |
+| **2** | 16 % | 27.2 % | 72.8 % | 672 |
+| **3** | 23 % | 24.4 % | 75.6 % | 966 |
+| **4** | 31 % | 21.7 % | 78.3 % | 1302 |
+| **5** | 40 % | 18.9 % | 81.1 % | 1680 |
+| **6** | 50 % | 16.1 % | 83.9 % | 2100 |
+| **7** | 61 % | 13.3 % | 86.7 % | 2562 |
+| **8** | 73 % | 10.6 % | 89.4 % | 3066 |
+| **9** | 86 % | 7.8 % | 92.2 % | 3612 |
+| **10** | 100 % | 5.0 % | 95.0 % | 4200 |
 
+Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen eine feinere Abstufung ermöglicht, während in den höheren Stufen die Leistung schneller ansteigt.
 > ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl stufenlos zwischen `co2_min_fan_level` und `co2_max_fan_level` geregelt.
 > 🔄 **Software-Fan-Ramping:** Bei jedem Richtungswechsel (WRG/Stoßlüftung) führt das System eine **5-sekündige sanfte Abbrems- und Anlauframpe** durch. Dies schont den Motor und minimiert Umschaltgeräusche. Die Intensitäts-LEDs zeigen währenddessen bereits den Zielwert an.
 

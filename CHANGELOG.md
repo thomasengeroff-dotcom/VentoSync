@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.30] - 2026-04-03
+### Changed
+- **RPM-Kennlinie**: Optimierte quadratische Verteilung der Lüfterstufen (v0.8.30) zur feineren Steuerung in niedrigen Bereichen (1-4) bei gleichbleibender Maximallast.
+- **Dokumentation**: Aktualisierung der RPM-Tabellen in Readme.md und Readme_de.md.
+
 ## [0.8.27] - 2026-04-03
 ### Optimized
 - **NTC Stabilization Filter**: Refactoring des `filter_ntc_stable` in `climate.h`. Umstellung auf `constexpr` Konstanten und Optimierung der Sliding-Window-Logik für präzisere Wertermittlung während der thermischen Einschwingphase.
