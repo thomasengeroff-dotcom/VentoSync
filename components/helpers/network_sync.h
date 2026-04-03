@@ -42,12 +42,86 @@ inline bool is_local_mac(const uint8_t *mac) {
 
 /** @brief Checks if this is the only device in the room group. */
 inline bool is_single_device_group() {
-  if (espnow_peers == nullptr) return true;
-  std::string peer_list = espnow_peers->value();
-  return peer_list.empty();
+  return peer_cache.empty();
 }
 
-/** @brief Registers a MAC address as an ESP-NOW peer and persists it to NVS. */
+// --- Peer Cache Helpers -------------------------------------------------
+
+/** @brief Formats a MAC address as a human-readable string. */
+inline std::string format_mac(const uint8_t *mac) {
+  char buf[20];
+  snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X",
+           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  return std::string(buf);
+}
+
+/** @brief Finds a peer in the binary cache by MAC address. Returns nullptr if not found. */
+inline PeerEntry* find_peer_in_cache(const uint8_t *mac) {
+  for (auto &entry : peer_cache) {
+    if (memcmp(entry.mac.data(), mac, 6) == 0) return &entry;
+  }
+  return nullptr;
+}
+
+/** @brief Rebuilds the NVS-backed espnow_peers string from peer_cache. */
+inline void rebuild_peers_string() {
+  if (espnow_peers == nullptr) return;
+  std::string &list = espnow_peers->value();
+  list.clear();
+  for (size_t i = 0; i < peer_cache.size(); i++) {
+    if (i > 0) list += ",";
+    list += format_mac(peer_cache[i].mac.data());
+  }
+}
+
+/** @brief Removes a stale peer from peer_cache, NVS string, and ESP-NOW peer list. */
+inline void remove_stale_peer(const uint8_t *mac) {
+  std::string mac_str = format_mac(mac);
+
+  // Remove from ESP-NOW hardware peer list
+  esp_now_del_peer(mac);
+
+  // Remove from binary cache
+  peer_cache.erase(
+    std::remove_if(peer_cache.begin(), peer_cache.end(),
+      [mac](const PeerEntry &e) { return memcmp(e.mac.data(), mac, 6) == 0; }),
+    peer_cache.end());
+
+  // Rebuild the NVS string from the authoritative cache
+  rebuild_peers_string();
+
+  ESP_LOGW("espnow_recovery", "Stale peer %s removed (cache: %d peers remaining)",
+           mac_str.c_str(), peer_cache.size());
+}
+
+/** @brief Triggers a re-discovery broadcast with 30s throttle. */
+inline void trigger_re_discovery() {
+  static uint32_t last_re_discovery = 0;
+  uint32_t now = millis();
+  if (last_re_discovery != 0 && now - last_re_discovery < 30000) {
+    ESP_LOGD("espnow_recovery", "Re-discovery throttled (cooldown active)");
+    return;
+  }
+  last_re_discovery = now;
+  ESP_LOGI("espnow_recovery", "Triggering re-discovery after peer loss...");
+  send_discovery_broadcast();
+  request_peer_status();
+}
+
+/** @brief Resets the fail counter for a peer on successful communication. */
+inline void reset_peer_fail_count(const uint8_t *mac) {
+  PeerEntry *entry = find_peer_in_cache(mac);
+  if (entry != nullptr && entry->fail_count > 0) {
+    ESP_LOGD("espnow_recovery", "Peer %02X:%02X:%02X recovered (was %d failures)",
+             mac[3], mac[4], mac[5], entry->fail_count);
+    entry->fail_count = 0;
+    entry->last_seen = millis();
+  } else if (entry != nullptr) {
+    entry->last_seen = millis();
+  }
+}
+
+/** @brief Registers a MAC address as an ESP-NOW peer, persists to NVS, and adds to binary cache. */
 inline void register_peer_dynamic(const uint8_t *mac) {
   if (!esphome::espnow::global_esp_now) {
     ESP_LOGW("espnow_disc",
@@ -61,11 +135,10 @@ inline void register_peer_dynamic(const uint8_t *mac) {
     ESP_LOGE("espnow_disc", "espnow_peers global is null!");
     return;
   }
-  char mac_buf[20];
-  snprintf(mac_buf, sizeof(mac_buf), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0],
-           mac[1], mac[2], mac[3], mac[4], mac[5]);
-  std::string mac_str(mac_buf);
 
+  std::string mac_str = format_mac(mac);
+
+  // Persist to NVS string
   std::string &current_list = espnow_peers->value();
   if (current_list.find(mac_str) == std::string::npos) {
     if (!current_list.empty())
@@ -75,6 +148,21 @@ inline void register_peer_dynamic(const uint8_t *mac) {
              mac_str.c_str());
   }
 
+  // Add to binary peer cache (if not already present)
+  if (find_peer_in_cache(mac) == nullptr) {
+    PeerEntry entry{};
+    std::copy(mac, mac + 6, entry.mac.begin());
+    entry.last_seen = millis();
+    entry.fail_count = 0;
+    peer_cache.push_back(entry);
+    ESP_LOGI("espnow_disc", "Peer %s added to binary cache (total: %d)",
+             mac_str.c_str(), peer_cache.size());
+  } else {
+    // Peer already known — just reset fail counter
+    reset_peer_fail_count(mac);
+  }
+
+  // Register with ESP-NOW hardware layer
   esp_now_peer_info_t peer_info = {};
   memset(&peer_info, 0, sizeof(esp_now_peer_info_t));
   memcpy(peer_info.peer_addr, mac, 6);
@@ -94,13 +182,16 @@ inline void register_peer_dynamic(const uint8_t *mac) {
   }
 }
 
-/** @brief Loads all peers saved in the runtime string cache. */
+/** @brief Loads all peers saved in the runtime string cache and populates peer_cache. */
 inline void load_peers_from_runtime_cache() {
   if (!esphome::espnow::global_esp_now || espnow_peers == nullptr)
     return;
   std::string current_list = espnow_peers->value();
   if (current_list.empty())
     return;
+
+  // Clear runtime cache before rebuilding from NVS
+  peer_cache.clear();
 
   size_t start = 0;
   size_t end = current_list.find(",");
@@ -111,6 +202,15 @@ inline void load_peers_from_runtime_cache() {
     auto mac = parse_mac_local(mac_str);
     if (mac.has_value()) {
       esphome::espnow::global_esp_now->add_peer(mac->data());
+
+      // Populate binary cache
+      if (find_peer_in_cache(mac->data()) == nullptr) {
+        PeerEntry entry{};
+        entry.mac = mac.value();
+        entry.last_seen = millis();
+        entry.fail_count = 0;
+        peer_cache.push_back(entry);
+      }
       ESP_LOGI("espnow_disc", "Restored peer from flash: %s", mac_str.c_str());
     }
     if (end == std::string::npos)
@@ -118,6 +218,7 @@ inline void load_peers_from_runtime_cache() {
     start = end + 1;
     end = current_list.find(",", start);
   }
+  ESP_LOGI("espnow_disc", "Peer cache loaded: %d peers from NVS", peer_cache.size());
 }
 
 /** @brief Sends a discovery broadcast to identify peers in the same room. */
@@ -173,29 +274,42 @@ inline void send_discovery_confirmation(const uint8_t *target_mac) {
   esphome::espnow::global_esp_now->send(target_mac, data, [](esp_err_t err) {});
 }
 
-/** @brief Sends a sync packet to all registered peers via unicast. */
+/** @brief Sends a sync packet to all registered peers via unicast with ACK tracking. */
 inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
-  if (!esphome::espnow::global_esp_now || espnow_peers == nullptr)
-    return;
-  std::string current_list = espnow_peers->value();
-  if (current_list.empty())
+  if (!esphome::espnow::global_esp_now || peer_cache.empty())
     return;
 
-  size_t start = 0;
-  size_t end = current_list.find(",");
-  while (true) {
-    std::string mac_str = (end == std::string::npos)
-                              ? current_list.substr(start)
-                              : current_list.substr(start, end - start);
-    auto mac = parse_mac_local(mac_str);
-    if (mac.has_value()) {
-      esphome::espnow::global_esp_now->send(mac->data(), data,
-                                            [](esp_err_t err) {});
-    }
-    if (end == std::string::npos)
-      break;
-    start = end + 1;
-    end = current_list.find(",", start);
+  for (auto &entry : peer_cache) {
+    // Capture MAC by value to avoid dangling pointer in async callback
+    std::array<uint8_t, 6> peer_mac = entry.mac;
+    esphome::espnow::global_esp_now->send(peer_mac.data(), data,
+      [peer_mac](esp_err_t err) {
+        PeerEntry *p = find_peer_in_cache(peer_mac.data());
+        if (p == nullptr) return; // Peer was already removed
+
+        if (err == ESP_OK) {
+          // Success: reset fail counter, update timestamp
+          if (p->fail_count > 0) {
+            ESP_LOGI("espnow_ack", "Peer %02X:%02X:%02X recovered after %d failures",
+                     peer_mac[3], peer_mac[4], peer_mac[5], p->fail_count);
+            p->fail_count = 0;
+          }
+          p->last_seen = millis();
+        } else {
+          // Failure: increment counter
+          p->fail_count++;
+          ESP_LOGW("espnow_ack", "Send to %02X:%02X:%02X failed (err=%d, consecutive failures: %d/%d)",
+                   peer_mac[3], peer_mac[4], peer_mac[5],
+                   err, p->fail_count, MAX_PEER_SEND_FAILURES);
+
+          if (p->fail_count >= MAX_PEER_SEND_FAILURES) {
+            ESP_LOGE("espnow_ack", "Peer %02X:%02X:%02X exceeded max failures (%d) — removing and triggering re-discovery",
+                     peer_mac[3], peer_mac[4], peer_mac[5], MAX_PEER_SEND_FAILURES);
+            remove_stale_peer(peer_mac.data());
+            trigger_re_discovery();
+          }
+        }
+      });
   }
 }
 
@@ -241,7 +355,7 @@ inline void sync_settings_to_peers() {
 
   auto data = build_and_populate_packet(esphome::MSG_STATE);
   send_sync_to_all_peers(data);
-  ESP_LOGI("vent_sync", "Sent state change via UNICAST to %s", espnow_peers ? espnow_peers->value().c_str() : "no peers");
+  ESP_LOGI("vent_sync", "Sent state change via UNICAST to %d peer(s)", peer_cache.size());
 }
 
 namespace espnow_handler {
@@ -462,6 +576,9 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
   if (!espnow_handler::validate_packet(data))
     return;
 
+  // Successful packet reception — reset fail counter for this peer
+  reset_peer_fail_count(src_mac);
+
   const auto *pkt =
       reinterpret_cast<const esphome::VentilationPacket *>(data.data());
   auto *v = ventilation_ctrl;
@@ -482,8 +599,13 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
     if (config_floor_id != nullptr && config_room_id != nullptr &&
         pkt->floor_id == (int)config_floor_id->state &&
         pkt->room_id == (int)config_room_id->state) {
-      ESP_LOGI("vent_sync", "Adopting state from peer %d (REBOOT SYNC)",
-               pkt->device_id);
+      // Prefer Master's response; accept non-Master only as fallback
+      if (!is_from_master(pkt)) {
+        ESP_LOGI("vent_sync", "Non-master peer %d responded. Accepting as fallback (master may be offline).",
+                 pkt->device_id);
+      }
+      ESP_LOGI("vent_sync", "Adopting state from peer %d (REBOOT SYNC%s)",
+               pkt->device_id, is_from_master(pkt) ? " - MASTER" : " - FALLBACK");
 
       int mode_idx = pkt->current_mode_index;
 
@@ -511,7 +633,7 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
   bool should_sync_config = false;
   if (pkt->msg_type == esphome::MSG_STATE) {
     should_sync_config = true;
-  } else if (pkt->msg_type == esphome::MSG_SYNC && pkt->device_id == 1 && v->device_id != 1) {
+  } else if (pkt->msg_type == esphome::MSG_SYNC && is_from_master(pkt) && !is_master()) {
     should_sync_config = true;
   }
 

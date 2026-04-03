@@ -59,6 +59,7 @@ number:
             v->set_floor_id((uint8_t)x);
             ESP_LOGI("config", "Floor ID updated to: %d", (uint8_t)x);
             id(espnow_peers) = ""; // Clear peers on floor change
+            peer_cache.clear();     // Clear binary peer cache
             send_discovery_broadcast(); // Trigger discovery broadcast
 
   - platform: template
@@ -80,6 +81,7 @@ number:
             v->set_room_id((uint8_t)x);
             ESP_LOGI("config", "Room ID updated to: %d", (uint8_t)x);
             id(espnow_peers) = ""; // Clear peers on room change
+            peer_cache.clear();     // Clear binary peer cache
             send_discovery_broadcast(); // Trigger discovery broadcast
 
   - platform: template

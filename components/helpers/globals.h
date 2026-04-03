@@ -39,6 +39,7 @@
 #include "esp_now.h"
 #include "esphome.h"
 #include <algorithm>
+#include <array>
 #include <deque>
 #include <string>
 #include <vector>
@@ -70,6 +71,18 @@ static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
 static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
 static constexpr uint32_t PEER_TIMEOUT_MS = 300000; // 5 minutes
 static constexpr float PID_SYNC_THRESHOLD = 0.05f;  // Minimum demand change to trigger sync
+static constexpr uint8_t MAX_PEER_SEND_FAILURES = 3; // Remove peer after N consecutive failures
+
+// --- Binary Peer Cache (Runtime) ----------------------------------------
+/// @brief Runtime peer entry for O(1) MAC lookup during send operations.
+/// The NVS-backed espnow_peers string remains the persistent source of truth.
+struct PeerEntry {
+  std::array<uint8_t, 6> mac;
+  uint32_t last_seen;   ///< millis() timestamp of last successful interaction
+  uint8_t fail_count;   ///< consecutive unicast send failures
+};
+
+inline std::vector<PeerEntry> peer_cache;
 
 // --- Component pointer declarations (extern) ---------------------------
 // FIXED #8: All pointers are declared `extern` so this header can be compiled
@@ -248,6 +261,10 @@ inline void send_discovery_confirmation(const uint8_t *target_mac);
 inline void send_sync_to_all_peers(const std::vector<uint8_t> &data);
 inline void sync_settings_to_peers();
 inline void handle_espnow_receive(const std::vector<uint8_t> &data);
+inline void remove_stale_peer(const uint8_t *mac);
+inline void trigger_re_discovery();
+inline void reset_peer_fail_count(const uint8_t *mac);
+inline void rebuild_peers_string();
 inline void set_ventilation_timer(float value);
 inline void set_sync_interval_handler(float value);
 inline void set_fan_intensity_slider(float value);
@@ -264,6 +281,16 @@ inline void sync_config_to_controller();
 inline void run_led_self_test();
 inline void update_leds_logic();
 inline void check_master_led_error();
+
+/** @brief Returns true if this device is the Master (device_id == 1). */
+inline bool is_master() {
+  return ventilation_ctrl != nullptr && ventilation_ctrl->device_id == 1;
+}
+
+/** @brief Returns true if the given packet was sent by the Master device. */
+inline bool is_from_master(const esphome::VentilationPacket *pkt) {
+  return pkt->device_id == 1;
+}
 inline void set_fan_logic(float speed, int direction);
 inline float level_to_speed(float level);
 inline float get_current_target_speed();

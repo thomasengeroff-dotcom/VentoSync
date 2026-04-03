@@ -188,6 +188,9 @@ inline void handle_button_level_click() {
       fan_speed_update == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
+  // MCP23017 GPIOs may float LOW during boot → inverted: true reads as pressed
+  if (millis() < 10000) return;
+
   if (!ventilation_enabled->value())
     return; // Ignore if system is off
   int level = fan_intensity_level->value();
@@ -214,6 +217,9 @@ inline void handle_intensity_bounce() {
       ventilation_ctrl == nullptr || fan_speed_update == nullptr || 
       ui_active == nullptr || update_leds == nullptr || 
       ui_timeout_script == nullptr) return;
+
+  // MCP23017 GPIOs may float LOW during boot → inverted: true reads as pressed
+  if (millis() < 10000) return;
 
   if (!ventilation_enabled->value())
     return;

@@ -4,6 +4,28 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.22] - 2026-04-03
+### Added
+- **Master Device Architecture**: Device ID=1 ist ab sofort der authoritative Master innerhalb einer Raumgruppe. Nur der Master gibt Zyklus-Timing und Richtungs-Synchronisation vor. Einstellungsänderungen (Button / Home Assistant) werden weiterhin von allen Geräten akzeptiert (`MSG_STATE`).
+- **Master LED Indicator**: Die Master-LED (PCA9685 Channel 7) leuchtet dauerhaft gedimmt auf dem Master-Gerät (ID=1), sofern kein Fehlerzustand aktiv ist. Non-Master-Geräte behalten das bisherige Verhalten (LED nur bei Fehler).
+- **Zentrale Helper-Funktionen**: `is_master()` und `is_from_master()` ersetzen alle hardcodierten `device_id == 1` Prüfungen für bessere Wartbarkeit.
+
+### Fixed
+- **Boot Button Glitch**: MCP23017 I/O Expander konnte während der Boot-Initialisierung den Level-Button als gedrückt interpretieren (GPIOs floaten LOW → `inverted: true` = ON). Ein 10-Sekunden Boot-Guard in `handle_intensity_bounce()` und `handle_button_level_click()` verhindert dies jetzt.
+- **Zyklus-Timing Drift**: `sync_time()` wird nun ausschließlich vom Master (ID=1) übernommen. Zuvor konnte jeder `MSG_SYNC` Heartbeat die Zyklusposition überschreiben, was bei mehreren Non-Master-Geräten zu kurzzeitigem Timing-Jitter führen konnte.
+- **Reboot-Sync Logging**: `MSG_STATUS_RESPONSE` protokolliert jetzt, ob der Sync vom Master oder als Fallback von einem anderen Peer erfolgte.
+
+## [0.8.21] - 2026-04-03
+### Added
+- **ESP-NOW Hardware-ACK Recovery**: Implementierung eines Fehler-Trackings für Unicast-Übertragungen.
+- **Peer-Management**: Automatisches Entfernen von "Stale Peers" nach 3 aufeinanderfolgenden Übertragungsfehlern (`MAX_PEER_SEND_FAILURES`).
+- **Selbstheilung**: Intelligente Re-Discovery mit 30s Throttle bei Peer-Verlust zur Wiederherstellung der Gruppen-Integrität.
+- **Diagnose-Logging**: Neue Log-Kategorien `espnow_ack` und `espnow_recovery` zur Überwachung der Hardware-Bestätigungen und Recovery-Aktionen.
+
+### Optimized
+- **Binary Peer Storage**: Komplette Umstellung des Peer-Managements von rechenintensivem String-Parsing auf einen binären `peer_cache` (`std::vector<PeerEntry>`). Dies ermöglicht O(1) MAC-Lookups bei jedem Sendevorgang und reduziert die CPU-Last im Main-Loop erheblich. Die NVS-basierte Persistenz des `espnow_peers` Strings bleibt für Reboots erhalten und wird im Hintergrund synchronisiert.
+- **Performance**: Reduzierung der Latenz bei Unicast-Kommunikation durch Wegfall der String-Interpreten während des Sende-Loops.
+
 ## [0.8.15] - 2026-04-03
 ### Refactored
 - **Architektur-Bereinigung**: Vollständige Entfernung des Umbrella-Headers `automation_helpers.h`. Alle Komponenten inkludieren nun nur noch die spezifisch benötigten Header (`globals.h`, `fan_control.h`, etc.), was die Abhängigkeiten minimiert und die Kompilierungszeiten optimiert.

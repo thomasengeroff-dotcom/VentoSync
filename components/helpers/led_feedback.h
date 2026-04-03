@@ -92,6 +92,12 @@ inline void check_master_led_error() {
     if (target_brightness > 0) {
       call.set_state(true);
       call.set_brightness(target_brightness);
+    } else if (is_master()) {
+      // Master Device: LED always solid ON (dimmed) when no error is active
+      call.set_effect("None");
+      call.set_state(true);
+      const float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
+      call.set_brightness(0.3f * max_b);
     } else {
       call.set_state(false);
     }

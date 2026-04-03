@@ -428,18 +428,12 @@ public:
 
     bool changed = false;
 
-    // 1. Time sync (aligns direction cycle phase)
-    if (pkt->msg_type == MSG_SYNC) {
-      state_machine.sync_time(millis(), pkt->cycle_pos_ms);
-    }
-
-    // Determine if we should adopt this packet's mode/intensity properties
+    // Determine if we should adopt this packet's mode/intensity/timing
     bool should_sync = false;
     if (pkt->msg_type == MSG_STATE) {
-      should_sync = true; // Always adopt explicit group interactions
+      should_sync = true; // Always adopt explicit group interactions from any device
     } else if (pkt->msg_type == MSG_SYNC && device_id != pkt->device_id) {
-      // Heartbeat adoption: In small groups, ID 1 or 2 acts as Master.
-      // Slaves align to the authoritative periodic state broadcast.
+      // Only the Master (device_id == 1) drives cycle timing and config sync
       if (pkt->device_id == 1) {
         should_sync = true;
       } else {
@@ -450,7 +444,10 @@ public:
     }
 
     if (should_sync) {
-      // 2. Mode & timer sync (>2 s drift triggers re-sync)
+      // 1. Time sync (aligns direction cycle phase) — Master only for MSG_SYNC
+      if (pkt->msg_type == MSG_SYNC && pkt->device_id == 1) {
+        state_machine.sync_time(millis(), pkt->cycle_pos_ms);
+      }
       int32_t time_diff =
           (int32_t)pkt->remaining_duration_ms -
           (int32_t)state_machine.get_remaining_duration(millis());
