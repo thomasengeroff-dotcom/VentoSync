@@ -4,6 +4,17 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.15] - 2026-04-03
+### Refactored
+- **Architektur-Bereinigung**: Vollständige Entfernung des Umbrella-Headers `automation_helpers.h`. Alle Komponenten inkludieren nun nur noch die spezifisch benötigten Header (`globals.h`, `fan_control.h`, etc.), was die Abhängigkeiten minimiert und die Kompilierungszeiten optimiert.
+- **Relative Inkludierung**: Normalisierung der Inklusionspfade innerhalb der Helper-Bibliothek, um Redefinitionen durch unterschiedliche Pfad-Mappings im ESPHome-Buildsystem zu verhindern.
+
+### Changed
+- **Logging-Optimierung (Noise Reduction)**:
+    - Die Sensoren für "Lüfter Richtung" und "BME680 IAQ Bewertung" nutzen nun einen Filter, der nur bei tatsächlicher Statusänderung ein Log-Ereignis auslöst. Dies eliminiert das periodische Log-Spamming alle 2 bzw. 30 Sekunden im Leerlauf.
+    - Erhöhung des Update-Intervalls für Zustands-Textsensoren von 2s auf 10s zur Entlastung der CPU.
+- **Visuelles Feedback**: Hinzufügen eines "Ramping complete" Logs, um dem Nutzer eine Bestätigung zu geben, wenn der Lüfter nach einer Richtungsänderung oder Modus-Anpassung seinen stabilen Zielzustand erreicht hat.
+
 ## [0.8.10] - 2026-04-03
 ### Changed
 - **Fan-Control Refactoring**: `calculate_automatic_pid_demand()` entfernt (Toter Code), da die Demand-Berechnung nun zentral in `auto_mode.h` erfolgt.

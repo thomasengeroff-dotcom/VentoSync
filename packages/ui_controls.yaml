@@ -323,14 +323,21 @@ text_sensor:
     id: direction_display
     icon: "mdi:directions-fork"
     lambda: |-
+      static std::string last_state = "";
+      std::string current_state = "";
+      
       if (last_fan_pwm_level < 0.45f) {
-        return {"Abluft (Raus)"};
+        current_state = "Abluft (Raus)";
       } else if (last_fan_pwm_level > 0.55f) {
-        return {"Zuluft (Rein)"};
+        current_state = "Zuluft (Rein)";
       } else {
-        return {"Stillstand"};
+        current_state = "Stillstand";
       }
-    update_interval: 2s
+
+      if (current_state == last_state) return {};
+      last_state = current_state;
+      return {current_state};
+    update_interval: 10s
 
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION

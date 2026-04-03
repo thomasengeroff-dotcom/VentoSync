@@ -154,6 +154,11 @@ inline void update_fan_logic() {
       ESP_LOGD("fan_ramp", "Ramping speed: %.2f (Base: %.2f, Factor: %.2f)",
                speed, base_speed, state.ramp_factor);
       ventilation_ctrl->last_ramp_log_ms = now;
+      ventilation_ctrl->was_ramping = true;
+    } else if (ventilation_ctrl->was_ramping && (state.ramp_factor >= RAMPING_UPPER_BOUND || state.ramp_factor <= RAMPING_LOWER_BOUND)) {
+      ESP_LOGD("fan_ramp", "Ramping complete. Target speed reached: %.2f (Factor: %.2f)",
+               speed, state.ramp_factor);
+      ventilation_ctrl->was_ramping = false;
     }
   }
 

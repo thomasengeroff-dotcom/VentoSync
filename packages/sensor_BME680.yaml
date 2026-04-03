@@ -303,15 +303,23 @@ text_sensor:
     name: "BME680 IAQ Bewertung"
     id: iaq_level
     icon: "mdi:air-filter"
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
+      static std::string last_level = "";
       float val = id(iaq_co2eq).state;
-      if (std::isnan(val)) return std::string("Unbekannt");
-      if (val <= 700) return std::string("Ausgezeichnet");
-      if (val <= 1000) return std::string("Gut");
-      if (val <= 1500) return std::string("Maessig");
-      if (val <= 2000) return std::string("Schlecht");
-      return std::string("Sehr schlecht");
+      std::string current_level = "Unbekannt";
+      
+      if (!std::isnan(val)) {
+        if (val <= 700) current_level = "Ausgezeichnet";
+        else if (val <= 1000) current_level = "Gut";
+        else if (val <= 1500) current_level = "Maessig";
+        else if (val <= 2000) current_level = "Schlecht";
+        else current_level = "Sehr schlecht";
+      }
+
+      if (current_level == last_level) return {};
+      last_level = current_level;
+      return {current_level};
 
   # Trend as text
   - platform: template

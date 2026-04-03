@@ -144,6 +144,7 @@ public:
       60000; ///< Auto-sync broadcast interval (default 1 min for dashboard).
   uint8_t current_fan_intensity = 5; ///< Cached fan intensity (1–10).
   uint32_t last_loop_ms{0};           ///< Activity timestamp for health monitoring.
+  bool was_ramping = false;           ///< Tracking for 'ramping complete' log.
 
   // --- TEMPERATURE SENSOR SHARING ---
   float local_t_in =
