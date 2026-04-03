@@ -107,9 +107,9 @@ bool test_min_speed_mapping() {
       std::abs(VentilationLogic::calculate_fan_speed_from_intensity(10) -
                1.00f) < 0.001f);
 
-  // Stufe 5: Mittelwert = 0.10 + (4/9)*0.90 = 0.10 + 0.40 = 0.50
+  // Stufe 5: Mittelwert = 0.005*(4^2) + 0.055*4 + 0.1 = 0.08 + 0.22 + 0.1 = 0.40
   TEST_ASSERT(std::abs(VentilationLogic::calculate_fan_speed_from_intensity(5) -
-                       0.50f) < 0.001f);
+                        0.40f) < 0.001f);
 
   return true;
 }

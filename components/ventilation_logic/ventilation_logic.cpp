@@ -66,9 +66,11 @@ int VentilationLogic::get_next_fan_level(int current_level) {
 }
 
 float VentilationLogic::calculate_fan_speed_from_intensity(int intensity) {
-    // Level 1 @ 10%, Level 10 @ 100%
-    int clamped_intensity = std::max(1, std::min(10, intensity));
-    return 0.10f + ((float)(clamped_intensity - 1) / 9.0f) * 0.90f;
+    // Quadratic mapping for finer control at low levels.
+    // Formula: v(x) = 0.005 * (x-1)^2 + 0.055 * (x-1) + 0.1
+    // Matches: L1=10%, L6=50%, L10=100%
+    float x = (float)std::max(1, std::min(10, intensity)) - 1.0f;
+    return 0.005f * x * x + 0.055f * x + 0.10f;
 }
 
 float VentilationLogic::calculate_fan_pwm(float speed, int direction) {
