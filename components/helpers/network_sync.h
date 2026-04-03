@@ -31,13 +31,13 @@ constexpr uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 constexpr size_t MAX_PAYLOAD_LEN = 100;
 
 inline bool is_local_mac(const uint8_t *mac) {
-  uint8_t local_mac[6];
-  esp_read_mac(local_mac, ESP_MAC_WIFI_STA);
-  for (int i = 0; i < 6; i++) {
-    if (mac[i] != local_mac[i])
-      return false;
+  static uint8_t local_mac[6] = {0};
+  static bool cached = false;
+  if (!cached) {
+    esp_read_mac(local_mac, ESP_MAC_WIFI_STA);
+    cached = true;
   }
-  return true;
+  return memcmp(mac, local_mac, 6) == 0;
 }
 
 /** @brief Checks if this is the only device in the room group. */
@@ -162,24 +162,9 @@ inline void register_peer_dynamic(const uint8_t *mac) {
     reset_peer_fail_count(mac);
   }
 
-  // Register with ESP-NOW hardware layer
-  esp_now_peer_info_t peer_info = {};
-  memset(&peer_info, 0, sizeof(esp_now_peer_info_t));
-  memcpy(peer_info.peer_addr, mac, 6);
-  peer_info.channel = 0; // 0 = use current channel (auto)
-  peer_info.encrypt = false;
-  peer_info.ifidx = WIFI_IF_STA;
-
-  esp_now_del_peer(mac);
-  esp_err_t err = esp_now_add_peer(&peer_info);
-
-  if (err == ESP_OK) {
-    ESP_LOGI("espnow_disc", "Peer %s registered (channel: current)",
-             mac_str.c_str());
-  } else {
-    ESP_LOGW("espnow_disc", "Failed to register peer %s: %d", mac_str.c_str(),
-             err);
-  }
+  // FIXED K2: Use ESPHome wrapper API consistently (matches load_peers_from_runtime_cache)
+  esphome::espnow::global_esp_now->add_peer(mac);
+  ESP_LOGI("espnow_disc", "Peer %s registered via ESPHome API", mac_str.c_str());
 }
 
 /** @brief Loads all peers saved in the runtime string cache and populates peer_cache. */
@@ -244,14 +229,24 @@ inline void send_discovery_broadcast() {
   ESP_LOGI("espnow_disc", "Sent discovery broadcast: %s", msg.c_str());
 }
 
-/** @brief Requests current status from all known peers. */
+/** @brief Requests current status from all known peers.
+ *  Uses unicast when peers are known, falls back to broadcast otherwise. */
 inline void request_peer_status() {
   if (!esphome::espnow::global_esp_now)
     return;
-  ESP_LOGI("vent_sync", "Requesting current status from peers...");
+
   auto data = build_and_populate_packet(esphome::MSG_STATUS_REQUEST);
-  esphome::espnow::global_esp_now->send(BROADCAST_MAC, data,
-                                        [](esp_err_t err) {});
+  if (peer_cache.empty()) {
+    // No known peers — broadcast required
+    ESP_LOGI("vent_sync", "No known peers, broadcasting status request...");
+    esphome::espnow::global_esp_now->send(BROADCAST_MAC, data,
+                                          [](esp_err_t err) {});
+  } else {
+    // Known peers — unicast (more reliable due to HW-ACK)
+    ESP_LOGI("vent_sync", "Requesting status via UNICAST from %d peer(s)...",
+             peer_cache.size());
+    send_sync_to_all_peers(data);
+  }
 }
 
 /** @brief Sends a unicast confirmation to a discovered peer. */
@@ -348,7 +343,7 @@ inline void sync_settings_to_peers() {
   // Rate-limit beibehalten (max 1 per 500ms)
   static uint32_t last_settings_sync = 0;
   if (millis() - last_settings_sync < 500) {
-    ESP_LOGI("vent_sync", "Settings sync suppressed (loop prevention)");
+    ESP_LOGD("vent_sync", "Settings sync suppressed (rate-limit active)");
     return;
   }
   last_settings_sync = millis();

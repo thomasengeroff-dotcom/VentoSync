@@ -74,7 +74,8 @@ static constexpr float PID_SYNC_THRESHOLD = 0.05f;  // Minimum demand change to 
 static constexpr uint8_t MAX_PEER_SEND_FAILURES = 3; // Remove peer after N consecutive failures
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
-/// @brief Runtime peer entry for O(1) MAC lookup during send operations.
+/// @brief Runtime peer entry for fast MAC lookup during send operations.
+/// Uses linear scan over std::vector (O(n), negligible for typical 2-4 peers).
 /// The NVS-backed espnow_peers string remains the persistent source of truth.
 struct PeerEntry {
   std::array<uint8_t, 6> mac;
@@ -153,6 +154,8 @@ extern esphome::globals::RestoringGlobalsComponent<bool>
     *peer_check_enabled; ///< ESP-NOW peer check on/off.
 extern esphome::template_::TemplateSwitch
     *peer_check_switch; ///< HA switch for peer check.
+extern esphome::template_::TemplateSwitch
+    *fan_direction; ///< Hardware fan direction switch.
 extern esphome::globals::GlobalsComponent<bool>
     *intensity_bounce_up; ///< Hold-to-cycle direction.
 extern esphome::globals::RestoringGlobalsComponent<float>
@@ -260,7 +263,7 @@ inline void request_peer_status();
 inline void send_discovery_confirmation(const uint8_t *target_mac);
 inline void send_sync_to_all_peers(const std::vector<uint8_t> &data);
 inline void sync_settings_to_peers();
-inline void handle_espnow_receive(const std::vector<uint8_t> &data);
+inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac);
 inline void remove_stale_peer(const uint8_t *mac);
 inline void trigger_re_discovery();
 inline void reset_peer_fail_count(const uint8_t *mac);

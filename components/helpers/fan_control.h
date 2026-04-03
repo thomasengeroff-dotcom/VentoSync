@@ -98,26 +98,35 @@ inline float get_current_target_speed() {
  * @return Signed virtual RPM (negative for exhaust).
  */
 inline float calculate_virtual_fan_rpm(float raw_rpm) {
-  if (raw_rpm > MIN_PHYSICAL_RPM) { // Real tacho valid signal
-    // Apply direction sign (negative for exhaust)
-    const bool is_intake = (fan_direction != nullptr && fan_direction->state);
-    return is_intake ? raw_rpm : -raw_rpm;
+  // 1. If physical tacho signal is valid (4-pin fan), use it immediately
+  if (raw_rpm > MIN_PHYSICAL_RPM) {
+    bool direction_in = true;
+    if (ventilation_ctrl != nullptr) {
+      direction_in = ventilation_ctrl->state_machine.get_target_state(millis())
+                         .direction_in;
+    } else if (fan_direction != nullptr) {
+      direction_in = fan_direction->state;
+    }
+    return direction_in ? raw_rpm : -raw_rpm;
   }
 
+  // 2. Fallback for 3-pin fans (virtual RPM calculation)
   const uint32_t now = millis();
-  const float speed = get_current_target_speed();
-  bool direction_in = true;
   float ramp_factor = 1.0f;
+  bool direction_in = true;
 
   if (ventilation_ctrl != nullptr) {
-    const esphome::HardwareState state = ventilation_ctrl->state_machine.get_target_state(now);
+    const esphome::HardwareState state =
+        ventilation_ctrl->state_machine.get_target_state(now);
     ramp_factor = state.ramp_factor;
     direction_in = state.direction_in;
-  } else if (fan_direction != nullptr && !fan_direction->state) {
-    direction_in = false;
+  } else if (fan_direction != nullptr) {
+    direction_in = fan_direction->state;
   }
 
-  return VentilationLogic::calculate_virtual_fan_rpm(speed, direction_in, ramp_factor);
+  const float speed = get_current_target_speed();
+  return VentilationLogic::calculate_virtual_fan_rpm(speed, direction_in,
+                                                     ramp_factor);
 }
 
 /**
