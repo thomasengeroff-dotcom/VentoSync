@@ -31,31 +31,46 @@ if not os.path.exists(version_file):
 
 def bump_version():
     if not os.path.exists(version_file):
-        data = {"major": 0, "minor": 6, "patch": 0}
+        data = {"version": "0.8.0", "date": "2026-04-04"}
     else:
         with open(version_file, "r") as f:
             try:
                 data = json.load(f)
             except Exception:
-                data = {"major": 0, "minor": 6, "patch": 0}
+                data = {"version": "0.8.0", "date": "2026-04-04"}
 
-    # Increment patch version
-    data["patch"] += 1
+    # Handle the new "version": "x.y.z" format
+    version_str = data.get("version", "0.8.0")
+    parts = version_str.split('.')
+    if len(parts) == 3:
+        major, minor, patch = map(int, parts)
+        patch += 1
+        new_version_str = f"{major}.{minor}.{patch}"
+    else:
+        # Fallback for old format or malformed string
+        major = data.get("major", 0)
+        minor = data.get("minor", 8)
+        patch = data.get("patch", 0) + 1
+        new_version_str = f"{major}.{minor}.{patch}"
+
+    data["version"] = new_version_str
+    # Remove old keys if they exist
+    data.pop("major", None)
+    data.pop("minor", None)
+    data.pop("patch", None)
     
     # Save updated version
     with open(version_file, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=4)
     
-    version_str = f"{data['major']}.{data['minor']}.{data['patch']}"
-    
-    # Inject as a C++ macro: -DCUSTOM_PROJECT_VERSION="0.6.1"
+    # Inject as a C++ macro: -DCUSTOM_PROJECT_VERSION="0.8.31"
     if 'env' in globals():
         env.Append(CPPDEFINES=[
-            ("CUSTOM_PROJECT_VERSION", f'\\"{version_str}\\"')
+            ("CUSTOM_PROJECT_VERSION", f'\\"{new_version_str}\\"')
         ])
     
-    print(f"\n>>> AUTOMATED VERSION BUMP: {version_str} <<<\n")
-    return version_str
+    print(f"\n>>> AUTOMATED VERSION BUMP: {new_version_str} <<<\n")
+    return new_version_str
 
 def update_yaml_version(version_str):
     # This function finds the project_version substitution in the common YAML 
@@ -102,7 +117,7 @@ def after_build(source, target, env):
         if os.path.exists(version_file):
             with open(version_file, "r") as f:
                 data = json.load(f)
-                version_str = f"{data['major']}.{data['minor']}.{data['patch']}"
+                version_str = data.get("version", "0.0.0")
 
         # Update manifest_example.json
         manifest_path = os.path.join(project_dir, "manifest_example.json")

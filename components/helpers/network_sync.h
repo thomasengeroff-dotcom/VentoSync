@@ -611,7 +611,8 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
       if (fan_speed_update != nullptr)
         fan_speed_update->execute();
 
-      v->set_fan_intensity(pkt->fan_intensity);
+      // FIXED: Pass notify=false to avoid eco-sync loops during boot status adoption
+      v->set_fan_intensity(pkt->fan_intensity, false);
       if (fan_intensity_level != nullptr)
         fan_intensity_level->value() = pkt->fan_intensity;
 

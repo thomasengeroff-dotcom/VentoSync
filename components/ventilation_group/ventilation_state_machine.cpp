@@ -73,6 +73,8 @@ bool VentilationStateMachine::update(uint32_t now) {
     bool new_phase_a_active = (pos < cycle_duration_ms);
 
     if (new_phase_a_active != global_phase) {
+        // ESP_LOGD is not available here (pure C++ class), but we return dirty
+        // so the caller (VentilationController) logs the transition.
         global_phase = new_phase_a_active;
         dirty = true;
     }
@@ -123,7 +125,9 @@ void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
     if (diff > (int32_t)cycle_duration_ms) diff -= period;
     if (diff < -(int32_t)cycle_duration_ms) diff += period;
 
-    if (std::abs(diff) > 200) {
+    // FIXED: Increased threshold from 200ms to 500ms to reduce jitter
+    // near direction flip boundaries.
+    if (std::abs(diff) > 500) {
         time_offset_ms += diff;
         // Keep offset within [-period, period] to avoid int32_t overflow after months of syncs
         time_offset_ms %= (int32_t)period;

@@ -4,8 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.31] - 2026-04-04
+### Fixed
+- **Sync-Echo-Unterdrückung**: Einführung von `notify`-Flags in `VentilationController`, um zirkuläre ESP-NOW-Sync-Schleifen zu verhindern. Statusänderungen, die von Peers empfangen werden, lösen nun keine automatische Gegen-Synchronisation mehr aus.
+- **Auto-Modus-Stabilität**: Im "Smart-Automatik"-Modus übernimmt der Master (Device ID 1) nun die finale Entscheidungsgewalt über die diskrete Lüfterstufe (1-10) basierend auf dem aggregierten CO2/Feuchte-Bedarf aller Peers. Dies verhindert "Jumping"-Effekte bei Grenzwertüberschreitungen auf einzelnen Geräten.
+- **Phasen-Jitter**: Erhöhung des Synchronisations-Schwellenwerts in der State Machine auf 500ms, um häufige Richtungswechsel (Phase-Flips) durch minimalen Takt-Drift zu vermeiden.
+
 ## [0.8.30] - 2026-04-03
 ### Changed
+- **v0.8.31**: Stabilisierung der Synchronisation & Smart-Automatik. Fix von Sync-Schleifen.
+- **v0.8.30**: Progressive quadratische RPM-Kennlinie für Lüfterstufen 1-10.
 - **RPM-Kennlinie**: Optimierte quadratische Verteilung der Lüfterstufen (v0.8.30) zur feineren Steuerung in niedrigen Bereichen (1-4) bei gleichbleibender Maximallast.
 - **Dokumentation**: Aktualisierung der RPM-Tabellen in Readme.md und Readme_de.md.
 
@@ -226,7 +234,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Fixed
 
-- **Dashboard Verbundene Geräte (ESP-NOW)**: Fehler behoben, bei dem die Nachbargeräte aus dem Dashboard verschwunden sind. Grund war, dass der konfigurierbare `sync_interval_config` (z.B. 3 Stunden) dafür gesorgt hat, dass Geräte in bestimmten Modi (z.B. Durchlüften oder Aus) nicht mehr regelmäßig gesendet haben und deshalb nach dem internen 5-Minuten-Timeout fälschlicherweise als "Offline" markiert und gelöscht wurden. Es wurde nun ein konstanter UI-Heartbeat (alle 60 Sekunden) implementiert.
+- **Dashboard Verbundene Geräte (ESP-NOW)**: Fehler behoben, bei dem die Nachbargeräte aus dem Dashboard verschwunden sind. Grund war, dass der konfigurierbare `sync_interval_config` (z. B. 3 Stunden) dafür gesorgt hat, dass Geräte in bestimmten Modi (z. B. Durchlüften oder Aus) nicht mehr regelmäßig gesendet haben und deshalb nach dem internen 5-Minuten-Timeout fälschlicherweise als "Offline" markiert und gelöscht wurden. Es wurde nun ein konstanter UI-Heartbeat (alle 60 Sekunden) implementiert.
 - **WLAN Kanal-Hopping & I2C Aussetzer**: Ist die WLAN-Verbindung zum Router abgerissen, hat das Gerät intensiv das komplette 2.4GHz Band gescannt. Dies hat den Single-Core SoC überlastet, die I2C-Sensorkommunikation (SCD41) abreißen lassen und parallel den ESP-NOW Funkverkehr zu den anderen Räumen blockiert. Durch `fast_connect: true` fokussiert sich das Gerät nun stabil auf den konfigurierten Kanal.
 - **Webserver-Crash & Tote Sockets (Error 23)**: Ein Router-Neustart führte dazu, dass im Hintergrund Web-Browser (SSE / EventSource) "unsichtbar" die Verbindung verloren haben. Der ESP-IDF Webserver lief mit maximal 10 Sockets durch Fehler 23 (`httpd_accept_conn: error in accept (23) ENFILE`) über. Durch das Erhöhen auf `CONFIG_LWIP_MAX_SOCKETS: 16` gibt es nun den essenziellen Pufferraum.
 - **Kompletter Auto-Recovery nach Router-Ausfall**: Bleibt der Router / das WLAN für mehr als 5 Minuten verschwunden, macht das Gerät nun automatisch einen sauberen Neustart (`reboot_timeout: 5min`). Das entfernt zuverlässig gestrandete Zombie-Sockets und startet den System-Bus fehlerfrei neu durch, um sich nahtlos zurück ins Netzwerk zu integrieren.
@@ -255,7 +263,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Refactored
 
-- **C++ Modularisierung**: Die große Datei `automation_helpers.h` (~1750 Zeilen) wurde drastisch aufgeräumt und fachlich in kleinere, gekapselte Module im neuen Ordner `components/helpers/` unterteilt (z.B. `fan_control.h`, `auto_mode.h`, `network_sync.h`, `led_feedback.h`).
+- **C++ Modularisierung**: Die große Datei `automation_helpers.h` (~1750 Zeilen) wurde drastisch aufgeräumt und fachlich in kleinere, gekapselte Module im neuen Ordner `components/helpers/` unterteilt (z. B. `fan_control.h`, `auto_mode.h`, `network_sync.h`, `led_feedback.h`).
 - **Abhängigkeiten optimiert**: `automation_helpers.h` fungiert nun als sauberer *Umbrella-Header*, wodurch keine YAML-Änderungen an den Lambdas erforderlich sind. Zirkuläre Abhängigkeiten wurden durch automatisch generierte *Forward Declarations* in `globals.h` behoben.
 
 ## [0.6.74] - 2026-03-29
@@ -268,7 +276,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ### Fixed
 
 - **Lüfterstufen-Limit (Automatik)**: Implementierung einer strikten Bedarfs-Begrenzung (PID Clamping) und Hardware-Clamping (Stufe 10), um ein Überschreiten der konfigurierten "Max-Lüfterstufe" bei extremen CO2-Werten zu verhindern.
-- **Log-Spam Reduzierung**: Reduzierung der "Hardware Refresh" und "Ramping speed" Log-Frequenz auf 1s-Intervalle. Kritische Zustandsänderungen (z.B. Richtungswechsel) werden weiterhin sofort geloggt.
+- **Log-Spam Reduzierung**: Reduzierung der "Hardware Refresh" und "Ramping speed" Log-Frequenz auf 1s-Intervalle. Kritische Zustandsänderungen (z. B. Richtungswechsel) werden weiterhin sofort geloggt.
 
 ## [0.6.70] - 2026-03-28
 
@@ -428,12 +436,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - **Sensor-Lock im manuellen Betrieb**: `apply_co2_auto_control` in `automation_helpers.h` ist nun durch `auto_mode_active->value()` flankiert. Sensordaten und PID-Regler verändern die PWM-Leistung nur noch im bestätigten "Smart-Automatik" Modus und funken manuellen Modi (WRG, Querlüftung, Stoßlüftung) nicht mehr dazwischen.
 - **Modern Web-Dashboard (Tailwind CSS) & UX**: Vollständige Neugestaltung des asynchronen Web-Dashboards (`wrg_dashboard`) mit Tailwind CSS. Modernes Dark-Mode Design, voll-responsives Layout und verbesserte Performance durch optimiertes CSS-Delivery via CDN.
 - **Dashboard Sektion: Grundeinstellungen**: Integration einer neuen Sektion zur Anzeige von Geräte-ID, Floor ID, Room ID und Geräte-Phase (A/B) direkt im Dashboard für eine einfachere Vor-Ort-Identifikation und Konfiguration.
-- **YAML: Erweiterte Konfigurations-Sensoren**: Einführung von Template-Sensoren in `device_config.yaml` zur korrekten Bereitstellung der Geräte-Metadaten (Phase, IDs) an das Dashboard-Komponente.
 - **C++ Automatik Optimierungen & Thread Safety (`wrg_dashboard.cpp`)**: Einführung von `std::mutex` und `std::lock_guard` für ein 100% exception-sicheres Queueing von Web-API Actions. Komplettes Neuschreiben der `loop()` und internen JSON Parsing-Logik mit DRY C++ Lambdas. Strikte "const correctness" (`const std::string&`) angewendet und ungenutzte Cache-Referenzen (`DashboardSnapshot`) für minimalen RAM-Footprint entfernt.
 - **C++ Code-Style & Best Practices**: Umfangreiches Refactoring der Logik in `automation_helpers.h`. Konstanten (`const`), C++ STL-Algorithmen (`std::max`, `std::clamp`) und C++17 Bindings ersetzen alte Magic-Numbers und C-Macros.
 - **Dynamische Zyklusdauer**: Der statische UI-Slider für die `Zyklusdauer` wurde vollständig entfernt. Das System berechnet die Zyklusdauer im C++-Code nun dynamisch basierend auf der Lüfterintensität (linear skalierend von 70s bei Stufe 1 bis zu rasanten 50s bei Stufe 10) in `update_fan_logic()`.
 - **Dynamische NTC-Temperatur-Stabilisierung (`filter_ntc_stable`)**:
-  - Statischer Wartezeitraum für thermische Trägheit der NTCs wurde nach dem Richtungswechsel skalierend gestaltet: Wartet dynamisch **60 % des Zyklus (z.B. 30s bei Stufe 10)** ab.
+  - Statischer Wartezeitraum für thermische Trägheit der NTCs wurde nach dem Richtungswechsel skalierend gestaltet: Wartet dynamisch **60 % des Zyklus (z. B. 30s bei Stufe 10)** ab.
   - Das `delta: 0.2` Flag in der YAML Konfiguration blockierte stabile konstante Temperaturen vom Weiterleiten und verklemmte das Window: **Filter wurde entfernt**, das fortlaufend gleitende Sensor-Zeitfenster wächst nun im C++ dynamisch mit.
 - **Zusammengefasste Radar Anwesenheits-Kompensation (-5 bis +5)**:
   - Drei getrennte Variablen für das Anwesenheitsverhalten zusammengelegt zu einem einzigen gleitenden Range-Slider (`auto_presence_slider` von -5 bis +5) für Home Assistant.
@@ -476,9 +483,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - Bedarfsgesteuerte Lüftungsanpassung bei erkannter Anwesenheit mit 4 konfigurierbaren Profilen.
 - **Radar Anwesenheits-Profile**: Dropdown `Anwesenheitsverhalten` in Home Assistant mit 4 Optionen:
   - *Keine Anpassung* (Default) — kein Einfluss auf Lüfterleistung.
-  - *Intensiv (z.B. für Büro)* — Lüfterstufe +3 bei Anwesenheit.
-  - *Normal (z.B. für Wohnraum)* — Lüfterstufe +1 bei Anwesenheit.
-  - *Gering (z.B. für Schlafzimmer)* — Lüfterstufe -1 bei Anwesenheit.
+  - *Intensiv (z. B. für Büro)* — Lüfterstufe +3 bei Anwesenheit.
+  - *Normal (z. B. für Wohnraum)* — Lüfterstufe +1 bei Anwesenheit.
+  - *Gering (z. B. für Schlafzimmer)* — Lüfterstufe -1 bei Anwesenheit.
 - **Master LED Fehleranzeige**: `status_led_master` blinkt via Strobe-Effekt (500ms on/off) bei:
   - WiFi-Verbindungsverlust (via `esphome::wifi::global_wifi_component->is_connected()`).
   - Keine ESP-NOW Nachrichten von Peer-Geräten innerhalb von 5 Minuten (`last_peer_pid_demand_time`).
@@ -504,7 +511,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - Verhindert jegliche hörbaren Drehzahlsprünge beim Hoch-/Runterregeln (Ablösung der alten starren 10-Stufen-Logik).
   - CO2 und Humbidity Limits nutzen Deadbands, um Mikro-Schwankungen zu ignorieren.
 - **Globale PID-Synchronisation via ESP-NOW**: Der errechnete Leistungsbedarf (PID Demand) wird sekündlich über das kabellose ESP-NOW Netzwerk mit allen Geräten der Raumgruppe geteilt.
-  - Verhindert, dass Lüfter im selben Raum "gegeneinander" kämpfen (z.B. ein Lüfter misst viel CO2 am Bett, der andere am offenen Flur wenig). Beide fahren nun absolut synchron und harmonisch auf identischer Maximalstufe hoch.
+  - Verhindert, dass Lüfter im selben Raum "gegeneinander" kämpfen (z. B. ein Lüfter misst viel CO2 am Bett, der andere am offenen Flur wenig). Beide fahren nun absolut synchron und harmonisch auf identischer Maximalstufe hoch.
   - Hinweis: Durch die Erweiterung der `VentilationPacket`-Größe müssen alle Geräte der Lüftungsgruppe zeitgleich geflasht werden!
 - **Adaptive CO2-Regelung**: Automatische Lüfteranpassung basierend auf SCD41 CO2-Werten (ppm).
   - 6-stufige Schwellwerte nach DIN EN 13779 / Umweltbundesamt (600/800/1000/1200/1400 ppm).
@@ -534,13 +541,13 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Changed
 
-- **Entitäten Harmonisierung & Umbenennung**: Diverse Entitäten in YAML und C++ Code wurden für ein einheitliches Namensschema überarbeitet (z.B. Wechsel von `co2_min_fan_level` zu `automatik_min_luefterstufe`, `co2_sensor` zu `scd41_co2`, Modus-Auswahl zu `luefter_modus`). Das Dokument `Entities_Documentation.md` wurde hierfür als Quellreferenz verfasst.
+- **Entitäten Harmonisierung & Umbenennung**: Diverse Entitäten in YAML und C++ Code wurden für ein einheitliches Namensschema überarbeitet (z. B. Wechsel von `co2_min_fan_level` zu `automatik_min_luefterstufe`, `co2_sensor` zu `scd41_co2`, Modus-Auswahl zu `luefter_modus`). Das Dokument `Entities_Documentation.md` wurde hierfür als Quellreferenz verfasst.
 - **Dynamische Zyklusdauer (WRG)**: Der Wechselintervall im Wärmerückgewinnungsmodus ist nicht mehr statisch, sondern wird nun im C++ Code (`automation_helpers.h`) dynamisch aus der Lüfterstufe abgeleitet. Stufe 1 läuft mit 70 Sekunden, Stufe 10 mit 50 Sekunden. Dies optimiert automatisch die thermische Effizienz des Keramikspeichers unter verschiedenen Lasten.
 - **ESP-NOW Payload Optimerung**: Die Variable `cycle_duration_sec` wurde aus dem `VentilationPacket` der ESP-NOW Synchronisationslogik gestrichen. Die Master-Geräte übermitteln stattdessen nur die Basis-Parameter, der lokale C++ Code berechnet die Zyklusdauer nun selbst deterministisch, was die Paketgröße reduziert und Asynchronitäten vermeidet.
 - **Radar Präsenz-Steuerung**: Die drei separaten Slider und Entitäten für "Intensiv", "Normal" und "Gering" wurden durch einen einzelnen übersichtlichen UI-Slider `Anwesenheit Lüfter-Anpassung` (-5 bis +5) in Home Assistant ersetzt, was die Ansicht stark vereinfacht.
 - **Readme.md Restrukturierung**: Implementierte Features (CO2-Regelung, Radar-Anwesenheit, Wartungs-Management, Master LED Fehleranzeige) aus dem Roadmap-Bereich in eine eigene Sektion "✅ Implementierte Erweiterungen" verschoben. Roadmap enthält nun ausschließlich geplante Features.
   - Inhaltsverzeichnis erweitert.
-  - Projektstruktur aktualisiert (u.a. `display_diagnostics.yaml` ergänzt).
+  - Projektstruktur aktualisiert (u. a. `display_diagnostics.yaml` ergänzt).
   - Korrektur: "5 Lüfterstufen" → "10 Geschwindigkeitsstufen".
   - Typo-Fix: "Drehlzahlsprünge" → "Drehzahlsprünge".
   - HA Filterwechsel-Automation YAML-Beispiel für Push-Benachrichtigungen hinzugefügt.
@@ -551,12 +558,12 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - `experimental/`: Entwicklungs-Boards, Test-Knoten und Demo-Setups (`espslavetest.yaml`, `integration_test.yaml`, `espslaveNTC.yaml`) isoliert, um das Hauptverzeichnis sauber zu halten.
   - `assets/`: Ablageort für lokale Ressourcen (z. B. Fonts).
   - Keine "Mischung" von C++ und YAML im Root-Ordner mehr.
-- **BOM (Bill of Materials) Update**: Die Komponentenlisten (CSV) wurden auf den neuesten Stand gebracht und mit aktuellen Daten von JLCPCB/LCSC (Preise, Warenbestände, erweiterte Bauteile wie z.B. PCA9685PW) abgeglichen und aktualisiert.
+- **BOM (Bill of Materials) Update**: Die Komponentenlisten (CSV) wurden auf den neuesten Stand gebracht und mit aktuellen Daten von JLCPCB/LCSC (Preise, Warenbestände, erweiterte Bauteile wie z. B. PCA9685PW) abgeglichen und aktualisiert.
 - **Auto-Modus Basis-Level**: Die Automatik (CO2/Feuchte) nutzt nun strikt den eingestellten Wert des "CO2 Min Lüfterstufe" Sliders aus Home Assistant als absolutes Grundrauschen (Moisture Protection), auf den sie bei fallenden Werten zurückfällt.
 - **C++ Refactoring**: `evaluate_auto_mode()` und `update_fan_logic()` in `automation_helpers.h` komplett neu geschrieben, um float-basierte PID-Werte und Peer-Network-Demands (`last_peer_pid_demand`) zusammenzuführen, aufzulösen und auf das tatsächliche physische PWM-Signal sowie die 1-10 Indikator-LEDs zu mappen.
 - **Hardware Pinout Update**: Pinbelegung für den Seeed Studio XIAO ESP32C6 an den neuesten Schaltplan (2026-02-22) angepasst:
   - Taster (Power, Mode, Level) werden nun über den **MCP23017** I/O Expander (`GPA0`-`GPA2`) ausgelesen, um direkte GPIOs am ESP32 freizumachen.
-  - **PCA9685** LED-Mapping im Code korrigiert (z.B. `out_led_l1` auf `channel: 1`), um exakt der Schaltplan-Verdrahtung zu entsprechen. Alle ungenutzten Kanäle als `NC` dokumentiert.
+  - **PCA9685** LED-Mapping im Code korrigiert (z. B. `out_led_l1` auf `channel: 1`), um exakt der Schaltplan-Verdrahtung zu entsprechen. Alle ungenutzten Kanäle als `NC` dokumentiert.
   - UART-Pins (`D6`/`D7`) explizit für den **MR24HPC1** Radar-Sensor (RX/TX) vorgesehen.
   - Lüfter PWM und Tacho auf `D8` und `D9` verschoben.
 - **Dokumentations-Update**: `Hardware-Setup-Readme.md` und `Readme.md` (inkl. Mermaid-Diagramm) umfassend überarbeitet, um die neuen Pin-Zuweisungen (sowohl ESP32 als auch I/O-Expander) fehlerfrei abzubilden. Alle alten Interrupt (INTB) Hinweise des MCP23017 entfernt.
@@ -577,7 +584,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - **OE Pin**: Benötigt Pull-Up (4.7kΩ - 10kΩ) gegen Floating-States beim Boot (Active-Low). Ansteuerung via GPIO21 (als Switch inverted) möglich.
 - **I2C Bus Hardware**:
   - **ESD Protection**: **UMW USBLC6-2SC6** (SOT-23-6) als Schutzdiode validiert (<1pF, optimiert für I2C/Data). Empfohlen: 1x pro Connector direkt am Eingang.
-  - **Pull-Up Resistors**: **4.7kΩ** (0402, z.B. FRC0402F4701TS) als Standardwert bestätigt.
+  - **Pull-Up Resistors**: **4.7kΩ** (0402, z. B. FRC0402F4701TS) als Standardwert bestätigt.
 - **Cleanup**: `ventosync.yaml` bereinigt und Inline-Logik durch einfache Funktionsaufrufe ersetzt.
 - **Readme**: Update mit Verweis auf KI-Lüftungskonzept.
 - **Dokumentation**: NTC-Sensor-Spezifikationen in `Readme.md` tabellarisch dargestellt und Datenblatt-Link ergänzt.
@@ -668,6 +675,8 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Changed
 
+- **v0.8.31**: Synchronization and Auto-Mode Stabilization. Fixed sync loops and improved group authority logic.
+- **v0.8.30**: Progressive quadratic RPM mapping for fan levels 1-10.
 - **Pinout**: Pin-Mapping an finales Board-Layout angepasst (basierend auf Hardware Verification Report).
   - Buttons: Power (D6/GPIO16), Mode (D9/GPIO20), Level (D2/GPIO2).
   - Fan PWM: Primary (D8/GPIO19), Secondary (D10/GPIO18).

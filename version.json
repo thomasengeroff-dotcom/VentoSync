@@ -1,5 +1,5 @@
 {
-  "major": 0,
-  "minor": 8,
-  "patch": 30
+    "version": "0.8.32",
+    "date": "2026-04-04",
+    "description": "Synchronization and Auto-Mode Stabilization"
 }

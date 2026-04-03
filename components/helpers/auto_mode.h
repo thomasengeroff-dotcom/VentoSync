@@ -192,16 +192,20 @@ inline float calculate_combined_demand(uint32_t now) {
   // else: local_demand stays NAN → triggers "hold state" guard
 
   // 5. Peer Integration (Symmetric group behavior)
+  float effective_demand = local_demand;
   if (!std::isnan(v->last_peer_pid_demand) && (now - v->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
-    if (std::isnan(local_demand) || v->last_peer_pid_demand > local_demand) {
-      local_demand = v->last_peer_pid_demand;
+    if (std::isnan(effective_demand) || v->last_peer_pid_demand > effective_demand) {
+      if (v->last_peer_pid_demand > (effective_demand + 0.05f)) {
+        ESP_LOGI("auto_mode", "Adopting higher peer demand: %.2f (Local: %.2f)", v->last_peer_pid_demand, effective_demand);
+      }
+      effective_demand = v->last_peer_pid_demand;
     }
   }
 
   // 6. Network Sync Logic
-  if (!std::isnan(local_demand)) {
-    v->local_pid_demand = local_demand; // Update value for 60s heartbeat
-    return std::clamp(local_demand, 0.0f, 1.0f);
+  if (!std::isnan(effective_demand)) {
+    v->local_pid_demand = effective_demand; // Update value for 60s heartbeat
+    return std::clamp(effective_demand, 0.0f, 1.0f);
   }
 
   return NAN;
@@ -257,23 +261,41 @@ inline void evaluate_auto_mode(bool force) {
   if (min_l > max_l) std::swap(min_l, max_l);
   
   int target_level = min_l;
-  float scaled = static_cast<float>(min_l) + demand * static_cast<float>(max_l - min_l);
-  int raw_target = std::clamp(static_cast<int>(std::round(scaled)), 1, 10);
-  
-  // Hysteresis: Only change level if demand clearly crosses the boundary
-  static constexpr float LEVEL_HYSTERESIS = 0.25f; // 25% of one level step
-  float step_size = (max_l > min_l) ? 1.0f / static_cast<float>(max_l - min_l) : 1.0f;
-  float hysteresis_band = step_size * LEVEL_HYSTERESIS;
-  
-  // Current demand center relative to current level
-  float current_demand_center = static_cast<float>(current_level - min_l) * step_size;
 
-  if (demand > current_demand_center + step_size * 0.5f + hysteresis_band) {
-    target_level = raw_target; // Clearly above -> go up
-  } else if (demand < current_demand_center - step_size * 0.5f - hysteresis_band) {
-    target_level = raw_target; // Clearly below -> go down
-  } else {
-    target_level = current_level; // Within hysteresis band -> hold
+  // AUTHORITY RULE: In Auto Mode, Slaves should follow the Master's discrete intensity.
+  // This prevents the "jumping" behavior where nodes fight over level boundaries.
+  bool slave_following_master = false;
+  if (v->device_id != 1) { // I am a Slave
+    // Check if we have a recent state from the Master
+    for (const auto &peer : v->peers) {
+      if (peer.device_id == 1 && (now - peer.last_seen_ms < PEER_TIMEOUT_MS)) {
+        target_level = peer.fan_intensity;
+        slave_following_master = true;
+        break;
+      }
+    }
+  }
+
+  if (!slave_following_master) {
+    // I am the Master OR the Master is offline -> Calculate level from demand
+    float scaled = static_cast<float>(min_l) + demand * static_cast<float>(max_l - min_l);
+    int raw_target = std::clamp(static_cast<int>(std::round(scaled)), 1, 10);
+    
+    // Hysteresis: Only change level if demand clearly crosses the boundary
+    static constexpr float LEVEL_HYSTERESIS = 0.25f; // 25% of one level step
+    float step_size = (max_l > min_l) ? 1.0f / static_cast<float>(max_l - min_l) : 1.0f;
+    float hysteresis_band = step_size * LEVEL_HYSTERESIS;
+    
+    // Current demand center relative to current level
+    float current_demand_center = static_cast<float>(current_level - min_l) * step_size;
+
+    if (demand > current_demand_center + step_size * 0.5f + hysteresis_band) {
+      target_level = raw_target; // Clearly above -> go up
+    } else if (demand < current_demand_center - step_size * 0.5f - hysteresis_band) {
+      target_level = raw_target; // Clearly below -> go down
+    } else {
+      target_level = current_level; // Within hysteresis band -> hold
+    }
   }
 
   // Soft Ramping: Maximum ±1 level per evaluation cycle (10s)
@@ -298,6 +320,10 @@ inline void evaluate_auto_mode(bool force) {
 
   // 6. Commit State Updates
   if (current_level != target_level) {
+    if (slave_following_master) {
+       ESP_LOGD("auto_mode", "Slave following Master level: %d (Local demand: %.2f)", target_level, demand);
+    }
+    
     fan_intensity_level->value() = target_level;
     fan_intensity_display->publish_state(target_level);
     v->current_fan_intensity = target_level;
@@ -305,6 +331,7 @@ inline void evaluate_auto_mode(bool force) {
     fan_speed_update->execute();
     update_leds->execute();
     
-    ESP_LOGI("auto_mode", "Automatic level ramped %d -> %d (demand=%.2f)", current_level, target_level, demand);
+    ESP_LOGI("auto_mode", "Automatic level %s %d -> %d (demand=%.2f)", 
+             slave_following_master ? "synced" : "ramped", current_level, target_level, demand);
   }
 }

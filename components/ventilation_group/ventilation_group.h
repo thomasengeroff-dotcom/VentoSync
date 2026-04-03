@@ -255,6 +255,7 @@ public:
     // c) System is off (to ensure it stays off/ramps down)
     if (dirty || (1.0f - state.ramp_factor) > 0.01f || !state.fan_enabled) {
       if (dirty) {
+        // Log details about what caused the dirty flag if possible (handled in state machine)
         ESP_LOGD("vent", "State transition detected (flip/mode timer). "
                          "Triggering sync broadcast.");
         trigger_sync();
@@ -296,7 +297,7 @@ public:
 
   /// @brief Updates the half-cycle duration and refreshes hardware / notifies
   /// peers.
-  void set_cycle_duration(uint32_t ms, bool refresh_hw = true) {
+  void set_cycle_duration(uint32_t ms, bool refresh_hw = true, bool notify = true) {
     if (ms == state_machine.cycle_duration_ms)
       return;
     state_machine.set_cycle_duration(ms);
@@ -304,7 +305,7 @@ public:
     if (refresh_hw) {
       update_hardware();
     }
-    pending_broadcast = true;
+    if (notify) pending_broadcast = true;
   }
 
   /// @brief Changes the auto-sync broadcast interval.
@@ -318,14 +319,14 @@ public:
   void trigger_sync() { pending_broadcast = true; }
 
   /// @brief Sets the fan intensity level (1–10) and notifies peers.
-  void set_fan_intensity(uint8_t intensity) {
+  void set_fan_intensity(uint8_t intensity, bool notify = true) {
     if (current_fan_intensity == intensity)
       return;
     current_fan_intensity = intensity;
     ESP_LOGI("vent", "Fan Intensity updated to %d. Refreshing hardware.",
              intensity);
     update_hardware();
-    pending_broadcast = true;
+    if (notify) pending_broadcast = true;
   }
 
   /// @brief Switches operating mode, delegates to state machine, refreshes HW,
@@ -333,17 +334,17 @@ public:
   /// @param mode     Target VentilationMode.
   /// @param duration For MODE_VENTILATION: auto-stop timer in ms (0 =
   /// infinite).
-  void set_mode(VentilationMode mode, uint32_t duration = 0) {
+  void set_mode(VentilationMode mode, uint32_t duration = 0, bool notify = true) {
     if (state_machine.current_mode == mode &&
         duration == state_machine.ventilation_duration_ms)
       return;
 
-    ESP_LOGI("vent", "Mode change: %d -> %d (Duration: %d ms)",
-             state_machine.current_mode, mode, duration);
+    ESP_LOGI("vent", "Mode change: %d -> %d (Duration: %d ms, Notify: %s)",
+             state_machine.current_mode, mode, duration, notify ? "YES" : "NO");
     state_machine.set_mode(mode, millis(), duration);
 
     update_hardware();
-    pending_broadcast = true;
+    if (notify) pending_broadcast = true;
   }
 
   /// @brief Processes an incoming ESP-NOW packet.
@@ -469,8 +470,8 @@ public:
           pkt->fan_intensity != current_fan_intensity) {
         ESP_LOGI("vent", "Syncing fan intensity from peer %d: %d",
                  pkt->device_id, pkt->fan_intensity);
-        current_fan_intensity = pkt->fan_intensity;
-        update_hardware();
+        // FIXED: Use set_fan_intensity with notify=false to avoid echo loops
+        set_fan_intensity(pkt->fan_intensity, false);
         changed = true;
       }
     }
