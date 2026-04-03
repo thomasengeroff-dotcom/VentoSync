@@ -4,7 +4,7 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.8.31] - 2026-04-04
+## [0.8.32] - 2026-04-04
 ### Fixed
 - **Sync-Echo-Unterdrückung**: Einführung von `notify`-Flags in `VentilationController`, um zirkuläre ESP-NOW-Sync-Schleifen zu verhindern. Statusänderungen, die von Peers empfangen werden, lösen nun keine automatische Gegen-Synchronisation mehr aus.
 - **Auto-Modus-Stabilität**: Im "Smart-Automatik"-Modus übernimmt der Master (Device ID 1) nun die finale Entscheidungsgewalt über die diskrete Lüfterstufe (1-10) basierend auf dem aggregierten CO2/Feuchte-Bedarf aller Peers. Dies verhindert "Jumping"-Effekte bei Grenzwertüberschreitungen auf einzelnen Geräten.
