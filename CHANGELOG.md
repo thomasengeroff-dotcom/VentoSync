@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.27] - 2026-04-03
+### Optimized
+- **NTC Stabilization Filter**: Refactoring des `filter_ntc_stable` in `climate.h`. Umstellung auf `constexpr` Konstanten und Optimierung der Sliding-Window-Logik für präzisere Wertermittlung während der thermischen Einschwingphase.
+- **Code Modernization**: Nutzung von `std::minmax_element` zur effizienten Abweichungsberechnung innerhalb des Filter-Fensters.
+
 ## [0.8.26] - 2026-04-03
 ### Added
 - **Optimized ESP-NOW Sync Strategy**: Bei aktiven Peers im Cache erfolgt die Statusabfrage (`request_peer_status`) nun via Unicast. Dies nutzt die Hardware-Bestätigungen (ACKs) des ESP32 für eine robustere Erkennung und reduziert die Broadcast-Last im WLAN.

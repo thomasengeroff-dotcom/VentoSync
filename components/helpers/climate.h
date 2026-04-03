@@ -69,7 +69,9 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
 }
 
 // Stabilization parameter constants
-static const float NTC_MAX_DEVIATION = 0.3f; // Max allowed deviation in window
+constexpr float NTC_MAX_DEVIATION = 0.3f;
+constexpr uint32_t NTC_MIN_WAIT_MS = 15000;
+constexpr size_t NTC_WINDOW_SIZE = 3;
 
 /**
  * @brief NTC Sliding Window Stabilization Filter.
@@ -80,36 +82,32 @@ static const float NTC_MAX_DEVIATION = 0.3f; // Max allowed deviation in window
  */
 inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
                                                   float new_value) {
-  if (ventilation_ctrl == nullptr ||
-      ventilation_ctrl->state_machine.cycle_duration_ms == 0) {
+  if (ventilation_ctrl == nullptr) {
     return new_value; // Fallback if controller is not bound
   }
 
-  uint32_t cycle_duration_ms =
-      ventilation_ctrl->state_machine.cycle_duration_ms;
+  const uint32_t cycle_ms = ventilation_ctrl->state_machine.cycle_duration_ms;
+  if (cycle_ms == 0) return new_value;
 
   // Warn if cycle is too short for meaningful NTC stabilization.
-  if (cycle_duration_ms < 30000) {
+  if (cycle_ms < 30000) {
     ESP_LOGW("ntc_filter",
              "cycle_duration_ms=%u is very short (<30s). NTC stabilization "
              "filter may never pass a value.",
-             cycle_duration_ms);
+             cycle_ms);
   }
 
   // Dynamic wait time: 40% of the cycle, but minimum 15 seconds
-  uint32_t wait_time_ms =
-      std::max((uint32_t)15000, (uint32_t)(cycle_duration_ms * 0.4f));
+  uint32_t wait_ms =
+      std::max(NTC_MIN_WAIT_MS, static_cast<uint32_t>(cycle_ms * 0.4f));
 
   // Safety check so we don't wait longer than the cycle itself minus 5s
-  if (wait_time_ms >= cycle_duration_ms) {
-    wait_time_ms = cycle_duration_ms > 5000 ? cycle_duration_ms - 5000 : 0;
+  if (wait_ms >= cycle_ms) {
+    wait_ms = cycle_ms > 5000 ? cycle_ms - 5000 : 0;
   }
 
-  // Use a smaller, fixed window of 3 samples (approx 9-10s) for stability.
-  const size_t target_window_size = 3;
-
   // 1. Check if we are still within the mandatory thermal adjustment wait time
-  if (millis() - last_direction_change_time < wait_time_ms) {
+  if (millis() - last_direction_change_time < wait_ms) {
     return {}; // Discard value while ceramic adjusts
   }
 
@@ -118,26 +116,24 @@ inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
   history.push_back(new_value);
 
   // Maintain maximum window size limit
-  while (history.size() > target_window_size) {
+  if (history.size() > NTC_WINDOW_SIZE) {
     history.pop_front();
   }
 
   // 3. Wait until the window is full for a reliable stabilization check
-  if (history.size() < target_window_size) {
+  if (history.size() < NTC_WINDOW_SIZE) {
     return {}; // Discard value while checking buffer window fills up
   }
 
-  // 4. Calculate deviation
+  // 4. Calculate deviation via STL
   auto [min_it, max_it] = std::minmax_element(history.begin(), history.end());
-  float min_val = *min_it;
-  float max_val = *max_it;
-
+  
   // 5. Evaluate stability
-  if ((max_val - min_val) <= NTC_MAX_DEVIATION) {
+  if ((*max_it - *min_it) <= NTC_MAX_DEVIATION) {
     // Temperature is stable!
     return new_value;
   } else {
-    // Still fluctuating, keep last known state
+    // Still fluctuating, discard update
     return {};
   }
 }
