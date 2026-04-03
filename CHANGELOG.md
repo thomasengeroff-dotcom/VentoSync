@@ -4,6 +4,18 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.26] - 2026-04-03
+### Added
+- **Optimized ESP-NOW Sync Strategy**: Bei aktiven Peers im Cache erfolgt die Statusabfrage (`request_peer_status`) nun via Unicast. Dies nutzt die Hardware-Bestätigungen (ACKs) des ESP32 für eine robustere Erkennung und reduziert die Broadcast-Last im WLAN.
+- **Unicast-Discovery-Antworten**: Die Bestätigung von Discovery-Anfragen (`send_discovery_confirmation`) wurde auf Unicast umgestellt, um Kollisionen zu vermeiden und die Zuverlässigkeit beim Pairing zu erhöhen.
+
+### Changed
+- **Logging-Efficiency**: Das Log-Level für `request_peer_status` wurde von DEBUG auf INFO angehoben, um die Synchronisationsphasen nach dem Boot besser zu dokumentieren. Umgekehrt wurde das redundante Loop-Prevention-Logging in `sync_settings_to_peers` auf DEBUG gesenkt, um das Haupt-Log übersichtlicher zu halten.
+- **Protocol-Robustness**: Erweiterung des `handle_espnow_receive` Handlers zur direkten Verarbeitung der Absender-MAC-Adresse (`src_mac`) für zukünftige bidirektionale Diagnose-Features.
+
+### Fixed
+- **ESP-NOW Reliability**: Behebung eines Fehlers, bei dem Statusabfragen unter bestimmten Bedingungen nicht an alle bekannten Peers verteilt wurden.
+
 ## [0.8.22] - 2026-04-03
 ### Added
 - **Master Device Architecture**: Device ID=1 ist ab sofort der authoritative Master innerhalb einer Raumgruppe. Nur der Master gibt Zyklus-Timing und Richtungs-Synchronisation vor. Einstellungsänderungen (Button / Home Assistant) werden weiterhin von allen Geräten akzeptiert (`MSG_STATE`).
