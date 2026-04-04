@@ -835,6 +835,27 @@ Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-
   - ✅ **Broadcast-Optimierung**: Reduzierung von Netzwerk-Jitter und Eliminierung rekursiver Broadcast-Kaskaden durch optimierte Status-Sync-Trigger während PID-Anpassungen.
   - ✅ **Konfigurations-Sicherheit**: Validierung von Min/Max-Lüfterstufen (Swap-Guard) zur Vermeidung von invertierter Skalierung bei Fehlkonfigurationen in der UI.
 
+- **Vollständiger Boot-Flow nach allen Fixes**:
+
+  ```text
+  Boot (t=0)
+    │
+    ├─ on_boot (priority -10)
+    │   ├─ delay 2s
+    │   ├─ sync_config_to_controller()
+    │   ├─ cycle_operating_mode()
+    │   ├─ load_peers_from_runtime_cache()  ← NVS laden
+    │   ├─ delay 1s
+    │   ├─ send_discovery_broadcast()       ← Peers suchen
+    │   ├─ delay 3s
+    │   └─ request_peer_status()            ← State sync
+    │
+    ├─ interval 60s (wiederholt)
+    │   └─ if peer_cache.empty() → send_discovery_broadcast()
+    │
+    └─ Normalbetrieb
+  ```
+
 - **Protocol v4 & Stability (März 2026)**:
   - ✅ **ESP-NOW v4 Upgrade**: Einführung von Magic Header (`0x42`) und Protokoll-Versionierung zur Vermeidung von Inkompatibilitäten.
   - ✅ **Echtzeit-Settings-Sync**: Vollständiges Mirroring aller Benutzer-Konfigurationen (CO2-Grenzwerte, Fan-Levels, Timer) via Unicast.

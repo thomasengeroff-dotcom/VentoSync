@@ -71,16 +71,37 @@ esphome:
     - components/helpers/led_feedback.h
     - components/helpers/user_input.h
   on_boot:
-    - priority: -10.0 # -10 ensure WiFi and NVS are ready before syncing.
+    - priority: -10.0
       then:
-        - delay: 2s # Wait for all components/NVS to stabilize
+        - delay: 2s
         - lambda: |-
             sync_config_to_controller();
             if (current_mode_index != nullptr) {
               cycle_operating_mode(current_mode_index->value());
             }
+            // ✅ FIX: Peers aus NVS laden und Discovery starten
+            load_peers_from_runtime_cache();
+        - delay: 1s  # Kurz warten, damit ESP-NOW bereit ist
+        - lambda: |-
+            send_discovery_broadcast();
+        - delay: 3s  # Warten auf Discovery-Antworten
+        - lambda: |-
+            request_peer_status();
 
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
+
+# ---------------------------------------------------------
+# ESP-NOW PEER DISCOVERY & HEALTH
+# ---------------------------------------------------------
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          if (peer_cache.empty()) {
+            ESP_LOGI("espnow_disc", 
+                     "No peers found — retrying discovery...");
+            send_discovery_broadcast();
+          }
 
 # ---------------------------------------------------------
 # GLOBAL VARIABLES (State Memory)
@@ -227,29 +248,17 @@ espnow:
   # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
   on_broadcast:
     - lambda: |-
-        std::string payload((const char*)data, size);
-        if (handle_discovery_payload(payload, info.src_addr)) {
-          return;
-        }
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
   # For robustness, we also handle registered peers (e.g. if we add them dynamically)
   on_receive:
     - lambda: |-
-        std::string payload((const char*)data, size);
-        if (handle_discovery_payload(payload, info.src_addr)) {
-          return;
-        }
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
   on_unknown_peer:
     - lambda: |-
-        std::string payload((const char*)data, size);
-        if (handle_discovery_payload(payload, info.src_addr)) {
-          return;
-        }
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 

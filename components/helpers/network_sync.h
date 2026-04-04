@@ -214,6 +214,11 @@ inline void send_discovery_broadcast() {
   // FIXED: Removed blocking delay to prevent main-loop stalls.
   // Simultaneous boot storms are better handled by the random_uint32() in the trigger itself.
 
+  if (std::isnan(config_floor_id->state) || std::isnan(config_room_id->state)) {
+    ESP_LOGD("espnow_disc", "IDs are NaN — deferring broadcast");
+    return;
+  }
+
   char buffer[64];
   int written =
       snprintf(buffer, sizeof(buffer), "ROOM_DISC:%d:%d",
@@ -275,37 +280,46 @@ inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
   if (!esphome::espnow::global_esp_now || peer_cache.empty())
     return;
 
-  for (auto &entry : peer_cache) {
-    // Capture MAC by value to avoid dangling pointer in async callback
-    std::array<uint8_t, 6> peer_mac = entry.mac;
-    esphome::espnow::global_esp_now->send(peer_mac.data(), data,
-      [peer_mac](esp_err_t err) {
-        PeerEntry *p = find_peer_in_cache(peer_mac.data());
-        if (p == nullptr) return; // Peer was already removed
+  // ✅ Snapshot der MACs erstellen, um Iterator-Invalidierung zu vermeiden
+  std::vector<std::array<uint8_t, 6>> mac_snapshot;
+  mac_snapshot.reserve(peer_cache.size());
+  for (const auto &entry : peer_cache) {
+    mac_snapshot.push_back(entry.mac);
+  }
 
-        if (err == ESP_OK) {
-          // Success: reset fail counter, update timestamp
-          if (p->fail_count > 0) {
-            ESP_LOGI("espnow_ack", "Peer %02X:%02X:%02X recovered after %d failures",
-                     peer_mac[3], peer_mac[4], peer_mac[5], p->fail_count);
-            p->fail_count = 0;
-          }
-          p->last_seen = millis();
-        } else {
-          // Failure: increment counter
-          p->fail_count++;
-          ESP_LOGW("espnow_ack", "Send to %02X:%02X:%02X failed (err=%d, consecutive failures: %d/%d)",
-                   peer_mac[3], peer_mac[4], peer_mac[5],
-                   err, p->fail_count, MAX_PEER_SEND_FAILURES);
+  for (const auto &peer_mac : mac_snapshot) {
+    esphome::espnow::global_esp_now->send(
+        peer_mac.data(), data, [peer_mac](esp_err_t err) {
+          PeerEntry *p = find_peer_in_cache(peer_mac.data());
+          if (p == nullptr)
+            return; // Peer was already removed
 
-          if (p->fail_count >= MAX_PEER_SEND_FAILURES) {
-            ESP_LOGE("espnow_ack", "Peer %02X:%02X:%02X exceeded max failures (%d) — removing and triggering re-discovery",
-                     peer_mac[3], peer_mac[4], peer_mac[5], MAX_PEER_SEND_FAILURES);
-            remove_stale_peer(peer_mac.data());
-            trigger_re_discovery();
+          if (err == ESP_OK) {
+            // Success: reset fail counter, update timestamp
+            if (p->fail_count > 0) {
+              ESP_LOGI("espnow_ack",
+                       "Peer %02X:%02X:%02X recovered after %d failures",
+                       peer_mac[3], peer_mac[4], peer_mac[5], p->fail_count);
+              p->fail_count = 0;
+            }
+            p->last_seen = millis();
+          } else {
+            // Failure: increment counter
+            p->fail_count++;
+            ESP_LOGW("espnow_ack",
+                     "Send to %02X:%02X:%02X failed (err=%d, failures: %d/%d)",
+                     peer_mac[3], peer_mac[4], peer_mac[5], err, p->fail_count,
+                     MAX_PEER_SEND_FAILURES);
+
+            if (p->fail_count >= MAX_PEER_SEND_FAILURES) {
+              ESP_LOGE("espnow_ack",
+                       "Peer %02X:%02X:%02X exceeded max failures — removing",
+                       peer_mac[3], peer_mac[4], peer_mac[5]);
+              remove_stale_peer(peer_mac.data());
+              trigger_re_discovery();
+            }
           }
-        }
-      });
+        });
   }
 }
 
@@ -322,6 +336,13 @@ inline bool handle_discovery_payload(const std::string &payload,
 
     int floor, room;
     if (sscanf(payload.c_str() + 10, "%d:%d", &floor, &room) == 2) {
+      if (config_floor_id == nullptr || config_room_id == nullptr ||
+          std::isnan(config_floor_id->state) ||
+          std::isnan(config_room_id->state)) {
+        ESP_LOGW("espnow_disc",
+                 "Config IDs not ready (null or NaN), ignoring discovery");
+        return false;
+      }
       if (floor == (int)config_floor_id->state &&
           room == (int)config_room_id->state) {
         ESP_LOGI("espnow_disc", "Matching room discovery from %02X:%02X:%02X",
@@ -508,10 +529,12 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
   // Issue #4 FIX: Only override fan intensity from peer in manual modes.
   // In Automatik mode, the local PID controller is the authority for intensity.
   bool is_auto = (auto_mode_active != nullptr && auto_mode_active->value());
-  if (!is_auto && fan_intensity_level != nullptr && fan_intensity_display != nullptr &&
-      (v->current_fan_intensity != fan_intensity_level->value() || force)) {
-    fan_intensity_level->value() = v->current_fan_intensity;
-    fan_intensity_display->publish_state(v->current_fan_intensity);
+  if (!is_auto && fan_intensity_level != nullptr && 
+      fan_intensity_display != nullptr &&
+      (v->current_fan_intensity != pkt->fan_intensity || force)) {
+    v->set_fan_intensity(pkt->fan_intensity, false);  // ← Aktualisiert PWM
+    fan_intensity_level->value() = pkt->fan_intensity;
+    fan_intensity_display->publish_state(pkt->fan_intensity);
   }
 
   int new_mode_idx = -1; // -1 = Don't update unless determined
@@ -572,6 +595,35 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
  * variable modifications here are safe from concurrent HW interrupts.
  */
 inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
+  // ✅ Deduplication guard (prevent double-processing within 50ms)
+  static uint32_t last_rx_time = 0;
+  static uint32_t last_rx_hash = 0;
+  uint32_t now = millis();
+  
+  uint32_t hash = (uint32_t)data.size();
+  for (size_t i = 0; i < std::min(data.size(), (size_t)8); i++)
+    hash = hash * 31 + data[i];
+  // ✅ FIX: Alle 6 MAC-Bytes einbeziehen statt nur 2
+  for (size_t i = 0; i < 6; i++)
+    hash = hash * 31 + src_mac[i];
+
+  if (hash == last_rx_hash && (now - last_rx_time) < 50) {
+    ESP_LOGD("espnow_dedup", "Duplicate packet suppressed");
+    return; // Duplicate suppressed (likely from overlapping broadcast/unknown_peer lambdas)
+  }
+  last_rx_hash = hash;
+  last_rx_time = now;
+
+  // ✅ Discovery-Strings VOR validate_packet() abfangen
+  // Discovery-Pakete sind Plaintext, keine VentilationPacket-Strukturen
+  if (!data.empty()) {
+    std::string payload(data.begin(), data.end());
+    if (payload.find("ROOM_DISC:") == 0 || payload.find("ROOM_CONF:") == 0) {
+      handle_discovery_payload(payload, src_mac);
+      return; // Nicht weiter als VentilationPacket verarbeiten
+    }
+  }
+
   if (!espnow_handler::validate_packet(data))
     return;
 

@@ -317,6 +317,9 @@ esphome:
             call_hum.perform();
             ESP_LOGD("system", "PID controllers initialized (CO2 + Humidity)");
           }
+          
+          // --- Trigger Discovery (Ensure discovery runs immediately on boot) ---
+          id(espnow_discovery).execute();
 
 # ---------------------------------------------------------
 # VENTILATION CONTROL
@@ -414,4 +417,13 @@ interval:
             esp_task_wdt_reset(); // feed once to allow log buffer to flush
             delay(200);
             esp_restart();
+          }
+      
+  # periodic re-discovery if peers list is empty
+  - interval: 5min
+    then:
+      - lambda: |-
+          if (peer_cache.empty()) {
+            ESP_LOGI("espnow_disc", "Periodic peer check — list empty. Repeating discovery.");
+            send_discovery_broadcast();
           }

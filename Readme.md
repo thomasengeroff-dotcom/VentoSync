@@ -841,6 +841,27 @@ To simplify software maintenance and ensure that every firmware change is tracea
   - ✅ **Broadcast Optimization**: Reduced network jitter and eliminated recursive broadcast cascades by optimizing state-sync triggers during PID adjustments.
   - ✅ **Config Safety**: Added validation for min/max fan levels (swap-guard) to prevent inverted scaling on UI misconfiguration.
 
+- **Complete Boot Flow after all fixes**:
+
+  ```text
+  Boot (t=0)
+    │
+    ├─ on_boot (priority -10)
+    │   ├─ delay 2s
+    │   ├─ sync_config_to_controller()
+    │   ├─ cycle_operating_mode()
+    │   ├─ load_peers_from_runtime_cache()  ← Load NVS
+    │   ├─ delay 1s
+    │   ├─ send_discovery_broadcast()       ← Search for Peers
+    │   ├─ delay 3s
+    │   └─ request_peer_status()            ← State sync
+    │
+    ├─ interval 60s (repeated)
+    │   └─ if peer_cache.empty() → send_discovery_broadcast()
+    │
+    └─ Normal Operation
+  ```
+
 - **Protocol v4 & Stability (March 2026)**:
   - ✅ **ESP-NOW v4 Upgrade**: Introduction of a magic header (`0x42`) and protocol versioning to avoid incompatibilities.
   - ✅ **Real-time Settings Sync**: Full mirroring of all user configurations (CO2 limits, fan levels, timers) via unicast.
