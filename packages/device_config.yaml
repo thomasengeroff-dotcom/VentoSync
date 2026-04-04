@@ -213,6 +213,23 @@ button:
             option: "Phase A (Startet mit Zuluft)"
         - logger.log: "Konfiguration auf Standardwerte zurückgesetzt"
 
+  - platform: template
+    name: "Force ESPNOW Discovery"
+    on_press:
+      - lambda: |-
+          ESP_LOGW("TEST", "=== MANUAL DISCOVERY START ===");
+          ESP_LOGW("TEST", "global_esp_now: %s", 
+                   esphome::espnow::global_esp_now ? "OK" : "NULL");
+          ESP_LOGW("TEST", "config_floor_id: %s (state: %.0f)", 
+                   config_floor_id ? "OK" : "NULL",
+                   config_floor_id ? config_floor_id->state : -1);
+          ESP_LOGW("TEST", "config_room_id: %s (state: %.0f)", 
+                   config_room_id ? "OK" : "NULL",
+                   config_room_id ? config_room_id->state : -1);
+          ESP_LOGW("TEST", "peer_cache size: %d", peer_cache.size());
+          send_discovery_broadcast();
+          ESP_LOGW("TEST", "=== MANUAL DISCOVERY SENT ===");
+
 # ---------------------------------------------------------
 # CONFIGURATION HELPERS
 # ---------------------------------------------------------

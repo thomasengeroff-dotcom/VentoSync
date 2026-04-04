@@ -240,7 +240,7 @@ ventilation_logic:
 # Configures peer-to-peer communication with the Slave/Consumer device
 espnow:
   id: espnow_component
-  auto_add_peer: true
+  auto_add_peer: false
   peers:
     - FF:FF:FF:FF:FF:FF # Broadcast for Discovery/Sync
 
