@@ -37,6 +37,7 @@
 
 #include "esp_mac.h"
 #include "esp_now.h"
+#include "esp_wifi.h"
 #include "esphome.h"
 #include <algorithm>
 #include <array>
@@ -148,6 +149,7 @@ extern esphome::template_::TemplateNumber
     *config_device_id; ///< Persistent Device ID number.
 extern esphome::template_::TemplateSelectWithSetAction<false, true, true, 0>
     *config_phase; ///< Persistent Phase A/B selection.
+extern esphome::template_::TemplateTextSensor *espnow_peers_display; ///< Peer list display.
 /// @}
 
 extern esphome::globals::RestoringGlobalsComponent<bool>

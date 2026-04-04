@@ -73,18 +73,23 @@ esphome:
   on_boot:
     - priority: -10.0
       then:
-        - delay: 2s
+        - delay: 1s
         - lambda: |-
             sync_config_to_controller();
             if (current_mode_index != nullptr) {
               cycle_operating_mode(current_mode_index->value());
             }
-            // ✅ FIX: Peers aus NVS laden und Discovery starten
             load_peers_from_runtime_cache();
-        - delay: 1s  # Kurz warten, damit ESP-NOW bereit ist
+        - delay: 1s
         - lambda: |-
             send_discovery_broadcast();
-        - delay: 3s  # Warten auf Discovery-Antworten
+        - delay: 2s
+        - lambda: |-
+            send_discovery_broadcast();
+        - delay: 2s
+        - lambda: |-
+            send_discovery_broadcast();
+        - delay: 1s
         - lambda: |-
             request_peer_status();
 
@@ -241,24 +246,29 @@ ventilation_logic:
 espnow:
   id: espnow_component
   auto_add_peer: false
+  # FF:FF:FF:FF:FF:FF must be in peers for the C++ send() API to broadcast discovery/status packets.
+  # on_broadcast will still correctly handle incoming packets with the broadcast MAC.
   peers:
-    - FF:FF:FF:FF:FF:FF # Broadcast for Discovery/Sync
+    - FF:FF:FF:FF:FF:FF
 
   # on_receive ONLY triggers for registered peers (defined above).
   # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
   on_broadcast:
     - lambda: |-
+        ESP_LOGW("espnow_low", "BROADCAST packet received! Size: %d", size);
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
   # For robustness, we also handle registered peers (e.g. if we add them dynamically)
   on_receive:
     - lambda: |-
+        ESP_LOGW("espnow_low", "RECEIVE packet from registered peer! Size: %d", size);
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
   on_unknown_peer:
     - lambda: |-
+        ESP_LOGW("espnow_low", "UNKNOWN PEER packet! Size: %d", size);
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
@@ -309,15 +319,4 @@ text_sensor:
     id: espnow_peers_display
     icon: "mdi:access-point-network"
     entity_category: diagnostic
-    update_interval: 30s
-    lambda: |-
-      std::string list = id(espnow_peers);
-      if (list.empty()) return std::string("Keine Peers");
-      
-      // Add space after comma for better line wrapping in Home Assistant
-      size_t pos = 0;
-      while ((pos = list.find(",", pos)) != std::string::npos) {
-          list.insert(pos + 1, " ");
-          pos += 2;
-      }
-      return list;
+    update_interval: never

@@ -36,6 +36,8 @@ inline bool is_local_mac(const uint8_t *mac) {
   if (!cached) {
     esp_read_mac(local_mac, ESP_MAC_WIFI_STA);
     cached = true;
+    ESP_LOGI("espnow_disc", "Local MAC detected: %02X:%02X:%02X:%02X:%02X:%02X",
+             local_mac[0], local_mac[1], local_mac[2], local_mac[3], local_mac[4], local_mac[5]);
   }
   return memcmp(mac, local_mac, 6) == 0;
 }
@@ -63,7 +65,7 @@ inline PeerEntry* find_peer_in_cache(const uint8_t *mac) {
   return nullptr;
 }
 
-/** @brief Rebuilds the NVS-backed espnow_peers string from peer_cache. */
+/** @brief Rebuilds the NVS-backed espnow_peers string from peer_cache and updates UI. */
 inline void rebuild_peers_string() {
   if (espnow_peers == nullptr) return;
   std::string &list = espnow_peers->value();
@@ -71,6 +73,22 @@ inline void rebuild_peers_string() {
   for (size_t i = 0; i < peer_cache.size(); i++) {
     if (i > 0) list += ",";
     list += format_mac(peer_cache[i].mac.data());
+  }
+
+  // Update UI with formatted display string
+  if (espnow_peers_display != nullptr) {
+    if (list.empty()) {
+      espnow_peers_display->publish_state("Keine Peers");
+    } else {
+      // Add spaces after commas for HA line wrapping
+      std::string display = list;
+      size_t pos = 0;
+      while ((pos = display.find(",", pos)) != std::string::npos) {
+          display.insert(pos + 1, " ");
+          pos += 2;
+      }
+      espnow_peers_display->publish_state(display);
+    }
   }
 }
 
@@ -112,8 +130,8 @@ inline void trigger_re_discovery() {
 inline void reset_peer_fail_count(const uint8_t *mac) {
   PeerEntry *entry = find_peer_in_cache(mac);
   if (entry != nullptr && entry->fail_count > 0) {
-    ESP_LOGD("espnow_recovery", "Peer %02X:%02X:%02X recovered (was %d failures)",
-             mac[3], mac[4], mac[5], entry->fail_count);
+    ESP_LOGD("espnow_recovery", "Peer %s recovered (was %d failures)",
+             format_mac(mac).c_str(), entry->fail_count);
     entry->fail_count = 0;
     entry->last_seen = millis();
   } else if (entry != nullptr) {
@@ -148,24 +166,40 @@ inline void register_peer_dynamic(const uint8_t *mac) {
              mac_str.c_str());
   }
 
-  // Add to binary peer cache (if not already present)
+  // 1. Add to binary peer cache (if not already present)
   if (find_peer_in_cache(mac) == nullptr) {
     PeerEntry entry{};
     std::copy(mac, mac + 6, entry.mac.begin());
     entry.last_seen = millis();
     entry.fail_count = 0;
     peer_cache.push_back(entry);
-    ESP_LOGI("espnow_disc", "Peer %s added to binary cache (total: %d)",
-             mac_str.c_str(), peer_cache.size());
-  } else {
-    // Peer already known — just reset fail counter
-    reset_peer_fail_count(mac);
+    
+    // Save to NVS string for persistence
+    rebuild_peers_string();
+    ESP_LOGI("espnow_disc", "New peer added to cache: %s", mac_str.c_str());
   }
 
-  // FIXED K2: Use ESPHome wrapper API consistently (matches load_peers_from_runtime_cache)
-  // Idempotent call safely adds peer to hardware list if not already present.
-  esphome::espnow::global_esp_now->add_peer(mac);
-  ESP_LOGI("espnow_disc", "Peer %s registered via ESPHome API", mac_str.c_str());
+  // 2. Register hardware peer (ESP-IDF)
+  // Essential for ESP32-C6: Channel MUST be set if WiFi is active
+  esp_now_peer_info_t info;
+  memset(&info, 0, sizeof(info));
+  memcpy(info.peer_addr, mac, 6);
+  
+  uint8_t primary = 0;
+  wifi_second_chan_t second;
+  esp_wifi_get_channel(&primary, &second);
+  info.channel = primary;
+  info.encrypt = false;
+  
+  esp_err_t res = esp_now_add_peer(&info);
+  if (res == ESP_ERR_ESPNOW_EXIST) {
+    esp_now_mod_peer(&info); // Refresh settings if exists
+    ESP_LOGD("espnow_disc", "Peer %s updated (ch=%d)", mac_str.c_str(), primary);
+  } else if (res != ESP_OK) {
+    ESP_LOGE("espnow_disc", "Peer %s registration FAILED (err=%d)", mac_str.c_str(), res);
+  } else {
+    ESP_LOGI("espnow_disc", "Peer %s registered (ch=%d)", mac_str.c_str(), primary);
+  }
 }
 
 /** @brief Loads all peers saved in the runtime string cache and populates peer_cache. */
@@ -187,9 +221,20 @@ inline void load_peers_from_runtime_cache() {
                               : current_list.substr(start, end - start);
     auto mac = parse_mac_local(mac_str);
     if (mac.has_value()) {
-      esphome::espnow::global_esp_now->add_peer(mac->data());
+      // 1. Register with hardware (ESP-IDF) - FORCE CHANNEL
+      esp_now_peer_info_t peer_info;
+      memset(&peer_info, 0, sizeof(esp_now_peer_info_t));
+      memcpy(peer_info.peer_addr, mac->data(), 6);
+      
+      uint8_t primary = 0;
+      wifi_second_chan_t second;
+      esp_wifi_get_channel(&primary, &second);
+      peer_info.channel = primary;
+      peer_info.encrypt = false;
+      
+      esp_now_add_peer(&peer_info);
 
-      // Populate binary cache
+      // 2. Populate binary cache
       if (find_peer_in_cache(mac->data()) == nullptr) {
         PeerEntry entry{};
         entry.mac = mac.value();
@@ -197,7 +242,7 @@ inline void load_peers_from_runtime_cache() {
         entry.fail_count = 0;
         peer_cache.push_back(entry);
       }
-      ESP_LOGI("espnow_disc", "Restored peer from flash: %s", mac_str.c_str());
+      ESP_LOGI("espnow_disc", "Restored peer from flash: %s (Channel: %d)", mac_str.c_str(), primary);
     }
     if (end == std::string::npos)
       break;
@@ -209,20 +254,33 @@ inline void load_peers_from_runtime_cache() {
 
 /** @brief Sends a discovery broadcast to identify peers in the same room. */
 inline void send_discovery_broadcast() {
-  if (!esphome::espnow::global_esp_now || !config_floor_id || !config_room_id) return;
-  
-  // FIXED: Removed blocking delay to prevent main-loop stalls.
-  // Simultaneous boot storms are better handled by the random_uint32() in the trigger itself.
+  if (!esphome::espnow::global_esp_now || 
+      !config_floor_id || !config_room_id) return;
 
-  if (std::isnan(config_floor_id->state) || std::isnan(config_room_id->state)) {
+  // ✅ NaN-Check VOR dem Cast (UB-Prevention)
+  if (std::isnan(config_floor_id->state) || 
+      std::isnan(config_room_id->state)) {
     ESP_LOGD("espnow_disc", "IDs are NaN — deferring broadcast");
     return;
   }
 
+  uint8_t floor = (uint8_t)config_floor_id->state;
+  uint8_t room = (uint8_t)config_room_id->state;
+
+  if (floor == 0 || room == 0) {
+    ESP_LOGD("espnow_disc", 
+             "IDs are default (0:0) — skipping broadcast");
+    return;
+  }
+
+  // LOG CHANNEL for coexistence diagnostics (Essential for ESP32-C6)
+  uint8_t primary_chan = 0;
+  wifi_second_chan_t second_chan;
+  esp_wifi_get_channel(&primary_chan, &second_chan);
+
   char buffer[64];
   int written =
-      snprintf(buffer, sizeof(buffer), "ROOM_DISC:%d:%d",
-               (int)config_floor_id->state, (int)config_room_id->state);
+      snprintf(buffer, sizeof(buffer), "ROOM_DISC:%d:%d", floor, room);
   if (written < 0 || written >= sizeof(buffer)) {
     ESP_LOGE("espnow_disc", "Buffer overflow prevented in discovery message");
     return;
@@ -231,8 +289,13 @@ inline void send_discovery_broadcast() {
   std::string msg(buffer);
   std::vector<uint8_t> data(msg.begin(), msg.end());
   esphome::espnow::global_esp_now->send(BROADCAST_MAC, data,
-                                        [](esp_err_t err) {});
-  ESP_LOGI("espnow_disc", "Sent discovery broadcast: %s", msg.c_str());
+                                        [msg, primary_chan](esp_err_t err) {
+                                          if (err == ESP_OK) {
+                                            ESP_LOGI("espnow_disc", "Sent discovery broadcast: %s (Channel: %d)", msg.c_str(), primary_chan);
+                                          } else {
+                                            ESP_LOGE("espnow_disc", "Discovery broadcast SEND FAILED! (Err: %d, Channel: %d)", err, primary_chan);
+                                          }
+                                        });
 }
 
 /** @brief Requests current status from all known peers.
@@ -298,8 +361,8 @@ inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
             // Success: reset fail counter, update timestamp
             if (p->fail_count > 0) {
               ESP_LOGI("espnow_ack",
-                       "Peer %02X:%02X:%02X recovered after %d failures",
-                       peer_mac[3], peer_mac[4], peer_mac[5], p->fail_count);
+                       "Peer %s recovered after %d failures",
+                       format_mac(peer_mac.data()).c_str(), p->fail_count);
               p->fail_count = 0;
             }
             p->last_seen = millis();
@@ -307,14 +370,14 @@ inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
             // Failure: increment counter
             p->fail_count++;
             ESP_LOGW("espnow_ack",
-                     "Send to %02X:%02X:%02X failed (err=%d, failures: %d/%d)",
-                     peer_mac[3], peer_mac[4], peer_mac[5], err, p->fail_count,
+                     "Send to %s failed (err=%d, failures: %d/%d)",
+                     format_mac(peer_mac.data()).c_str(), err, p->fail_count,
                      MAX_PEER_SEND_FAILURES);
 
             if (p->fail_count >= MAX_PEER_SEND_FAILURES) {
               ESP_LOGE("espnow_ack",
-                       "Peer %02X:%02X:%02X exceeded max failures — removing",
-                       peer_mac[3], peer_mac[4], peer_mac[5]);
+                       "Peer %s exceeded max failures — removing",
+                       format_mac(peer_mac.data()).c_str());
               remove_stale_peer(peer_mac.data());
               trigger_re_discovery();
             }
@@ -331,28 +394,38 @@ inline bool handle_discovery_payload(const std::string &payload,
     return false;
   }
   if (payload.find("ROOM_DISC:") == 0 || payload.find("ROOM_CONF:") == 0) {
-    if (is_local_mac(src_addr))
+    if (is_local_mac(src_addr)) {
+      ESP_LOGD("espnow_disc", "Ignoring own discovery loopback");
       return true;
+    }
 
     int floor, room;
     if (sscanf(payload.c_str() + 10, "%d:%d", &floor, &room) == 2) {
       if (config_floor_id == nullptr || config_room_id == nullptr ||
           std::isnan(config_floor_id->state) ||
           std::isnan(config_room_id->state)) {
-        ESP_LOGW("espnow_disc",
-                 "Config IDs not ready (null or NaN), ignoring discovery");
+        ESP_LOGW("espnow_disc", "Config IDs not ready (null or NaN), ignoring discovery (Payload: %s)", payload.c_str());
         return false;
       }
-      if (floor == (int)config_floor_id->state &&
-          room == (int)config_room_id->state) {
-        ESP_LOGI("espnow_disc", "Matching room discovery from %02X:%02X:%02X",
-                 src_addr[3], src_addr[4], src_addr[5]);
+      
+      int local_floor = (int)config_floor_id->state;
+      int local_room = (int)config_room_id->state;
+      
+      ESP_LOGI("espnow_disc", "Discovery match check: [Payload %d:%d vs Local %d:%d]", floor, room, local_floor, local_room);
+
+      if (floor == local_floor && room == local_room) {
+        ESP_LOGW("espnow_disc", "✅ ALL CRITERIA MET - Registering peer: %s",
+                 format_mac(src_addr).c_str());
         register_peer_dynamic(src_addr);
         if (payload.find("ROOM_DISC:") == 0) {
           send_discovery_confirmation(src_addr);
         }
         return true;
+      } else {
+        ESP_LOGI("espnow_disc", "❌ Group mismatch - ignoring.");
       }
+    } else {
+      ESP_LOGW("espnow_disc", "Failed to parse discovery payload format: %s", payload.c_str());
     }
   }
   return false;
@@ -608,11 +681,17 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
     hash = hash * 31 + src_mac[i];
 
   if (hash == last_rx_hash && (now - last_rx_time) < 50) {
-    ESP_LOGD("espnow_dedup", "Duplicate packet suppressed");
     return; // Duplicate suppressed (likely from overlapping broadcast/unknown_peer lambdas)
   }
   last_rx_hash = hash;
   last_rx_time = now;
+
+  // --- START DEBUG LOGGING ---
+  if (!data.empty()) {
+    ESP_LOGD("espnow_raw", "RX from %s | Len: %d | First: 0x%02X", 
+             format_mac(src_mac).c_str(), data.size(), data[0]);
+  }
+  // --- END DEBUG LOGGING ---
 
   // ✅ Discovery-Strings VOR validate_packet() abfangen
   // Discovery-Pakete sind Plaintext, keine VentilationPacket-Strukturen
@@ -624,8 +703,14 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
     }
   }
 
-  if (!espnow_handler::validate_packet(data))
+  if (!espnow_handler::validate_packet(data)) {
+    // Only log error for non-discovery packets that fail validation
+    if (!data.empty() && data[0] == 0x42) {
+       ESP_LOGW("vent_sync", "Packet validation failed for message from %s",
+                format_mac(src_mac).c_str());
+    }
     return;
+  }
 
   // Successful packet reception — reset fail counter for this peer
   reset_peer_fail_count(src_mac);
