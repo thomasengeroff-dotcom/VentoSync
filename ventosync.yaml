@@ -235,6 +235,13 @@ ventilation_group:
   board_temp_sensor: temperature
   scd41_temp_sensor: scd41_temperature
   bme680_temp_sensor: bme680_temperature
+  mode_index_global: current_mode_index
+  automatik_min_fan_level_global: automatik_min_fan_level
+  automatik_max_fan_level_global: automatik_max_fan_level
+  auto_co2_threshold_global: auto_co2_threshold_val
+  auto_humidity_threshold_global: auto_humidity_threshold_val
+  auto_presence_global: auto_presence_val
+  max_led_brightness_global: max_led_brightness
 
 # Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
 ventilation_logic:

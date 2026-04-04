@@ -16,6 +16,13 @@ CONF_FAN_RPM_SENSOR = 'fan_rpm_sensor'
 CONF_BOARD_TEMP_SENSOR = 'board_temp_sensor'
 CONF_SCD41_TEMP_SENSOR = 'scd41_temp_sensor'
 CONF_BME680_TEMP_SENSOR = 'bme680_temp_sensor'
+CONF_MODE_INDEX_GLOBAL = 'mode_index_global'
+CONF_AUTO_MIN_GLOBAL = 'automatik_min_fan_level_global'
+CONF_AUTO_MAX_GLOBAL = 'automatik_max_fan_level_global'
+CONF_AUTO_CO2_GLOBAL = 'auto_co2_threshold_global'
+CONF_AUTO_HUM_GLOBAL = 'auto_humidity_threshold_global'
+CONF_AUTO_PRES_GLOBAL = 'auto_presence_global'
+CONF_LED_BRIGHT_GLOBAL = 'max_led_brightness_global'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VentilationController),
@@ -29,6 +36,13 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_BOARD_TEMP_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_SCD41_TEMP_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_BME680_TEMP_SENSOR): cv.use_id(sensor.Sensor),
+    cv.Optional(CONF_MODE_INDEX_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_AUTO_MIN_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_AUTO_MAX_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_AUTO_CO2_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_AUTO_HUM_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_AUTO_PRES_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_LED_BRIGHT_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -62,3 +76,25 @@ async def to_code(config):
     if CONF_BME680_TEMP_SENSOR in config:
         s = await cg.get_variable(config[CONF_BME680_TEMP_SENSOR])
         cg.add(var.set_bme680_temp_sensor(s))
+
+    if CONF_MODE_INDEX_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_MODE_INDEX_GLOBAL])
+        cg.add(var.set_mode_index_global(g))
+    if CONF_AUTO_MIN_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_AUTO_MIN_GLOBAL])
+        cg.add(var.set_automatik_min_fan_level_global(g))
+    if CONF_AUTO_MAX_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_AUTO_MAX_GLOBAL])
+        cg.add(var.set_automatik_max_fan_level_global(g))
+    if CONF_AUTO_CO2_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_AUTO_CO2_GLOBAL])
+        cg.add(var.set_auto_co2_threshold_global(g))
+    if CONF_AUTO_HUM_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_AUTO_HUM_GLOBAL])
+        cg.add(var.set_auto_humidity_threshold_global(g))
+    if CONF_AUTO_PRES_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_AUTO_PRES_GLOBAL])
+        cg.add(var.set_auto_presence_global(g))
+    if CONF_LED_BRIGHT_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_LED_BRIGHT_GLOBAL])
+        cg.add(var.set_max_led_brightness_global(g))

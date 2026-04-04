@@ -264,30 +264,9 @@ inline void handle_intensity_bounce() {
 inline std::vector<uint8_t>
 build_and_populate_packet(esphome::MessageType type) {
   if (ventilation_ctrl == nullptr) return std::vector<uint8_t>();
-  auto *v = ventilation_ctrl;
   
-  // Get the base vector containing the core logic payload
-  std::vector<uint8_t> data = v->build_packet(type);
-
-  // Cast it to our known struct
-  esphome::VentilationPacket *pkt = (esphome::VentilationPacket *)data.data();
-
-  // Populate all HA configurations with null checks
-  pkt->current_mode_index = current_mode_index != nullptr ? current_mode_index->value() : 0;
-  pkt->automatik_min_fan_level = automatik_min_fan_level != nullptr ? (uint8_t)automatik_min_fan_level->value() : 2;
-  pkt->automatik_max_fan_level = automatik_max_fan_level != nullptr ? (uint8_t)automatik_max_fan_level->value() : 7;
-  pkt->auto_co2_threshold_val = auto_co2_threshold_val != nullptr ? (uint16_t)auto_co2_threshold_val->value() : 1000;
-  pkt->auto_humidity_threshold_val = auto_humidity_threshold_val != nullptr ? (uint8_t)auto_humidity_threshold_val->value() : 60;
-  pkt->auto_presence_val = auto_presence_val != nullptr ? (int8_t)auto_presence_val->value() : 0;
-
-  // Timers
-  pkt->sync_interval_min = (uint16_t)(v->sync_interval_ms / 60 / 1000);
-  pkt->vent_timer_min = (uint16_t)(v->state_machine.ventilation_duration_ms / 60 / 1000);
-
-  // UI Settings
-  pkt->max_led_brightness = max_led_brightness != nullptr ? max_led_brightness->value() : 0.8f;
-
-  return data;
+  // Now simply call the base method, as it handles all population autonomously
+  return ventilation_ctrl->build_packet(type);
 }
 
 // --- Boot-time Initialization Helpers ----------------------------------

@@ -158,10 +158,14 @@ extern esphome::template_::TemplateSwitch
     *peer_check_switch; ///< HA switch for peer check.
 extern esphome::template_::TemplateSwitch
     *fan_direction; ///< Hardware fan direction switch.
+extern esphome::globals::RestoringGlobalsComponent<int>
+    *auto_presence_val; ///< Presence bitmask.
 extern esphome::globals::GlobalsComponent<bool>
-    *intensity_bounce_up; ///< Hold-to-cycle direction.
+    *ui_active; ///< Flag if UI should be active / bright.
 extern esphome::globals::RestoringGlobalsComponent<float>
-    *max_led_brightness; ///< Global LED brightness limit.
+    *max_led_brightness; ///< Max brightness for LEDs.
+extern esphome::globals::GlobalsComponent<bool>
+    *intensity_bounce_up; ///< True if we are cycling UP, false if DOWN.
 extern esphome::globals::GlobalsComponent<bool>
     *thermal_warning_active; ///< True if BMP390 detects >50°C.
 
@@ -249,9 +253,9 @@ parse_mac_local(const std::string &str) {
   return res;
 }
 
-// NOTE: espnow_peers is a static variable declared in the ESPHome-generated
-// main.cpp. Since this header is #included from main.cpp, it is visible
-// without any extern declaration.
+extern esphome::globals::RestoringGlobalStringComponent<std::string, 255>
+    *espnow_peers; ///< ESP-NOW dynamic peer list (JSON-formatted MACs).
+
 // NOTE: We use esphome::espnow::global_esp_now which is properly declared
 // as extern in espnow_component.h.
 

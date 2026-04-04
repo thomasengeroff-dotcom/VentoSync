@@ -30,6 +30,7 @@
 /// hardware I/O (fan, direction switch) and ESP-NOW group synchronization.
 
 #include "esphome.h"
+#include "esphome/components/globals/globals_component.h"
 #include "ventilation_state_machine.h"
 #include <cmath>
 #include <vector>
@@ -198,8 +199,22 @@ public:
   sensor::Sensor *board_temp_sensor_{nullptr}; ///< Local board temp (BMP390).
   sensor::Sensor *scd41_temp_sensor_{nullptr}; ///< Local room temp (SCD41).
   sensor::Sensor *bme680_temp_sensor_{nullptr}; ///< Fallback room temp (BME680).
+  esphome::globals::RestoringGlobalsComponent<int> *mode_index_global_{nullptr}; ///< Global UI mode index.
+  esphome::globals::RestoringGlobalsComponent<int> *automatik_min_fan_level_global_{nullptr}; 
+  esphome::globals::RestoringGlobalsComponent<int> *automatik_max_fan_level_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *auto_co2_threshold_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *auto_humidity_threshold_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *auto_presence_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<float> *max_led_brightness_global_{nullptr};
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
+  void set_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { mode_index_global_ = g; }
+  void set_automatik_min_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { automatik_min_fan_level_global_ = g; }
+  void set_automatik_max_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { automatik_max_fan_level_global_ = g; }
+  void set_auto_co2_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_co2_threshold_global_ = g; }
+  void set_auto_humidity_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_humidity_threshold_global_ = g; }
+  void set_auto_presence_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_presence_global_ = g; }
+  void set_max_led_brightness_global(esphome::globals::RestoringGlobalsComponent<float> *g) { max_led_brightness_global_ = g; }
   void set_floor_id(uint8_t id) { floor_id = id; }   ///< Set floor group.
   void set_room_id(uint8_t id) { room_id = id; }     ///< Set room group.
   void set_device_id(uint8_t id) {
@@ -577,9 +592,22 @@ public:
     pkt.device_id = device_id;
     pkt.msg_type = type;
     pkt.current_mode = state_machine.current_mode;
+    pkt.current_mode_index = (mode_index_global_ != nullptr) ? (uint8_t)mode_index_global_->value() : 0;
     pkt.remaining_duration_ms = get_remaining_duration();
     pkt.fan_intensity = current_fan_intensity;
     pkt.timestamp_ms = millis();
+    
+    // Populate Config with explicit null checks to ensure valid packets
+    pkt.automatik_min_fan_level = automatik_min_fan_level_global_ != nullptr ? (uint8_t)automatik_min_fan_level_global_->value() : 1;
+    pkt.automatik_max_fan_level = automatik_max_fan_level_global_ != nullptr ? (uint8_t)automatik_max_fan_level_global_->value() : 10;
+    pkt.auto_co2_threshold_val = auto_co2_threshold_global_ != nullptr ? (uint16_t)auto_co2_threshold_global_->value() : 1000;
+    pkt.auto_humidity_threshold_val = auto_humidity_threshold_global_ != nullptr ? (uint8_t)auto_humidity_threshold_global_->value() : 60;
+    pkt.auto_presence_val = auto_presence_global_ != nullptr ? (int8_t)auto_presence_global_->value() : 0;
+    pkt.max_led_brightness = max_led_brightness_global_ != nullptr ? (float)max_led_brightness_global_->value() : 0.8f;
+    
+    // Timers
+    pkt.sync_interval_min = (uint16_t)(sync_interval_ms / 60000);
+    pkt.vent_timer_min = (uint16_t)(state_machine.ventilation_duration_ms / 60000);
 
     pkt.cycle_pos_ms = state_machine.get_cycle_pos(millis());
     pkt.phase_state = state_machine.global_phase;
