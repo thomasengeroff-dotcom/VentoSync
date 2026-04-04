@@ -163,6 +163,7 @@ inline void register_peer_dynamic(const uint8_t *mac) {
   }
 
   // FIXED K2: Use ESPHome wrapper API consistently (matches load_peers_from_runtime_cache)
+  // Idempotent call safely adds peer to hardware list if not already present.
   esphome::espnow::global_esp_now->add_peer(mac);
   ESP_LOGI("espnow_disc", "Peer %s registered via ESPHome API", mac_str.c_str());
 }
@@ -392,6 +393,9 @@ inline void handle_status_request(const esphome::VentilationPacket *pkt, const u
   if (config_floor_id != nullptr && config_room_id != nullptr &&
       pkt->floor_id == (int)config_floor_id->state &&
       pkt->room_id == (int)config_room_id->state) {
+    // FIX: Register the requester as a peer immediately
+    register_peer_dynamic(src_mac);
+
     ESP_LOGI("vent_sync", "Status request from peer %d. Sending UNICAST response...",
              pkt->device_id);
     auto resp = build_and_populate_packet(esphome::MSG_STATUS_RESPONSE);
@@ -601,6 +605,9 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
       }
       ESP_LOGI("vent_sync", "Adopting state from peer %d (REBOOT SYNC%s)",
                pkt->device_id, is_from_master(pkt) ? " - MASTER" : " - FALLBACK");
+      
+      // FIX: Register the peer we just synced from
+      register_peer_dynamic(src_mac);
 
       int mode_idx = pkt->current_mode_index;
 

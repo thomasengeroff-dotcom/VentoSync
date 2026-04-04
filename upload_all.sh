@@ -4,6 +4,18 @@
 # Damit das Skript sofort abbricht, falls ein Upload hart fehlschlägt:
 set -e
 
+echo ""
+echo "=================================================="
+echo "🚀 Checking yaml config ventosync.yaml..."
+echo "=================================================="
+esphome config ventosync.yaml
+
+echo ""
+echo "=================================================="
+echo "🚀 Compiling ventosync.yaml..."
+echo "=================================================="
+esphome compile ventosync.yaml
+
 #echo "=================================================="
 #echo "🚀 Starte Upload auf Gerät WRG 12V Test (192.168.178.225)..."
 #echo "=================================================="
@@ -22,4 +34,4 @@ echo "=================================================="
 esphome upload ventosync.yaml --device 192.168.178.244
 
 echo ""
-echo "✅ Alle Firmware-Uploads wurden erfolgreich abgeschlossen!"
+echo "✅ Firmware erfolgreich kompiliert und auf alle Geräte hochgeladen!"

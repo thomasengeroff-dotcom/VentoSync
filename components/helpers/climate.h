@@ -82,6 +82,10 @@ constexpr size_t NTC_WINDOW_SIZE = 3;
  */
 inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
                                                   float new_value) {
+  if (std::isnan(new_value)) {
+    return {}; // FIXED P3: Discard invalid sensor readings to prevent history pollution
+  }
+
   if (ventilation_ctrl == nullptr) {
     return new_value; // Fallback if controller is not bound
   }

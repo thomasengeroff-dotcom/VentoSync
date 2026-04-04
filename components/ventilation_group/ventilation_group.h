@@ -235,7 +235,11 @@ public:
     // Register the current task (ESPHome main loop) with the ESP-IDF Task Watchdog (TWDT)
     esp_task_wdt_add(NULL); 
     
-    pending_broadcast = true; // Announce presence on boot
+    // Announce presence on boot with random jitter (0-2s) to prevent "Boot Storm"
+    // collisions when multiple units power up simultaneously.
+    this->set_timeout(esphome::random_uint32() % 2000, [this]() {
+      this->pending_broadcast = true;
+    });
   }
 
   /// @brief Main loop — ticks the state machine, refreshes hardware, and

@@ -156,6 +156,8 @@ The devices communicate via the [ESPHome ESP-NOW component](https://esphome.io/c
 - ⚡ **Extremely Low Latency**: Since no connection needs to be established or managed (handshake-free after discovery), synchronization commands are transmitted almost without delay. This is crucial for the exact change of direction of synchronized fan pairs.
 - 🔌 **No Control Cables**: No data cables need to be pulled through walls. Synchronization takes place "out-of-the-box" via radio.
 - 📡 **Dynamic Discovery & Persistence**: Devices in the same room find each other automatically when booting or when configuration changes via a discovery broadcast. As soon as a match (same Floor/Room ID) occurs, the MAC addresses of the peers are permanently stored in the NVS (flash).
+  > [!NOTE]
+  > Due to the 254-character string limit in ESPHome Globals, the persistent peer list is limited to **approx. 14 peers** per device. This is more than sufficient for standard residential installations. No more than 14 devices must be in the same room group.
 - ⚙️ **Efficient Unicast Communication**: After initial discovery, the actual data transmission (PID demand, status, sync) takes place via targeted unicast packets to the known peers. This massively reduces the noise floor in the 2.4 GHz band and increases stability.
 - ⚙️ **Global Configuration Synchronization**: Changes to settings (e.g., CO2 limits, timers, Standard Automatic modes) on one device via Home Assistant or the control panel are mirrored in real-time wirelessly to all other synchronized peers.
 

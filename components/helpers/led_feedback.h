@@ -88,17 +88,21 @@ inline void check_master_led_error() {
 
   if (target_effect != last_active_effect || std::abs(target_brightness - last_active_brightness) > 0.1f) {
     auto call = status_led_master->make_call();
-    call.set_effect(target_effect);
+    
     if (target_brightness > 0) {
       call.set_state(true);
+      call.set_effect(target_effect);
       call.set_brightness(target_brightness);
     } else if (is_master()) {
       // Master Device: LED always solid ON (dimmed) when no error is active
-      call.set_effect("None");
       call.set_state(true);
+      call.set_effect("None");
       const float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
       call.set_brightness(0.3f * max_b);
     } else {
+      // Slave Device / No Error: Turn off entirely.
+      // NOTE: We do NOT call set_effect("None") here while turning off,
+      // as this triggers a "cannot start effect when turning off" warning.
       call.set_state(false);
     }
     call.perform();

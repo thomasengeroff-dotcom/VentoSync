@@ -31,8 +31,8 @@ i2c:
   scl: GPIO23 # Pin D5 on XIAO ESP32C6
   scan: true
   id: bus_a
-  frequency: 100kHz     # Standard for maximum compatibility
-  timeout: 20ms        # Recommended for stable communication
+  frequency: 400kHz     # Industrial standard for faster transactions
+  timeout: 50ms        # Increased buffer for ESP32 radio interrupts
   # pullup: true        # Usually not necessary as internal pullups are present
 
 # ---------------------------------------------------------

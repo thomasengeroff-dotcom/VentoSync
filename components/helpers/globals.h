@@ -223,17 +223,28 @@ inline std::vector<uint8_t>
 build_and_populate_packet(esphome::MessageType type);
 
 // Helper to parse MAC address strings (e.g., "AA:BB:CC:DD:EE:FF")
+// HIGH PERFORMANCE: Avoids sscanf for embedded efficiency.
 inline esphome::optional<std::array<uint8_t, 6>>
 parse_mac_local(const std::string &str) {
+  if (str.length() != 17)
+    return {};
   std::array<uint8_t, 6> res;
-  int values[6];
-  if (sscanf(str.c_str(), "%X:%X:%X:%X:%X:%X", &values[0], &values[1],
-             &values[2], &values[3], &values[4], &values[5]) == 6) {
-    for (int i = 0; i < 6; ++i)
-      res[i] = (uint8_t)values[i];
-    return res;
+  for (int i = 0; i < 6; i++) {
+    char high = str[i * 3];
+    char low = str[i * 3 + 1];
+    auto parse_hex = [](char c) -> int {
+      if (c >= '0' && c <= '9') return c - '0';
+      if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+      if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+      return -1;
+    };
+    int h = parse_hex(high);
+    int l = parse_hex(low);
+    if (h == -1 || l == -1) return {};
+    res[i] = (h << 4) | l;
+    if (i < 5 && str[i * 3 + 2] != ':') return {};
   }
-  return {};
+  return res;
 }
 
 // NOTE: espnow_peers is a static variable declared in the ESPHome-generated

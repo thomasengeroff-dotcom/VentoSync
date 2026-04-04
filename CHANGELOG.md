@@ -4,6 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.37] - 2026-04-04
+### Fixed
+- **ESP-NOW Discovery Handshake**: Behebung eines Fehlers, bei dem Geräte nach dem Booten keine Peers registrierten. Durch die Implementierung einer bilateralen Registrierung in den `MSG_STATUS_REQUEST` und `MSG_STATUS_RESPONSE` Handlern finden sich Master und Slaves nun zuverlässig und dauerhaft.
+- **Wi-Fi Stabilität (Channel 9)**: Fixierung des WLAN-Kanals auf **Kanal 9** zur Vermeidung von "Deafness"-Effekten durch Hintergrund-Scans auf dem ESP32-C6. Korrektur der YAML-Struktur (Umstellung auf `networks`-Liste) für eine valide ESPHome-Konfiguration.
+- **Log-Remediation (HTTP Error)**: Deaktivierung des periodischen Firmware-Update-Checks (`update_interval: never`), um die Fehlermeldung "Failed to fetch manifest" bei Nichterreichbarkeit des Home Assistant Servers zu eliminieren. Manuelle Updates bleiben weiterhin möglich.
+- **I2C-Bus Optimierung**: Erhöhung der I2C-Frequenz auf **400kHz** und des Timeouts auf **50ms**. Dies behebt die `pca9685 set Warning flag` Meldungen, die durch Funkinterferenzen (Wi-Fi/ESP-NOW) auf dem ESP32-C6 verursacht wurden.
+- **Code-Qualität**: Korrektur eines Syntaxfehlers (fehlendes `ESP_LOGI`) in `network_sync.h`, der durch einen Refactoring-Fehler entstanden war.
+- **Noise Reduction**: Entfernung redundanter "Registered via ESPHome API" Log-Einträge zur besseren Übersichtlichkeit der Konsole.
+
+
 ## [0.8.32] - 2026-04-04
 ### Fixed
 - **Sync-Echo-Unterdrückung**: Einführung von `notify`-Flags in `VentilationController`, um zirkuläre ESP-NOW-Sync-Schleifen zu verhindern. Statusänderungen, die von Peers empfangen werden, lösen nun keine automatische Gegen-Synchronisation mehr aus.
