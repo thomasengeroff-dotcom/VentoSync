@@ -70,16 +70,44 @@ esphome:
     - components/helpers/system_lifecycle.h
     - components/helpers/led_feedback.h
     - components/helpers/user_input.h
+  name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
   on_boot:
+    # Phase 1: Core initialization (WiFi + NVS ready at priority -10)
     - priority: -10.0
       then:
         - delay: 1s
         - lambda: |-
+            // --- Watchdog Reset Detection ---
+            esp_reset_reason_t reason = esp_reset_reason();
+            if (reason == ESP_RST_WDT || reason == ESP_RST_TASK_WDT) {
+              id(watchdog_restarts_count)++;
+              ESP_LOGW("system", "WATCHDOG RESET DETECTED! Total: %d",
+                       id(watchdog_restarts_count));
+            }
+            id(watchdog_restarts).publish_state(id(watchdog_restarts_count));
+
+            // --- Controller & Mode Init ---
             sync_config_to_controller();
             if (current_mode_index != nullptr) {
               cycle_operating_mode(current_mode_index->value());
             }
+
+            // --- PID Controllers ---
+            {
+              auto call_co2 = id(pid_co2).make_call();
+              call_co2.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+              call_co2.perform();
+              auto call_hum = id(pid_humidity).make_call();
+              call_hum.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+              call_hum.perform();
+            }
+
+            // --- Load saved peers from NVS ---
             load_peers_from_runtime_cache();
+
+            ESP_LOGI("boot", "Phase 1 complete: Controller, PID, Peers loaded");
+
+        # Phase 2: ESP-NOW Discovery (staggered broadcasts)
         - delay: 1s
         - lambda: |-
             send_discovery_broadcast();
@@ -88,13 +116,13 @@ esphome:
             send_discovery_broadcast();
         - delay: 2s
         - lambda: |-
+            // Final broadcast + status request
             send_discovery_broadcast();
         - delay: 1s
         - lambda: |-
             request_peer_status();
-
-  name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
-
+            ESP_LOGI("boot", "Phase 2 complete: Discovery finished");
+            
 # ---------------------------------------------------------
 # ESP-NOW PEER DISCOVERY & HEALTH
 # ---------------------------------------------------------

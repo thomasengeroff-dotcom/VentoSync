@@ -464,6 +464,15 @@ public:
     }
 
     if (should_sync) {
+      // 1. Explicit Autonomy Check: If we are in "Aus" (MODE_OFF), we ignore group commands
+      // to avoid being woken up by peers.
+      if (state_machine.current_mode == MODE_OFF) {
+        ESP_LOGD("vent_sync", "Local device is MODE_OFF. Ignoring peer command to maintain autonomy.");
+        should_sync = false;
+      }
+    }
+
+    if (should_sync) {
       // 1. Time sync (aligns direction cycle phase) — Master only for MSG_SYNC
       if (pkt->msg_type == MSG_SYNC && pkt->device_id == 1) {
         state_machine.sync_time(millis(), pkt->cycle_pos_ms);

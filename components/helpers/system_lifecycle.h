@@ -107,7 +107,9 @@ inline void cycle_operating_mode(int mode_index) {
     break;
 
   case 4: // Aus
-    if (system_on != nullptr) system_on->value() = false;
+    // Mod: Stay "ON" but ventilation is disabled to keep motor stopped at 50%.
+    // This keeps WLAN/API active.
+    if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = false;
     
     v->set_mode(esphome::MODE_OFF);
@@ -115,7 +117,6 @@ inline void cycle_operating_mode(int mode_index) {
     // UI: Visible fan status OFF
     if (lueftung_fan != nullptr) lueftung_fan->turn_off().perform();
     // Hardware: VarioPro motor controller requires 50% PWM as "stop" signal.
-    // 0% PWM would be interpreted as "full reverse" by the inverter.
     if (fan_pwm_primary != nullptr) fan_pwm_primary->set_level(0.5f);
     break;
   }
@@ -134,10 +135,7 @@ inline void cycle_operating_mode(int mode_index) {
   }
 
   if (mode_index != 4) {
-    if (system_wakeup != nullptr) system_wakeup->execute();
     if (fan_speed_update != nullptr) fan_speed_update->execute();
-  } else {
-    if (system_sleep != nullptr) system_sleep->execute();
   }
 
   ESP_LOGI("mode", "Mode changed to index %d", mode_index);

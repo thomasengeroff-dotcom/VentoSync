@@ -291,35 +291,7 @@ binary_sensor:
 
 
 
-esphome:
-  on_boot:
-    priority: -11 # Run after all components are initialized
-    then:
-      - lambda: |-
-          #include <esp_system.h>
-          // Detect Watchdog resets and increment counter
-          esp_reset_reason_t reason = esp_reset_reason();
-          if (reason == ESP_RST_WDT || reason == ESP_RST_TASK_WDT) {
-            id(watchdog_restarts_count)++;
-            ESP_LOGW("system", "WATCHDOG RESET DETECTED! Total: %d", id(watchdog_restarts_count));
-          }
-          id(watchdog_restarts).publish_state(id(watchdog_restarts_count));
-          
-          // --- PID Mode Synchronization ---
-          // Both PID controllers are always active in Automatik mode.
-          // Ensure they start in COOL mode to begin regulation immediately.
-          {
-            auto call_co2 = id(pid_co2).make_call();
-            call_co2.set_mode(esphome::climate::CLIMATE_MODE_COOL);
-            call_co2.perform();
-            auto call_hum = id(pid_humidity).make_call();
-            call_hum.set_mode(esphome::climate::CLIMATE_MODE_COOL);
-            call_hum.perform();
-            ESP_LOGD("system", "PID controllers initialized (CO2 + Humidity)");
-          }
-          
-          // --- Trigger Discovery (Ensure discovery runs immediately on boot) ---
-          id(espnow_discovery).execute();
+# moved to ventosync.yaml or handled via script triggers
 
 # ---------------------------------------------------------
 # VENTILATION CONTROL
@@ -328,7 +300,6 @@ esphome:
 # Interval to check for pending broadcasts
 interval:
   # Trigger ESP-NOW discovery and request peer status whenever WiFi connects.
-  # This fires at boot AND when waking up from Light Sleep (Aus mode).
   - interval: 2s
     then:
       - if:
