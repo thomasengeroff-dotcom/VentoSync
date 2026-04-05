@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.77] - 2026-04-06
+### Fixed
+- **Build-Fix (Scope Error)**: Behebung eines Kompilierungsfehlers in `ventilation_group.h`, bei dem versucht wurde, auf die globale Variable `fan_pwm_primary` zuzugreifen, bevor diese im Scope bekannt war.
+- **Code-Bereinigung**: Redundante Logik in `update_hardware()` entfernt, da der Motor-Stopp (50% PWM) bereits implizit durch die nachfolgende `update_fan_logic()` korrekt berechnet wird.
+
 ## [0.8.74] - 2026-04-06
 ### Fixed
 - **Motor-Stopp Logik**: Konsistente Implementierung des Hardware-Stopps bei 50% PWM für bidirektionale VarioPro-Lüfter.

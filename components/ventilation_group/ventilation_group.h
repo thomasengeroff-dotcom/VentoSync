@@ -584,14 +584,9 @@ public:
     // PWM calculation to update_fan_logic() which uses the ramp_factor.
     if (main_fan) {
       if (!enable_fan) {
-        if (main_fan->state) {
-          main_fan->state = false; // Just update internal state without perform()
-          if (fan_pwm_primary) fan_pwm_primary->set_level(0.5f);
-        }
+        main_fan->state = false;
       } else {
-        if (!main_fan->state) {
-          main_fan->state = true; // Just update internal state
-        }
+        main_fan->state = true;
       }
     }
 
