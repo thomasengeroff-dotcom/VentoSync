@@ -16,8 +16,9 @@ output:
     inverted:
       true # Compensates for hardware inversion by PMV16XNR MOSFET:
       # ESP 100% → MOSFET ON → GND → Fan sees 0%; so we invert here.
-    min_power: 0%
-    zero_means_zero: true
+    # min_power: 0%
+    # (zero_means_zero is OMITTED here intentionally because for this bidirectional
+    # driver, 0% is actually full power reverse, and 50% is motor stop!)
 
 sensor:
   # Fan Tachometer (RPM) Reading (Hardware)

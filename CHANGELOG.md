@@ -4,6 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.74] - 2026-04-06
+### Fixed
+- **Motor-Stopp Logik**: Konsistente Implementierung des Hardware-Stopps bei 50% PWM für bidirektionale VarioPro-Lüfter.
+  - Entfernung von `zero_means_zero`, um zu verhindern, dass ESPHome beim Ausschalten fälschlicherweise 0% PWM (Vollgas Rückwärts) ansteuert.
+  - Direkte PWM-Ansteuerung auf 0.5f in allen "Aus"-Pfaden unter Umgehung der fehleranfälligen `turn_off()` Vererbung.
+- **UI & System-Crash Protektion**: 
+  - Lückenlose Implementierung von Null-Pointer-Checks für `ventilation_ctrl` in allen Button-Handlern und HA-Select-Callbacks.
+  - Explizites Error-Handling für unbekannte Modus-Strings in `set_operating_mode_select` zur Vermeidung von Fehlsteuerungen.
+- **Synchronisations-Resilienz**: Neuer **Sync-Watchdog** (30s), der ein Gerät nach dem Aufwachen zur aktiven Meldung zwingt, falls kein Master-Status empfangen wurde (verhindert "Pantomimen-Zustand" im Netzwerk).
+
 ## [0.8.73] - 2026-04-06
 ### Fixed
 - **Boot-Up LED Flash**: Behebung eines Fehlers, bei dem alle LEDs beim Start kurzzeitig mit voller Helligkeit aufblitzten. Die PCA9685 Output-Enable (OE) Leitung wird nun erst nach der vollständigen Initialisierung der PWM-Register im C++ Boot-Prozess freigeschaltet.

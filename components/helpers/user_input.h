@@ -87,10 +87,10 @@ inline void set_fan_intensity_slider(float value) {
 /// @brief Handles the mode select dropdown from HA: maps string option to mode
 /// index and delegates to cycle_operating_mode() for unified state management.
 inline void set_operating_mode_select(const std::string &x) {
-  if (current_mode_index == nullptr || ui_active == nullptr || 
+  if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
-  int mode_index = 0;
+  int mode_index = -1;
   if (x == "Automatik")
     mode_index = 0;
   else if (x == "Wärmerückgewinnung")
@@ -101,6 +101,10 @@ inline void set_operating_mode_select(const std::string &x) {
     mode_index = 3;
   else if (x == "Aus")
     mode_index = 4;
+  else {
+    ESP_LOGW("input", "Unknown operating mode string: '%s' — ignoring", x.c_str());
+    return; // Do NOT apply unknown mode
+  }
 
   current_mode_index->value() = mode_index;
   cycle_operating_mode(mode_index);
@@ -114,7 +118,7 @@ inline void set_operating_mode_select(const std::string &x) {
 
 /// @brief Mode button press: cycles mode index 0→1→2→3→4→0 and applies.
 inline void handle_button_mode_click() {
-  if (current_mode_index == nullptr || ui_active == nullptr || 
+  if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
   current_mode_index->value() = (current_mode_index->value() + 1) % 5;
@@ -130,7 +134,7 @@ inline void handle_button_mode_click() {
 /// @brief Power button short press: turns ventilation_enabled ON.
 /// Restores previous mode + fan speed.
 inline void handle_button_power_short_click() {
-  if (ventilation_enabled == nullptr || current_mode_index == nullptr || 
+  if (ventilation_ctrl == nullptr || ventilation_enabled == nullptr || current_mode_index == nullptr || 
       fan_speed_update == nullptr || ui_timeout_script == nullptr) return;
 
   if (!ventilation_enabled->value()) {
@@ -144,6 +148,7 @@ inline void handle_button_power_short_click() {
     if (ventilation_ctrl != nullptr) {
       ventilation_ctrl->pending_broadcast = false;
       ventilation_ctrl->is_state_synced = false;
+      ventilation_ctrl->sync_timeout_ms = millis() + 30000; // 30s to receive master state
     }
     
     fan_speed_update->execute();
@@ -170,7 +175,8 @@ inline void handle_button_power_long_click() {
     auto *v = ventilation_ctrl;
     v->set_mode(esphome::MODE_OFF);
     sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
-    lueftung_fan->turn_off().perform(); // perform() avoids null derefs inside fan components
+    // 50% PWM = true motor stop (bidirectional driver).
+    // lueftung_fan->turn_off() is intentionally omitted as it would send 0.0f (full reverse).
     fan_pwm_primary->set_level(0.5f);
     if (system_sleep != nullptr)
       system_sleep->execute();

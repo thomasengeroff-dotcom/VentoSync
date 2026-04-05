@@ -209,7 +209,7 @@ script:
 # CONTROL PANEL BUTTONS (Input)
 # ---------------------------------------------------------
 binary_sensor:
-  # Button Power (Left) - On/Off (MCP23017 GPA0)
+  # Button Power (right) - On/Off (MCP23017 GPA0)
   - platform: gpio
     pin:
       mcp23xxx: mcp23017_hub
@@ -241,7 +241,8 @@ binary_sensor:
           - lambda: |-
               handle_button_power_long_click();
           - button.press: force_restart_button
-  # Button Mode (Right) - Mode Control (MCP23017 GPA1)
+
+  # Button Mode (left) - Mode Control (MCP23017 GPA1)
   - platform: gpio
     pin:
       mcp23xxx: mcp23017_hub

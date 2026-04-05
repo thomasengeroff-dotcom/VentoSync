@@ -184,6 +184,8 @@ public:
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
       false; ///< tracks if state has been synced from peer after boot
+  uint32_t sync_timeout_ms = 
+      0; ///< millis() deadline for receiving master state after boot/wake
 
   // --- INTERNAL ---
   uint32_t last_sync_tx = 0;     ///< millis() of last sync broadcast.
@@ -299,7 +301,16 @@ public:
       last_sync_tx = now;
     }
 
-    // 4. Cleanup old peers (5 minutes timeout)
+    // 4. Fallback Sync Watchdog
+    // If a device wakes up and mutes its broadcast to await the Master's state,
+    // this watchdog guarantees that it won't stay isolated forever if the Master is offline.
+    if (sync_timeout_ms != 0 && now > sync_timeout_ms && !is_state_synced) {
+      ESP_LOGW("vent", "Sync timeout reached! Did not receive master state within 30s. Forcing fallback group sync.");
+      sync_timeout_ms = 0; // Prevent repetitive firing
+      pending_broadcast = true;
+    }
+
+    // 5. Cleanup old peers (5 minutes timeout)
     auto it = peers.begin();
     while (it != peers.end()) {
       if (now - it->last_seen_ms > 300000) {
@@ -573,11 +584,14 @@ public:
     // PWM calculation to update_fan_logic() which uses the ramp_factor.
     if (main_fan) {
       if (!enable_fan) {
-        if (main_fan->state)
-          main_fan->turn_off().perform();
+        if (main_fan->state) {
+          main_fan->state = false; // Just update internal state without perform()
+          if (fan_pwm_primary) fan_pwm_primary->set_level(0.5f);
+        }
       } else {
-        if (!main_fan->state)
-          main_fan->turn_on().perform();
+        if (!main_fan->state) {
+          main_fan->state = true; // Just update internal state
+        }
       }
     }
 

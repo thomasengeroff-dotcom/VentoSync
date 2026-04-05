@@ -115,7 +115,9 @@ inline void cycle_operating_mode(int mode_index) {
     v->set_mode(esphome::MODE_OFF);
     
     // UI: Visible fan status OFF
-    if (lueftung_fan != nullptr) lueftung_fan->turn_off().perform();
+    // We update the state natively without calling turn_off().perform() to avoid
+    // the ESPHome speed component from forcing the hardware PWM to 0.0f (full reverse).
+    if (lueftung_fan != nullptr) lueftung_fan->state = false;
     // Hardware: VarioPro motor controller requires 50% PWM as "stop" signal.
     if (fan_pwm_primary != nullptr) fan_pwm_primary->set_level(0.5f);
     break;
