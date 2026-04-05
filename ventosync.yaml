@@ -122,6 +122,11 @@ esphome:
         - lambda: |-
             request_peer_status();
             ESP_LOGI("boot", "Phase 2 complete: Discovery finished");
+    
+    # FIX — start with LEDs disabled, enable after PCA9685 init
+    - priority: -100  # After all components initialized
+      then:
+        - switch.turn_on: pca9685_oe
             
 # ---------------------------------------------------------
 # ESP-NOW PEER DISCOVERY & HEALTH

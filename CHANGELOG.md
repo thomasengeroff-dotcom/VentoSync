@@ -4,6 +4,18 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.73] - 2026-04-06
+### Fixed
+- **Boot-Up LED Flash**: Behebung eines Fehlers, bei dem alle LEDs beim Start kurzzeitig mit voller Helligkeit aufblitzten. Die PCA9685 Output-Enable (OE) Leitung wird nun erst nach der vollständigen Initialisierung der PWM-Register im C++ Boot-Prozess freigeschaltet.
+- **I2C-Bus Stabilität**: 
+  - Erhöhung der Frequenz auf **400kHz** für schnellere Transaktionen.
+  - Reduzierung des Timeouts auf **10ms**, um Blockaden des Haupt-Loops bei Sensorstörungen zu minimieren.
+  - Deaktivierung des I2C-Scans im Normalbetrieb zur Reduzierung von Boot-Latenzen.
+- **Sensor-Diagnose**: Der WLAN-Kanal-Sensor zeigt nun korrekt `NaN` (Nicht verfügbar) an, wenn keine aktive Verbindung besteht, anstatt den letzten (potenziell falschen) Wert anzuzeigen.
+
+### Added
+- **Hardware-Dokumentation**: Zusätzliche Kommentare für GPIO-Zuweisungen (D2/Reset, D3/OE) und deren elektrisches Verhalten (Pull-Ups/Bootregeln) direkt in der YAML zur besseren Wartbarkeit.
+
 ## [0.8.72] - 2026-04-05
 ### Fixed
 - **ESP-NOW Funkkollisionen (Simultaneous Transmit Clash)**: Behebung drastischer Sendeaussetzer (`err=1 / ESP_NOW_SEND_FAIL`), die durch exakt gleichzeitige Broadcasts von Geräten im selben Raum entstanden sind.

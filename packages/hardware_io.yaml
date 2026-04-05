@@ -29,10 +29,12 @@
 i2c:
   sda: GPIO22 # Pin D4 on XIAO ESP32C6
   scl: GPIO23 # Pin D5 on XIAO ESP32C6
-  scan: true
+  scan: false # Disable after hardware is verified
   id: bus_a
   frequency: 400kHz     # Industrial standard for faster transactions
-  timeout: 50ms        # Increased buffer for ESP32 radio interrupts
+  timeout: 10ms         # Sufficient for 400kHz with radio interrupt margin
+  # If 10ms still causes timeouts, investigate I2C bus quality
+  # (pull-up resistor values, wire length, capacitance)
   # pullup: true        # Usually not necessary as internal pullups are present
 
 # ---------------------------------------------------------
@@ -120,22 +122,31 @@ switch:
   # MCP23017 Reset (Active Low)
   # This switch keeps the MCP23017 out of reset state
   - platform: gpio
-    pin: GPIO2 # Pin D2
+    pin:
+      number: GPIO2
+      mode:
+        output: true
+        pullup: false   # External 10kΩ pull-up to 3.3V required on PCB
     name: "MCP23017 Reset"
     id: mcp23017_reset
     restore_mode: ALWAYS_ON
     internal: true
+    # WARNING: GPIO2 is LOW during ESP32 boot sequence.
+    # Hardware pull-up resistor (10kΩ) on RESET line is mandatory and installed on PCB.
 
-  # PCA9685 Output Enable (Active Low)
-  # This switch controls the power to the PCA9685 driver
-  # LEDs are off until the switch is turned on
+  # PROBLEM:
+  # PCA9685 OE (Output Enable) is Active Low.
+  # inverted: true means ESPHome "ON" = GPIO LOW = LEDs enabled.
+  # restore_mode: ALWAYS_ON means LEDs turn on immediately at boot,
+  # BEFORE the PCA9685 registers are initialized with correct PWM values.
+  # This can cause all LEDs to flash at full brightness briefly on every boot.
   - platform: gpio
     pin:
-      number: GPIO21 # Pin D3
+      number: GPIO21
       inverted: true
     name: "PCA9685 Output Enable"
     id: pca9685_oe
-    restore_mode: ALWAYS_ON
+    restore_mode: ALWAYS_OFF  # LEDs off until explicitly enabled after init
     internal: true
 
 # ---------------------------------------------------------
@@ -143,8 +154,8 @@ switch:
 # ---------------------------------------------------------
 uart:
   - id: uart_ld2450
-    tx_pin: GPIO16 # TX from Xiao to RX of LD2450
-    rx_pin: GPIO17 # RX from Xiao to TX of LD2450
+    tx_pin: GPIO16 # XIAO D7 → connects to LD2450 RX pin
+    rx_pin: GPIO17 # XIAO D6 → connects to LD2450 TX pin
     baud_rate: 256000
     parity: NONE
     stop_bits: 1

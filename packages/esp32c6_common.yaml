@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.72"
+  project_version: "0.8.73"
 
 globals:
   - id: thermal_warning_active
@@ -208,7 +208,10 @@ sensor:
     name: "WLAN Kanal"
     id: sensor_wifi_channel
     lambda: |-
-      return (float)id(wifi_component).get_wifi_channel();
+      if (id(wifi_component).is_connected()) {
+        return (float)id(wifi_component).get_wifi_channel();
+      }
+      return NAN;  // Clearly show "unavailable" when not connected
     update_interval: 60s
     accuracy_decimals: 0
     entity_category: diagnostic
