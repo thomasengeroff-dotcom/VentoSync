@@ -275,19 +275,26 @@ public:
     if (dirty || (1.0f - state.ramp_factor) > 0.01f || !state.fan_enabled) {
       if (dirty) {
         // Log details about what caused the dirty flag if possible (handled in state machine)
-        ESP_LOGD("vent", "State transition detected (flip/mode timer). "
-                         "Triggering sync broadcast.");
-        trigger_sync();
+        ESP_LOGD("vent", "State transition detected (flip/mode timer).");
+        // FIX: Prevent simultaneous transmission collisions on predictable timer flips
+        if (device_id == 1) {
+          ESP_LOGD("vent", "Triggering sync broadcast as Master.");
+          trigger_sync();
+        } else {
+          ESP_LOGD("vent", "Slave skipping automatic sync broadcast to prevent RF collision. Relying on local timer/Master sync.");
+        }
       }
       update_hardware(state, dirty);
     }
 
-    // 3. Auto Sync Broadcast (Dashboard Heartbeat every 60s)
+    // 3. Auto Sync Broadcast (Dashboard Heartbeat every ~60s)
     // Ensures all peers regularly announce their presence even if they don't
     // flip directions (like in 'Aus' or 'Durchlüften' modes). This prevents the
     // dashboard from dropping peers after the 5-minute timeout.
-    if (now - last_sync_tx > 60000) {
-      ESP_LOGI("vent", "Triggering periodic sync broadcast (60s heartbeat)");
+    // FIX: Stagger broadcasts using device_id to prevent rf collisions if
+    // devices boot perfectly synchronously.
+    if (now - last_sync_tx > (60000 + (device_id * 1500))) {
+      ESP_LOGI("vent", "Triggering periodic sync broadcast (heartbeat)");
       pending_broadcast = true; // Let YAML trigger the send
       last_sync_tx = now;
     }

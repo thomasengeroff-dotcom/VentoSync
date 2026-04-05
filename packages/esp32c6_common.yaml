@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.67"
+  project_version: "0.8.72"
 
 globals:
   - id: thermal_warning_active
@@ -56,19 +56,12 @@ esp32:
     type: esp-idf # The ESP32-C6 is newer and currently runs more stable with the official ESP-IDF framework than Arduino
 
     sdkconfig_options:
-      # Fix for "httpd_accept_conn: error in accept (23) ENFILE" 
-      # Increases max open sockets for Web-Dashboard SSE connections
       CONFIG_LWIP_MAX_SOCKETS: "16"
       CONFIG_VFS_SUPPORT_IO: "y"
-      # Watchdog-Einstellungen optimieren:
-      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "15"  # Kürzerer WDT (Standard ist oft 5s, aber mit I2C/WiFi-Last sind 15s sicher)
-      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: "y"
-      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: "y"
-      
-      # Zusätzliche Optionen für bessere Stabilität (aus Benutzer-Diagnose):
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "15"
       CONFIG_ESP_TASK_WDT_INIT: "y"
-      CONFIG_FREERTOS_WDT_EN: "y"
-      CONFIG_FREERTOS_WDT_CHECK_IDLE_TASK: "y"
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: "y"
+      # Remove CPU1 — ESP32-C6 is single-core (RISC-V RV32IMAC)
 
 # ---------------------------------------------------------
 # LOGGING & DEBUGGING
@@ -135,7 +128,7 @@ wifi:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
   fast_connect: true # Prevent long channel scans during reconnects (vital for ESP-NOW coexistence/I2C stability)
-  reboot_timeout: 1min # Shorter timeout for faster recovery during debugging
+  reboot_timeout: 5min  # Or 15min for critical ventilation control devices
   min_auth_mode: WPA2
   power_save_mode: NONE # none hat eventuell zu Problemen geführt, ist für ESP-NOW Discovery aber stabiler
 
@@ -164,11 +157,19 @@ web_server:
 # TIME SYNCHRONIZATION
 # ---------------------------------------------------------
 # Syncs time from Home Assistant (needed for logs, charts, daily schedules)
+# FIX — use SNTP as fallback explicitly:
 time:
   - platform: homeassistant
-    id: homeassistant_time
+    id: ha_time
+    on_time_sync:
+      then:
+        - logger.log: "Time synced from Home Assistant"
   - platform: sntp
     id: sntp_time
+    servers:
+      - "pool.ntp.org"
+      - "time.cloudflare.com"
+    # Acts as fallback when HA API is unavailable
 
 
 # ---------------------------------------------------------
@@ -191,6 +192,9 @@ sensor:
     icon: "mdi:restart-alert"
     entity_category: diagnostic
     update_interval: never
+    lambda: |-
+      // Requires a global counter incremented in on_boot or reset_reason check
+      return id(watchdog_restarts_count);
 
   # Internal RAM monitoring
   - platform: debug

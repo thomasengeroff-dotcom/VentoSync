@@ -4,6 +4,18 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.72] - 2026-04-05
+### Fixed
+- **ESP-NOW Funkkollisionen (Simultaneous Transmit Clash)**: Behebung drastischer Sendeaussetzer (`err=1 / ESP_NOW_SEND_FAIL`), die durch exakt gleichzeitige Broadcasts von Geräten im selben Raum entstanden sind.
+  - Bei deterministischen Richtungsänderungen (Timer-Flip) sendet nun **ausschließlich der Master (Device ID 1)** ein Status-Paket, um ungleiche Latenzen und RF-Kollisionen der Slaves zu verhindern.
+  - Der 60-Sekunden Dashboard-Heartbeat erhielt einen Geräte-ID basierten Zeitversatz (Jitter: `device_id * 1500 ms`), wodurch synchrone Dauer-Kollisionen nach einem gleichzeitigen Boot der Module ausgemerzt wurden.
+- **Hardware-Watchdog Konfiguration**: Entfernung des ungültigen `CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1` Flags, da der ESP32-C6 ein reiner Single-Core Prozessor (RISC-V) ist, was zu internen Fehlkonfigurationen im ESP-IDF führen konnte.
+- **Variablen-Referenzierung**: Tippfehler im Diagnose-Sensor "Watchdog Restarts" behoben (`watchdog_restart_count` -> `watchdog_restarts_count`).
+
+### Added
+- **Unabhängige Zeitsynchronisation**: Integration nativer SNTP-Zeitserver (`pool.ntp.org`) als ausfallsicherer Fallback, falls die Home Assistant API beim Start vorübergehend nicht als Zeitquelle zur Verfügung steht. Dies ist kritisch für die Filterwechsel-Logik.
+- **Netzwerk-Resilienz**: Erhöhung des `reboot_timeout` bei WLAN-Verlust auf 5 bis 15 Minuten, um das System bei kurzen Router-Wartungen vom ungewollten Reboot abzuhalten.
+
 ## [0.8.37] - 2026-04-04
 ### Fixed
 - **ESP-NOW Discovery Handshake**: Behebung eines Fehlers, bei dem Geräte nach dem Booten keine Peers registrierten. Durch die Implementierung einer bilateralen Registrierung in den `MSG_STATUS_REQUEST` und `MSG_STATUS_RESPONSE` Handlern finden sich Master und Slaves nun zuverlässig und dauerhaft.
