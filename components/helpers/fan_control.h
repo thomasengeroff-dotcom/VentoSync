@@ -161,8 +161,8 @@ inline void update_fan_logic() {
   
   if (dt > 1000) dt = 1000; // Cap dt after long pauses
   
-  // Slew rate: ~5% (0.05) per second
-  const float slew_rate = 0.05f * (float)dt / 1000.0f;
+  // Slew rate: ~10% (0.10) per second
+  const float slew_rate = 0.10f * (float)dt / 1000.0f;
   
   if (std::abs(base_speed - current_smoothed_speed) <= slew_rate) {
     current_smoothed_speed = base_speed;

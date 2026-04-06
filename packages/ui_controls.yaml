@@ -34,6 +34,7 @@ light:
     internal: true
     default_transition_length: 0.5s # nice fading effect
     gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+    
   - platform: monochromatic
     output: out_led_master
     name: "Status LED Master"
