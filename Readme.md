@@ -85,15 +85,18 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
 ### 🛡️ Precision Sensors & Monitoring
 
 - 🌡️ **Climate Data Acquisition**: High-precision measurement of temperature and relative humidity using [Sensirion SCD41](https://sensirion.com/de/produkte/katalog/SCD41).
-  > 💡 **Current Note (March 2026):** Since my SCD41 add-on PCB is currently still in production, I am using the **Bosch BME680** as a fallback. To drastically reduce compilation time, we switched from the BSEC2 library to a **lightweight IAQ template calculation** (`log(R) + 0.04 * RH`). If no SCD41 is detected on the bus, this IAQ index serves as a redundant indicator of air quality.
-- 💨 **True CO2 Measurement**: The SCD41 uses **photoacoustic sensing** for direct CO2 measurement (400-5000 ppm) instead of calculated equivalents - ideal for demand-based ventilation control.
-- 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**.
+  - ✅ **Photoacoustic sensing** for precise CO2 measurement (400-5000 ppm), integrated temperature and humidity measurement (SCD41), Documentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
+  - ✅ **BME680 Optimization**: Switching to the standard platform (without BSEC2) saves massive compilation time. IAQ is now calculated via an efficient template.
+  - ⚠️ **Note:** Since the SCD41 PCB is still in production, the **BME680** currently serves as a fallback (IAQ index). The code automatically detects if the SCD41 is present.
+  - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**.
   - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
   - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
 - 📊 **Automatic Intensity Control**: The system can automatically increase fan power as CO2 levels or humidity rise for optimal indoor air quality. Advanced PID control is used for this, which dynamically adjusts the fan power to the measured values. The control is optimized to keep the fan power as low as possible to minimize energy consumption and noise.
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor can also be used for other automations in Home Assistant.
 - 📊 **Real VentoMaxx V-Curve**: The fan is controlled exactly according to the physical parameters of the original hardware (50% PWM = stop zone, linear scaling in both directions), which enables high-precision and material-friendly control.
+- 📈 **Phase Position Continuity**: Changing the intensity mid-cycle no longer causes abrupt stops. The system now proportionally scales the current cycle progress to the new duration, ensuring the fan continues its operation seamlessly.
+- 🌊 **Slew-Rate Speed Transitions (Sanftanlauf)**: Fan speed changes are now smoothed at a rate of ~5% per second. This prevents harsh electrical surges and provides a more premium, quiet acoustic transition when adjusting ventilation levels.
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
 - 🔄 **Plain Text Direction Display**: A new sensor entity shows the current air direction at any time ("Supply Air (In)", "Exhaust Air (Out)", or "Standstill"), which significantly simplifies diagnosis and monitoring of synchronization.
 
@@ -105,7 +108,7 @@ The VentoMaxx system with this ESPHome control works outstandingly efficiently. 
 - **Level 5 (Increased Load):** ~3.2 - 3.7 Watts *(approx. $9.10 / year)*
 - **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. $15.75 / year)*
 
-Even with year-round 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at $0.30/kWh) amount to only around 15 dollars per year. In the most frequently used Standard Automatic mode (values fluctuate between level 1 and 3 at night or when absent), the real operating costs are extremely economical at **approx. 7 to 8.50 dollars per year** for the entire unit.
+Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at $0.30/kWh) amount to only around 15 dollars per year. In the most frequently used Standard Automatic mode (values fluctuate between level 1 and 3 at night or when absent), the real operating costs are extremely economical at **approx. 7 to 8.50 dollars per year** for the entire unit.
 
 *Particularly noteworthy: These measurements include the continuous operation of all installed components – including the ESP32 control (Wi-Fi/ESP-NOW), the climate and CO2 sensors, as well as the continuously measuring mmWave radar presence sensor!*
 
@@ -125,7 +128,7 @@ To ensure an optimal user experience, the original control panel of the VentoMax
     Hold for 10sec --> turns the device off and restarts the system (reboot).
   - **Mode**: Short press cycles through programs: **Auto → Heat Recovery → Boost Ventilation → Ventilation → Off**.
   - **Level +**: 10 speed levels (cyclic, indicated by 5 LEDs with half/full brightness). The original Ventomaxx control only offers 5 levels. Holding the button cycles through the ventilation levels.
-- 🔆 **LED Feedback**: Indication of mode, current fan level (1-10), and status.
+- 🔆 **LED Feedback & LES Error codes**: Indication of mode, current fan level (1-10), and status.
   - ✨ **Group Synchronization**: All displays in a ventilation group synchronize in real-time. If device A changes the mode or level, the LEDs of all partner devices (peers) in the room wake up immediately to display the new status for 30 seconds (wake-up effect).
   - **Diagnostic Blink Codes (Master LED)**: The center LED (Master) signals malfunctions via a blink pattern (pulse):
     - **2x Blinks**: Synchronization error between fans (room group). The devices can no longer coordinate with each other.
@@ -137,8 +140,12 @@ To ensure an optimal user experience, the original control panel of the VentoMax
 
 **Full Home Assistant Integration**: Native API support for seamless monitoring, control, and automation via your smart home system. All device functionalities can be controlled and read via Home Assistant.
 
-**Local Web Dashboard (`wrg_dashboard`)**: An asynchronous web server running directly on the ESP32 provides a modern and responsive user interface. Simply go to **`http://<your-IP-address>/ui`** (or e.g., `http://esptest.local/ui`) in your web browser. Via the dashboard, you can view all sensor data in real-time (as tiles with daily history graphs) and change all system settings without additional hardware (like Home Assistant) in the local network. *(Note: The root URL `/` still shows the standard ESPHome UI)*
-This theoretically makes it possible to use it entirely without Home Assistant (which I do not recommend, however)!
+**Local Web Dashboard (`wrg_dashboard`)**: An asynchronous web server running directly on the ESP32 provides a **premium, responsive UI/UX** using **Tailwind CSS**.
+- **Modern Design**: High-end dark mode interface, fully responsive for desktop & mobile.
+- **Real-time Visualization**: Integrated **Chart.js** for smooth, real-time graphs of CO2, humidity, temperature, and fan RPM.
+- **Easy Configuration**: Dedicated sections for quick on-site setup of Device ID, Floor ID, Room ID, and Phase.
+- **Diagnostic Tools**: Live monitoring of all sensor data as tiles with daily history graphs.
+- **Standalone Capability**: Change all system settings without needing Home Assistant (though HA is still recommended). Simply go to **`http://<your-IP-address>/ui`** (or e.g., `http://esptest.local/ui`) in your web browser. *(Note: The root URL `/` still shows the standard ESPHome UI)*
 
 ![WRG Dashboard Settings](documentation/screenshots/wrg-dashboard1.png)
 ![WRG Dashboard Connected Devices & Real-time Data](documentation/screenshots/wrg-dashboard2.png)
@@ -792,6 +799,44 @@ binary_sensor:
       - lambda: handle_button_mode_click();
 
 ```
+#### **3. 🚀 Performance & Technical Excellence**
+
+To ensure 24/7 reliability and premium performance on the ESP32-C6, the firmware implements several high-end C++ and architectural optimizations:
+
+- **C++ Pro Performance & Thread Safety**:
+  - ✅ **Thread Safety**: Manual LwIP semaphores replaced by C++ Standard Library `<mutex>` and `std::lock_guard` for 100% exception-safe HTTP event queuing.
+  - ✅ **Memory Management**: Use of Move Semantics (`std::move`) and strict const-correctness to minimize RAM fragmentation and CPU overhead.
+  - ✅ **DRY Architecture**: Dedicated, anonymous lambda helper functions for Web-JSON building to eliminate redundant logic.
+  - ✅ **Footprint Reduction**: Optimized RAM usage by removing outdated Web-UI cache concepts.
+
+- **🛡️ System Stability & Reliability**:
+  - ✅ **NaN-Safe PID Control**: Hardened demand calculation against invalid sensor data. The system holds the last valid state if sensors fail, preventing erratic fan toggling.
+  - ✅ **Unified Control Authority**: Centralized intensity calculation (`evaluate_auto_mode`) to eliminate race conditions between independent update intervals.
+  - ✅ **Smart Group Sync**: Automatic propagation of modes and configurations across peer devices via ESP-NOW with built-in loop prevention.
+  - ✅ **Config Safety**: Added validation for min/max fan levels (swap-guard) to prevent inverted scaling on UI misconfiguration.
+
+#### **4. 🏁 System Boot Flow**
+
+The following diagram visualizes the robust initialization sequence required for stable networking and sensor discovery:
+
+```text
+Boot (t=0)
+  │
+  ├─ on_boot (priority -10)
+  │   ├─ delay 2s
+  │   ├─ sync_config_to_controller()
+  │   ├─ cycle_operating_mode()
+  │   ├─ load_peers_from_runtime_cache()  ← Load NVS
+  │   ├─ delay 1s
+  │   ├─ send_discovery_broadcast()       ← Search for Peers
+  │   ├─ delay 3s
+  │   └─ request_peer_status()            ← State sync
+  │
+  ├─ interval 60s (repeated)
+  │   └─ if peer_cache.empty() → send_discovery_broadcast()
+  │
+  └─ Normal Operation
+```
 
 ---
 
@@ -805,70 +850,6 @@ To simplify software maintenance and ensure that every firmware change is tracea
 
 ---
 
-### 🔧 Current Technical Improvements
-
-- **Hardware Upgrade: SCD41 CO2 Sensor & BMP390 (February 2026)**:
-  - ✅ **BME680 Optimization**: Switching to the standard platform (without BSEC2) saves massive compilation time. IAQ is now calculated via an efficient template.
-  - ⚠️ **Note:** Since the SCD41 PCB is still in production, the **BME680** currently serves as a fallback (IAQ index). The code automatically detects if the SCD41 is present.
-  - ✅ **Photoacoustic sensing** for precise CO2 measurement (400-5000 ppm)
-  - ✅ Integrated temperature and humidity measurement (SCD41)
-  - ✅ Automatic CO2-based ventilation control for optimal indoor air quality
-  - ✅ Documentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
-
-- **Code Refactoring (February 2026)**:
-  - ✅ All multi-line lambdas outsourced to `automation_helpers.h`
-  - ✅ Improved type safety through explicit C++ functions
-  - ✅ Modernized ESPHome API usage (`current_option()` instead of deprecated `.state`)
-  - ✅ Correct template types for script components (`RestartScript<>`, `SingleScript<>`)
-  - ✅ Precise component types (`SpeedFan`, `LEDCOutput` instead of generic base classes)
-
-- **C++ Pro Performance & Thread Safety (March 2026)**:
-  - ✅ **Thread Safety**: Displacement of manual LwIP semaphores by C++ Standard Library `<mutex>` and `std::lock_guard` for 100% exception-safe HTTP event queuing (AsyncWebServer).
-  - ✅ **Memory Management**: Use of Move Semantics (`std::move`) for waste-free transfer of vectors between tasks, plus strict const-correctness (`const std::string&`).
-  - ✅ **DRY Architecture**: Removal of redundant ternary operators (`condition ? state : (float)NAN`) for Web-JSON building through the use of dedicated, anonymous lambda helper functions per sensor data type.
-  - ✅ **Footprint Reduction**: Complete removal of outdated Web-UI cache concepts (`DashboardSnapshot`) and thus drastically improved free RAM performance.
-
-- **Modern Web Dashboard (Tailwind CSS) & UX (March 2026)**:
-  - ✅ **Premium UI/UX**: Switching the asynchronous dashboard to **Tailwind CSS**. Modern dark mode design, fully responsive, and optimized for desktop & mobile.
-  - ✅ **Basic Settings**: Integration of a new dashboard section for device ID, floor ID, room ID, and phase for quick on-site configuration.
-  - ✅ **Real-time Graphs**: Expansion of the Chart.js integration for smooth visualization of CO2, humidity, temp, and RPM.
-  - ✅ **Code Health**: Cleanup of dashboard backend logic, fixing type-mismatch errors in C++ lambdas, and removal of deprecated warnings.
-
-- **Stability & Oscillation Fixes (April 2026)**:
-  - ✅ **NaN-Safe PID Control**: Hardened demand calculation against invalid sensor data (`NaN`) in both `auto_mode.h` and `fan_control.h`. The system now holds the last valid state if sensors fail, preventing erratic fan toggling.
-  - ✅ **Unified Control Authority**: Unified intensity calculation to a single source of truth (`evaluate_auto_mode`), eliminating race conditions and fighting between independent 10s update intervals.
-  - ✅ **Smart Group Sync**: Automatic propagation of `Automatik` mode across peer devices via ESP-NOW. Peers now correctly mirror the active mode and its configuration in real-time.
-  - ✅ **Broadcast Optimization**: Reduced network jitter and eliminated recursive broadcast cascades by optimizing state-sync triggers during PID adjustments.
-  - ✅ **Config Safety**: Added validation for min/max fan levels (swap-guard) to prevent inverted scaling on UI misconfiguration.
-
-- **Complete Boot Flow after all fixes**:
-
-  ```text
-  Boot (t=0)
-    │
-    ├─ on_boot (priority -10)
-    │   ├─ delay 2s
-    │   ├─ sync_config_to_controller()
-    │   ├─ cycle_operating_mode()
-    │   ├─ load_peers_from_runtime_cache()  ← Load NVS
-    │   ├─ delay 1s
-    │   ├─ send_discovery_broadcast()       ← Search for Peers
-    │   ├─ delay 3s
-    │   └─ request_peer_status()            ← State sync
-    │
-    ├─ interval 60s (repeated)
-    │   └─ if peer_cache.empty() → send_discovery_broadcast()
-    │
-    └─ Normal Operation
-  ```
-
-- **Protocol v4 & Stability (March 2026)**:
-  - ✅ **ESP-NOW v4 Upgrade**: Introduction of a magic header (`0x42`) and protocol versioning to avoid incompatibilities.
-  - ✅ **Real-time Settings Sync**: Full mirroring of all user configurations (CO2 limits, fan levels, timers) via unicast.
-  - ✅ **Millis Refactoring**: 64-bit arithmetic to avoid the 49-day rollover bug in the `VentilationStateMachine`.
-  - ✅ **NTC Performance**: Optimization of the filter wait time (40% of the cycle) for faster value delivery with equal stability.
-  - ✅ **Summer Cooling**: Refinement of hysteresis control (+1.5°C activation / -0.5°C deactivation).
-  - ✅ **Modularization & Internationalization**: Clean separation of C++ core and YAML customization (sensor-specific packages) to fix linker errors and improve compilability. Switching all code comments to English for international maintainability.
 
 ### 🙏 Acknowledgements / Credits
 
@@ -879,7 +860,7 @@ A special thank you goes to **[patrickcollins12](https://github.com/patrickcolli
 ## ⚠️ Safety Instructions
 
 - This project operates in the 12V range, which is generally safe.
-- The power supply (230V to 12V) must be professionally installed.
+- The power supply (230V to 12V) on the PCB and the PCB itself must be professionally installed!
 
 ---
 
@@ -899,20 +880,20 @@ py -3.13 -m pip install --upgrade esphome
 Compile the firmware and upload it to the device. Replace `ventosync.yaml` with the name of your YAML file.
 
 ```bash
+
+# 🚀 Checking yaml config ventosync.yaml..."
+esphome config ventosync.yaml
+
 # Compiling
-py -3.13 -m esphome compile ventosync.yaml
+esphome compile ventosync.yaml
 
-# Or flash directly (with OTA update via IP)
-py -3.13 -m esphome upload ventosync.yaml --device <IP-Address>
+# flash directly (via USB or Serial)
+esphome upload ventosync.yaml
+
+# flash directly (with OTA update via IP)
+esphome upload ventosync.yaml --device <IP-Address>
+
 ```
-
-### 3. OTA Updates
-
-After the first flash via USB, you can perform updates wirelessly via Home Assistant:
-
-1. In Home Assistant, go to **Settings → System → Updates**
-2. Click on **Firmware Updates**
-3. Select your device and click on **Install**
 
 ---
 

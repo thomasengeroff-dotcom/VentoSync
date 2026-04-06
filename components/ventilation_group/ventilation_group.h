@@ -39,6 +39,8 @@
 // Forward declaration of the global fan update function (defined in
 // automation_helpers.h)
 void update_fan_logic();
+float get_current_target_speed();
+extern float current_smoothed_speed;
 
 namespace esphome {
 
@@ -270,11 +272,19 @@ public:
     // 2. Hardware Update (always update during ramping phases)
     HardwareState state = state_machine.get_target_state(now);
 
+    // Check if we need to actively update fan slew-rate target
+    bool is_slewing = false;
+    float current_target = get_current_target_speed();
+    if (std::abs(current_target - current_smoothed_speed) > 0.01f) {
+      is_slewing = true;
+    }
+
     // We update hardware if:
     // a) The state machine reported a discrete change (e.g. direction flip)
     // b) We are currently in a ramping phase (ramp_factor != 1.0)
     // c) System is off (to ensure it stays off/ramps down)
-    if (dirty || (1.0f - state.ramp_factor) > 0.01f || !state.fan_enabled) {
+    // d) We are slewing the speed via Sanftanlauf
+    if (dirty || (1.0f - state.ramp_factor) > 0.01f || !state.fan_enabled || is_slewing) {
       if (dirty) {
         // Log details about what caused the dirty flag if possible (handled in state machine)
         ESP_LOGD("vent", "State transition detected (flip/mode timer).");
@@ -337,7 +347,7 @@ public:
   void set_cycle_duration(uint32_t ms, bool refresh_hw = true, bool notify = true) {
     if (ms == state_machine.cycle_duration_ms)
       return;
-    state_machine.set_cycle_duration(ms);
+    state_machine.set_cycle_duration(millis(), ms);
     ESP_LOGI("vent", "Cycle duration updated to %d ms", ms);
     if (refresh_hw) {
       update_hardware();
@@ -584,9 +594,14 @@ public:
     // PWM calculation to update_fan_logic() which uses the ramp_factor.
     if (main_fan) {
       if (!enable_fan) {
-        main_fan->state = false;
+        if (main_fan->state) {
+          main_fan->state = false; // Just update internal state without perform()
+          // if (fan_pwm_primary) fan_pwm_primary->set_level(0.5f);
+        }
       } else {
-        main_fan->state = true;
+        if (!main_fan->state) {
+          main_fan->state = true; // Just update internal state
+        }
       }
     }
 

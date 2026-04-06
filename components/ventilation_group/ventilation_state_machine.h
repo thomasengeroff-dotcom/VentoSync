@@ -105,8 +105,8 @@ public:
   /// @brief Switch operating mode and (re)start mode-specific timers.
   void set_mode(VentilationMode mode, uint32_t now, uint32_t duration = 0);
   /// @brief Update the half-cycle duration (one direction) for alternating
-  /// airflow.
-  void set_cycle_duration(uint32_t ms);
+  /// airflow, maintaining the current cycle proportion.
+  void set_cycle_duration(uint32_t now, uint32_t ms);
   /// @brief Align local cycle phase with a peer's reported position (ESP-NOW
   /// sync).
   void sync_time(uint32_t now, uint32_t target_pos_ms);

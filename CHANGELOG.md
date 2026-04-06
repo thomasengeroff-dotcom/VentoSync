@@ -4,6 +4,15 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.81] - 2026-04-06
+### Added
+- **Sanftanlauf (Slew-Rate-Limiter)**: Implementierung einer sanften Geschwindigkeitsanpassung (ca. 5% pro Sekunde) für den Lüfter bei Intensitätsänderungen. Dies verhindert abrupte elektrische Lastsprünge und sorgt für eine angenehmere Akustik.
+- **Kontinuierliche Hardware-Synchronisation**: Hardware-Updates werden nun während einer laufenden Geschwindigkeitsanpassung (Slew) forciert, anstatt auf den nächsten Richtungswechsel zu warten.
+
+### Fixed
+- **Nahtlose Intensitätsanpassung (Cycle Phase Continuity)**: Behebung des Fehlers, bei dem der Lüfter bei Änderung der Intensität abrupt stoppte oder den Zyklus zurücksetzte. Die relative Position im Lüftungszyklus wird nun bei Änderung der Zyklusdauer proportional skaliert.
+- **Build-Fix (Forward Declarations)**: Behebung von Kompilierungsfehlern in `ventilation_group.h` durch Hinzufügen notwendiger `extern` Deklarationen für `current_smoothed_speed` und `get_current_target_speed()`.
+
 ## [0.8.77] - 2026-04-06
 ### Fixed
 - **Build-Fix (Scope Error)**: Behebung eines Kompilierungsfehlers in `ventilation_group.h`, bei dem versucht wurde, auf die globale Variable `fan_pwm_primary` zuzugreifen, bevor diese im Scope bekannt war.

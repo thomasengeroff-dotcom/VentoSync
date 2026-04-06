@@ -106,8 +106,44 @@ void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint3
 
 /// @brief Updates the half-cycle duration (one direction) for the alternating airflow.
 /// A full cycle = 2 × cycle_duration_ms (intake + exhaust).
+/// Maintains proportional progress in the current cycle to avoid abrupt jumps.
+/// @param now Current millis() timestamp.
 /// @param ms  Half-cycle duration in milliseconds (e.g. 70000 = 70 s per direction).
-void VentilationStateMachine::set_cycle_duration(uint32_t ms) {
+void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
+    if (cycle_duration_ms == ms) return;
+    if (cycle_duration_ms == 0) {
+        cycle_duration_ms = ms;
+        return;
+    }
+
+    uint32_t old_pos = get_cycle_pos(now);
+    uint32_t old_half = cycle_duration_ms;
+    
+    // Calculate proportional position for the new cycle
+    uint64_t exact_new_pos;
+    if (old_pos < old_half) {
+        // We are in phase A
+        exact_new_pos = (uint64_t)old_pos * (uint64_t)ms / (uint64_t)old_half;
+    } else {
+        // We are in phase B
+        uint32_t progress_in_b = old_pos - old_half;
+        exact_new_pos = (uint64_t)ms + ((uint64_t)progress_in_b * (uint64_t)ms / (uint64_t)old_half);
+    }
+    
+    uint32_t new_period = ms * 2;
+    uint32_t new_pos = (uint32_t)exact_new_pos;
+    
+    // We want: (now + target_offset) % new_period == new_pos
+    int64_t n = now;
+    int64_t target_offset = (int64_t)new_pos - n;
+    
+    // Normalize target_offset to be within [-new_period, new_period]
+    target_offset %= (int64_t)new_period;
+    if (target_offset < -(int64_t)new_period) {
+        target_offset += new_period; // Handle negative wrapping
+    }
+    
+    time_offset_ms = (int32_t)target_offset;
     cycle_duration_ms = ms;
 }
 

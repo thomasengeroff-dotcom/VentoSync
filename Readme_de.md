@@ -85,15 +85,19 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
 ### 🛡️ Präzisions-Sensorik & Monitoring
 
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD41](https://sensirion.com/de/produkte/katalog/SCD41).
-  > 💡 **Aktueller Hinweis (März 2026):** Da mein SCD41-Zusatz-PCB aktuell noch in der Fertigung ist, nutze ich den **Bosch BME680** als Fallback. Um die Kompilierungszeit drastisch zu reduzieren, wurde von der BSEC2-Bibliothek auf eine **leichtgewichtige IAQ-Template-Berechnung** (`log(R) + 0.04 * RH`) umgestellt. Falls kein SCD41 am Bus erkannt wird, dient dieser IAQ-Index als redundanter Indikator für die Luftqualität.
-- 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
-- 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**.
+  - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm), Integrierte Temperatur- und Feuchtigkeitsmessung (SCD41), Dokumentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
+  - ✅ **BME680 Optimierung**: Umstellung auf Standard-Plattform (ohne BSEC2) spart massiv Kompilierungszeit. IAQ wird nun über ein effizientes Template berechnet.
+  - ⚠️ **Hinweis:** Da das SCD41-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ-Index). Der Code erkennt automatisch, ob der SCD41 vorhanden ist.
+  - 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
+  - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**.
   - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
   - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
 - 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen. Hierfür wird eine fortschrittliche PID-Regelung verwendet, welche die Lüfterleistung dynamisch an die gemessenen Werte anpasst. Die Regelung ist so optimiert, dass sie die Lüfterleistung so gering wie möglich hält, um den Energieverbrauch und die Geräuschentwicklung zu minimieren.
 - 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert.
 Natürlich kann dieser Sensor auch für andere Automatisierungen in Home Assistant genutzt werden.
 - 📊 **Echte VentoMaxx V-Kennlinie**: Der Lüfter wird exakt nach den physikalischen Parametern der Original-Hardware gesteuert (50% PWM = Stopp-Zone, lineare Skalierung in beide Richtungen), was eine hochpräzise und materialschonende Regelung ermöglicht.
+- 📈 **Phasen-Kontinuität**: Eine Änderung der Intensität mitten im Zyklus führt nicht mehr zu abrupten Stopps. Das System skaliert den aktuellen Zyklusfortschritt nun proportional zur neuen Dauer, sodass der Lüfter seinen Betrieb nahtlos fortsetzt.
+- 🌊 **Sanftanlauf (Slew-Rate Limiter)**: Änderungen der Lüftergeschwindigkeit werden nun mit einer Rate von ca. 5 % pro Sekunde geglättet. Dies verhindert abrupte elektrische Lastsprünge und sorgt für einen hochwertigeren, leisen akustischen Übergang bei der Anpassung der Lüftungsstufen.
 - **Virtuelle Drehzahlberechnung:** Intelligente virtuelle Drehzahlberechnung (4200 RPM @ 100%) als Fallback für den Standard-Lüfter ohne Tacho-Signal.
 - 🔄 **Klartext-Richtungsanzeige**: Eine neue Sensor-Entität zeigt jederzeit die aktuelle Luftrichtung ("Zuluft (Rein)", "Abluft (Raus)" oder "Stillstand") an, was die Diagnose und Überwachung der Synchronisation erheblich vereinfacht.
 
@@ -137,8 +141,12 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
 
 **Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über dein Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
 
-**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein direkt auf dem ESP32 betriebener, asynchroner Webserver stellt eine moderne und responsive Benutzeroberfläche zur Verfügung. Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z. B. `http://esptest.local/ui`) im Webbrowser auf. Über das Dashboard kannst du in Echtzeit alle Sensordaten (als Kacheln mit Tagesverlaufsgraphen) einsehen und sämtliche Anlagen-Einstellungen ohne zusätzliche Hardware (wie Home Assistant) im lokalen Netzwerk ändern. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
-Damit ist theoretisch die Nutzung auch komplett ohne Home Assistant möglich (was ich aber nicht empfehle)!
+**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein asynchroner Webserver direkt auf dem ESP32 bietet eine **Premium, responsive UI/UX** basierend auf **Tailwind CSS**.
+- **Modernes Design**: High-End Dark-Mode Interface, voll responsiv für Desktop & Mobile.
+- **Echtzeit-Visualisierung**: Integriertes **Chart.js** für flüssige Graphen von CO2, Feuchte, Temp und RPM.
+- **Einfache Konfiguration**: Dedizierte Sektionen für die schnelle Vor-Ort-Konfiguration von Geräte-ID, Floor ID, Room ID und Phase.
+- **Diagnose-Tools**: Live-Überwachung aller Sensordaten als Kacheln mit Tagesverlaufsgraphen.
+- **Autarker Betrieb**: Änderung sämtlicher Anlagen-Einstellungen auch ohne Home Assistant möglich (dennoch empfohlen). Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z.B. `http://esptest.local/ui`) im Webbrowser auf. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
 
 ![WRG Dashboard Einstellungen](documentation/screenshots/wrg-dashboard1.png)
 ![WRG Dashboard Verbundene Geräte & Echtzeitdaten](documentation/screenshots/wrg-dashboard2.png)
@@ -786,54 +794,23 @@ binary_sensor:
       - lambda: handle_button_mode_click();
 
 ```
+#### **3. 🚀 Performance & Technische Exzellenz**
 
----
+Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewährleisten, implementiert die Firmware mehrere High-End C++ und Architektur-Optimierungen:
 
-### 🚀 Automatisierte Versionierung
+- **C++ Pro Performance & Thread Safety**:
+  - ✅ **Thread Safety**: Ablösung von manuellen LwIP Semaphoren durch C++ Standard-Library `<mutex>` und `std::lock_guard` für 100% Exception-sicheres HTTP-Event Queueing.
+  - ✅ **Memory Management**: Nutzung von Move Semantics (`std::move`) und strikte Const-Correctness zur Minimierung von RAM-Fragmentierung und CPU-Overhead.
+  - ✅ **DRY Architecture**: Dedizierte, anonyme Lambda Helper-Funktionen für Web-JSON Building zur Eliminierung redundanter Logik.
+  - ✅ **Footprint Reduction**: Optimierter RAM-Verbrauch durch Entfernung veralteter Web-UI Cache-Konzepte.
 
-Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-Änderung nachvollziehbar ist, nutzt das Projekt ein automatisiertes Versionierungssystem:
+- **🛡️ Systemstabilität & Zuverlässigkeit**:
+  - ✅ **NaN-Sichere PID-Steuerung**: Härtung der Bedarfsberechnung gegen ungültige Sensordaten. Das System hält den letzten gültigen Status bei Sensorausfällen und verhindert so unkontrolliertes Schalten.
+  - ✅ **Einheitliche Steuerungsautorität**: Zentralisierung der Intensitätsberechnung (`evaluate_auto_mode`), um Race-Conditions zwischen unabhängigen Update-Intervallen zu eliminieren.
+  - ✅ **Smart Group Sync**: Automatische Übertragung von Modi und Konfigurationen an alle Geräte im Raum via ESP-NOW mit integrierter Loop-Prevention.
+  - ✅ **Konfigurations-Sicherheit**: Validierung von Min/Max-Lüfterstufen (Swap-Guard) zur Vermeidung von invertierter Skalierung bei Fehlkonfigurationen.
 
-- **Automatischer Patch-Bump**: Bei jedem Compile-Vorgang wird die dritte Stelle der Version (z. B. `0.6.0` → `0.6.1`) automatisch durch ein Python-Build-Script (`version_bump.py`) erhöht.
-- **Transparenz**: Die aktuelle Version wird als C++ Makro in die Firmware injiziert und steht in Home Assistant über den Sensor `sensor.espwrglueftung_projekt_version` zur Verfügung.
-- **Konsistenz**: Die Version wird in einer zentralen `version.json` im Projekt-Root gespeichert, was manuelle Fehler ausschließt.
 
----
-
-### 🔧 Aktuelle technische Verbesserungen
-
-- **Hardware-Upgrade: SCD41 CO2-Sensor & BMP390 (Februar 2026)**:
-  - ✅ **BME680 Optimierung**: Umstellung auf Standard-Plattform (ohne BSEC2) spart massiv Kompilierungszeit. IAQ wird nun über ein effizientes Template berechnet.
-  - ⚠️ **Hinweis:** Da das SCD41-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ-Index). Der Code erkennt automatisch, ob der SCD41 vorhanden ist.
-  - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm)
-  - ✅ Integrierte Temperatur- und Feuchtigkeitsmessung (SCD41)
-  - ✅ Automatische CO2-basierte Lüftungsregelung für optimale Raumluftqualität
-  - ✅ Dokumentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
-
-- **Code-Refactoring (Februar 2026)**:
-  - ✅ Alle Multi-Line-Lambdas in `automation_helpers.h` ausgelagert
-  - ✅ Verbesserte Typsicherheit durch explizite C++ Funktionen
-  - ✅ Modernisierte ESPHome API-Nutzung (`current_option()` statt deprecated `.state`)
-  - ✅ Korrekte Template-Typen für Script-Komponenten (`RestartScript<>`, `SingleScript<>`)
-  - ✅ Präzise Komponenten-Typen (`SpeedFan`, `LEDCOutput` statt generischer Basisklassen)
-
-- **C++ Pro Performance & Thread Safety (März 2026)**:
-  - ✅ **Thread Safety**: Ablösung von manuellen LwIP Semaphoren durch C++ Standard-Library `<mutex>` und `std::lock_guard` für 100% Exception-sicheres HTTP-Event Queueing (AsyncWebServer).
-  - ✅ **Memory Management**: Nutzung von Move Semantics (`std::move`) zur abfallfreien Übergabe von Vektoren zwischen Tasks, plus strikte Const-Correctness (`const std::string&`).
-  - ✅ **DRY Architecture**: Entfernung redundanter Ternary-Operatoren (`condition ? state : (float)NAN`) für Web-JSON Building durch Einsatz dedizierter, anonymer Lambda Helper-Funktionen pro Sensor-DataType.
-  - ✅ **Footprint Reduction**: Komplettentfernung veralteter Web-UI Cache-Konzepte (`DashboardSnapshot`) und damit drastisch verbesserte Free-RAM Performance.
-
-- **Modern Web-Dashboard (Tailwind CSS) & UX (März 2026)**:
-  - ✅ **Premium UI/UX**: Umstellung des asynchronen Dashboards auf **Tailwind CSS**. Modernes Dark-Mode Design, voll-responsiv und optimiert für Desktop & Mobile.
-  - ✅ **Grundeinstellungen**: Integration einer neuen Dashboard-Sektion für Geräte-ID, Floor ID, Room ID und Phase zur schnellen Vor-Ort-Konfiguration.
-  - ✅ **Echtzeit-Graphen**: Erweiterung der Chart.js Integration für flüssige Visualisierung von CO2, Feuchte, Temp und RPM.
-  - ✅ **Code-Health**: Bereinigung der Dashboard-Backend-Logik, Behebung von Typ-Mismatch Fehlern in C++ Lambdas und Entfernung von Deprecated-Warnungen.
-
-- **Stabilitäts- & Oszillations-Fixes (April 2026)**:
-  - ✅ **NaN-Sichere PID-Steuerung**: Härtung der Bedarfsberechnung gegen ungültige Sensordaten (`NaN`) in `auto_mode.h` und `fan_control.h`. Das System hält den letzten gültigen Status bei Sensorausfällen und verhindert so das unkontrollierte Schalten des Lüfters.
-  - ✅ **Einheitliche Steuerungsautorität**: Zusammenführung der Intensitätsberechnung auf eine einzige "Source of Truth" (`evaluate_auto_mode`), um Race-Conditions und Konflikte zwischen unabhängigen 10s Update-Intervallen zu eliminieren.
-  - ✅ **Smart Group Sync**: Automatische Übertragung des `Automatik`-Modus an alle Geräte im Raum via ESP-NOW. Peers spiegeln nun den aktiven Modus und dessen Konfiguration korrekt in Echtzeit wider.
-  - ✅ **Broadcast-Optimierung**: Reduzierung von Netzwerk-Jitter und Eliminierung rekursiver Broadcast-Kaskaden durch optimierte Status-Sync-Trigger während PID-Anpassungen.
-  - ✅ **Konfigurations-Sicherheit**: Validierung von Min/Max-Lüfterstufen (Swap-Guard) zur Vermeidung von invertierter Skalierung bei Fehlkonfigurationen in der UI.
 
 - **Vollständiger Boot-Flow nach allen Fixes**:
 

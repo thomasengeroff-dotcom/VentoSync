@@ -148,9 +148,31 @@ inline void update_fan_logic() {
     }
   }
 
-  // 2. Base Speed Calculation
+  // 2. Base Speed Calculation with Smooth Slew-Rate (Sanftanlauf)
   const float base_speed = get_current_target_speed();
-  float speed = base_speed;
+  
+  if (last_slew_update_ms == 0) {
+    current_smoothed_speed = base_speed;
+    last_slew_update_ms = now;
+  }
+  
+  uint32_t dt = now - last_slew_update_ms;
+  last_slew_update_ms = now;
+  
+  if (dt > 1000) dt = 1000; // Cap dt after long pauses
+  
+  // Slew rate: ~5% (0.05) per second
+  const float slew_rate = 0.05f * (float)dt / 1000.0f;
+  
+  if (std::abs(base_speed - current_smoothed_speed) <= slew_rate) {
+    current_smoothed_speed = base_speed;
+  } else if (base_speed > current_smoothed_speed) {
+    current_smoothed_speed += slew_rate;
+  } else {
+    current_smoothed_speed -= slew_rate;
+  }
+
+  float speed = current_smoothed_speed;
 
   // 3. Hardware Ramping Application
   if (ventilation_ctrl != nullptr) {

@@ -261,6 +261,8 @@ extern esphome::globals::RestoringGlobalStringComponent<std::string, 255>
 
 /** @brief Helper to check if a MAC matches the local device. */
 inline float last_fan_pwm_level = 0.5f; // Default: Stop
+inline float current_smoothed_speed = 0.0f; // Track active slew-rate mapped speed
+inline uint32_t last_slew_update_ms = 0;    // Timestamp of last slew step
 
 /// @name NTC Stabilization State
 /// @{
