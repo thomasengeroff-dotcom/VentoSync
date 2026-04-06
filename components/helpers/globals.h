@@ -72,7 +72,7 @@ static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
 static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
 static constexpr uint32_t PEER_TIMEOUT_MS = 300000; // 5 minutes
 static constexpr float PID_SYNC_THRESHOLD = 0.05f;  // Minimum demand change to trigger sync
-static constexpr uint8_t MAX_PEER_SEND_FAILURES = 3; // Remove peer after N consecutive failures
+static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10; // Remove peer after N consecutive failures
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.

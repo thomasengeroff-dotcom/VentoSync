@@ -179,26 +179,13 @@ inline void register_peer_dynamic(const uint8_t *mac) {
     ESP_LOGI("espnow_disc", "New peer added to cache: %s", mac_str.c_str());
   }
 
-  // 2. Register hardware peer (ESP-IDF)
-  // Essential for ESP32-C6: Channel MUST be set if WiFi is active
-  esp_now_peer_info_t info;
-  memset(&info, 0, sizeof(info));
-  memcpy(info.peer_addr, mac, 6);
-  
-  uint8_t primary = 0;
-  wifi_second_chan_t second;
-  esp_wifi_get_channel(&primary, &second);
-  info.channel = primary;
-  info.encrypt = false;
-  
-  esp_err_t res = esp_now_add_peer(&info);
-  if (res == ESP_ERR_ESPNOW_EXIST) {
-    esp_now_mod_peer(&info); // Refresh settings if exists
-    ESP_LOGD("espnow_disc", "Peer %s updated (ch=%d)", mac_str.c_str(), primary);
-  } else if (res != ESP_OK) {
-    ESP_LOGE("espnow_disc", "Peer %s registration FAILED (err=%d)", mac_str.c_str(), res);
+  // 2. Register hardware peer (ESPHome)
+  // ESPHome properly manages the wifi_channel internally.
+  esp_err_t res = esphome::espnow::global_esp_now->add_peer(mac);
+  if (res == ESP_OK) {
+    ESP_LOGI("espnow_disc", "Peer %s registered via ESPHome", mac_str.c_str());
   } else {
-    ESP_LOGI("espnow_disc", "Peer %s registered (ch=%d)", mac_str.c_str(), primary);
+    ESP_LOGE("espnow_disc", "Peer %s registration FAILED (err=%d)", mac_str.c_str(), res);
   }
 }
 
@@ -221,18 +208,8 @@ inline void load_peers_from_runtime_cache() {
                               : current_list.substr(start, end - start);
     auto mac = parse_mac_local(mac_str);
     if (mac.has_value()) {
-      // 1. Register with hardware (ESP-IDF) - FORCE CHANNEL
-      esp_now_peer_info_t peer_info;
-      memset(&peer_info, 0, sizeof(esp_now_peer_info_t));
-      memcpy(peer_info.peer_addr, mac->data(), 6);
-      
-      uint8_t primary = 0;
-      wifi_second_chan_t second;
-      esp_wifi_get_channel(&primary, &second);
-      peer_info.channel = primary;
-      peer_info.encrypt = false;
-      
-      esp_now_add_peer(&peer_info);
+      // 1. Register with hardware (ESPHome)
+      esphome::espnow::global_esp_now->add_peer(mac->data());
 
       // 2. Populate binary cache
       if (find_peer_in_cache(mac->data()) == nullptr) {
@@ -242,7 +219,7 @@ inline void load_peers_from_runtime_cache() {
         entry.fail_count = 0;
         peer_cache.push_back(entry);
       }
-      ESP_LOGI("espnow_disc", "Restored peer from flash: %s (Channel: %d)", mac_str.c_str(), primary);
+      ESP_LOGI("espnow_disc", "Restored peer from flash: %s", mac_str.c_str());
     }
     if (end == std::string::npos)
       break;

@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.80"
+  project_version: "0.8.83"
 
 globals:
   - id: thermal_warning_active
@@ -149,9 +149,9 @@ web_server_base:
 web_server:
   port: 80
   local: true
-  auth:
-    username: !secret webuser
-    password: !secret webpw
+  # auth:
+  #   username: !secret webuser
+  #   password: !secret webpw
 
 # ---------------------------------------------------------
 # TIME SYNCHRONIZATION

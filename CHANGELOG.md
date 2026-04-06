@@ -4,9 +4,17 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.83] - 2026-04-07
+### Fixed
+- **ESP-NOW Kommunikations-Stabilisierung (Unicast Fix)**: Lösung des hartnäckigen Problems mit fehlgeschlagenen Unicast-Paketen (`err=1 / ESP_NOW_SEND_FAIL`), die zum fälschlichen Entfernen gültiger Peers führten.
+  - **ESPHome-Routing Architektur**: Umstellung von manuellen ESP-IDF API-Aufrufen (`esp_now_add_peer`) auf das interne ESPHome-Framework (`global_esp_now->add_peer`). Dies stellt sicher, dass Kanal-Konflikte und das Interface-Management (STA/AP-Zuweisung) korrekt vom ESPHome-Treiber koordiniert werden.
+  - **Netzwerk-Resilienz (Timeout-Handling)**: Erhöhung der tolerierten Sende-Fehlversuche (`MAX_PEER_SEND_FAILURES`) von **3 auf 10**. Dies verhindert den Verlust von Peers bei kurzzeitigen Funkstörungen oder WiFi-Powersave-Latenzen (DTIM-Intervalle).
+- **Build-Fix (Variable Scope)**: Behebung eines Kompilierungsfehlers in `network_sync.h`, bei dem die gelöschte Variable `primary` noch in einem Log-Statement referenziert wurde.
+- **Web-Server Sicherheit**: Vorübergehende Deaktivierung der HTTP-Authentifizierung (Port 80) zur Vereinfachung des Debugging-Zugriffs während der Instabilitäts-Phase.
+
 ## [0.8.81] - 2026-04-06
 ### Added
-- **Sanftanlauf (Slew-Rate-Limiter)**: Implementierung einer sanften Geschwindigkeitsanpassung (ca. 5% pro Sekunde) für den Lüfter bei Intensitätsänderungen. Dies verhindert abrupte elektrische Lastsprünge und sorgt für eine angenehmere Akustik.
+- **Sanftanlauf (Slew-Rate-Limiter)**: Implementierung einer sanften Geschwindigkeitsanpassung (verdoppelt auf ca. **10% pro Sekunde**) für den Lüfter bei Intensitätsänderungen. Dies verhindert abrupte elektrische Lastsprünge und sorgt für eine angenehmere Akustik.
 - **Kontinuierliche Hardware-Synchronisation**: Hardware-Updates werden nun während einer laufenden Geschwindigkeitsanpassung (Slew) forciert, anstatt auf den nächsten Richtungswechsel zu warten.
 
 ### Fixed
