@@ -33,12 +33,10 @@
  * 2. WiFi Disconnected (3 Pulses)
  * 3. Thermal Warning (4 Pulses)
  */
+// led_state is now provided by globals.h
+
 inline void check_master_led_error() {
   if (status_led_master == nullptr) return;
-
-  // Apply or remove the blink effect statefully to prevent I2C bus flooding
-  static std::string last_active_effect = "__none__";
-  static float last_active_brightness = -1.0f;
 
   // Robust Connection Check (Network + API Fallback)
   // Use ESPHome native network abstraction + API state to prevent false positives.
@@ -86,7 +84,7 @@ inline void check_master_led_error() {
     target_brightness = 1.0f;
   }
 
-  if (target_effect != last_active_effect || std::abs(target_brightness - last_active_brightness) > 0.1f) {
+  if (target_effect != led_state::last_master_effect || std::abs(target_brightness - led_state::last_master_brightness) > 0.1f) {
     auto call = status_led_master->make_call();
     
     if (target_brightness > 0) {
@@ -107,8 +105,11 @@ inline void check_master_led_error() {
     }
     call.perform();
     
-    last_active_effect = target_effect;
-    last_active_brightness = target_brightness;
+    ESP_LOGD("led", "Updating Master LED: effect='%s', brightness=%.2f (is_master=%s)", 
+             target_effect.c_str(), target_brightness, is_master() ? "YES" : "NO");
+             
+    led_state::last_master_effect = target_effect;
+    led_state::last_master_brightness = target_brightness;
   }
 }
 

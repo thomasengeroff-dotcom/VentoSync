@@ -136,7 +136,7 @@ public:
   // --- CONFIGURATION ---
   uint8_t floor_id = 1;   ///< Floor group for ESP-NOW filtering.
   uint8_t room_id = 1;    ///< Room group for ESP-NOW filtering.
-  uint8_t device_id = 1;  ///< Unique device ID within the room.
+  uint8_t device_id = 0;  ///< Unique device ID within the room (default 0 until sync).
   bool is_phase_a = true; ///< Phase group: A starts IN, B starts OUT.
 
   // --- STATE ---

@@ -150,6 +150,11 @@ extern esphome::template_::TemplateNumber
 extern esphome::template_::TemplateSelectWithSetAction<false, true, true, 0>
     *config_phase; ///< Persistent Phase A/B selection.
 extern esphome::template_::TemplateTextSensor *espnow_peers_display; ///< Peer list display.
+
+namespace led_state {
+  inline std::string last_master_effect = "__none__";
+  inline float last_master_brightness = -1.0f;
+}
 /// @}
 
 extern esphome::globals::RestoringGlobalsComponent<bool>

@@ -199,5 +199,16 @@ inline void run_led_self_test() {
   if (status_led_l4) status_led_l4->turn_on().perform();
   if (status_led_l5) status_led_l5->turn_on().perform();
 
+  // 3. Turn on Master LED for test
+  auto call_master = status_led_master->turn_on();
+  call_master.set_effect("None");
+  call_master.set_brightness(1.0f);
+  call_master.perform();
+  
+  // Force state tracking to 1.0/None so the control logic realizes it's ON
+  // and needs to be turned OFF if this is not a Master device.
+  led_state::last_master_effect = "None";
+  led_state::last_master_brightness = 1.0f;
+
   ESP_LOGI("boot", "LED self-test: all LEDs on");
 }
