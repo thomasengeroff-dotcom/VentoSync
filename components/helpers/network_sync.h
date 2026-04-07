@@ -97,7 +97,7 @@ inline void remove_stale_peer(const uint8_t *mac) {
   std::string mac_str = format_mac(mac);
 
   // Remove from ESP-NOW hardware peer list
-  esp_now_del_peer(mac);
+  esphome::espnow::global_esp_now->del_peer(mac);
 
   // Remove from binary cache
   peer_cache.erase(
@@ -251,9 +251,7 @@ inline void send_discovery_broadcast() {
   }
 
   // LOG CHANNEL for coexistence diagnostics (Essential for ESP32-C6)
-  uint8_t primary_chan = 0;
-  wifi_second_chan_t second_chan;
-  esp_wifi_get_channel(&primary_chan, &second_chan);
+  uint8_t primary_chan = esphome::espnow::global_esp_now->get_wifi_channel();
 
   char buffer[64];
   int written =

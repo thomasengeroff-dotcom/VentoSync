@@ -6,10 +6,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [0.8.83] - 2026-04-07
 ### Fixed
-- **ESP-NOW Kommunikations-Stabilisierung (Unicast Fix)**: Lösung des hartnäckigen Problems mit fehlgeschlagenen Unicast-Paketen (`err=1 / ESP_NOW_SEND_FAIL`), die zum fälschlichen Entfernen gültiger Peers führten.
-  - **ESPHome-Routing Architektur**: Umstellung von manuellen ESP-IDF API-Aufrufen (`esp_now_add_peer`) auf das interne ESPHome-Framework (`global_esp_now->add_peer`). Dies stellt sicher, dass Kanal-Konflikte und das Interface-Management (STA/AP-Zuweisung) korrekt vom ESPHome-Treiber koordiniert werden.
-  - **Netzwerk-Resilienz (Timeout-Handling)**: Erhöhung der tolerierten Sende-Fehlversuche (`MAX_PEER_SEND_FAILURES`) von **3 auf 10**. Dies verhindert den Verlust von Peers bei kurzzeitigen Funkstörungen oder WiFi-Powersave-Latenzen (DTIM-Intervalle).
-- **Build-Fix (Variable Scope)**: Behebung eines Kompilierungsfehlers in `network_sync.h`, bei dem die gelöschte Variable `primary` noch in einem Log-Statement referenziert wurde.
+- **ESP-NOW Kommunikations-Stabilisierung (Framework Integration)**: 
+  - Umstellung von manuellen ESP-IDF API-Aufrufen (`esp_now_add_peer`, `esp_now_del_peer`, `esp_wifi_get_channel`) auf das native ESPHome-Framework (`global_esp_now`). 
+  - Dies stellt sicher, dass alle Radio-Operationen (Peer-Registration, Löschen und Kanalabfragen) synchron vom ESPHome-Treiber koordiniert werden – ein entscheidender Faktor für die Funk-Stabilität des ESP32-C6 (Single-Radio STA/ESP-NOW Time-Slicing).
+- **Netzwerk-Resilienz (Timeout-Handling)**: Erhöhung der tolerierten Sende-Fehlversuche (`MAX_PEER_SEND_FAILURES`) von **3 auf 10**. Dies verhindert den voreiligen Verlust von Peers bei kurzzeitigen Funkstörungen oder WiFi-Powersave-Intervallen.
+- **Build-Fix (Variable Scope)**: Behebung eines Kompilierungsfehlers in `network_sync.h`, bei dem eine gelöschte Variable in einem Log-Statement referenziert wurde.
 - **Web-Server Sicherheit**: Vorübergehende Deaktivierung der HTTP-Authentifizierung (Port 80) zur Vereinfachung des Debugging-Zugriffs während der Instabilitäts-Phase.
 
 ## [0.8.81] - 2026-04-06
