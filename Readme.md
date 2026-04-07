@@ -872,7 +872,7 @@ Install ESPHome via pip:
 
 ```bash
 # Install ESPHome (latest version)
-py -3.13 -m pip install --upgrade esphome
+pip install --upgrade esphome
 ```
 
 ### 2. Compiling & Flashing Firmware

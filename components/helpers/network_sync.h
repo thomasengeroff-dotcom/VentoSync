@@ -194,8 +194,10 @@ inline void load_peers_from_runtime_cache() {
   if (!esphome::espnow::global_esp_now || espnow_peers == nullptr)
     return;
   std::string current_list = espnow_peers->value();
-  if (current_list.empty())
+  if (current_list.empty()) {
+    if (espnow_peers_display != nullptr) espnow_peers_display->publish_state("Keine Peers");
     return;
+  }
 
   // Clear runtime cache before rebuilding from NVS
   peer_cache.clear();
@@ -227,6 +229,9 @@ inline void load_peers_from_runtime_cache() {
     end = current_list.find(",", start);
   }
   ESP_LOGI("espnow_disc", "Peer cache loaded: %d peers from NVS", peer_cache.size());
+  
+  // Ensure the Home Assistant dashboard sensor is freshly populated with what we loaded
+  rebuild_peers_string();
 }
 
 /** @brief Sends a discovery broadcast to identify peers in the same room. */
