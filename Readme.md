@@ -22,9 +22,10 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 
 ## 📑 Table of Contents
 
+- [Motivation](#motivation)
+- [Comparison with VentoMaxx](#-comparison-with-ventomaxx-v-wrg)
 - [Features](#-features)
 - [Roadmap & Future Enhancements](#️-roadmap--future-enhancements)
-- [Comparison with VentoMaxx](#-comparison-with-ventomaxx-v-wrg)
 - [ESP-NOW & Autonomy](#-ESP-NOW-wireless-autonomy)
 - [Hardware & BOM](#️-hardware--bill-of-materials-bom)
 - [Custom Circuit Board (PCB)](#-custom-circuit-board-pcb)
@@ -183,7 +184,7 @@ You can find more information in the [official ESPHome documentation](https://es
 
 ---
 
-### 🗺️ Roadmap & Future Enhancements
+## 🗺️ Roadmap & Future Enhancements
 
 The following "Advanced Automation" functions are in preparation:
 
@@ -326,7 +327,7 @@ graph TD
 
 ---
 
-### Installation & Software
+## 🛠️ Installation & Software
 
 ### Prerequisites
 
@@ -840,7 +841,7 @@ Boot (t=0)
 
 ---
 
-### 🚀 Automated Versioning
+## 🚀 Automated Versioning
 
 To simplify software maintenance and ensure that every firmware change is traceable, the project uses an automated versioning system:
 
@@ -894,6 +895,26 @@ esphome upload ventosync.yaml
 esphome upload ventosync.yaml --device <IP-Address>
 
 ```
+
+---
+
+## 🔍 Troubleshooting
+
+Common issues and their solutions:
+
+- **❌ ESP-NOW Sync Fail (2x Blinks on Master LED):** 
+  - Ensure all devices in a room have the **same `floor_id` and `room_id`**.
+  - Check the distance between devices (ESP-NOW range is usually ~30-50m through walls).
+- **📶 WiFi Loss (3x Blinks on Master LED):**
+  - Verify your credentials in `secrets.yaml`.
+  - Check if your router is reachable (the fan still works via ESP-NOW even without WiFi!).
+- **🔥 Overheating (4x Blinks on Master LED):**
+  - The internal temperature is between 50-60°C. 
+  - Check if the fan is blocked or if the unit is in direct sunlight. 
+  - The device shuts down automatically above 60°C.
+- **📊 Sensor shows NaN:**
+  - Check the physical connection of the SCD41 or BME680 sensor.
+  - Ensure the I2C bus is properly initialized (see logs).
 
 ---
 

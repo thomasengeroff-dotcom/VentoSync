@@ -22,9 +22,10 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 
 ## 📑 Inhaltsverzeichnis
 
+- [Motivation](#motivation)
+- [Vergleich mit VentoMaxx](#-vergleich-mit-ventomaxx-v-wrg)
 - [Leistungsmerkmale](#-leistungsmerkmale)
 - [Roadmap & Zukünftige Erweiterungen](#️-roadmap--zukünftige-erweiterungen)
-- [Vergleich mit VentoMaxx](#-vergleich-mit-ventomaxx-v-wrg)
 - [ESP-NOW & Autonomie](#-esp-now-kabellose-autonomie)
 - [Hardware & BOM](#️-hardware--bill-of-materials-bom)
 - [Eigene Platine (PCB)](#-eigene-platine-pcb)
@@ -325,7 +326,7 @@ graph TD
 
 ---
 
-### Installation & Software
+## 🛠️ Installation & Software
 
 ### Voraussetzungen
 
@@ -840,6 +841,16 @@ Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewäh
   - ✅ **NTC-Performance**: Optimierung der Filter-Wartezeit (40% des Zyklus) für schnellere Wertlieferung bei gleicher Stabilität.
   - ✅ **Sommer-Kühlung**: Präzisierung der Hysterese-Regelung (+1.5°C Aktivierung / -0.5°C Deaktivierung).
   - ✅ **Modularisierung & Internationalisierung**: Saubere Trennung von C++ Kern und YAML-Zuschnitt (sensor-spezifische Pakete) zur Behebung von Linker-Errors und Verbesserung der Kompilierbarkeit. Umstellung sämtlicher Code-Kommentare auf Englisch zur internationalen Wartbarkeit.
+## 🚀 Automatisierte Versionierung
+
+Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-Änderung nachvollziehbar ist, verwendet das Projekt ein automatisiertes Versionierungssystem:
+
+- **Automatischer Patch-Bump**: Bei jedem Kompiliervorgang wird die dritte Stelle der Version (z. B. `0.6.0` → `0.6.1`) automatisch durch ein Python-Build-Skript (`version_bump.py`) erhöht.
+- **Transparenz**: Die aktuelle Version wird als C++ Makro in die Firmware injiziert und steht in Home Assistant über den Sensor `sensor.espwrglueftung_projekt_version` zur Verfügung.
+- **Konsistenz**: Die Version wird in einer zentralen `version.json` im Projekt-Root gespeichert, was manuelle Fehler ausschließt.
+
+---
+
 
 ### 🙏 Danksagungen / Credits
 
@@ -884,6 +895,26 @@ Nach dem ersten Flashen über USB kannst du Updates drahtlos über Home Assistan
 1. Gehe in Home Assistant zu **Einstellungen → System → Updates**
 2. Klicke auf **Firmware-Updates**
 3. Wähle dein Gerät aus und klicke auf **Installieren**
+
+---
+
+## 🔍 Troubleshooting
+
+Häufige Probleme und deren Lösungen:
+
+- **❌ ESP-NOW Sync Fehler (2x Blinken der Master-LED):** 
+  - Sicherstellen, dass alle Geräte in einem Raum die **gleiche `floor_id` und `room_id`** haben.
+  - Entfernung zwischen den Geräten prüfen (ESP-NOW Reichweite beträgt ca. 30-50m durch Wände).
+- **📶 WLAN-Verlust (3x Blinken der Master-LED):**
+  - Zugangsdaten in der `secrets.yaml` prüfen.
+  - Router-Erreichbarkeit prüfen (Lüftung arbeitet autark via ESP-NOW weiter).
+- **🔥 Überhitzung (4x Blinken der Master-LED):**
+  - Die Gehäuse-Innentemperatur liegt zwischen 50-60°C.
+  - Lüfter auf Blockade oder direkte Sonneneinstrahlung prüfen.
+  - Abschaltung erfolgt automatisch ab 60°C.
+- **📊 Sensor zeigt NaN:**
+  - Physische Verbindung der Sensoren (SCD41/BME680) prüfen.
+  - I2C-Bus Initialisierung kontrollieren (Logs).
 
 ---
 

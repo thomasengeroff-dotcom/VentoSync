@@ -7,10 +7,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 ## [0.8.95] - 2026-04-08
 ### Added
 - **Umfassende Doxygen-Dokumentation**: Der gesamte C++ Helper-Code und die kritischen YAML-Lambdas wurden vollständig dokumentiert. Fokus auf die Erklärung der architektonischen Hintergründe ("WARUM") statt nur der Funktion.
+- **Modulare Dokumentations-Architektur**: Erstellung dedizierter `Readme.md` Dateien für alle Kernbereiche (`packages/`, `components/helpers/`, `components/ventilation_group/`, `components/ventilation_logic/`, `components/wrg_dashboard/`) zur Verbesserung der Onboarding-Experience und Wartbarkeit.
+- **Troubleshooting & Guide**: Erweiterung der Haupt-Dokumentation um einen Troubleshooting-Guide für häufige Hardware- und Synchronisationsprobleme.
 - **NAN-Prüfung für Benutzereingaben**: Implementierung von `std::isnan()` Prüfungen in `user_input.h` für alle float-basierten Handler (Timer, Sync-Intervall, Intensität), um undefiniertes Verhalten beim Integer-Casting zu verhindern.
 
 ### Changed
 - **Refactoring der Boot-Logik (Phase 1)**: Auslagerung der System-Initialisierung (Watchdog-Erkennung, Komponenten-Sync, PID-Start) von `ventosync.yaml` in eine dedizierte C++ Funktion `run_system_boot_initialization()` in `system_lifecycle.h`. Dies vereinfacht die YAML-Konfiguration erheblich.
+- **Inhaltsverzeichnis & Struktur**: Überarbeitung der Lesbarkeit und Navigation in der Haupt-Dokumentation (`Readme.md` / `Readme_de.md`).
+
+### Fixed
+- **Code-Stabilisierung**: Behebung von Syntaxfehlern und Fragmenten in `network_sync.h`, die durch Refactoring-Versuche entstanden waren.
 
 ## [0.8.91] - 2026-04-08
 ### Added
