@@ -62,6 +62,7 @@
 #include "esphome/components/template/text_sensor/template_text_sensor.h"
 
 // Custom Component Header
+#include "esphome/components/pid/pid_climate.h"
 #include "esphome/components/ventilation_group/ventilation_group.h"
 #include "esphome/components/ventilation_logic/ventilation_logic.h"
 
@@ -70,9 +71,17 @@ static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR = 22.0f;
 static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS = 21.5f;
 static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
 static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
-static constexpr uint32_t PEER_TIMEOUT_MS = 300000; // 5 minutes
-static constexpr float PID_SYNC_THRESHOLD = 0.05f;  // Minimum demand change to trigger sync
-static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10; // Remove peer after N consecutive failures
+
+/** @brief Threshold for stale peer detection. 5 minutes is used to allow for
+ * temporary WiFi drops without losing sync. */
+static constexpr uint32_t PEER_TIMEOUT_MS = 300000;
+
+/** @brief Sensitivity for state broadcasts. Demand changes below this are
+ * ignored to prevent network jitter. */
+static constexpr float PID_SYNC_THRESHOLD = 0.05f;
+
+/** @brief Hardware ACK failure limit before a peer is considered dead. */
+static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10;
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.
@@ -118,6 +127,7 @@ extern esphome::globals::GlobalsComponent<float> *humidity_pid_result;
 extern esphome::globals::RestoringGlobalsComponent<float>
     *filter_operating_hours;
 extern esphome::globals::RestoringGlobalsComponent<int> *filter_last_change_ts;
+extern esphome::globals::RestoringGlobalsComponent<int> *watchdog_restarts_count;
 /// @}
 
 /// @name Template UI components
@@ -146,9 +156,10 @@ extern esphome::template_::TemplateNumber
 extern esphome::template_::TemplateNumber
     *config_room_id; ///< Persistent Room ID number.
 extern esphome::template_::TemplateNumber
-    *config_device_id; ///< Persistent Device ID number.
+    *config_device_id;
 extern esphome::template_::TemplateSelectWithSetAction<false, true, true, 0>
-    *config_phase; ///< Persistent Phase A/B selection.
+    *config_phase;
+extern esphome::template_::TemplateSensor *watchdog_restarts;
 extern esphome::template_::TemplateTextSensor *espnow_peers_display; ///< Peer list display.
 
 namespace led_state {
@@ -184,6 +195,8 @@ extern esphome::script::RestartScript<>
     *fan_speed_update; ///< Re-applies fan speed.
 extern esphome::script::SingleScript<float, int>
     *set_fan_speed_and_direction;               ///< Sets PWM + direction.
+extern esphome::pid::PIDClimate *pid_co2;       ///< CO2 PID controller.
+extern esphome::pid::PIDClimate *pid_humidity;  ///< Humidity PID controller.
 extern esphome::sntp::SNTPComponent *sntp_time; ///< SNTP Time component.
 /// @}
 
@@ -226,7 +239,12 @@ extern esphome::light::LightState
     *status_led_mode_vent; ///< Mode LED: Ventilation.
 /// @}
 
-/// Ventilation controller component instance.
+/**
+ * @brief   Global pointer to the central Ventilation Controller.
+ *
+ * @details This is the primary bridge between the helper functions and the
+ *          custom component logic.
+ */
 extern esphome::VentilationController *ventilation_ctrl;
 
 // --- ESP-NOW Dynamic Discovery & Persistence -------------------------
@@ -305,16 +323,30 @@ inline void evaluate_auto_mode(bool force = false);
 inline void update_filter_analytics();
 inline void cycle_operating_mode(int mode_index);
 inline void sync_config_to_controller();
+inline void run_system_boot_initialization();
 inline void run_led_self_test();
 inline void update_leds_logic();
 inline void check_master_led_error();
 
-/** @brief Returns true if this device is the Master (device_id == 1). */
+/**
+ * @brief   Determines if this specific device is the Master in the group.
+ *
+ * @details The Master (ID=1) is responsible for driving the global timing
+ *          cycle and broadcasting configuration updates.
+ *
+ * @return  true  if this is the Master device.
+ */
 inline bool is_master() {
   return ventilation_ctrl != nullptr && ventilation_ctrl->device_id == 1;
 }
 
-/** @brief Returns true if the given packet was sent by the Master device. */
+/**
+ * @brief   Checks if a received packet originated from the Master.
+ *
+ * @param[in] pkt  Pointer to the received VentilationPacket.
+ *
+ * @return  true  if the packet's device_id is 1.
+ */
 inline bool is_from_master(const esphome::VentilationPacket *pkt) {
   return pkt->device_id == 1;
 }

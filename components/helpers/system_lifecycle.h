@@ -24,8 +24,15 @@
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
+#include <esp_system.h>
 #include "globals.h"
 
+/**
+ * @brief   Tracks operating hours for the ventilation filter.
+ *
+ * @details Increments the counter whenever the system is powered and enabled.
+ *          This data is used to trigger maintenance alarms in Home Assistant.
+ */
 inline void update_filter_analytics() {
   if (system_on == nullptr || ventilation_enabled == nullptr || filter_operating_hours == nullptr) return;
 
@@ -52,10 +59,18 @@ inline void update_filter_analytics() {
   }
 }
 
-/// @brief Updates fan speed and direction based on intensity and mode.
-/// Reads fan_direction switch for direction, calculates speed from
-/// intensity/PID, then calls set_fan_logic() which maps both into the single
-/// VarioPro PWM signal.
+/**
+ * @brief   Central orchestrator for mode transitions.
+ *
+ * @details This function is the "brain" for all mode changes, whether from
+ *          buttons or the UI. It handles the specific requirements of each
+ *          mode (e.g., auto-timers for Ventilation, motor-stop for Off).
+ *
+ * @param[in] mode_index  Target mode (0: Auto, 1: WRG, 2: Vent, 3: Boost, 4: Off).
+ *
+ * @note    In the "Aus" (Off) mode, the system remains active to stay reachable
+ *          via WiFi, but the motor is commanded to 50% PWM (neutral stop).
+ */
 inline void cycle_operating_mode(int mode_index) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
@@ -144,9 +159,13 @@ inline void cycle_operating_mode(int mode_index) {
 }
 
 
-/// @brief Synchronizes YAML configuration (floor, room, device IDs and phase)
-/// to the ventilation controller instance. Ensuring IDs are valid (non-zero)
-/// before syncing to prevent network collisions during the boot phase.
+/**
+ * @brief   Syncs persistent configuration from HA entities to the C++ core.
+ *
+ * @details Ensures that the VentilationController has the correct Floor, Room,
+ *          and Device IDs before starting any synchronization. This prevents
+ *          network collisions during the early boot phase.
+ */
 inline void sync_config_to_controller() {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
@@ -175,8 +194,60 @@ inline void sync_config_to_controller() {
            v->floor_id, v->room_id, v->device_id);
 }
 
-/// @brief Turns on all status LEDs for visual self-test.
-/// The caller (YAML script) is responsible for turning them off after a delay.
+/**
+ * @brief   Main system initialization after NVS and WiFi are ready.
+ * 
+ * @details Detects watchdog resets for stability tracking, initializes
+ *          the C++ controller from persistent HA state, and boots
+ *          the PID controllers for automated modes.
+ *
+ * @note    Moved from YAML to C++ for better maintainability.
+ */
+inline void run_system_boot_initialization() {
+  // 1. Watchdog Reset Detection
+  esp_reset_reason_t reason = esp_reset_reason();
+  if (reason == ESP_RST_WDT || reason == ESP_RST_TASK_WDT) {
+    if (watchdog_restarts_count != nullptr) {
+      watchdog_restarts_count->value()++;
+      ESP_LOGW("system", "WATCHDOG RESET DETECTED! Total: %d",
+               watchdog_restarts_count->value());
+      
+      if (watchdog_restarts != nullptr) {
+        watchdog_restarts->publish_state(watchdog_restarts_count->value());
+      }
+    }
+  }
+
+  // 2. Controller & Mode Init
+  sync_config_to_controller();
+  if (current_mode_index != nullptr) {
+    cycle_operating_mode(current_mode_index->value());
+  }
+
+  // 3. PID Controllers
+  if (pid_co2 != nullptr) {
+    auto call = pid_co2->make_call();
+    call.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+    call.perform();
+  }
+  if (pid_humidity != nullptr) {
+    auto call = pid_humidity->make_call();
+    call.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+    call.perform();
+  }
+
+  // 4. Load saved peers from NVS
+  load_peers_from_runtime_cache();
+
+  ESP_LOGI("boot", "Phase 1 complete: Controller, PID, Peers loaded");
+}
+
+/**
+ * @brief   Flashes all status LEDs for a bootstrap self-test.
+ *
+ * @details Provides visual confirmation that the PCA9685 LED driver is
+ *          functioning and that all 8 LEDs are wired correctly.
+ */
 inline void run_led_self_test() {
   if (status_led_mode_wrg == nullptr || status_led_mode_vent == nullptr ||
       status_led_power == nullptr || status_led_master == nullptr) {

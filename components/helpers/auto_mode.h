@@ -33,7 +33,14 @@
 
 namespace auto_mode {
 
-/** @brief Validates that all required components for auto mode are initialized and ready. */
+/**
+ * @brief   Validates that all required components for auto mode are initialized.
+ *
+ * @details Ensures that sensors, controllers, and UI entities are non-null
+ *          before the evaluation logic starts to prevent segmentation faults.
+ *
+ * @return  true if the system is safe to evaluate.
+ */
 inline bool is_system_ready() {
   if (auto_mode_active == nullptr || !auto_mode_active->value()) return false;
   if (system_on == nullptr || !system_on->value()) return false;
@@ -48,7 +55,19 @@ inline bool is_system_ready() {
           update_leds != nullptr);
 }
 
-/** @brief Combines local and peer sensor data to determine effective room temperatures. */
+/**
+ * @brief   Combines local and peer sensor data to determine room temperatures.
+ *
+ * @details This function implements "Sensor Fusion". If a local sensor is
+ *          offline or NaN, it attempts to use data shared by peers over ESP-NOW.
+ *          It also dynamically maps NTC sensors based on the active airflow
+ *          direction to differentiate between Indoor and Outdoor ambient temps.
+ *
+ * @param[in]  now      Current system time.
+ * @param[out] eff_in   Effective indoor temperature calculation result.
+ * @param[out] eff_out  Effective outdoor temperature calculation result.
+ * @param[in]  current_mode  Current operation mode for direction mapping.
+ */
 inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_out, esphome::VentilationMode current_mode) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
@@ -96,7 +115,14 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
   }
 }
 
-/** @brief Evaluates whether to switch to summer cooling (Mode: Ventilation). */
+/**
+ * @brief   Logic for Summer Cooling / Bypass mode.
+ *
+ * @details Switches from Heat Recovery (MODE_ECO_RECOVERY) to Ventilation
+ *          (MODE_VENTILATION) if the indoor temperature exceeds 22°C and
+ *          the outdoor air is at least 1.5°C cooler. 
+ *          Includes a deactivation hysteresis to prevent mode oscillations.
+ */
 inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, float eff_out, esphome::VentilationMode current_mode) {
   if (std::isnan(eff_in) || std::isnan(eff_out)) {
     return (current_mode == esphome::MODE_VENTILATION || current_mode == esphome::MODE_ECO_RECOVERY) 
@@ -120,11 +146,13 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
   }
 }
 
-/** @brief Aggregates PID demands with CO2 priority over humidity, integrating peer data.
+/**
+ * @brief   Aggregates PID demands with CO2 priority and group-wide coordination.
  *
- * CO2 always takes priority: when CO2 demand is active, humidity is ignored.
- * Humidity PID only contributes when CO2 demand has fully subsided.
- * Hysteresis prevents ping-pong: CO2 "grabs" control at 0.01 and "releases" at 0.005.
+ * @details CO2 demand always takes priority over humidity to ensure air quality.
+ *          Hysteresis (Grab at 0.01 / Release at 0.005) ensures stable behavior
+ *          near setpoints. Peer demands are integrated to ensure the entire
+ *          room group scales up to the highest measured requirement.
  */
 inline float calculate_combined_demand(uint32_t now) {
   auto *v = ventilation_ctrl;
@@ -214,8 +242,14 @@ inline float calculate_combined_demand(uint32_t now) {
 } // namespace auto_mode
 
 /**
- * @brief Main entry point for the automatic ventilation logic.
- * Called periodically from YAML.
+ * @brief   Main entry point for the Smart-Automatik logic.
+ *
+ * @details Periodically evaluates climate state, syncs with peers, and updates 
+ *          the local fan intensity. Implements the "Master Authority" rule:
+ *          Slaves follow the Master's (ID=1) discrete intensity level to 
+ *          ensure perfectly synchronized across the room.
+ *
+ * @param[in] force  If true, bypasses the 2s evaluation rate-limit.
  */
 inline void evaluate_auto_mode(bool force) {
   if (!auto_mode::is_system_ready()) return;

@@ -32,9 +32,16 @@ constexpr float RAMPING_UPPER_BOUND = 0.99f; // Upper bound for active ramping p
 constexpr float RAMPING_LOWER_BOUND = 0.01f; // Lower bound for active ramping phase
 
 /**
- * @brief Sets the physical fan motor PWM level and direction.
- * @param speed Target speed as duty cycle fraction (0.1 to 1.0)
- * @param direction 0 = Exhaust, 1 = Intake
+ * @brief   Sets the physical fan motor PWM level and direction.
+ *
+ * @details Translates the target speed and direction into a hardware-specific
+ *          PWM duty cycle. Uses VentilationLogic to handle the complexities
+ *          of bidirectional motor drivers.
+ *
+ * @param[in] speed      Target speed as duty cycle fraction (0.1 to 1.0)
+ * @param[in] direction  0 = Exhaust (Raus), 1 = Intake (Rein)
+ *
+ * @see     VentilationLogic::calculate_fan_pwm()
  */
 inline void set_fan_logic(float speed, int direction) {
   if (fan_pwm_primary == nullptr) return;
@@ -73,8 +80,13 @@ inline float calculate_manual_demand(float base_intensity) {
 }
 
 /**
- * @brief Calculates the exact target speed (0.0 to 1.0) based on active mode logic.
- * @return Target hardware speed fraction (0.1 to 1.0).
+ * @brief   Calculates the exact target speed based on active mode logic.
+ *
+ * @details This is the central decision point for speed. In manual modes,
+ *          it applies presence compensation; in Smart-Automatik, it
+ *          delegates to the PID results.
+ *
+ * @return  float  Target hardware speed fraction (0.0 to 1.0).
  */
 inline float get_current_target_speed() {
   if (fan_intensity_level == nullptr) return 0.0f;
@@ -93,9 +105,16 @@ inline float get_current_target_speed() {
 }
 
 /**
- * @brief Calculates the virtual fan RPM, considering active ramping and air direction.
- * @param raw_rpm The physical RPM reading from the tacho pulse counter (if available).
- * @return Signed virtual RPM (negative for exhaust).
+ * @brief   Calculates the virtual fan RPM.
+ *
+ * @details Prioritizes physical tacho signals (4-pin fans) if available.
+ *          If no physical signal is present, it uses a software model
+ *          based on current PWM and ramping state to simulate the RPM
+ *          for the WRG dashboard.
+ *
+ * @param[in] raw_rpm  The physical RPM reading from the tacho pulse counter.
+ *
+ * @return  float  Signed virtual RPM (negative for exhaust/raus).
  */
 inline float calculate_virtual_fan_rpm(float raw_rpm) {
   // 1. If physical tacho signal is valid (4-pin fan), use it immediately
@@ -130,8 +149,12 @@ inline float calculate_virtual_fan_rpm(float raw_rpm) {
 }
 
 /**
- * @brief Main periodic tick for physical fan management.
- * Dispatches calculated cycle timings and ramping speeds to hardware.
+ * @brief   Main periodic tick for physical fan management.
+ *
+ * @details Dispatches calculated cycle timings and ramping speeds to hardware.
+ *          Implements "Sanftanlauf" (soft-start) via a slew-rate limiter
+ *          (~10% per second) to reduce mechanical stress on the motor and
+ *          minimize audible noise transitions.
  */
 inline void update_fan_logic() {
   if (fan_intensity_level == nullptr) return;

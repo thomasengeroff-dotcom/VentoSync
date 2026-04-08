@@ -26,10 +26,23 @@
 #pragma once
 #include "globals.h"
 
-// --- Constants ---
+// =========================================================
+// SECTION: MAC & Peer Helpers
+// =========================================================
+
 constexpr uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 constexpr size_t MAX_PAYLOAD_LEN = 100;
 
+/**
+ * @brief   Checks if a given MAC address matches the local device.
+ *
+ * @details Reads the local STA MAC once and caches it to avoid repeated
+ *          hardware calls. Used to filter out our own broadcasts.
+ *
+ * @param[in] mac  Pointer to a 6-byte MAC address.
+ *
+ * @return  true   if the MAC matches this device.
+ */
 inline bool is_local_mac(const uint8_t *mac) {
   static uint8_t local_mac[6] = {0};
   static bool cached = false;
@@ -57,7 +70,16 @@ inline std::string format_mac(const uint8_t *mac) {
   return std::string(buf);
 }
 
-/** @brief Finds a peer in the binary cache by MAC address. Returns nullptr if not found. */
+/**
+ * @brief   Locates a peer in the runtime cache.
+ *
+ * @details Performs a linear scan over the vector. While O(n), this is
+ *          negligible given the small number of peers (typically 2–4).
+ *
+ * @param[in] mac  Pointer to a 6-byte MAC address.
+ *
+ * @return  PeerEntry*  Pointer to the entry or nullptr if not found.
+ */
 inline PeerEntry* find_peer_in_cache(const uint8_t *mac) {
   for (auto &entry : peer_cache) {
     if (memcmp(entry.mac.data(), mac, 6) == 0) return &entry;
@@ -112,7 +134,17 @@ inline void remove_stale_peer(const uint8_t *mac) {
            mac_str.c_str(), peer_cache.size());
 }
 
-/** @brief Triggers a re-discovery broadcast with 30s throttle. */
+// =========================================================
+// SECTION: Discovery & Registration
+// =========================================================
+
+/**
+ * @brief   Triggers an active peer discovery phase.
+ *
+ * @details Sends a ROOM_DISC broadcast to find peers on the same floor/room.
+ *          Includes a 30s throttle to prevent "Discovery Storms" which could
+ *          congest the 2.4GHz band.
+ */
 inline void trigger_re_discovery() {
   static uint32_t last_re_discovery = 0;
   uint32_t now = millis();
@@ -139,7 +171,17 @@ inline void reset_peer_fail_count(const uint8_t *mac) {
   }
 }
 
-/** @brief Registers a MAC address as an ESP-NOW peer, persists to NVS, and adds to binary cache. */
+/**
+ * @brief   Registers a new peer in the system.
+ *
+ * @details Adds the peer to the ESPHome lower-level driver, populates the
+ *          runtime binary cache, and persists the MAC to NVS memory.
+ *          This ensures peers are remembered across reboots.
+ *
+ * @param[in] mac  Pointer to the 6-byte MAC of the new peer.
+ *
+ * @note    Silently ignores our own MAC and prevents duplicate entries.
+ */
 inline void register_peer_dynamic(const uint8_t *mac) {
   if (!esphome::espnow::global_esp_now) {
     ESP_LOGW("espnow_disc",
@@ -232,6 +274,33 @@ inline void load_peers_from_runtime_cache() {
   
   // Ensure the Home Assistant dashboard sensor is freshly populated with what we loaded
   rebuild_peers_string();
+}
+
+// =========================================================
+// SECTION: Synchronization Logic
+// =========================================================
+
+/**
+ * @brief   Sends a state update to all registered peers via Unicast.
+ *
+ * @details Unicast is prioritized over broadcast because it uses hardware
+ *          Acknowledgement (ACK), allowing the system to detect and recover
+ *          from packet loss or stale peer entries.
+ */
+inline void sync_settings_to_peers() {
+  if (ventilation_ctrl == nullptr || !esphome::espnow::global_esp_now) return;
+  
+  // Rate-limit beibehalten (max 1 per 500ms)
+  static uint32_t last_settings_sync = 0;
+  if (millis() - last_settings_sync < 500) {
+    ESP_LOGD("vent_sync", "Settings sync suppressed (rate-limit active)");
+    return;
+  }
+  last_settings_sync = millis();
+
+  auto data = build_and_populate_packet(esphome::MSG_STATE);
+  send_sync_to_all_peers(data);
+  ESP_LOGI("vent_sync", "Sent state change via UNICAST to %d peer(s)", peer_cache.size());
 }
 
 /** @brief Sends a discovery broadcast to identify peers in the same room. */
@@ -411,22 +480,11 @@ inline bool handle_discovery_payload(const std::string &payload,
   return false;
 }
 
-/** @brief Sends a sync packet to all registered peers via UNICAST. */
-inline void sync_settings_to_peers() {
-  if (ventilation_ctrl == nullptr || !esphome::espnow::global_esp_now) return;
-  
-  // Rate-limit beibehalten (max 1 per 500ms)
-  static uint32_t last_settings_sync = 0;
-  if (millis() - last_settings_sync < 500) {
-    ESP_LOGD("vent_sync", "Settings sync suppressed (rate-limit active)");
-    return;
-  }
-  last_settings_sync = millis();
 
-  auto data = build_and_populate_packet(esphome::MSG_STATE);
-  send_sync_to_all_peers(data);
-  ESP_LOGI("vent_sync", "Sent state change via UNICAST to %d peer(s)", peer_cache.size());
-}
+
+// =========================================================
+// SECTION: Packet Processing (espnow_handler)
+// =========================================================
 
 namespace espnow_handler {
 
@@ -642,10 +700,22 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
 }
 } // namespace espnow_handler
 
+// =========================================================
+// SECTION: Master Loop Callback
+// =========================================================
+
 /**
- * @brief Thread safety note: ESPHome's internal architecture buffers ESP-NOW
- * events and executes lambda callbacks within the main loop() context. Global
- * variable modifications here are safe from concurrent HW interrupts.
+ * @brief   Entry point for all incoming ESP-NOW traffic.
+ *
+ * @details This function is the primary multiplexer for decoding VentoSync
+ *          traffic. It differentiates between discovery probes (plaintext)
+ *          and operational state packets (binary struct).
+ *
+ * @param[in] data      Incoming byte vector.
+ * @param[in] src_mac   MAC address of the sender.
+ *
+ * @note    Thread safety: ESPHome executes this in the main loop context,
+ *          so no mutexes are required for global variable access.
  */
 inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
   // ✅ Deduplication guard (prevent double-processing within 50ms)

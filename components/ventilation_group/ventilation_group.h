@@ -127,10 +127,19 @@ struct PeerState {
 // CONTROLLER CLASS
 // ---------------------------------------------------------
 
-/// @class VentilationController
-/// @brief ESPHome Component that drives one ventilation unit.
-/// Owns a VentilationStateMachine for pure logic, adds hardware I/O
-/// (fan, direction switch) and ESP-NOW packet handling for group sync.
+/**
+ * @class   VentilationController
+ * @brief   Main controller for the VentoSync ventilation system.
+ *
+ * @details Manages sensor polling intervals, fan speed calculation,
+ *          and communication with the ESPHome framework. This component
+ *          implements a decentralized room-group logic where multiple
+ *          units coordinate via ESP-NOW to maintain a unified airflow
+ *          direction and shared sensor demand.
+ *
+ * @note    The device with ID=1 is automatically designated as the Master,
+ *          responsible for driving global timing synchronization.
+ */
 class VentilationController : public Component {
 public:
   // --- CONFIGURATION ---
@@ -164,15 +173,18 @@ public:
   uint32_t last_peer_t_out_time = 0; ///< millis() when peer T_out was received.
 
   // --- PID CONTROL SHARING ---
-  // Synchronizes the calculated continuous cooling/ventilation demand across
-  // the room. Crucial Benefit: If one device measures high CO2 (e.g., above a
-  // bed) while another measures low CO2 (e.g., near an open door), both devices
-  // share their calculated demand. The system then dynamically scales all fans
-  // to the identically highest required speed necessary to clear the room,
-  // without fighting each other or creating noise artifacts.
-  float local_pid_demand = 0.0f; ///< Local PID demand requirement (0.0 to 1.0)
-  float last_peer_pid_demand =
-      0.0f; ///< Last valid PID demand received from a peer
+
+  /**
+   * @brief   Local PID demand requirement (0.0 to 1.0).
+   *
+   * @details Calculated based on local CO2 and humidity sensors. Shared
+   *          with peers to ensure the entire room responds to the
+   *          highest measured pollutant level.
+   */
+  float local_pid_demand = 0.0f;
+
+  /** @brief Last valid PID demand received from a peer. Used for group-wide scaling. */
+  float last_peer_pid_demand = 0.0f;
   uint32_t last_peer_pid_demand_time =
       0; ///< millis() when peer PID demand was received
   /// FIXED W3: Explicit flag avoids millis()-overflow false-positive when
@@ -394,11 +406,20 @@ public:
     if (notify) pending_broadcast = true;
   }
 
-  /// @brief Processes an incoming ESP-NOW packet.
-  /// Validates header, filters by floor/room, then syncs mode, timer,
-  /// intensity.
-  /// @param data  Raw byte vector received via ESP-NOW.
-  /// @return true if any local state was changed (caller should update UI).
+  /**
+   * @brief   Processes an incoming ESP-NOW packet.
+   *
+   * @details Validates the protocol version and group IDs (Floor/Room).
+   *          Incoming packets can trigger mode changes, sync timing, or
+   *          update peer sensor data in the local cache.
+   *
+   * @param[in] data  Raw byte vector received via ESP-NOW.
+   *
+   * @return  true if a local state change occurred (triggers UI refresh).
+   *
+   * @note    Mismatched protocol versions or group IDs are rejected to
+   *          prevent cross-room interference.
+   */
   bool on_packet_received(std::vector<uint8_t> data) {
     ESP_LOGI("vent", "on_packet_received() called");
     if (data.size() != sizeof(VentilationPacket)) {
@@ -615,10 +636,17 @@ public:
     update_hardware(state_machine.get_target_state(millis()));
   }
 
-  /// @brief Serializes the current state into a VentilationPacket byte vector.
-  /// Called by the YAML on_send lambda. Clears pending_broadcast flag.
-  /// @param type  MessageType to stamp into the packet.
-  /// @return Byte vector ready for espnow.send().
+  /**
+   * @brief   Serializes the current state into a VentilationPacket.
+   *
+   * @details This method collects all local sensor readings, configuration
+   *          pointers, and state machine positions to build a unified
+   *          synchronization message.
+   *
+   * @param[in] type  The intent of the message (e.g., MSG_STATE or MSG_SYNC).
+   *
+   * @return  std::vector<uint8_t>  The packed binary payload.
+   */
   std::vector<uint8_t> build_packet(MessageType type) {
     ESP_LOGI("vent_sync",
              "Building packet type %d from device %d. Clearing pending_broadcast.", type, device_id);

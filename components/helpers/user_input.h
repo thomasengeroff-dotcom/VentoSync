@@ -26,8 +26,24 @@
 #pragma once
 #include "globals.h"
 
+// =========================================================
+// SECTION: UI Slider & Number Handlers
+// =========================================================
+
+/**
+ * @brief   Updates the countdown timer for timed ventilation modes.
+ *
+ * @details Converts the input value from minutes to milliseconds and updates
+ *          the state machine. To prevent system crashes, the value is clamped
+ *          against UINT32 overflow.
+ *
+ * @param[in] value  Timer duration in decimal minutes (e.g., 30.0)
+ *
+ * @note    Triggers an immediate network sync to ensure all devices in the
+ *          room group stop/start at the same time.
+ */
 inline void set_ventilation_timer(float value) {
-  if (ventilation_ctrl == nullptr) return;
+  if (std::isnan(value) || ventilation_ctrl == nullptr) return;
   auto *v = ventilation_ctrl;
 
   // Prevent overflow
@@ -46,10 +62,19 @@ inline void set_ventilation_timer(float value) {
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
 }
 
-/// @brief Converts a minutes value from the UI slider to ms and updates sync
-/// interval.
+/**
+ * @brief   Sets the periodic state synchronization interval.
+ *
+ * @details Adjusts how often the device broadcasts its status (heartbeat).
+ *          Increasing this value reduces RF traffic but may lead to
+ *          longer latencies in the WRG dashboard status updates.
+ *
+ * @param[in] value  Interval duration in minutes.
+ *
+ * @see     sync_settings_to_peers()
+ */
 inline void set_sync_interval_handler(float value) {
-  if (ventilation_ctrl == nullptr) return;
+  if (std::isnan(value) || ventilation_ctrl == nullptr) return;
   auto *v = ventilation_ctrl;
 
   // Prevent overflow
@@ -62,10 +87,17 @@ inline void set_sync_interval_handler(float value) {
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
 }
 
-/// @brief Handles the fan intensity slider: updates global, notifies
-/// controller, refreshes LEDs.
+/**
+ * @brief   Handles manual fan intensity adjustments from the Home Assistant slider.
+ *
+ * @details Processes input from 1 to 10. This handler is the bridge between
+ *          the virtual UI sensor and the physical PWM control. It triggers
+ *          LED updates and resets the UI timeout timer to keep the display bright.
+ *
+ * @param[in] value  Target intensity level (1.0 to 10.0)
+ */
 inline void set_fan_intensity_slider(float value) {
-  if (fan_intensity_level == nullptr || ventilation_ctrl == nullptr ||
+  if (std::isnan(value) || fan_intensity_level == nullptr || ventilation_ctrl == nullptr ||
       fan_speed_update == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
@@ -84,8 +116,18 @@ inline void set_fan_intensity_slider(float value) {
   ui_timeout_script->execute();
 }
 
-/// @brief Handles the mode select dropdown from HA: maps string option to mode
-/// index and delegates to cycle_operating_mode() for unified state management.
+/**
+ * @brief   Maps Home Assistant mode selection strings to internal enum indices.
+ *
+ * @details This unified entry point ensures that mode changes from the cloud/app
+ *          are treated identical to physical button presses, maintaining
+ *          synchronicity across the room group.
+ *
+ * @param[in] x  Selected mode string (e.g., "Wärmerückgewinnung")
+ *
+ * @note    Unknown strings are logged as warnings and ignored to prevent
+ *          invalid state machine transitions.
+ */
 inline void set_operating_mode_select(const std::string &x) {
   if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
@@ -114,9 +156,17 @@ inline void set_operating_mode_select(const std::string &x) {
   ui_timeout_script->execute();
 }
 
-// --- Button callback handlers ------------------------------------------
+// =========================================================
+// SECTION: Physical Button Callbacks
+// =========================================================
 
-/// @brief Mode button press: cycles mode index 0→1→2→3→4→0 and applies.
+/**
+ * @brief   Cycles through operating modes on a physical button click.
+ *
+ * @details Increments the mode index (0->1->2->3->4->0).
+ *          0: Auto, 1: WRG, 2: Vent, 3: Boost, 4: Off.
+ *          The UI is activated immediately to provide visual feedback via LEDs.
+ */
 inline void handle_button_mode_click() {
   if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
@@ -131,8 +181,15 @@ inline void handle_button_mode_click() {
            current_mode_index->value());
 }
 
-/// @brief Power button short press: turns ventilation_enabled ON.
-/// Restores previous mode + fan speed.
+/**
+ * @brief   Handles short-press logic for the power button.
+ *
+ * @details Toggles the system state. If turning ON, it restores the last known
+ *          mode but waits for a network sync before broadcasting its own state
+ *          to avoid "State Whiplash" (where a booting node overwrites a running group).
+ *
+ * @see     cycle_operating_mode()
+ */
 inline void handle_button_power_short_click() {
   if (ventilation_ctrl == nullptr || ventilation_enabled == nullptr || current_mode_index == nullptr || 
       fan_speed_update == nullptr || ui_timeout_script == nullptr) return;
@@ -161,8 +218,15 @@ inline void handle_button_power_short_click() {
   }
 }
 
-/// @brief Power button long press (>=5s): turns ventilation_enabled OFF.
-/// Stops fan and PWM outputs.
+/**
+ * @brief   Enforces a full system-stop via long-press (>=5s).
+ *
+ * @details This is a safety/maintenance override. It halts the fan using 50% PWM
+ *          (neutral for bidirectional drivers) and puts the device into
+ *          low-power sleep.
+ *
+ * @warning Bypasses standard transition ramps for immediate halt.
+ */
 inline void handle_button_power_long_click() {
   if (ventilation_enabled == nullptr || system_on == nullptr || 
       ventilation_ctrl == nullptr || lueftung_fan == nullptr || 
@@ -186,8 +250,17 @@ inline void handle_button_power_long_click() {
   }
 }
 
-/// @brief Level button press: cycles fan intensity 1→10→1 and updates UI +
-/// hardware.
+/**
+ * @brief   Increments fan intensity via the physical "Level" button.
+ *
+ * @details Implements a 10s boot-guard to prevent spurious triggers while
+ *          MCP23017 GPIOs are stabilizing.
+ *
+ * @code
+ *   // Example: Level 3 -> click -> Level 4
+ *   handle_button_level_click();
+ * @endcode
+ */
 inline void handle_button_level_click() {
   if (ventilation_enabled == nullptr || fan_intensity_level == nullptr || 
       fan_intensity_display == nullptr || ventilation_ctrl == nullptr || 
@@ -216,7 +289,15 @@ inline void handle_button_level_click() {
   ESP_LOGI("button", "Intensity level: %d", level);
 }
 
-/// @brief Handles one step of the "hold-to-cycle" bounce logic.
+/**
+ * @brief   Logic for the "Hold-to-Cycle" fan intensity feature.
+ *
+ * @details When the level button is held, this function is called repeatedly.
+ *          It "bounces" the intensity between 1 and 10 (1->10->1) to allow
+ *          fast adjustment without multiple clicks.
+ *
+ * @note    Includes a 10s boot-guard for GPIO stability.
+ */
 inline void handle_intensity_bounce() {
   if (ventilation_enabled == nullptr || fan_intensity_level == nullptr || 
       intensity_bounce_up == nullptr || fan_intensity_display == nullptr || 
@@ -263,10 +344,20 @@ inline void handle_intensity_bounce() {
            up ? "UP" : "DOWN");
 }
 
-/// @brief Central wrapper to create a fully populated VentilationPacket.
-/// Calls the standard C++ class method to build the base layout, and then
-/// appends the local Home Assistant configuration variables to ensure they
-/// traverse the network.
+// =========================================================
+// SECTION: Protocol & Data Helpers
+// =========================================================
+
+/**
+ * @brief   Constructs and serializes a state packet for ESP-NOW.
+ *
+ * @details Fetches current runtime data, stamps it with the device ID,
+ *          and prepares the binary payload.
+ *
+ * @param[in] type  The MessageType intent (STATE, SYNC, etc.)
+ *
+ * @return  std::vector<uint8_t>  Packed binary data ready for transmission.
+ */
 inline std::vector<uint8_t>
 build_and_populate_packet(esphome::MessageType type) {
   if (ventilation_ctrl == nullptr) return std::vector<uint8_t>();

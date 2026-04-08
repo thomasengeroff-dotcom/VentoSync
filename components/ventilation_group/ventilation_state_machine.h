@@ -56,10 +56,17 @@ struct HardwareState {
   bool needs_update; ///< Reserved — caller compares against previous state.
 };
 
-/// @class VentilationStateMachine
-/// @brief Hardware-independent state machine that drives the ventilation logic.
-/// Tracks the current mode, direction cycle phase, Stoßlüftung timing, and
-/// peer synchronization offset.  Call update() every loop iteration.
+/**
+ * @class   VentilationStateMachine
+ * @brief   Pure logic core for driving a single ventilation unit's cycle.
+ *
+ * @details This class is hardware-agnostic and manages the timing of
+ *          intake/exhaust cycles, the transition through ramping phases,
+ *          and the global synchronization phase.
+ *
+ * @note    Designed to be deterministic; given the same millis() and state,
+ *          it will always produce the same target HardwareState.
+ */
 class VentilationStateMachine {
 public:
   static constexpr uint32_t RAMP_DURATION_MS =
@@ -113,10 +120,25 @@ public:
 
   // --- Getters ---
 
-  /// @brief Compute desired fan + direction state from current mode and phase.
-  HardwareState get_target_state(uint32_t now) const;
-  /// @brief Remaining time in MODE_VENTILATION (ms). 0 if infinite or expired.
-  uint32_t get_remaining_duration(uint32_t now) const;
+  /**
+   * @brief   Calculates the target hardware state for a given timestamp.
+   *
+   * @details Determines if the fan should be enabled, which direction it
+   *          should spin, and the intensity ramp factor (for smooth
+   *          direction changes).
+   *
+   * @param[in] now_ms  The current system time in milliseconds.
+   *
+   * @return  HardwareState  A composite struct for the low-level drivers.
+   */
+  HardwareState get_target_state(uint32_t now_ms) const;
+  /**
+   * @brief   Calculates the remaining duration for timed modes.
+   *
+   * @details Used for Stoßlüftung and manual ventilation timers.
+   *          Returns 0 for infinite (untimed) modes.
+   */
+  uint32_t get_remaining_duration(uint32_t now_ms) const;
   /// @brief Current position in the full direction cycle (for sync packets).
   uint32_t get_cycle_pos(uint32_t now) const;
 };

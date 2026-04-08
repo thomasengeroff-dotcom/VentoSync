@@ -26,20 +26,38 @@
 #pragma once
 #include "globals.h"
 
+/**
+ * @brief   Maps a raw CO2 ppm value to a human-readable air quality string.
+ */
 inline std::string get_co2_classification(float co2_ppm) {
   return VentilationLogic::get_co2_classification(co2_ppm);
 }
 
-/// @brief Calculates CO2-based fan level with hysteresis.
+/**
+ * @brief   Calculates the target fan level based on CO2 content.
+ *
+ * @details Implements a linear mapping with hysteresis to prevent fans from
+ *          oscillating between intensity levels near the thresholds.
+ */
 inline int get_co2_fan_level(float co2_ppm, int current_level, int min_level,
                              int max_level) {
   return VentilationLogic::get_co2_fan_level(co2_ppm, current_level, min_level,
                                              max_level);
 }
 
-/// @brief Calculates Wärmerückgewinnung (heat recovery) efficiency safely.
-/// Only performs calculation during stable Intake (Zuluft) phase in WRG mode.
-/// Returns current_eff (hold) when conditions are not met.
+/**
+ * @brief   Calculates the heat recovery efficiency fraction (0.0 – 1.0).
+ *
+ * @details Only samples data during stable "Zuluft" (intake) phases in
+ *          WRG mode. This is necessary because the NTC sensors require
+ *          time to stabilize as the ceramic heat exchanger reaches its
+ *          thermal equilibrium after a direction flip.
+ *
+ * @param[in] t_raum      Indoor room temperature.
+ * @param[in] t_zuluft    Fresh air temperature (after the exchanger).
+ * @param[in] t_aussen    Outside ambient air temperature.
+ * @param[in] current_eff The last calculated efficiency (to hold during flips).
+ */
 inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
                                                 float t_aussen,
                                                 float current_eff) {
@@ -74,11 +92,18 @@ constexpr uint32_t NTC_MIN_WAIT_MS = 15000;
 constexpr size_t NTC_WINDOW_SIZE = 3;
 
 /**
- * @brief NTC Sliding Window Stabilization Filter.
- * Discards values while ceramic adjusts or during high fluctuation.
- * @param sensor_idx 0 for temp_zuluft, 1 for temp_abluft
- * @param new_value The raw value reported by the physical NTC component
- * @return The original value if stable, else empty optional to discard update
+ * @brief   NTC Sliding Window Stabilization Filter.
+ *
+ * @details Implements a mandatory thermal adjustment wait time (min 15s)
+ *          followed by a sliding window standard deviation check. 
+ *          This is critical because NTC sensors are thermally coupled
+ *          to the ceramic core, which has high thermal inertia and
+ *          requires time to "settle" after each direction change.
+ *
+ * @param[in] sensor_idx  0 for temp_zuluft, 1 for temp_abluft.
+ * @param[in] new_value   The raw value reported by the physical NTC component.
+ *
+ * @return  The original value if stable, else an empty optional to discard the update.
  */
 inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
                                                   float new_value) {

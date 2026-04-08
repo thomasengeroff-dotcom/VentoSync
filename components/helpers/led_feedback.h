@@ -27,14 +27,16 @@
 #include "globals.h"
 
 /**
- * @brief Checks for error conditions and blinks the Master LED accordingly.
- * Priority Ladder:
- * 1. Peer Sync Error (2 Pulses) - HIGHEST
- * 2. WiFi Disconnected (3 Pulses)
- * 3. Thermal Warning (4 Pulses)
+ * @brief   Checks for system error conditions and signals them via the Master LED.
+ *
+ * @details Implements a priority ladder for visual alerts:
+ *          1. Peer Sync Error (2 Pulses) - Highest priority.
+ *          2. WiFi/API Disconnected (3 Pulses).
+ *          3. Thermal Warning (4 Pulses).
+ *
+ *          To prevent "ghost" alerts during brief network drops (roaming),
+ *          a 30s hysteresis is applied before the WiFi error is triggered.
  */
-// led_state is now provided by globals.h
-
 inline void check_master_led_error() {
   if (status_led_master == nullptr) return;
 
@@ -113,8 +115,17 @@ inline void check_master_led_error() {
   }
 }
 
-/// @brief Updates the physical LEDs based on current system state.
-/// This function is stateful to prevent redundant I2C commands and log spamming.
+/**
+ * @brief   Primary logic for updating the physical UI LEDs.
+ *
+ * @details This function maps the complex internal state (Auto Mode, Intensity, 
+ *          Night Mode) to the 8 physical LEDs. It uses state-tracking to
+ *          minimize I2C traffic to the PCA9685 driver, preventing bus
+ *          congestion.
+ *
+ * @note    When @p ui_active is false, the display enters "Night Mode" where
+ *          only the power LED remains dimly lit.
+ */
 inline void update_leds_logic() {
   // Always evaluate master LED errors first and independently
   // (It brings its own state-guard inside the function)
