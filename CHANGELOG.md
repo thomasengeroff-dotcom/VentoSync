@@ -4,6 +4,24 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.91] - 2026-04-08
+### Added
+- **Externe Antennen-Unterstützung (Seed Studio XIAO ESP32C6)**: Implementierung einer High-Priority Boot-Frequenz (900), die den hardwareseitigen RF-Switch auf den U.FL-Anschluss umschaltet. Dies löst Empfangsprobleme bei Verbau in tiefen Wänden/Lüftungsrohren.
+- **WiFi-Sendeleistung**: Erhöhung der WiFi-Ausgangsleistung auf **20dB** (physikalisches Limit des C6) für verbesserte Durchdringung von Mauerwerk.
+
+### Changed
+- **Optimierte Button-Logik (Click/Hold Separation)**: Vollständige Trennung von kurzem Klick und langem Halten für den Intensitäts-Button.
+  - Implementierung eines **750ms Initial-Delays** im Hold-Handler, um "Geister-Änderungen" bei kurzen Klicks zu vermeiden.
+  - Erhöhung der Scroll-Geschwindigkeit beim Halten auf **200ms** pro Stufe für ein flüssigeres Bedienerlebnis.
+
+## [0.8.88] - 2026-04-07
+### Fixed
+- **Master-LED Bug auf Slave-Geräten**: Behebung des Fehlers, bei dem die Master-LED (ID 3) nach dem Booten dauerhaft leuchtete.
+  - Initialisierung der `device_id` auf `0` statt `1`, um eine voreilige Master-Erkennung vor dem Laden der NvS-Daten zu verhindern.
+  - Einführung eines globalen `led_state` Namespace zur konsistenten Zustandsverfolgung.
+  - Synchronisation des LED-Selbsttests mit der Steuerlogik, damit die LED nach Ablauf des Tests korrekt abgeschaltet wird.
+- **Debug-Logging**: Hinzufügen von `[led]` Diagnose-Ausgaben zur besseren Nachverfolgbarkeit von Zustandsänderungen.
+
 ## [0.8.83] - 2026-04-07
 ### Fixed
 - **ESP-NOW Kommunikations-Stabilisierung (Framework Integration)**: 

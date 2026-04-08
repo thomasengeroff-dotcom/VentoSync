@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.88"
+  project_version: "0.8.92"
 
 globals:
   - id: thermal_warning_active
@@ -43,6 +43,7 @@ esphome:
   # Force specific flash mode for better stability with C6
   platformio_options:
     board_build.flash_mode: dio
+
     extra_scripts:
       - pre:../../../version_bump.py
 
@@ -128,9 +129,10 @@ wifi:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
   fast_connect: true # Prevent long channel scans during reconnects (vital for ESP-NOW coexistence/I2C stability)
+  output_power: 20.0dB # Increase signal strength for better penetration through walls
   reboot_timeout: 5min  # Or 15min for critical ventilation control devices
   min_auth_mode: WPA2
-  power_save_mode: NONE # none hat eventuell zu Problemen geführt, ist für ESP-NOW Discovery aber stabiler
+  power_save_mode: NONE #  more stable for ESP-NOW Discovery
 
   # Fallback Hotspot:
   # If the configured WiFi is not reachable within 1 minute, the device
