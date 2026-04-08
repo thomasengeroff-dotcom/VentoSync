@@ -4,6 +4,21 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.100] - 2026-04-08
+### Added
+- **Synchronisierte Entitäten-Dokumentation**: Vollständiger Audit und Abgleich von `Entities_Documentation.md` mit dem aktuellen YAML-Code (v0.8.x).
+  - Hinzufügen von BME680 Umweltsensoren (IAQ, Taupunkt, Luftdruck absolut, Trend, Status).
+  - Hinzufügen von Diagnose-Entitäten (ESP-NOW Peers, MAC-Adresse, interne IDs).
+  - Hinzufügen von Hardware-Entitäten (Lüfter PWM %, LED-Helligkeit).
+  - Korrektur der Entitätstypen (z.B. Phasen-Konfiguration als Select statt Switch).
+
+### Changed
+- **ESP-NOW Architektur-Dokumentation**: Überarbeitung der `Dynamic-Configuration.md` zur präzisen Beschreibung des Hybrid-Kommunikationsmodells (Broadcast für Discovery, Unicast für Betrieb) und der Master-Rolle von ID 1.
+- **Konfigurations-Parameter**: Aktualisierung der dokumentierten Wertebereiche für Floor/Room/Device IDs passend zu den Firmware-Limits in `packages/device_config.yaml`.
+
+### Fixed
+- **Dokumentations-Konsistenz**: Entfernung redundanter Einträge (z.B. doppelte Lüfterintensität) und Bereinigung veralteter IDs in der technischen Dokumentation.
+
 ## [0.8.95] - 2026-04-08
 ### Added
 - **Umfassende Doxygen-Dokumentation**: Der gesamte C++ Helper-Code und die kritischen YAML-Lambdas wurden vollständig dokumentiert. Fokus auf die Erklärung der architektonischen Hintergründe ("WARUM") statt nur der Funktion.

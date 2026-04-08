@@ -18,13 +18,13 @@ Statt die Geräte-IDs fest im YAML-Code zu definieren, können alle Lüftungsger
 
 | Parameter | Beschreibung | Bereich | Standard |
 | :--- | :--- | :--- | :--- |
-| **Stockwerk (Floor ID)** | Stockwerk-Nummer | 0-99 | 1 |
-| **Raum (Room ID)** | Raum-Nummer | 0-99 | 1 |
-| **Geräte-ID (Device ID)** | Eindeutige Geräte-ID | 1-99 | 1 |
+| **Stockwerk (Floor ID)** | Stockwerk-Nummer | 0-9 | 1 |
+| **Raum (Room ID)** | Raum-Nummer | 0-10 | 1 |
+| **Geräte-ID (Device ID)** | Eindeutige Geräte-ID | 1-25 | 1 |
 | **Geräte-Phase (A/B)** | Startphase des Geräts | A oder B | A |
 | **Eigene MAC Adresse** | Anzeige der eigenen MAC | - | (automatisch) |
 
-**Hinweis zu ESP-NOW:** Die Kommunikation erfolgt im **Broadcast-Modus** (FF:FF:FF:FF:FF:FF). Alle Geräte empfangen alle Nachrichten, aber die Filterung erfolgt automatisch im Code basierend auf Floor/Room/Device ID. Es ist **keine manuelle MAC-Konfiguration** erforderlich!
+**Hinweis zu ESP-NOW:** Die Kommunikation erfolgt automatisch über ein **hybrides Discovery-System**. Neue Geräte finden sich per Broadcast, der restliche Datenaustausch erfolgt ressourcenschonend und sicher per **Unicast**. Es ist **keine manuelle MAC-Konfiguration** erforderlich!
 
 ### Phase A vs. Phase B
 
@@ -75,32 +75,19 @@ Geräte-Phase:            Phase A (Gleiche Wand = gleiche Phase!)
 
 **Keine manuelle Konfiguration erforderlich!**
 
-Die ESP-NOW Kommunikation funktioniert automatisch im **Broadcast-Modus**:
+Die ESP-NOW Kommunikation nutzt ein hybrides Modell aus **Broadcast** und **Unicast**:
 
-✅ **Alle Geräte senden an:** `FF:FF:FF:FF:FF:FF` (Broadcast)  
-✅ **Alle Geräte empfangen:** Alle ESP-NOW Nachrichten  
-✅ **Filterung erfolgt automatisch:** Im VentilationController basierend auf:
-
-- Floor ID (muss übereinstimmen)
-- Room ID (muss übereinstimmen)
-- Device ID (muss unterschiedlich sein)
-
-**Beispiel:**
-
-```text
-Gerät 1: Floor 1, Room 2, Device 1
-Gerät 2: Floor 1, Room 2, Device 2
-Gerät 3: Floor 1, Room 3, Device 1
-
-→ Gerät 1 & 2 kommunizieren miteinander (gleicher Raum)
-→ Gerät 3 wird ignoriert (anderer Raum)
-```
+✅ **Broadcast zur Entdeckung:** Der Broadcast-Modus (`FF:FF:FF:FF:FF:FF`) wird **nur** verwendet, um neue Peers im gleichen Stockwerk und Raum automatisch zu identifizieren.
+✅ **Unicast für den Betrieb:** Sobald sich Peers gefunden haben, erfolgt die gesamte operative Kommunikation (Status-Updates, Einstellungs-Sync) gezielt per **Unicast**. Dies ist deutlich zuverlässiger (Hardware-ACK) und reduziert die Funk-Last.
+✅ **Masterrolle (Device ID 1):** Das Gerät mit der **Device ID 1** übernimmt automatisch die Masterrolle für die zeitliche Synchronisation der Lüftungszyklen (Taktgeber).
+✅ **Dezentrale Befehlsverteilung:** Befehle (z.B. intensitätsänderungen oder Modus-Wechsel) werden von **jedem** Gerät in der Gruppe entgegengenommen. Das auslösende Gerät verteilt die Änderung sofort per Unicast an alle anderen Peers der Gruppe.
+✅ **Gruppen-Synchronität:** Da alle Geräte permanent ihren Status spiegeln und Änderungen sofort propagieren, bleibt eine Gruppe (gleiche Floor/Room ID) immer zu 100% synchron.
 
 **Vorteile:**
 
-- 🚀 Plug & Play - Keine MAC-Adressen eintragen
-- 🔄 Flexibel - Geräte können jederzeit hinzugefügt werden
-- 🛡️ Sicher - Filterung durch Floor/Room/Device ID
+- 🚀 **Plug & Play** - Es müssen keine MAC-Adressen eingetragen werden, Peers finden sich von selbst
+- 🔄 **Zuverlässigkeit** - Unicast mit Empfangsbestätigung (Hardware-ACK)
+- 🛡️ **Sicher** - Filterung nach Floor ID, Room ID und Device ID
 
 ### 5. Speichern & Fertig
 
@@ -132,7 +119,7 @@ Geräte kommunizieren nur mit anderen Geräten, die:
 
 - ✅ **Gleiche Floor ID** haben
 - ✅ **Gleiche Room ID** haben
-- ❌ **Unterschiedliche Device ID** haben (ignoriert sich selbst)
+- ✅ **Unterschiedliche Device ID** haben
 
 ### Beispiel: Paar-Betrieb
 
@@ -207,7 +194,7 @@ Die Einstellungen erscheinen als **Number-Inputs** und **Select-Dropdown**:
 1. **Stockwerk & Raum** zuerst setzen
 2. **Geräte-ID** eindeutig vergeben (1, 2, 3, ...)
 3. **Phase** entsprechend der Wandposition wählen
-4. **Warten** bis Gerät neu synchronisiert (max. 3 Stunden oder manuell Neustart)
+4. **Warten** bis Gerät neu synchronisiert (max. 3 min oder manuell Neustart)
 
 ### Phase-Auswahl
 
@@ -218,7 +205,7 @@ Die Einstellungen erscheinen als **Number-Inputs** und **Select-Dropdown**:
 ### Änderungen während Betrieb
 
 - Änderungen werden **sofort** wirksam
-- ESP-NOW Synchronisation erfolgt beim nächsten **Sync-Intervall** (Standard: 3h)
+- ESP-NOW Synchronisation erfolgt beim nächsten **Sync-Intervall** 
 - Für sofortige Synchronisation: **Gerät neu starten**
 
 ## 🔍 Troubleshooting
