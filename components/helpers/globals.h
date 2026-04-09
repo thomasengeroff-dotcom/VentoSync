@@ -42,6 +42,8 @@
 #include <algorithm>
 #include <array>
 #include <deque>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -94,6 +96,25 @@ struct PeerEntry {
 };
 
 inline std::vector<PeerEntry> peer_cache;
+
+// --- Thread-Safe ESP-NOW Receive Queue ------------------------------------
+/// @brief Incoming packet captured from the WiFi task for deferred processing.
+/// The WiFi/ESP-NOW callback must not perform heavy operations (flash writes,
+/// memory allocation, peer registration) because it runs in a high-priority
+/// interrupt-like context. Instead we copy the raw data here and process it
+/// in the main ESPHome loop.
+struct IncomingPacket {
+  std::vector<uint8_t> data;       ///< Raw payload bytes.
+  std::array<uint8_t, 6> src_mac;  ///< Sender MAC address.
+};
+
+/// Maximum number of queued packets before dropping (prevents OOM under flood).
+inline constexpr size_t RX_QUEUE_MAX_DEPTH = 16;
+
+/// Mutex protecting rx_queue. Acquired briefly by WiFi task (push) and main loop (drain).
+inline std::mutex rx_queue_mutex;
+/// FIFO queue of packets waiting for main-loop processing.
+inline std::queue<IncomingPacket> rx_queue;
 
 // --- Component pointer declarations (extern) ---------------------------
 // FIXED #8: All pointers are declared `extern` so this header can be compiled
@@ -306,6 +327,7 @@ inline void send_discovery_confirmation(const uint8_t *target_mac);
 inline void send_sync_to_all_peers(const std::vector<uint8_t> &data);
 inline void sync_settings_to_peers();
 inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac);
+inline void process_queued_packets();
 inline void remove_stale_peer(const uint8_t *mac);
 inline void trigger_re_discovery();
 inline void reset_peer_fail_count(const uint8_t *mac);

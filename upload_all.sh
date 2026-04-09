@@ -16,10 +16,10 @@ echo "🚀 Compiling ventosync.yaml..."
 echo "=================================================="
 esphome compile ventosync.yaml
 
-#echo "=================================================="
-#echo "🚀 Starte Upload auf Gerät WRG 12V Test (192.168.178.225)..."
-#echo "=================================================="
-#esphome upload ventosync.yaml --device 192.168.178.225
+echo "=================================================="
+echo "🚀 Starte Upload auf Gerät WRG 12V Test (192.168.178.225)..."
+echo "=================================================="
+esphome upload ventosync.yaml --device 192.168.178.225
 
 echo ""
 echo "=================================================="

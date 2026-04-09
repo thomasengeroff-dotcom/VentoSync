@@ -42,6 +42,11 @@ void update_fan_logic();
 float get_current_target_speed();
 extern float current_smoothed_speed;
 
+// Forward declaration of the ESP-NOW queue drain function (defined in
+// network_sync.h). Must be declared here because this component header
+// is compiled before the helper headers are included.
+void process_queued_packets();
+
 namespace esphome {
 
 // ---------------------------------------------------------
@@ -277,6 +282,11 @@ public:
   /// schedules periodic sync broadcasts.
   void loop() override {
     uint32_t now = millis();
+
+    // 0. Drain ESP-NOW receive queue (thread-safe, main-loop processing)
+    // This must run FIRST so that incoming state/discovery packets are
+    // available before we make any state machine decisions this iteration.
+    process_queued_packets();
 
     // 1. Update State Machine (returns true on discrete state flip)
     bool dirty = state_machine.update(now);

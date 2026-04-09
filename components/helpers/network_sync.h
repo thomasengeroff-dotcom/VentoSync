@@ -705,43 +705,73 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
 // =========================================================
 
 /**
- * @brief   Entry point for all incoming ESP-NOW traffic.
+ * @brief   Entry point for all incoming ESP-NOW traffic (WiFi task context).
  *
- * @details This function is the primary multiplexer for decoding VentoSync
- *          traffic. It differentiates between discovery probes (plaintext)
- *          and operational state packets (binary struct).
+ * @details This function runs in the high-priority WiFi task. To prevent
+ *          Interrupt WDT crashes, it MUST NOT perform heavy operations
+ *          (flash writes, memory allocation, peer registration, logging).
+ *          Instead it captures the raw packet into a thread-safe queue
+ *          for deferred processing in the main ESPHome loop.
  *
  * @param[in] data      Incoming byte vector.
  * @param[in] src_mac   MAC address of the sender.
  *
- * @note    Thread safety: ESPHome executes this in the main loop context,
- *          so no mutexes are required for global variable access.
+ * @note    Thread safety: This function is called from the WiFi task.
+ *          All shared state access is protected by rx_queue_mutex.
  */
 inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
-  // ✅ Deduplication guard (prevent double-processing within 50ms)
+  // ✅ Lightweight deduplication guard (prevent double-queueing within 50ms)
+  // Uses only local statics — no shared state, no mutex needed.
   static uint32_t last_rx_time = 0;
   static uint32_t last_rx_hash = 0;
   uint32_t now = millis();
-  
+
   uint32_t hash = (uint32_t)data.size();
   for (size_t i = 0; i < std::min(data.size(), (size_t)8); i++)
     hash = hash * 31 + data[i];
-  // ✅ FIX: Alle 6 MAC-Bytes einbeziehen statt nur 2
   for (size_t i = 0; i < 6; i++)
     hash = hash * 31 + src_mac[i];
 
   if (hash == last_rx_hash && (now - last_rx_time) < 50) {
-    return; // Duplicate suppressed (likely from overlapping broadcast/unknown_peer lambdas)
+    return; // Duplicate suppressed
   }
   last_rx_hash = hash;
   last_rx_time = now;
 
-  // --- START DEBUG LOGGING ---
+  // ✅ Enqueue for main-loop processing (minimal critical section)
+  {
+    std::lock_guard<std::mutex> lock(rx_queue_mutex);
+    if (rx_queue.size() >= RX_QUEUE_MAX_DEPTH) {
+      return; // Drop oldest-prevention: just reject new packets under flood
+    }
+    IncomingPacket pkt;
+    pkt.data.assign(data.begin(), data.end());
+    std::copy(src_mac, src_mac + 6, pkt.src_mac.begin());
+    rx_queue.push(std::move(pkt));
+  }
+}
+
+// =========================================================
+// SECTION: Main-Loop Packet Processing
+// =========================================================
+
+/**
+ * @brief   Processes a single ESP-NOW packet in the main loop context.
+ *
+ * @details This contains the full processing logic that was previously
+ *          in handle_espnow_receive. Running in the main loop guarantees
+ *          safe access to globals, flash/NVS, peer registration, and UI
+ *          components without risking Interrupt WDT timeouts.
+ *
+ * @param[in] data      Packet payload.
+ * @param[in] src_mac   Sender MAC address.
+ */
+inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
+  // --- DEBUG LOGGING ---
   if (!data.empty()) {
-    ESP_LOGD("espnow_raw", "RX from %s | Len: %d | First: 0x%02X", 
+    ESP_LOGD("espnow_raw", "RX from %s | Len: %d | First: 0x%02X",
              format_mac(src_mac).c_str(), data.size(), data[0]);
   }
-  // --- END DEBUG LOGGING ---
 
   // ✅ Discovery-Strings VOR validate_packet() abfangen
   // Discovery-Pakete sind Plaintext, keine VentilationPacket-Strukturen
@@ -792,7 +822,7 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
       }
       ESP_LOGI("vent_sync", "Adopting state from peer %d (REBOOT SYNC%s)",
                pkt->device_id, is_from_master(pkt) ? " - MASTER" : " - FALLBACK");
-      
+
       // FIX: Register the peer we just synced from
       register_peer_dynamic(src_mac);
 
@@ -829,5 +859,33 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
 
   if (should_sync_config) {
     espnow_handler::handle_config_sync(pkt);
+  }
+}
+
+/**
+ * @brief   Drains the rx_queue and processes all pending packets.
+ *
+ * @details Called once per main-loop iteration from VentilationController::loop().
+ *          Acquires the mutex briefly to swap the queue contents into a local
+ *          buffer, then processes each packet without holding the lock.
+ *          This minimizes contention with the WiFi task producer.
+ */
+inline void process_queued_packets() {
+  // Fast path: skip mutex acquisition if queue is obviously empty.
+  // This is a benign race — worst case we process one iteration late.
+  if (rx_queue.empty()) return;
+
+  // Drain queue under lock into a local buffer
+  std::queue<IncomingPacket> local_queue;
+  {
+    std::lock_guard<std::mutex> lock(rx_queue_mutex);
+    std::swap(local_queue, rx_queue);
+  }
+
+  // Process all packets in main-loop context (safe for flash, UI, peers)
+  while (!local_queue.empty()) {
+    auto &pkt = local_queue.front();
+    process_espnow_packet_local(pkt.data, pkt.src_mac.data());
+    local_queue.pop();
   }
 }
