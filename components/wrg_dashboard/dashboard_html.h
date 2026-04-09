@@ -106,7 +106,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
 
       <!-- Air Quality -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität (SCD41)</h2>
+        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität</h2>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">CO2:</span> <span class="font-medium text-lg" id="val_scd41_co2">-- ppm</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Bewertung:</span> <span class="font-medium text-lg" id="val_scd41_co2_bewertung">--</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur:</span> <span class="font-medium text-lg" id="val_scd41_temperature">-- °C</span></div>

@@ -26,6 +26,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional("scd41_temperature_id"):        cv.use_id(sensor.Sensor),
         cv.Optional("scd41_humidity_id"):           cv.use_id(sensor.Sensor),
         cv.Optional("bme680_temperature_id"):        cv.use_id(sensor.Sensor),
+        cv.Optional("bme680_humidity_id"):           cv.use_id(sensor.Sensor),
         cv.Optional("temp_zuluft_id"):              cv.use_id(sensor.Sensor),
         cv.Optional("temp_abluft_id"):              cv.use_id(sensor.Sensor),
         cv.Optional("heat_recovery_efficiency_id"): cv.use_id(sensor.Sensor),

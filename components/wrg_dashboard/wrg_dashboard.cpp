@@ -166,13 +166,22 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["outdoor_humidity"] = get_f(this->outdoor_humidity_);
   doc["scd41_co2"] =
       get_f(this->effective_co2_ ? this->effective_co2_ : this->scd41_co2_);
-  doc["scd41_temperature"] = get_f(this->scd41_temperature_);
-  doc["scd41_humidity"] = get_f(this->scd41_humidity_);
-  
-  float local_room_t = get_f(this->scd41_temperature_);
-  if (std::isnan(local_room_t)) {
-    local_room_t = get_f(this->bme680_temperature_);
+  // Temperature: SCD41 → BME680 fallback
+  float display_temp = get_f(this->scd41_temperature_);
+  if (std::isnan(display_temp)) {
+    display_temp = get_f(this->bme680_temperature_);
   }
+  doc["scd41_temperature"] = display_temp;
+
+  // Humidity: SCD41 → BME680 fallback
+  float display_hum = get_f(this->scd41_humidity_);
+  if (std::isnan(display_hum)) {
+    display_hum = get_f(this->bme680_humidity_);
+  }
+  doc["scd41_humidity"] = display_hum;
+
+  // Room temp for peer card and chart (same fallback chain)
+  float local_room_t = display_temp;
   if (!std::isnan(local_room_t)) {
     doc["room_temp"] = local_room_t;
   }

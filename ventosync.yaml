@@ -335,6 +335,7 @@ wrg_dashboard:
   scd41_temperature_id: scd41_temperature
   scd41_humidity_id: scd41_humidity
   bme680_temperature_id: bme680_temperature
+  bme680_humidity_id: bme680_humidity
   temp_zuluft_id: temp_zuluft
   temp_abluft_id: temp_abluft
   heat_recovery_efficiency_id: heat_recovery_efficiency

@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.101] - 2026-04-09
+### Fixed
+- **Dashboard Sensor-Fallback**: Implementierung eines transparenten Fallbacks für Raumtemperatur und Luftfeuchtigkeit. Wenn der SCD41 nicht angeschlossen ist, nutzt das Dashboard nun automatisch die Werte des BME680.
+- **UI-Verbesserung**: Umbenennung der Kachel "Luftqualität (SCD41)" in "Luftqualität", da die Daten nun dynamisch von beiden Sensortypen bezogen werden können.
+
 ## [0.8.100] - 2026-04-08
 ### Added
 - **Synchronisierte Entitäten-Dokumentation**: Vollständiger Audit und Abgleich von `Entities_Documentation.md` mit dem aktuellen YAML-Code (v0.8.x).
