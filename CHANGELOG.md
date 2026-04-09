@@ -4,6 +4,23 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.115] - 2026-04-09
+### Added
+- **Detailliertes Debug-Logging für WRG-Effizienz**: Implementierung von `ESP_LOGD` Statements in `ventilation_logic.cpp` und `climate.h`, um die Berechnung der Wärmerückgewinnung (NaN-Handling, ΔT Schwellenwerte, Stabilisierungsphasen) im Betrieb präzise zu überwachen.
+- **Unit-Test Kompatibilität**: Logging-Erweiterungen in der C++ Logik wurden mit `#ifdef ESPHOME` Makros abgesichert, um die Testbarkeit in Nicht-ESPHome Umgebungen (Unit-Tests) beizubehalten.
+
+### Changed
+- **Dashboard-Abstraktion (Sensor-Fallback)**: Umstellung der internen API und des Web-Dashboards auf generische Identifikatoren (z.B. `room_temperature` statt `scd41_temperature`). Dies sorgt für eine transparente Darstellung, egal ob die Daten vom SCD41 oder dem BME680-Fallback kommen.
+- **Modulare Optimierung der Custom Components**: Umfassendes Refactoring der `__init__.py` Generatoren für `ventilation_group`, `ventilation_logic` und `wrg_dashboard`.
+    - Bereinigung ungenutzter Imports.
+    - Verwendung spezifischer Datentypen (`uint8_t`) für IDs zur Platzeinsparung und Validierung.
+    - Automatisierung der Header-Includes zur Reduzierung von manuellem YAML-Aufwand.
+- **Stabilitäts-Fixes**: Korrektur der `http_request` Konfiguration in der Basis-Firmware zur Sicherstellung der Firmware-Update-Funktionalität.
+
+### Fixed
+- **ESPHome Version-Kompatibilität**: Behebung von Kompilierfehlern durch Rückfall auf die bewährte `cg.add_global(cg.RawStatement(...))` Methode für Header-Includes, da `cg.add_include` in der verwendeten ESPHome-Version nicht zur Verfügung steht.
+
+
 ## [0.8.101] - 2026-04-09
 ### Fixed
 - **Dashboard Sensor-Fallback**: Implementierung eines transparenten Fallbacks für Raumtemperatur und Luftfeuchtigkeit. Wenn der SCD41 nicht angeschlossen ist, nutzt das Dashboard nun automatisch die Werte des BME680.

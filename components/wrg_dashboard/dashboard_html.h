@@ -107,10 +107,10 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       <!-- Air Quality -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
         <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität</h2>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">CO2:</span> <span class="font-medium text-lg" id="val_scd41_co2">-- ppm</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Bewertung:</span> <span class="font-medium text-lg" id="val_scd41_co2_bewertung">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur:</span> <span class="font-medium text-lg" id="val_scd41_temperature">-- °C</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg" id="val_scd41_humidity">-- %</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">CO2:</span> <span class="font-medium text-lg" id="val_room_co2">-- ppm</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Bewertung:</span> <span class="font-medium text-lg" id="val_room_co2_bewertung">--</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur:</span> <span class="font-medium text-lg" id="val_room_temperature">-- °C</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg" id="val_room_humidity">-- %</span></div>
       </div>
 
       <!-- Maintenance -->
@@ -307,8 +307,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         // Update direct text elements
         const ids = ["device_id", "floor_id", "room_id", "phase", 
                      "temperature", "pressure", "outdoor_humidity", "temp_zuluft", "temp_abluft", 
-                     "heat_recovery_efficiency", "fan_rpm", "direction_display", "scd41_co2", "scd41_co2_bewertung", 
-                     "scd41_temperature", "scd41_humidity", "filter_operating_days"];
+                     "heat_recovery_efficiency", "fan_rpm", "direction_display", "room_co2", "room_co2_bewertung", 
+                     "room_temperature", "room_humidity", "filter_operating_days"];
         
         ids.forEach(id => {
           const el = document.getElementById("val_" + id);
@@ -419,9 +419,9 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
 
         chartData.labels.push(timeStr);
         chartData.datasets[0].data.push(data.fan_rpm === null ? null : parseFloat(data.fan_rpm));
-        chartData.datasets[1].data.push(data.scd41_temperature === null ? null : parseFloat(data.scd41_temperature));
-        chartData.datasets[2].data.push(data.scd41_co2 === null ? null : parseFloat(data.scd41_co2));
-        chartData.datasets[3].data.push(data.scd41_humidity === null ? null : parseFloat(data.scd41_humidity));
+        chartData.datasets[1].data.push(data.room_temperature === null ? null : parseFloat(data.room_temperature));
+        chartData.datasets[2].data.push(data.room_co2 === null ? null : parseFloat(data.room_co2));
+        chartData.datasets[3].data.push(data.room_humidity === null ? null : parseFloat(data.room_humidity));
 
         if (chartData.labels.length > maxHistoryPoints) {
             chartData.labels.shift();

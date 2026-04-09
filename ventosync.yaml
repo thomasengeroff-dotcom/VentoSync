@@ -72,24 +72,24 @@ esphome:
     - components/helpers/user_input.h
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
   on_boot:
-    # # Enable External Antenna early at boot (Priority 900 starts before WiFi)
-    # - priority: 900
-    #   then:
-    #   - lambda: |-
-    #       // GPIO 3 (WIFI_ENABLE) LOW activates the RF switch circuitry
-    #       gpio_reset_pin((gpio_num_t)3);
-    #       gpio_set_direction((gpio_num_t)3, GPIO_MODE_OUTPUT);
-    #       gpio_set_level((gpio_num_t)3, 0);
+    # Enable External Antenna early at boot (Priority 900 starts before WiFi)
+    - priority: 900
+      then:
+      - lambda: |-
+          // GPIO 3 (WIFI_ENABLE) LOW activates the RF switch circuitry
+          gpio_reset_pin((gpio_num_t)3);
+          gpio_set_direction((gpio_num_t)3, GPIO_MODE_OUTPUT);
+          gpio_set_level((gpio_num_t)3, 0);
 
-    #       // Brief delay for the switch to stabilize
-    #       vTaskDelay(pdMS_TO_TICKS(100));
+          // Brief delay for the switch to stabilize
+          vTaskDelay(pdMS_TO_TICKS(100));
 
-    #       // GPIO 14 (WIFI_ANT_CONFIG) HIGH selects the U.FL connector
-    #       gpio_reset_pin((gpio_num_t)14);
-    #       gpio_set_direction((gpio_num_t)14, GPIO_MODE_OUTPUT);
-    #       gpio_set_level((gpio_num_t)14, 1); 
+          // GPIO 14 (WIFI_ANT_CONFIG) HIGH selects the U.FL connector
+          gpio_reset_pin((gpio_num_t)14);
+          gpio_set_direction((gpio_num_t)14, GPIO_MODE_OUTPUT);
+          gpio_set_level((gpio_num_t)14, 1); 
 
-    #       ESP_LOGI("boot", "Hardware RF Switch: External U.FL Antenna activated.");
+          ESP_LOGI("boot", "Hardware RF Switch: External U.FL Antenna activated.");
 
     # Phase 1: Core initialization (WiFi + NVS ready at priority -10)
     - priority: -10.0

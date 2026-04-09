@@ -73,17 +73,33 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
 
   // Thermal stabilization: Wait at least 30s into the cycle before sampling
   constexpr uint32_t stable_time_ms = 30000;
-  const bool is_stable = (now - last_direction_change_time) > stable_time_ms;
+  const uint32_t time_since_flip = now - last_direction_change_time;
+  const bool is_stable = time_since_flip > stable_time_ms;
 
   if (is_wrg && is_intake && is_stable) {
     if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
+      ESP_LOGD("climate", "WRG Efficiency: Sensor data NaN, holding: %.1f%%", current_eff);
       return current_eff;
     }
-    return VentilationLogic::calculate_heat_recovery_efficiency(
+    float eff = VentilationLogic::calculate_heat_recovery_efficiency(
         t_raum, t_zuluft, t_aussen);
+    ESP_LOGD("climate", "WRG Efficiency update: %.1f%% (Room:%.1f Zuluft:%.1f Out:%.1f)", 
+             eff, t_raum, t_zuluft, t_aussen);
+    return eff;
   }
 
-  return current_eff; // Hold last value outside stable intake phase
+  // Debugging holding reasons (only in WRG mode to avoid log spam)
+  if (is_wrg) {
+    if (!is_intake) {
+      ESP_LOGD("climate", "WRG Efficiency: Holding during exhaust phase (Abluft)");
+    } else if (!is_stable) {
+      ESP_LOGD("climate", "WRG Efficiency: Waiting for stabilization (%us remaining)", 
+               (stable_time_ms - time_since_flip) / 1000);
+    }
+  }
+
+  // Not in a valid sampling window → hold last known value
+  return current_eff;
 }
 
 // Stabilization parameter constants

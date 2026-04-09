@@ -45,7 +45,7 @@ class VentilationLogic {
 public:
   /// @brief Calculates heat-recovery efficiency (WRG) as a percentage.
   /// Formula: (T_supply − T_outside) / (T_indoor − T_outside) × 100.
-  /// Returns 0 if ΔT < 1 °C (avoids division by zero).
+  /// Returns 0 if ΔT < 2 °C (avoids division by zero and noise).
   static float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
                                                   float t_aussen);
 

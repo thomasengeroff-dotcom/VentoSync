@@ -7,4 +7,4 @@ DEPENDENCIES = []
 CONFIG_SCHEMA = cv.Schema({})
 
 async def to_code(config):
-    pass
+    cg.add_global(cg.RawStatement('#include "esphome/components/ventilation_logic/ventilation_logic.h"'))

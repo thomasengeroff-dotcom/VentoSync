@@ -43,7 +43,6 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional("phase_id"):                    cv.use_id(text_sensor.TextSensor),
         cv.Optional("direction_display_id"):        cv.use_id(text_sensor.TextSensor),
 
-
         cv.Optional("vent_timer_id"):               cv.use_id(number.Number),
         cv.Optional("sync_interval_config_id"):     cv.use_id(number.Number),
         cv.Optional("fan_intensity_display_id"):    cv.use_id(number.Number),
@@ -54,12 +53,15 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional("auto_presence_slider_id"):     cv.use_id(number.Number),
 
         cv.Optional("luefter_modus_id"):            cv.use_id(select.Select),
+
         cv.Optional("lueftung_fan_id"):             cv.use_id(fan.Fan),
+
         cv.Optional("ventilation_ctrl_id"):         cv.use_id(cg.Component),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
+    cg.add_global(cg.RawStatement('#include "esphome/components/wrg_dashboard/wrg_dashboard.h"'))
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 

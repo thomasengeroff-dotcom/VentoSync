@@ -25,18 +25,42 @@
 // ==========================================================================
 #include "ventilation_logic.h"
 
+#ifdef ESPHOME
+#include "esphome/core/log.h"
+#endif
+
 /// @brief Calculates Wärmerückgewinnung (heat recovery) efficiency.
-/// Returns 0 when the indoor/outdoor ΔT is < 0.3 °C, clamped to [0, 100] %.
+/// @returns Efficiency in [0, 100] %, or 0 if inputs are invalid 
+///          or indoor/outdoor ΔT is too small for meaningful calculation.
 float VentilationLogic::calculate_heat_recovery_efficiency(float t_raum, float t_zuluft, float t_aussen) {
-  // Efficiency = (T_supply - T_outside) / (T_indoor - T_outside) * 100
-  // Avoid division by zero
-  if (std::abs(t_raum - t_aussen) < 0.3) {
-    return 0.0;
+  // Guard against NaN from sensor read failures
+  if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
+#ifdef ESPHOME
+    ESP_LOGD("ventilation_logic", "WRG Math: NaN in (Room:%.1f, Zuluft:%.1f, Out:%.1f)", t_raum, t_zuluft, t_aussen);
+#endif
+    return 0.0f;
   }
-  float eff = (t_zuluft - t_aussen) / (t_raum - t_aussen) * 100.0;
-  if (eff < 0) return 0.0;
-  if (eff > 100) return 100.0; // Cap at 100% (can happen with sensor noise)
-  return eff;
+
+  // Below this ΔT, sensor noise dominates → result is meaningless
+  static constexpr float kMinDeltaT = 2.0f;
+
+  const float delta_t = t_raum - t_aussen;
+  if (std::abs(delta_t) < kMinDeltaT) {
+#ifdef ESPHOME
+    ESP_LOGD("ventilation_logic", "WRG Math: DeltaT too small: %.2f (min: %.1f)", delta_t, kMinDeltaT);
+#endif
+    return 0.0f;
+  }
+
+  // η = (T_supply - T_outside) / (T_indoor - T_outside) × 100
+  const float efficiency = (t_zuluft - t_aussen) / delta_t * 100.0f;
+  const float result = std::clamp(efficiency, 0.0f, 100.0f);
+
+#ifdef ESPHOME
+  ESP_LOGD("ventilation_logic", "WRG Math: Calculated %.1f%% (raw: %.1f%%)", result, efficiency);
+#endif
+
+  return result;
 }
 
 /// @brief Determines if the manual speed slider is below the "off" threshold (< 1.0).

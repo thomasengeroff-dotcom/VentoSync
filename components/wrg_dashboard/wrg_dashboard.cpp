@@ -164,21 +164,21 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["temperature"] = get_f(this->temperature_);
   doc["pressure"] = get_f(this->pressure_);
   doc["outdoor_humidity"] = get_f(this->outdoor_humidity_);
-  doc["scd41_co2"] =
+  doc["room_co2"] =
       get_f(this->effective_co2_ ? this->effective_co2_ : this->scd41_co2_);
   // Temperature: SCD41 → BME680 fallback
   float display_temp = get_f(this->scd41_temperature_);
   if (std::isnan(display_temp)) {
     display_temp = get_f(this->bme680_temperature_);
   }
-  doc["scd41_temperature"] = display_temp;
+  doc["room_temperature"] = display_temp;
 
   // Humidity: SCD41 → BME680 fallback
   float display_hum = get_f(this->scd41_humidity_);
   if (std::isnan(display_hum)) {
     display_hum = get_f(this->bme680_humidity_);
   }
-  doc["scd41_humidity"] = display_hum;
+  doc["room_humidity"] = display_hum;
 
   // Room temp for peer card and chart (same fallback chain)
   float local_room_t = display_temp;
@@ -201,7 +201,7 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["filter_change_alarm"] = get_b(this->filter_change_alarm_);
   doc["radar_presence"] = get_b(this->radar_presence_);
 
-  doc["scd41_co2_bewertung"] = get_t(this->scd41_co2_bewertung_);
+  doc["room_co2_bewertung"] = get_t(this->scd41_co2_bewertung_);
   doc["luefter_modus"] = get_s(this->luefter_modus_);
 
   doc["vent_timer"] = get_n(this->vent_timer_);

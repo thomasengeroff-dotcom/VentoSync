@@ -1,10 +1,11 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import fan, switch, sensor
-from esphome.const import CONF_ID, CONF_TEMPERATURE, CONF_HUMIDITY
+from esphome.const import CONF_ID
 
-# Namespace esphome
+# Namespace & Classes
 VentilationController = cg.esphome_ns.class_('VentilationController', cg.Component)
+GlobalsComponent = cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)
 
 CONF_FLOOR_ID = 'floor_id'
 CONF_ROOM_ID = 'room_id'
@@ -26,9 +27,9 @@ CONF_LED_BRIGHT_GLOBAL = 'max_led_brightness_global'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VentilationController),
-    cv.Required(CONF_FLOOR_ID): cv.int_,
-    cv.Required(CONF_ROOM_ID): cv.int_,
-    cv.Required(CONF_DEVICE_ID): cv.int_,
+    cv.Required(CONF_FLOOR_ID): cv.uint8_t,
+    cv.Required(CONF_ROOM_ID): cv.uint8_t,
+    cv.Required(CONF_DEVICE_ID): cv.uint8_t,
     cv.Required(CONF_IS_PHASE_A): cv.boolean,
     cv.Required(CONF_MAIN_FAN): cv.use_id(fan.Fan),
     cv.Optional(CONF_DIRECTION_SWITCH): cv.use_id(switch.Switch), 
@@ -36,17 +37,16 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_BOARD_TEMP_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_SCD41_TEMP_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_BME680_TEMP_SENSOR): cv.use_id(sensor.Sensor),
-    cv.Optional(CONF_MODE_INDEX_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
-    cv.Optional(CONF_AUTO_MIN_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
-    cv.Optional(CONF_AUTO_MAX_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
-    cv.Optional(CONF_AUTO_CO2_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
-    cv.Optional(CONF_AUTO_HUM_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
-    cv.Optional(CONF_AUTO_PRES_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
-    cv.Optional(CONF_LED_BRIGHT_GLOBAL): cv.use_id(cg.esphome_ns.class_('globals::GlobalsComponent', cg.Component)),
+    cv.Optional(CONF_MODE_INDEX_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_AUTO_MIN_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_AUTO_MAX_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_AUTO_CO2_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_AUTO_HUM_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_AUTO_PRES_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_LED_BRIGHT_GLOBAL): cv.use_id(GlobalsComponent),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
-    # Add include
     cg.add_global(cg.RawStatement('#include "esphome/components/ventilation_group/ventilation_group.h"'))
 
     var = cg.new_Pvariable(config[CONF_ID])
