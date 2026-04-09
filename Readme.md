@@ -62,10 +62,10 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | Fan Control | 3 fixed levels | **10 levels + stepless (PID)** |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
-| Synchronization | Control cable | ✅ Wireless (**ESP-NOW Protocol v4**) & Real-time Sync |
+| Synchronization | Control cable | ✅ Wireless (**ESP-NOW Protocol v7**) & Real-time Sync |
 | Versioning | Manual | ✅ Fully automatic (Patch-Level) |
 | Updates | Service technician | ✅ Over-the-Air (OTA) |
-| License | Proprietary | ✅ Open Source (MIT) |
+| License | Proprietary | ✅ Open Source (GPL v3) |
 
  **You can find the full feature-for-feature comparison with all technical details in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
 
@@ -113,7 +113,7 @@ Even with 24/7 continuous operation at the *absolute maximum level (10)*, the no
 
 *Particularly noteworthy: These measurements include the continuous operation of all installed components – including the ESP32 control (Wi-Fi/ESP-NOW), the climate and CO2 sensors, as well as the continuously measuring mmWave radar presence sensor!*
 
-Note: This is not a 100% accurate laboratory measurement. I determined these values using a Shelly 1PM mini. This measures the power consumption of the entire unit, including the ESP32 control (Wi-Fi/ESP-NOW), the climate and CO2 sensors, as well as the continuously measuring mmWave radar presence sensor!
+Note: This is not a 100% accurate laboratory measurement. I determined these values using a Shelly 1PM mini.
 
 ### 🖥️ Operation at the Ventilation Device
 
@@ -127,13 +127,13 @@ To ensure an optimal user experience, the original control panel of the VentoMax
     Short press --> turns the device on.
     Hold for 5sec --> turns the device off.
     Hold for 10sec --> turns the device off and restarts the system (reboot).
-  - **Mode**: Short press cycles through programs: **Auto → Heat Recovery → Boost Ventilation → Ventilation → Off**.
+  - **Mode**: Short press cycles through programs: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off**.
   - **Level +**: 10 speed levels (cyclic, indicated by 5 LEDs with half/full brightness). The original Ventomaxx control only offers 5 levels. Holding the button cycles through the ventilation levels.
 - 🔆 **LED Feedback & LES Error codes**: Indication of mode, current fan level (1-10), and status.
   - ✨ **Group Synchronization**: All displays in a ventilation group synchronize in real-time. If device A changes the mode or level, the LEDs of all partner devices (peers) in the room wake up immediately to display the new status for 30 seconds (wake-up effect).
   - **Diagnostic Blink Codes (Master LED)**: The center LED (Master) signals malfunctions via a blink pattern (pulse):
-    - **2x Blinks**: Synchronization error between fans (room group). The devices can no longer coordinate with each other.
-    - **3x Blinks**: The connection to the Wi-Fi router is interrupted. App control is currently not possible.
+    - **2x Blinks**: Synchronization error between fans (room group). No ESP-NOW packets received from peers for >3 minutes. *(Only active when the "Peer monitoring" switch is enabled in the dashboard.)*
+    - **3x Blinks**: The connection to the Wi-Fi router is interrupted. App control is currently not possible. *(Triggers only after 30 seconds of continuous connection loss — brief roaming drops are suppressed.)*
     - **4x Blinks**: Heat warning (50-60°C). The temperature inside the ventilation unit housing is too warm (e.g., due to direct sunlight or a malfunction). The system is still running but should be checked. The device switches off automatically at over 60°C.
 - You can find the detailed description of operation and control under [Operation](#-operation--control).
 
@@ -268,7 +268,7 @@ The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](file:///hom
 | :--- | :--- | :--- |
 | **VentoMaxx Panel** | Original panel (14-Pin FFC). 3 buttons, 9 LEDs (dimmable via PCA9685). | The pinout of the original panel was completely measured and documented by me to enable exact control via the custom PCB and the port expanders (MCP23017/PCA9685). |
 
-[Control-Panel Adapter](images/Ventomax%20V-WRG-1/Control-Panel%20Adapter.jpg)
+![Control-Panel Adapter](images/Ventomax%20V-WRG-1/Control-Panel%20Adapter.jpg)
 
 ---
 
@@ -361,7 +361,7 @@ The configuration uses NTCs with a B-value of 3435. If you use other sensors, ad
 
 The system is controlled intuitively via the integrated control panel or fully automatically via Home Assistant.
 
-### ��️ Control Panel (VentoMaxx Style)
+### 🖥️ Control Panel (VentoMaxx Style)
 
 The panel has 3 buttons and 9 status LEDs.
 
@@ -378,7 +378,7 @@ The panel has 3 buttons and 9 status LEDs.
 | LED | Quantity | Position | Behavior |
 | :--- | :---: | :--- | :--- |
 | **Power** | 🟢 1x | LED Panel | Lights up bright during operation. Dims to 20% brightness after 60s @ `ui_active_timeout` (default: 60s) (instead of turning off completely). |
-| **Master** | 🟢 1x | LED Panel | Lights up when UI is active (normal operation). Signals malfunctions via blink pattern: **2x**: Room synchronization failed | **3x**: Wi-Fi loss | **4x**: Heat warning (50-60°C). Device switches off automatically at over 60°C. |
+| **Master** | 🟢 1x | LED Panel | Lights up solid (dimmed) on Master Device (Device-ID=1). Signals malfunctions via blink pattern: **2x**: Peer sync lost >3min *(requires Peer monitoring switch)*  / **3x**: Wi-Fi loss >30s /  **4x**: Heat warning (50-60°C). Device switches off automatically at over 60°C. |
 | **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses** in Standard Automatic mode. Permanently on for Heat Recovery or Ventilation. |
 | **Mode R** (`LED_VEN`) | 🟢 1x | Right | Permanently on for Boost Ventilation or Ventilation. |
 | **Intensity** | 🟢 5x | LED Panel | Shows current fan level 1–10 (half/full brightness for 10 levels via 5 LEDs). Only visible when UI is active. |
@@ -393,15 +393,15 @@ The panel has 3 buttons and 9 status LEDs.
 | Ventilation (Summer) | 🟢 | 🟢 |
 | Off / System OFF | ⚫ | ⚫ |
 
-> �� **60 Seconds Auto-Dimming:** All status LEDs (Mode, Intensity, Master) fade out gently 60 seconds (configurable) after the last button press. The **Power LED** remains on dimmed at 20%. With each button press, all LEDs are reactivated. Exception: The **Master LED continues to signal error states**, even after the timeout.
+> **60 Seconds Auto-Dimming:** All status LEDs (Mode, Intensity, Master) fade out gently 60 seconds (configurable) after the last button press. The **Power LED** remains on dimmed at 20%. With each button press, all LEDs are reactivated. Exception: The **Master LED continues to signal error states**, even after the timeout.
 
 ---
 
 ### 🔄 Detailed Operating Modes (Programs)
 
-The device cycles through the programs via the **Mode button (M)**. Upon **powering on**, **Mode 1 (Standard Automatic)** is active.
+The device cycles through the programs via the **Mode button (M)**. Upon initial **power-on**, **Mode 1 (Standard Automatic)** is active.
 
-> �� **Tip:** The sequence when pressing the button is: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off → Auto...**
+> **Hint:** The sequence when pressing the button is: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off → Auto...**
 
 ---
 
@@ -476,7 +476,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 #### Available Controls
 
 - **Fan**: Slider 0-10% to 100% (internally corresponds to the 10 levels of the control panel)
-- **Mode**: Selection (Standard Automatic / Eco Recovery / Ventilation / Off)
+- **Mode**: Selection (Standard Automatic / Eco Recovery / Boost Ventilation / Ventilation / Off)
 - **Timer**: Configuration for "Ventilation" (default: 30 min)
 - **LED Brightness**: `number.max_led_brightness` (0-100%, default: 80%) to limit the maximum panel brightness.
 - **CO2 Limit**: `number.auto_CO2_threshold` (always active in Automatik mode)
@@ -509,7 +509,7 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 
 The RPM range is optimized to allow for finer steps at low levels, while the power increases more rapidly at higher levels.
 
-> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM never at 50% = stop). In Standard Automatic mode (PID), the speed is regulated steplessly between `CO2_min_fan_level` and `CO2_max_fan_level`.
+> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM never at 50% = stop). In Standard Automatic mode (PID), the speed is regulated steplessly between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
 > 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery/Boost Ventilation), the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.
 
 #### Automatic Functions
@@ -725,8 +725,11 @@ VentoSync/
 │   ├── logic_automation.yaml      # Control logic, PIDs, intervals, maintenance
 
 ├── components/                    # Local custom C++ components
-│   ├── automation_helpers.h       # C++ helper functions for lambdas
-│   └── ventilation_group/         # Ventilation control logic
+│   ├── helpers/                   # C++ helper functions for lambdas
+│   │   └── automation_helpers.h   # Fan control, LED, ESP-NOW, Auto-Mode logic
+│   ├── ventilation_group/         # VentilationController C++ component
+│   ├── ventilation_logic/         # Static math utilities (CO2 classification, ramp calc)
+│   └── wrg_dashboard/             # Local web dashboard (HTTP server, JSON API, HTML)
 ├── experimental/                  # Test and development devices
 │   ├── espslavetest.yaml          # Test node configuration
 │   ├── integration_test.yaml      # Automated integration tests
@@ -758,7 +761,7 @@ The formerly enormous main file `ventosync.yaml` was drastically slimmed down to
 - **`ui_controls.yaml`**: Isolates all entities that appear as controls in Home Assistant (sliders for timer and setup, dropdowns for mode selection, as well as logical LED lights).
 - **`logic_automation.yaml`**: The "brain" when it comes to processes. This is where the complex PID climate controllers, interval-based automations, cyclic fan ramp scripts, and the input logic of the hardware buttons on the control panel reside.
 
-The main file (`ventosync.yaml`) now only acts as the "glue" that defines base variables, loads C++ dependencies, and merges these four module files together.
+The main file (`ventosync.yaml`) now only acts as the "glue" that defines base variables, loads C++ dependencies, and merges these six module files together.
 
 #### **2. `automation_helpers.h` - Central Helper Library**
 

@@ -16,6 +16,10 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
     - Verwendung spezifischer Datentypen (`uint8_t`) für IDs zur Platzeinsparung und Validierung.
     - Automatisierung der Header-Includes zur Reduzierung von manuellem YAML-Aufwand.
 - **Stabilitäts-Fixes**: Korrektur der `http_request` Konfiguration in der Basis-Firmware zur Sicherstellung der Firmware-Update-Funktionalität.
+- **Dokumentations-Update (README)**: Umfassende Korrektur und Synchronisierung der Projektdokumentation.
+    - Korrektur der Lizenzangaben (GPL v3), Protokollversion (v7) und Entity-Namen.
+    - Präzisierung der Fehler-Blinkcodes (Hysterese-Zeiten und Abhängigkeiten).
+    - Vervollständigung der Projektstruktur und Behebung von Darstellungsfehlern (Emojis/Bilder).
 
 ### Fixed
 - **ESPHome Version-Kompatibilität**: Behebung von Kompilierfehlern durch Rückfall auf die bewährte `cg.add_global(cg.RawStatement(...))` Methode für Header-Includes, da `cg.add_include` in der verwendeten ESPHome-Version nicht zur Verfügung steht.
