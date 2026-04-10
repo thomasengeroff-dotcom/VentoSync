@@ -119,27 +119,37 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
  * @brief   Logic for Summer Cooling / Bypass mode.
  *
  * @details Switches from Heat Recovery (MODE_ECO_RECOVERY) to Ventilation
- *          (MODE_VENTILATION) if the indoor temperature exceeds 22°C and
- *          the outdoor air is at least 1.5°C cooler. 
+ *          (MODE_VENTILATION) if:
+ *          1. The HA "Sommerbetrieb" binary sensor confirms warm season
+ *             (April-October AND outdoor temp > 18°C).
+ *          2. The indoor temperature exceeds 22°C.
+ *          3. The outdoor air is at least 1.5°C cooler.
  *          Includes a deactivation hysteresis to prevent mode oscillations.
+ *          When HA is offline, sommerbetrieb defaults to false (safe: heat
+ *          recovery stays active).
  */
 inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, float eff_out, esphome::VentilationMode current_mode) {
+  // Summer cooling requires the HA "Sommerbetrieb" sensor to confirm warm season.
+  // Default false when HA is offline → heat recovery stays active (safe fallback).
+  const bool is_summer = (sommerbetrieb != nullptr && sommerbetrieb->has_state() && sommerbetrieb->state);
+
   if (std::isnan(eff_in) || std::isnan(eff_out)) {
     return (current_mode == esphome::MODE_VENTILATION || current_mode == esphome::MODE_ECO_RECOVERY) 
            ? current_mode : esphome::MODE_ECO_RECOVERY;
   }
 
   if (current_mode != esphome::MODE_VENTILATION) {
-    // Check for activation threshold
-    if (eff_in > SUMMER_COOLING_THRESHOLD_INDOOR && eff_out < (eff_in - SUMMER_COOLING_MIN_DELTA)) {
+    // Activation: Only when summer AND indoor > threshold AND outdoor is sufficiently cooler
+    if (is_summer && eff_in > SUMMER_COOLING_THRESHOLD_INDOOR && eff_out < (eff_in - SUMMER_COOLING_MIN_DELTA)) {
       ESP_LOGI("auto_mode", "Sommer-Kühlung AKTIVIERT: Innen=%.1f°C, Außen=%.1f°C", eff_in, eff_out);
       return esphome::MODE_VENTILATION;
     }
     return esphome::MODE_ECO_RECOVERY;
   } else {
-    // Check for deactivation via hysteresis
-    if (eff_out >= (eff_in - SUMMER_COOLING_HYSTERESIS) || eff_in < SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS) {
-      ESP_LOGI("auto_mode", "Sommer-Kühlung DEAKTIVIERT (Hysterese): Innen=%.1f°C, Außen=%.1f°C", eff_in, eff_out);
+    // Deactivation: When NOT summer anymore OR hysteresis triggers
+    if (!is_summer || eff_out >= (eff_in - SUMMER_COOLING_HYSTERESIS) || eff_in < SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS) {
+      ESP_LOGI("auto_mode", "Sommer-Kühlung DEAKTIVIERT%s: Innen=%.1f°C, Außen=%.1f°C",
+               !is_summer ? " (Sommerbetrieb OFF)" : " (Hysterese)", eff_in, eff_out);
       return esphome::MODE_ECO_RECOVERY;
     }
     return esphome::MODE_VENTILATION;

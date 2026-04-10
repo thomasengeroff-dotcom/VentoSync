@@ -108,3 +108,16 @@ text_sensor:
       if (!std::isnan(id(scd41_temperature).state)) return std::string("SCD41");
       if (!std::isnan(id(bme680_temperature).state)) return std::string("BME680");
       return std::string("Kein Raumsensor");
+
+# ---------------------------------------------------------
+# HOME ASSISTANT BINARY SENSORS
+# ---------------------------------------------------------
+binary_sensor:
+  # Summer mode gate for automatic summer cooling.
+  # Provided by HA template: season (April-October) AND outdoor temp > 18°C.
+  # When unavailable (HA offline), defaults to false → heat recovery stays active (safe).
+  - platform: homeassistant
+    name: "Sommerbetrieb"
+    id: sommerbetrieb
+    entity_id: binary_sensor.sommerbetrieb
+    internal: true

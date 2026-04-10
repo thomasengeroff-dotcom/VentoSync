@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.115"
+  project_version: "0.8.117"
 
 globals:
   - id: thermal_warning_active

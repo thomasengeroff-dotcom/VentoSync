@@ -52,6 +52,7 @@
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/globals/globals_component.h"
 #include "esphome/components/homeassistant/sensor/homeassistant_sensor.h"
+#include "esphome/components/homeassistant/binary_sensor/homeassistant_binary_sensor.h"
 #include "esphome/components/light/light_state.h"
 #include "esphome/components/ntc/ntc.h"
 #include "esphome/components/output/float_output.h"
@@ -242,6 +243,8 @@ extern esphome::homeassistant::HomeassistantSensor
     *outdoor_humidity; ///< Outdoor Humidity (HA)
 extern esphome::binary_sensor::BinarySensor
     *radar_presence; ///< Presence Sensor (Radar)
+extern esphome::homeassistant::HomeassistantBinarySensor
+    *sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
 /// @}
 
 /// @name Status LEDs (monochromatic light components)

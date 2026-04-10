@@ -1,14 +1,16 @@
-# 🌬️ VentoSync - Advanced ESPHome-based smart HRV for VentoMaxx V-WRG Series based on ESP32-C6
+# 🌬️ VentoSync - Advanced ESPHome-based smart heat recovery ventilation (HRV) for VentoMaxx V-WRG Series based on custom PCB with ESP32-C6
 
 [![Sprache: DE](https://img.shields.io/badge/Sprache-DE-red.svg)](Readme_de.md)
 
 ## 🚀 Summary & Overview
 
-This open-source project offers a professional, decentralized ventilation control system based on ESPHome. It replaces the control system of the VentoMaxx V-WRG series using a specifically developed printed circuit board (PCB), controlling the reversible 12V fan for heat recovery. It optionally monitors air quality (CO2, humidity, and temperature) using a high-quality Sensirion SCD41 sensor, calculates effective heat recovery, and uses the **original VentoMaxx control panel** for seamless integration and intuitive operation. Furthermore, a radar sensor for presence detection can be optionally integrated, which can be mounted invisibly behind the cover of the ventilation unit.
-Communication between individual ventilation units takes place via the ESP-NOW protocol, so no Wi-Fi or central control unit is required (the power line communication used by VentoMaxx is not used).
+This open-source project offers a professional, decentralized heat recovery ventilation (HRV) control system based on ESPHome. It replaces the control system of the VentoMaxx V-WRG series using a custom developed printed circuit board (PCB), controlling the reversible 12V fan for heat recovery. 
+It optionally monitors air quality (CO2, humidity, and temperature) using a high-quality Sensirion SCD41 sensor, calculates effective heat recovery and uses the **original VentoMaxx control panel** for seamless integration and intuitive operation. 
+Furthermore, a mmWave radar sensor for presence detection can be optionally integrated, which can be mounted invisibly behind the cover of the ventilation unit.
+Communication between individual ventilation units takes place via the stable ESP-NOW protocol, so no Wi-Fi or central control unit is required (the power line communication used by VentoMaxx is not used).
 
-> 💡 **Compatibility:** The control system works in principle for any decentralized residential ventilation with a reversible 12V fan (3-PIN or 4-PIN PWM). However, it was **specifically developed as a replacement for the VentoMaxx V-WRG series**. The hardware (PCB layout/size and control panel) is therefore explicitly optimized for the VentoMaxx V-WRG series and may need to be adapted for other manufacturers. The PCB is designed to fit exactly into the housing of the VentoMaxx V-WRG series and uses the existing mounting points.
-Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as it uses a central control unit!
+> 💡 **Compatibility:** The control system works in principle for any decentralized residential ventilation which works with a reversible 12V fan (3-PIN or 4-PIN PWM). However, it was **specifically developed as a replacement for the VentoMaxx V-WRG series**. The hardware (PCB layout/size and control panel) is therefore explicitly optimized for the VentoMaxx V-WRG series and needs to be adapted for other manufacturers. The PCB is designed to fit exactly into the housing of the VentoMaxx V-WRG series and uses the existing mounting points.
+Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as it uses a central control unit! Adaption to the ZR-WRG series is possible, but currently not implemented.
 
 [![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue)](https://esphome.io/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-green)](https://www.home-assistant.io/)
