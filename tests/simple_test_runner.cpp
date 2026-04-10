@@ -195,53 +195,10 @@ bool test_co2_logic() {
   TEST_ASSERT(VentilationLogic::get_co2_classification(1300) == "Schlecht");
   TEST_ASSERT(VentilationLogic::get_co2_classification(1500) == "Inakzeptabel");
 
-  // [Unreleased] CO2 NaN / 0-Guard: Sensor nicht angeschlossen → aktuellen
-  // Level beibehalten
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(
-                  std::numeric_limits<float>::quiet_NaN(), 5, 2, 10) == 5);
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(0.0f, 3, 2, 10) == 3);
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(-1.0f, 4, 2, 10) == 4);
   // NaN-Klassifikation → "Unbekannt"
   TEST_ASSERT(VentilationLogic::get_co2_classification(
                   std::numeric_limits<float>::quiet_NaN()) == "Unbekannt");
   TEST_ASSERT(VentilationLogic::get_co2_classification(0.0f) == "Unbekannt");
-
-  // Fan Level Logic (Thresholds: >600->2, >800->3, >1000->5, >1200->7,
-  // >1400->9)
-  int min = 2;
-  int max = 7;
-
-  // Base case (low CO2) -> Should be min level (2)
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(400, 5, min, max) == 2);
-
-  // Threshold increases
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(650, 2, min, max) ==
-              2); // >600 -> 2
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(850, 2, min, max) ==
-              3); // >800 -> 3
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(1050, 3, min, max) ==
-              5); // >1000 -> 5
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(1250, 5, min, max) ==
-              7); // >1200 -> 7 (clamped)
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(1450, 7, min, max) ==
-              7); // >1400 -> 9 (clamped)
-
-  // Max level clamping (Noise Control)
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(1450, 7, min, 10) ==
-              9); // Max 10 -> 9 allowed
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(1450, 7, min, 5) ==
-              5); // Max 5 -> clamped to 5
-
-  // Min level clamping (Moisture Protection)
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(400, 5, 4, max) ==
-              4); // Min 4 -> 4
-
-  // Hysteresis (Down thresholds: 1300, 1100, 900, 700, 500)
-  // Current=5 (from >1000). Drop to 950. >900 (down threshold) -> Stay at 5
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(950, 5, min, max) == 5);
-
-  // Drop below down threshold (850 < 900) -> Drop to 3 (because >800)
-  TEST_ASSERT(VentilationLogic::get_co2_fan_level(850, 5, min, max) == 3);
 
   return true;
 }

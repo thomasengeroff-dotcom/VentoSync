@@ -144,6 +144,8 @@ extern esphome::globals::RestoringGlobalsComponent<int> *auto_co2_threshold_val;
 extern esphome::globals::RestoringGlobalsComponent<int>
     *auto_humidity_threshold_val;
 extern esphome::globals::RestoringGlobalsComponent<int> *auto_presence_val;
+extern esphome::globals::RestoringGlobalsComponent<int>
+    *summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C).
 extern esphome::globals::GlobalsComponent<float> *co2_pid_result;
 extern esphome::globals::GlobalsComponent<float> *humidity_pid_result;
 extern esphome::globals::RestoringGlobalsComponent<float>

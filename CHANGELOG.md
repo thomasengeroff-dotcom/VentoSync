@@ -4,6 +4,20 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.120] - 2026-04-10
+### Added
+- **Saisonale Sperre für Sommerkühlung**: Integration der Home Assistant Entität `binary_sensor.sommerbetrieb`. Die Sommerkühlung (Bypass) aktiviert sich nun nur noch, wenn HA die warme Jahreszeit bestätigt UND die Außentemperatur über 18°C liegt. Dies verhindert zuverlässig das Einblasen von Kaltluft im Winter.
+- **Wissenschaftlich korrekte Entfeuchtung (Absolute Feuchte)**: Implementierung der Magnus-Formel zur Berechnung der absoluten Luftfeuchtigkeit (g/m³). Der Feuchte-PID berücksichtigt nun, ob die Außenluft absolut trockener ist als die Innenluft, anstatt nur die relativen Werte zu vergleichen.
+- **Konfigurierbare Kühlschwelle**: Die Innentemperatur-Schwelle für die Sommerkühlung (zuvor hartkodiert 22°C) ist nun über die neue HA-Entität "Automatik: Sommerkühlung Schwelle" (18-30°C) einstellbar.
+- **Sensorbewertung-Timeout (Staleness)**: Der `effective_co2` Sensor veröffentlicht nun nach 5 Minuten ohne gültige Rohdaten (SCD41/BME680 beide NaN) einen `NaN` Wert, um den PID-Regler sicher zu deaktivieren und den letzten Zustand zu halten.
+
+### Changed
+- **PID-Regler Wartung**: Automatischer Reset der Integral-Speicher (I-Anteil) beim Umschalten zwischen CO2- und Feuchte-Priorität sowie beim Wechsel von Manuell zu Automatik. Dies verhindert "Überschwinger" (Integral Windup) nach langen Standzeiten.
+- **Boot-Modus Glitch-Fix**: Korrektur der Rampen-Initialisierung beim Systemstart. `last_committed_mode` startet nun im Standard-Automatik-Zustand (`MODE_ECO_RECOVERY`), was den ersten Rampen-Schritt sauber auf 1 begrenzt.
+
+### Removed
+- **Legacy Dead-Code**: Vollständige Entfernung der veralteten `get_co2_fan_level()` Funktion (Berechnung der diskreten Stufen) zugunsten der stufenlosen PID-Regelung. Alle Unit-Tests wurden entsprechend migriert.
+
 ## [0.8.115] - 2026-04-09
 ### Added
 - **Detailliertes Debug-Logging für WRG-Effizienz**: Implementierung von `ESP_LOGD` Statements in `ventilation_logic.cpp` und `climate.h`, um die Berechnung der Wärmerückgewinnung (NaN-Handling, ΔT Schwellenwerte, Stabilisierungsphasen) im Betrieb präzise zu überwachen.

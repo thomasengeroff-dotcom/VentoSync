@@ -76,13 +76,21 @@ sensor:
     icon: "mdi:molecule-co2"
     update_interval: 30s
     lambda: |-
+      static uint32_t last_valid_sensor_ms = millis();
       if (!std::isnan(id(scd41_co2).state)) {
+        last_valid_sensor_ms = millis();
         return id(scd41_co2).state;
       }
       if (!std::isnan(id(iaq_co2eq).state)) {
+        last_valid_sensor_ms = millis();
         return id(iaq_co2eq).state;
       }
-      // Hold last valid state if both sensors are NAN (prevents PID oscillation)
+      // Both sensors NaN — hold last value for up to 5 minutes, then publish NaN
+      // to signal PID that input is stale. Auto mode handles NaN gracefully.
+      if (millis() - last_valid_sensor_ms > 300000) {
+        ESP_LOGW("co2", "CO2 staleness timeout (>5min). Publishing NaN.");
+        return NAN;
+      }
       return id(effective_co2).state;
 
 # ---------------------------------------------------------

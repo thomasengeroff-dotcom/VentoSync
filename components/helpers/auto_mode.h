@@ -31,6 +31,28 @@
  * Final refactored version addressing all safety and maintainability concerns.
  */
 
+/**
+ * @brief   Calculates absolute humidity (g/m³) from relative humidity and temperature.
+ *
+ * @details Uses the Magnus formula to derive the saturation vapor pressure, then
+ *          converts to absolute humidity. This is critical for determining whether
+ *          ventilation will actually reduce indoor moisture — comparing relative
+ *          humidity alone is misleading because cold air at high %rH holds far
+ *          less water than warm air at moderate %rH.
+ *
+ * @param[in] rh_percent  Relative humidity (0–100%).
+ * @param[in] temp_c      Temperature in °C.
+ *
+ * @return  Absolute humidity in g/m³.
+ */
+inline float calculate_absolute_humidity(float rh_percent, float temp_c) {
+  if (std::isnan(rh_percent) || std::isnan(temp_c)) return NAN;
+  // Magnus formula: e_s(T) = 6.112 * exp(17.67 * T / (T + 243.5)) [hPa]
+  const float e_s = 6.112f * std::exp(17.67f * temp_c / (temp_c + 243.5f));
+  // Absolute humidity: AH = 216.7 * (rH/100 * e_s) / (273.15 + T) [g/m³]
+  return 216.7f * (rh_percent / 100.0f * e_s) / (273.15f + temp_c);
+}
+
 namespace auto_mode {
 
 /**
@@ -133,6 +155,12 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
   // Default false when HA is offline → heat recovery stays active (safe fallback).
   const bool is_summer = (sommerbetrieb != nullptr && sommerbetrieb->has_state() && sommerbetrieb->state);
 
+  // Runtime-configurable indoor threshold from HA entity
+  const float threshold = (summer_cooling_threshold != nullptr)
+      ? static_cast<float>(summer_cooling_threshold->value())
+      : SUMMER_COOLING_THRESHOLD_INDOOR;
+  const float threshold_hysteresis = threshold - 0.5f;
+
   if (std::isnan(eff_in) || std::isnan(eff_out)) {
     return (current_mode == esphome::MODE_VENTILATION || current_mode == esphome::MODE_ECO_RECOVERY) 
            ? current_mode : esphome::MODE_ECO_RECOVERY;
@@ -140,14 +168,14 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
 
   if (current_mode != esphome::MODE_VENTILATION) {
     // Activation: Only when summer AND indoor > threshold AND outdoor is sufficiently cooler
-    if (is_summer && eff_in > SUMMER_COOLING_THRESHOLD_INDOOR && eff_out < (eff_in - SUMMER_COOLING_MIN_DELTA)) {
-      ESP_LOGI("auto_mode", "Sommer-Kühlung AKTIVIERT: Innen=%.1f°C, Außen=%.1f°C", eff_in, eff_out);
+    if (is_summer && eff_in > threshold && eff_out < (eff_in - SUMMER_COOLING_MIN_DELTA)) {
+      ESP_LOGI("auto_mode", "Sommer-Kühlung AKTIVIERT: Innen=%.1f°C, Außen=%.1f°C (Schwelle=%.1f°C)", eff_in, eff_out, threshold);
       return esphome::MODE_VENTILATION;
     }
     return esphome::MODE_ECO_RECOVERY;
   } else {
     // Deactivation: When NOT summer anymore OR hysteresis triggers
-    if (!is_summer || eff_out >= (eff_in - SUMMER_COOLING_HYSTERESIS) || eff_in < SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS) {
+    if (!is_summer || eff_out >= (eff_in - SUMMER_COOLING_HYSTERESIS) || eff_in < threshold_hysteresis) {
       ESP_LOGI("auto_mode", "Sommer-Kühlung DEAKTIVIERT%s: Innen=%.1f°C, Außen=%.1f°C",
                !is_summer ? " (Sommerbetrieb OFF)" : " (Hysterese)", eff_in, eff_out);
       return esphome::MODE_ECO_RECOVERY;
@@ -163,8 +191,12 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
  *          Hysteresis (Grab at 0.01 / Release at 0.005) ensures stable behavior
  *          near setpoints. Peer demands are integrated to ensure the entire
  *          room group scales up to the highest measured requirement.
+ *
+ * @param[in] now         Current millis() timestamp.
+ * @param[in] eff_in_temp Effective indoor temperature (for absolute humidity).
+ * @param[in] eff_out_temp Effective outdoor temperature (for absolute humidity).
  */
-inline float calculate_combined_demand(uint32_t now) {
+inline float calculate_combined_demand(uint32_t now, float eff_in_temp, float eff_out_temp) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return 0.0f;
 
@@ -194,9 +226,18 @@ inline float calculate_combined_demand(uint32_t now) {
     const float hum_pid_val = humidity_pid_result->value();
     if (!std::isnan(in_hum) && !std::isnan(out_hum) && !std::isnan(hum_pid_val)) {
       has_hum_data = true;
-      // Only apply humidity demand if outside air is drier (ventilation would help)
-      if (out_hum < in_hum) {
+      // Use absolute humidity (g/m³) for scientifically correct comparison.
+      // Relative humidity alone is misleading: cold air at 90% rH holds far
+      // less water than warm air at 50% rH.
+      const float abs_in = calculate_absolute_humidity(in_hum, eff_in_temp);
+      const float abs_out = calculate_absolute_humidity(out_hum, eff_out_temp);
+      if (!std::isnan(abs_in) && !std::isnan(abs_out) && abs_out < abs_in) {
         hum_demand = std::max(0.0f, hum_pid_val);
+      } else if (std::isnan(abs_in) || std::isnan(abs_out)) {
+        // Temperature data unavailable — fall back to relative humidity comparison
+        if (out_hum < in_hum) {
+          hum_demand = std::max(0.0f, hum_pid_val);
+        }
       }
     }
   }
@@ -206,13 +247,17 @@ inline float calculate_combined_demand(uint32_t now) {
     // CO2 is currently in control — only release when demand drops below lower threshold
     if (co2_demand < CO2_RELEASE_THRESHOLD && has_co2_data) {
       v->co2_is_controlling = false;
-      ESP_LOGD("auto_mode", "CO2 demand released (%.3f < %.3f), humidity PID enabled", co2_demand, CO2_RELEASE_THRESHOLD);
+      // Reset CO2 PID integral to prevent windup carryover after long high-CO2 periods
+      if (pid_co2 != nullptr) pid_co2->reset_integral_term();
+      ESP_LOGD("auto_mode", "CO2 demand released (%.3f < %.3f), humidity PID enabled (integral reset)", co2_demand, CO2_RELEASE_THRESHOLD);
     }
   } else {
     // CO2 is not in control — grab if demand exceeds upper threshold
     if (co2_demand >= CO2_GRAB_THRESHOLD) {
       v->co2_is_controlling = true;
-      ESP_LOGD("auto_mode", "CO2 demand grabbed control (%.3f >= %.3f), humidity PID suppressed", co2_demand, CO2_GRAB_THRESHOLD);
+      // Reset humidity PID integral since it was suppressed during CO2 control
+      if (pid_humidity != nullptr) pid_humidity->reset_integral_term();
+      ESP_LOGD("auto_mode", "CO2 demand grabbed control (%.3f >= %.3f), humidity PID suppressed (integral reset)", co2_demand, CO2_GRAB_THRESHOLD);
     }
   }
 
@@ -291,7 +336,7 @@ inline void evaluate_auto_mode(bool force) {
   }
 
   // 3. Air Quality Power Management
-  float demand = auto_mode::calculate_combined_demand(now);
+  float demand = auto_mode::calculate_combined_demand(now, eff_in, eff_out);
 
   // FIXED: If demand is NAN (e.g., all sensors offline/unstable), we abort to hold the last state
   if (std::isnan(demand)) {
@@ -345,7 +390,7 @@ inline void evaluate_auto_mode(bool force) {
   // Soft Ramping: Maximum ±1 level per evaluation cycle (10s)
   // Boost: Allow ±2 steps if mode just changed to reach target faster
   static bool first_eval = true;
-  static esphome::VentilationMode last_committed_mode = esphome::MODE_OFF;
+  static esphome::VentilationMode last_committed_mode = esphome::MODE_ECO_RECOVERY;
   int max_ramp_step = 1;
   
   if (first_eval) {

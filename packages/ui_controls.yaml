@@ -315,6 +315,23 @@ number:
           sync_settings_to_peers();
           evaluate_auto_mode(); // Force re-eval
 
+  # Auto Mode: Summer Cooling Indoor Temperature Threshold
+  - platform: template
+    name: "Automatik: Sommerkühlung Schwelle"
+    id: auto_summer_cooling_threshold
+    icon: "mdi:thermometer-alert"
+    unit_of_measurement: "°C"
+    min_value: 18
+    max_value: 30
+    step: 1
+    entity_category: config
+    lambda: "return id(summer_cooling_threshold);"
+    set_action:
+      - lambda: |-
+          id(summer_cooling_threshold) = (int)x;
+          id(auto_summer_cooling_threshold).publish_state(x);
+          ESP_LOGI("auto_mode", "Sommerkühlung Schwelle auf %d°C gesetzt", (int)x);
+
 # ---------------------------------------------------------
 # TEXT SENSORS (Status Display)
 # ---------------------------------------------------------

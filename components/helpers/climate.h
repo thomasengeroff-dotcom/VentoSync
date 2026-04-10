@@ -34,18 +34,6 @@ inline std::string get_co2_classification(float co2_ppm) {
 }
 
 /**
- * @brief   Calculates the target fan level based on CO2 content.
- *
- * @details Implements a linear mapping with hysteresis to prevent fans from
- *          oscillating between intensity levels near the thresholds.
- */
-inline int get_co2_fan_level(float co2_ppm, int current_level, int min_level,
-                             int max_level) {
-  return VentilationLogic::get_co2_fan_level(co2_ppm, current_level, min_level,
-                                             max_level);
-}
-
-/**
  * @brief   Calculates the heat recovery efficiency fraction (0.0 – 1.0).
  *
  * @details Only samples data during stable "Zuluft" (intake) phases in

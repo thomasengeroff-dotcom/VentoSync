@@ -93,32 +93,6 @@ public:
   static float calculate_virtual_fan_rpm(float speed, bool direction_is_intake,
                                          float ramp_factor = 1.0f);
 
-  // --- Adaptive CO2 Control ---
-
-  /// @brief Calculates the target fan intensity level (1–10) based on CO2
-  /// concentration. Uses DIN EN 13779 / Umweltbundesamt thresholds with 100 ppm
-  /// hysteresis to prevent rapid cycling.  The result is clamped to [min_level,
-  /// max_level].
-  ///
-  /// Thresholds (rising):
-  ///   ≤ 600 ppm → Level 1 (minimal noise)
-  ///   ≤ 800 ppm → Level 2
-  ///   ≤ 1000 ppm → Level 3
-  ///   ≤ 1200 ppm → Level 5
-  ///   ≤ 1400 ppm → Level 7
-  ///   > 1400 ppm → Level 9
-  ///
-  /// @param co2_ppm        Current CO2 reading (ppm).
-  /// @param current_level  Current fan intensity level (for hysteresis
-  /// direction).
-  /// @param min_level      User-configurable lower limit (moisture protection),
-  /// default 2.
-  /// @param max_level      User-configurable upper limit (noise control),
-  /// default 10.
-  /// @return Target fan intensity level (min_level–max_level).
-  static int get_co2_fan_level(float co2_ppm, int current_level,
-                               int min_level = 2, int max_level = 10);
-
   /// @brief Returns a human-readable German CO2 classification.
   /// @param co2_ppm  CO2 concentration in ppm.
   /// @return Classification string ("Ausgezeichnet" … "Inakzeptabel").
