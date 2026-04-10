@@ -4,6 +4,12 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.121] - 2026-04-11
+### Fixed
+- **Mesh-Stabilität (Stale Peer Fix)**: Korrektur eines Race-Conditions in der Peer-Verwaltung. Durch das erneute Abrufen von `millis()` vor dem Bereinigungs-Loop und zusätzliche Plausibilitätsprüfungen (`now >= last_seen_ms`) wird verhindert, dass Peers fälschlicherweise unmittelbar nach Empfang aufgrund eines `uint32_t` Underflows gelöscht werden.
+- **Netzwerk-Synchronisierung der PID-Sollwerte**: Änderungen an den CO2- und Feuchte-Grenzwerten werden nun sofort an die lokalen PID-Controller auf allen Zielgeräten im Raum übertragen. Zuvor wurden nur die UI-Slider aktualisiert, während die Regellogik auf alten Werten verharrte.
+- **Boot-Initialisierung der PID-Regler**: Die beim Systemstart aus dem NVS wiederhergestellten Grenzwerte werden nun explizit als Sollwerte (Setpoint) an die PID-Controller übergeben.
+
 ## [0.8.120] - 2026-04-10
 ### Added
 - **Saisonale Sperre für Sommerkühlung**: Integration der Home Assistant Entität `binary_sensor.sommerbetrieb`. Die Sommerkühlung (Bypass) aktiviert sich nun nur noch, wenn HA die warme Jahreszeit bestätigt UND die Außentemperatur über 18°C liegt. Dies verhindert zuverlässig das Einblasen von Kaltluft im Winter.

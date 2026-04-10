@@ -343,9 +343,10 @@ public:
     }
 
     // 5. Cleanup old peers (5 minutes timeout)
+    now = millis(); // RE-FETCH: Ensure now >= last_seen_ms even if packet processing took time
     auto it = peers.begin();
     while (it != peers.end()) {
-      if (now - it->last_seen_ms > 300000) {
+      if (now >= it->last_seen_ms && now - it->last_seen_ms > 300000) {
         ESP_LOGD("vent", "Removing stale peer %d due to timeout",
                  it->device_id);
         it = peers.erase(it);

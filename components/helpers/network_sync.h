@@ -568,6 +568,11 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
       pkt->auto_co2_threshold_val != auto_co2_threshold_val->value()) {
     auto_co2_threshold_val->value() = pkt->auto_co2_threshold_val;
     auto_co2_threshold->publish_state(pkt->auto_co2_threshold_val);
+    if (pid_co2 != nullptr) {
+      auto call = pid_co2->make_call();
+      call.set_target_temperature(pkt->auto_co2_threshold_val);
+      call.perform();
+    }
     dirty = true;
   }
 
@@ -579,6 +584,11 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
           auto_humidity_threshold_val->value()) {
     auto_humidity_threshold_val->value() = pkt->auto_humidity_threshold_val;
     auto_humidity_threshold->publish_state(pkt->auto_humidity_threshold_val);
+    if (pid_humidity != nullptr) {
+      auto call = pid_humidity->make_call();
+      call.set_target_temperature(pkt->auto_humidity_threshold_val);
+      call.perform();
+    }
     dirty = true;
   }
 

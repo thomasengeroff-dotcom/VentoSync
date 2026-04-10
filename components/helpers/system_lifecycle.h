@@ -228,11 +228,17 @@ inline void run_system_boot_initialization() {
   if (pid_co2 != nullptr) {
     auto call = pid_co2->make_call();
     call.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+    if (auto_co2_threshold_val != nullptr) {
+      call.set_target_temperature(auto_co2_threshold_val->value());
+    }
     call.perform();
   }
   if (pid_humidity != nullptr) {
     auto call = pid_humidity->make_call();
     call.set_mode(esphome::climate::CLIMATE_MODE_COOL);
+    if (auto_humidity_threshold_val != nullptr) {
+      call.set_target_temperature(auto_humidity_threshold_val->value());
+    }
     call.perform();
   }
 
