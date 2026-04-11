@@ -89,6 +89,11 @@ inline float calculate_manual_demand(float base_intensity) {
  * @return  float  Target hardware speed fraction (0.0 to 1.0).
  */
 inline float get_current_target_speed() {
+  // If the fan component is logically OFF (e.g. Window Guard active or manual OFF),
+  // we must return 0.0 to allow the slew-rate limiter to ramp it down.
+  if (lueftung_fan != nullptr && !lueftung_fan->state) {
+    return 0.0f;
+  }
   if (fan_intensity_level == nullptr) return 0.0f;
 
   float intensity = static_cast<float>(fan_intensity_level->value());

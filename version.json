@@ -1,5 +1,5 @@
 {
-    "version": "0.8.128",
+    "version": "0.8.129",
     "date": "2026-04-11",
-    "description": "Fixed PID Synchronization & Mesh Stability"
+    "description": "fix(window): resolve motor stop issue and update docs (v0.8.129)"
 }

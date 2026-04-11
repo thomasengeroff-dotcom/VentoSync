@@ -4,6 +4,10 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.129] - 2026-04-11
+### Fixed
+- **Fenstersperre (Window Guard) Motor-Stopp**: Korrektur der Motorsteuerung, die den "AUS"-Befehl der Fenstersperre im Hardware-Loop ignorierte. Der Lüfter bremst nun bei geöffnetem Fenster wie vorgesehen sanft bis zum Stillstand ab.
+
 ## [0.8.128] - 2026-04-11
 ### Added
 - **Fenstersperre (Window Guard)**: Implementierung einer raumübergreifenden Schutzfunktion. Wenn ein Fenster im Raum geöffnet wird (erkannt über einen Home Assistant Gruppen-Sensor), pausieren alle VentoSync-Geräte im Raum sofort ihre Lüfter.
