@@ -4,7 +4,15 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.8.129] - 2026-04-11
+## [0.8.131] - 2026-04-11
+### Added
+- **Status-Entität für Fenstersperre**: Neuer Binär-Sensor in Home Assistant (`binary_sensor.fenstersperre_aktiv`), der den gefilterten Zustand der Sperre anzeigt.
+
+### Changed
+- **Fenstersperre Aktivierungs-Verzögerung**: Die Sperre greift nun erst nach **10 Sekunden** durchgehender Fenster-Öffnung, um kurzes Lüften/Nachschauen abzufedern.
+- **LED-Feedback Timeout**: Das Pulsieren der Master-LED ist nun auf **5 Minuten** begrenzt. Bei dauerhaft offenem Fenster kehrt die LED in den Normalzustand zurück, während der Lüfter zum Schutz vor Wärmeverlust weiterhin gestoppt bleibt.
+- **Dokumentations-Refactoring**: Die detaillierte Anleitung zur Home Assistant Konfiguration wurde in separate Dokumentationsdateien ausgelagert, um die Übersichtlichkeit der READMEs zu erhöhen.
+
 ### Fixed
 - **Fenstersperre (Window Guard) Motor-Stopp**: Korrektur der Motorsteuerung, die den "AUS"-Befehl der Fenstersperre im Hardware-Loop ignorierte. Der Lüfter bremst nun bei geöffnetem Fenster wie vorgesehen sanft bis zum Stillstand ab.
 

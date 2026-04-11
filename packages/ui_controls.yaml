@@ -389,6 +389,14 @@ select:
 # ---------------------------------------------------------
 binary_sensor:
   - platform: template
+    name: "Fenstersperre Aktiv"
+    id: window_guard_status
+    icon: "mdi:window-open-variant"
+    device_class: lock
+    lambda: |-
+      return ((esphome::VentilationController*)id(ventilation_ctrl))->is_window_guard_active();
+
+  - platform: template
     name: "Filterwechsel Alarm"
     id: filter_change_alarm
     icon: "mdi:air-filter"

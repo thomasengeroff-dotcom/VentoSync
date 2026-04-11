@@ -98,10 +98,10 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
 Natürlich kann dieser Sensor auch für andere Automatisierungen in Home Assistant genutzt werden.
 - 📊 **Echte VentoMaxx V-Kennlinie**: Der Lüfter wird exakt nach den physikalischen Parametern der Original-Hardware gesteuert (50% PWM = Stopp-Zone, lineare Skalierung in beide Richtungen), was eine hochpräzise und materialschonende Regelung ermöglicht.
 - 🪟 **Fenstersperre (Window Guard)**: Automatischer raumweiter Lüftungsstopp bei offenen Fenstern.
-  - ✅ **Smart Pause**: Wird ein Fenster im Raum geöffnet (erkannt über eine Home Assistant Binär-Sensor-Gruppe), stoppen alle VentoSync-Geräte in diesem Raum sofort ihre Lüfter, um Wärmeverluste oder Energieverschwendung zu vermeiden.
+  - ✅ **Smart Pause (10s Verzögerung)**: Die Sperre greift erst nach 10 Sekunden durchgehender Fenster-Öffnung, um kurzes Lüften/Nachschauen abzufedern. Alle VentoSync-Geräte im Raum stoppen sofort ihre Lüfter, um Energieverschwendung zu vermeiden.
   - ✅ **Automatisches Fortsetzen**: Das System behält seinen aktuellen Betriebsmodus (z.B. Automatik oder Manuell) bei und nimmt den Betrieb nahtlos wieder auf, sobald alle Fenster geschlossen sind.
-  - ✅ **Visuelles Feedback**: Ein markantes Pulsieren der Master-LED signalisiert den Zustand "Pause durch Fenster".
-  - ✅ **Konfigurierbare Konvention**: Nutzt ein standardisiertes Namensschema (`binary_sensor.ventosync_window_lock_room_X`) für eine einfache Integration, erlaubt aber auch individuelle Entity-Mappings.
+  - ✅ **Visuelles Feedback (5min Limit)**: Ein markantes Pulsieren der Master-LED signalisiert den Zustand "Pause durch Fenster". Zur Vermeidung von Lichtstörungen nachts stoppt das Pulsieren nach 5 Minuten, während der Lüfter zum Schutz weiterhin gestoppt bleibt.
+  - ✅ **HA Status-Entität**: Eine dedizierte Binär-Sensor-Entität (`binary_sensor.fenstersperre_aktiv`) bietet direkte Sichtbarkeit des Sperrstatus in Home Assistant.
 
 #### **🏠 Home Assistant Konfiguration (Tutorial)**
 

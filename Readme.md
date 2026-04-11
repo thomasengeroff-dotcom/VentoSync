@@ -99,10 +99,10 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
 Of course, this sensor can also be used for other automations in Home Assistant.
 - 📊 **Real VentoMaxx V-Curve**: The fan is controlled exactly according to the physical parameters of the original hardware (50% PWM = stop zone, linear scaling in both directions), which enables high-precision and material-friendly control.
 - 🪟 **Window Guard (Fenstersperre)**: Automatic room-wide ventilation pause when windows are open.
-  - ✅ **Smart Pause**: If any window in the room is opened (detected via a Home Assistant binary sensor group), all VentoSync units in that room immediately stop their fans to prevent energy waste.
+  - ✅ **Smart Pause (10s Delay)**: The guard engages after 10 seconds of continuous "open" state to prevent accidental triggers. All VentoSync units in the room immediately stop their fans to prevent energy waste.
   - ✅ **Automatic Resume**: The system preserves its current operating mode (e.g., Automatic or Manual) and resumes operation seamlessly as soon as all windows are closed.
-  - ✅ **Visual Feedback**: A distinct pulsing pattern on the Master LED indicates the "Paused by Window" state.
-  - ✅ **Configurable Convention**: Uses a standardized naming scheme (`binary_sensor.ventosync_window_lock_room_X`) for easy integration, while allowing custom entity mappings.
+  - ✅ **Visual Feedback (5min Limit)**: A distinct pulsing pattern on the Master LED indicates the "Paused by Window" state. To avoid light pollution at night, the pulsing stops after 5 minutes while the fan remains safely stopped.
+  - ✅ **HA Status Entity**: A dedicated binary sensor (`binary_sensor.fenstersperre_aktiv`) provides real-time visibility of the lock status in Home Assistant.
 
 #### **🏠 Home Assistant Configuration (Tutorial)**
 

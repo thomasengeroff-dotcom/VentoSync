@@ -48,14 +48,16 @@ inline void check_master_led_error() {
   
   bool is_functionally_connected = network_up || api_up;
   
+  uint32_t now = millis();
+  
   // Implement 30s Hysteresis to suppress "phantom" errors during brief signal drops (roaming)
-  static uint32_t last_connected_ms = millis();
+  static uint32_t last_connected_ms = now;
   if (is_functionally_connected) {
-    last_connected_ms = millis();
+    last_connected_ms = now;
   }
   
   // LED Error only triggers if offline for more than 30 seconds
-  bool wifi_error_triggered = (millis() - last_connected_ms > 30000);
+  bool wifi_error_triggered = (now - last_connected_ms > 30000);
   
   bool peer_sync_error = false;
   bool peer_check_active = (peer_check_enabled != nullptr) && peer_check_enabled->value();
@@ -64,8 +66,8 @@ inline void check_master_led_error() {
     // If we have peers expected but none seen for 3 minutes (Reduced from 5min)
     // We only trigger this after the system has been up for at least 3 minutes to allow for discovery.
     if (ventilation_ctrl->has_peer_pid_demand && 
-        (millis() > 180000) &&
-        (millis() - ventilation_ctrl->last_peer_pid_demand_time > 180000)) {
+        (now > 180000) &&
+        (now - ventilation_ctrl->last_peer_pid_demand_time > 180000)) {
       peer_sync_error = true;
     }
   }
@@ -84,9 +86,13 @@ inline void check_master_led_error() {
   } else if (thermal_warning) {
     target_effect = "Warning Safety";
     target_brightness = 1.0f;
-  } else if (window_locked != nullptr && window_locked->state) {
-    target_effect = "Window Lock";
-    target_brightness = 1.0f;
+  } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_active()) {
+    // K2: Only pulse the LED for the first 5 minutes (300,000 ms) to avoid disturbance at night.
+    uint32_t lock_age = now - ventilation_ctrl->get_window_lock_activation_ms();
+    if (lock_age < 300000) {
+        target_effect = "Window Lock";
+        target_brightness = 1.0f;
+    }
   }
 
   if (target_effect != led_state::last_master_effect || std::abs(target_brightness - led_state::last_master_brightness) > 0.1f) {

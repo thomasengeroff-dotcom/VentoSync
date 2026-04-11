@@ -219,6 +219,10 @@ public:
   bool pending_broadcast =
       false; ///< True = YAML should send a packet next loop.
 
+  bool window_guard_active_{false};
+  uint32_t window_sensor_on_start_ms_{0};
+  uint32_t window_lock_activation_ms_{0};
+
   // --- HARDWARE REFS (set by codegen) ---
   fan::Fan *main_fan{nullptr};                ///< ESPHome fan component.
   switch_::Switch *direction_switch{nullptr}; ///< ON = intake, OFF = exhaust.
@@ -244,6 +248,9 @@ public:
   void set_auto_humidity_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_humidity_threshold_global_ = g; }
   void set_auto_presence_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_presence_global_ = g; }
   void set_max_led_brightness_global(esphome::globals::RestoringGlobalsComponent<float> *g) { max_led_brightness_global_ = g; }
+
+  bool is_window_guard_active() const { return window_guard_active_; }
+  uint32_t get_window_lock_activation_ms() const { return window_lock_activation_ms_; }
   void set_floor_id(uint8_t id) { floor_id = id; }   ///< Set floor group.
   void set_room_id(uint8_t id) { room_id = id; }     ///< Set room group.
   void set_device_id(uint8_t id) {
@@ -299,13 +306,24 @@ public:
     // 1. Update State Machine (returns true on discrete state flip)
     bool dirty = state_machine.update(now);
 
-    // 1.1 Window Guard (Room-wide safety lock)
-    bool is_locked = (window_sensor_ != nullptr && window_sensor_->state);
-    static bool last_is_locked = false;
-    if (is_locked != last_is_locked) {
-        last_is_locked = is_locked;
-        dirty = true; // Force hardware update to apply/release lock
-        ESP_LOGI("vent", "Window Guard: %s", is_locked ? "LOCKED (Window Open)" : "UNLOCKED (Window Closed)");
+    // 1.1 Window Guard (Room-wide safety lock with 10s delay)
+    bool sensor_on = (window_sensor_ != nullptr && window_sensor_->state);
+    if (sensor_on) {
+        if (window_sensor_on_start_ms_ == 0) window_sensor_on_start_ms_ = now;
+        
+        if (!window_guard_active_ && (now - window_sensor_on_start_ms_ > 10000)) {
+            window_guard_active_ = true;
+            window_lock_activation_ms_ = now;
+            dirty = true;
+            ESP_LOGI("vent", "Window Guard: LOCKED (engaged after 10s delay)");
+        }
+    } else {
+        if (window_guard_active_) {
+            window_guard_active_ = false;
+            dirty = true;
+            ESP_LOGI("vent", "Window Guard: UNLOCKED");
+        }
+        window_sensor_on_start_ms_ = 0;
     }
 
     // 2. Hardware Update (always update during ramping phases)
@@ -615,8 +633,8 @@ public:
     bool target_in = state.direction_in;
     bool enable_fan = state.fan_enabled;
 
-    // Apply Window Guard lock
-    if (window_sensor_ != nullptr && window_sensor_->state) {
+    // Apply Window Guard lock (using filtered state)
+    if (window_guard_active_) {
       enable_fan = false;
     }
 
