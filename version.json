@@ -1,5 +1,5 @@
 {
-    "version": "0.8.121",
+    "version": "0.8.128",
     "date": "2026-04-11",
     "description": "Fixed PID Synchronization & Mesh Stability"
 }

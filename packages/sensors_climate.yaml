@@ -129,3 +129,9 @@ binary_sensor:
     id: sommerbetrieb
     entity_id: binary_sensor.sommerbetrieb
     internal: true
+  # Window Guard (Fenstersperre) - HA State
+  - platform: homeassistant
+    name: "Fenstersperre"
+    id: window_locked
+    entity_id: ${window_sensor_id}
+    internal: true

@@ -84,6 +84,9 @@ inline void check_master_led_error() {
   } else if (thermal_warning) {
     target_effect = "Warning Safety";
     target_brightness = 1.0f;
+  } else if (window_locked != nullptr && window_locked->state) {
+    target_effect = "Window Lock";
+    target_brightness = 1.0f;
   }
 
   if (target_effect != led_state::last_master_effect || std::abs(target_brightness - led_state::last_master_brightness) > 0.1f) {

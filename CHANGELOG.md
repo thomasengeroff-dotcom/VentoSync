@@ -4,6 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.128] - 2026-04-11
+### Added
+- **Fenstersperre (Window Guard)**: Implementierung einer raumübergreifenden Schutzfunktion. Wenn ein Fenster im Raum geöffnet wird (erkannt über einen Home Assistant Gruppen-Sensor), pausieren alle VentoSync-Geräte im Raum sofort ihre Lüfter.
+- **Smart-Resume Logik**: Das System behält seinen aktuellen Modus (z. B. Automatik) bei und nimmt den Betrieb nahtlos wieder auf, sobald alle Fenster geschlossen sind.
+- **Visuelles Feedback für Fenstersperre**: Die Master-LED pulsiert in einem 1s/2s Rhythmus, um anzuzeigen, dass das System aufgrund eines offenen Fensters pausiert.
+- **Konfigurierbare Sensor-ID**: Über die YAML-Substitution `window_sensor_id` lässt sich die HA-Entity pro Raum flexibel zuweisen (Standard: `binary_sensor.ventosync_window_lock_room_${room_id}`).
+
+### Changed
+- **Architektur-Härtung (Dependency Injection)**: Umstellung der Sensor-Integration in der `VentilationController`-Komponente auf Dependency Injection. Dies löst Linker-Konflikte und verbessert die Stabilität bei der Kompilierung komplexer Raum-Konfigurationen.
+
 ## [0.8.121] - 2026-04-11
 ### Fixed
 - **Mesh-Stabilität (Stale Peer Fix)**: Korrektur eines Race-Conditions in der Peer-Verwaltung. Durch das erneute Abrufen von `millis()` vor dem Bereinigungs-Loop und zusätzliche Plausibilitätsprüfungen (`now >= last_seen_ms`) wird verhindert, dass Peers fälschlicherweise unmittelbar nach Empfang aufgrund eines `uint32_t` Underflows gelöscht werden.

@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import fan, switch, sensor
+from esphome.components import fan, switch, sensor, binary_sensor
 from esphome.const import CONF_ID
 
 # Namespace & Classes
@@ -24,6 +24,7 @@ CONF_AUTO_CO2_GLOBAL = 'auto_co2_threshold_global'
 CONF_AUTO_HUM_GLOBAL = 'auto_humidity_threshold_global'
 CONF_AUTO_PRES_GLOBAL = 'auto_presence_global'
 CONF_LED_BRIGHT_GLOBAL = 'max_led_brightness_global'
+CONF_WINDOW_SENSOR = 'window_sensor'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VentilationController),
@@ -44,6 +45,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_AUTO_HUM_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_AUTO_PRES_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_LED_BRIGHT_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_WINDOW_SENSOR): cv.use_id(binary_sensor.BinarySensor),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -95,6 +97,10 @@ async def to_code(config):
     if CONF_AUTO_PRES_GLOBAL in config:
         g = await cg.get_variable(config[CONF_AUTO_PRES_GLOBAL])
         cg.add(var.set_auto_presence_global(g))
-    if CONF_LED_BRIGHT_GLOBAL in config:
+    if (CONF_LED_BRIGHT_GLOBAL in config):
         g = await cg.get_variable(config[CONF_LED_BRIGHT_GLOBAL])
         cg.add(var.set_max_led_brightness_global(g))
+
+    if (CONF_WINDOW_SENSOR in config):
+        s = await cg.get_variable(config[CONF_WINDOW_SENSOR])
+        cg.add(var.set_window_sensor(s))

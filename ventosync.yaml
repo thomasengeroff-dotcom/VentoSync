@@ -37,6 +37,11 @@ substitutions:
   # Devices on same wall should have same phase.
   is_phase_a: "true"
 
+  # WINDOW GUARD CONFIG
+  # Entity ID of the Home Assistant binary sensor (group) for windows in this room.
+  # Default convention: binary_sensor.ventosync_window_lock_room_${room_id}
+  window_sensor_id: "binary_sensor.ventosync_window_lock_room_${room_id}"
+
 # ---------------------------------------------------------
 # PACKAGES & INCLUDES
 # ---------------------------------------------------------
@@ -277,6 +282,7 @@ ventilation_group:
   is_phase_a: ${is_phase_a}
   main_fan: lueftung_fan
   direction_switch: fan_direction
+  window_sensor: window_locked
   fan_rpm_sensor: fan_rpm
   board_temp_sensor: temperature
   scd41_temp_sensor: scd41_temperature

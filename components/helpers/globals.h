@@ -247,6 +247,8 @@ extern esphome::binary_sensor::BinarySensor
     *radar_presence; ///< Presence Sensor (Radar)
 extern esphome::homeassistant::HomeassistantBinarySensor
     *sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
+extern esphome::homeassistant::HomeassistantBinarySensor
+    *window_locked; ///< Window lock gate (HA: open windows in room)
 /// @}
 
 /// @name Status LEDs (monochromatic light components)

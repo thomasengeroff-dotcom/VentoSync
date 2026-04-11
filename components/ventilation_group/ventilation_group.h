@@ -48,6 +48,12 @@ extern float current_smoothed_speed;
 void process_queued_packets();
 
 namespace esphome {
+  namespace binary_sensor {
+    class BinarySensor;
+  }
+}
+
+namespace esphome {
 
 // ---------------------------------------------------------
 // ENUMS & STRUCTS
@@ -227,8 +233,10 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *auto_humidity_threshold_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *auto_presence_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<float> *max_led_brightness_global_{nullptr};
+  binary_sensor::BinarySensor *window_sensor_{nullptr}; ///< Injected window lock sensor.
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
+  void set_window_sensor(binary_sensor::BinarySensor *s) { window_sensor_ = s; }
   void set_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { mode_index_global_ = g; }
   void set_automatik_min_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { automatik_min_fan_level_global_ = g; }
   void set_automatik_max_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { automatik_max_fan_level_global_ = g; }
@@ -290,6 +298,15 @@ public:
 
     // 1. Update State Machine (returns true on discrete state flip)
     bool dirty = state_machine.update(now);
+
+    // 1.1 Window Guard (Room-wide safety lock)
+    bool is_locked = (window_sensor_ != nullptr && window_sensor_->state);
+    static bool last_is_locked = false;
+    if (is_locked != last_is_locked) {
+        last_is_locked = is_locked;
+        dirty = true; // Force hardware update to apply/release lock
+        ESP_LOGI("vent", "Window Guard: %s", is_locked ? "LOCKED (Window Open)" : "UNLOCKED (Window Closed)");
+    }
 
     // 2. Hardware Update (always update during ramping phases)
     HardwareState state = state_machine.get_target_state(now);
@@ -597,6 +614,11 @@ public:
   void update_hardware(const HardwareState &state, bool force_log = false) {
     bool target_in = state.direction_in;
     bool enable_fan = state.fan_enabled;
+
+    // Apply Window Guard lock
+    if (window_sensor_ != nullptr && window_sensor_->state) {
+      enable_fan = false;
+    }
 
     // Rate-limited log during loop calls to avoid loop spam
     uint32_t now = millis();

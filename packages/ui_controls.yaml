@@ -97,6 +97,14 @@ light:
               duration: 100ms
             - state: false
               duration: 2000ms
+      - strobe:
+          name: "Window Lock"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 1000ms
+            - state: false
+              duration: 2000ms
   - platform: monochromatic
     output: out_led_wrg
     name: "Status LED Modus WRG"
