@@ -363,6 +363,17 @@ text_sensor:
       if (current_state == last_state) return {};
       last_state = current_state;
       return {current_state};
+
+  - platform: template
+    name: "Fenstersperre Aktiv"
+    id: window_guard_status
+    icon: "mdi:window-open-variant"
+    lambda: |-
+      if (((esphome::VentilationController*)id(ventilation_ctrl))->is_window_guard_active()) {
+        return {"Ja"};
+      } else {
+        return {"Nein"};
+      }
     update_interval: 10s
 
 # ---------------------------------------------------------
@@ -388,13 +399,6 @@ select:
 # FILTER MAINTENANCE
 # ---------------------------------------------------------
 binary_sensor:
-  - platform: template
-    name: "Fenstersperre Aktiv"
-    id: window_guard_status
-    icon: "mdi:window-open-variant"
-    device_class: lock
-    lambda: |-
-      return ((esphome::VentilationController*)id(ventilation_ctrl))->is_window_guard_active();
 
   - platform: template
     name: "Filterwechsel Alarm"

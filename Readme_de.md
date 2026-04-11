@@ -23,6 +23,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 ## 📑 Inhaltsverzeichnis
 
 - [Motivation](#motivation)
+- [Maßgefertigte Leiterplatte (PCB)](#️-maßgefertigte-leiterplatte-pcb)
 - [Vergleich mit VentoMaxx](#-vergleich-mit-ventomaxx-v-wrg)
 - [Leistungsmerkmale](#-leistungsmerkmale)
 - [Roadmap & Zukünftige Erweiterungen](#️-roadmap--zukünftige-erweiterungen)
@@ -48,6 +49,18 @@ Ich habe vor vielen Jahren im Rahmen der Haussanierung die dezentrale Wohnrauml�
 Für die Steuerung der Lüftung auf Basis von CO2 nutze ich einen extrem hochwertigen und präzisen CO2-Sensor (Sensirion SCD41), der direkt in die Platine (per kleines Zusatz-PCB) integriert ist (Hinweis: Aktuell dient der BME680 als Fallback, da das SCD41-PCB noch in Fertigung ist). Dieser Sensor misst die echte CO2-Konzentration in der Luft und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung). Sämtliche Code-Kommentare und die interne Dokumentation wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt, während das User-Interface weiterhin auf Deutsch bleibt.
 Da die Lüftungsgeräte in den verschiedenen Räumen meistens eine sehr zentrale Position haben, nutze ich diese auch direkt zur Anwesenheitserkennung mittels Radar-Sensor, der unsichtbar hinter der Blende des Lüftungsgerätes versteckt montiert werden kann. Der Anwesenheitssensor wird für die Steuerung der Lüftungsintensität im Standard-Automatik Modus genutzt und kann darüber hinaus in Home Assistant für jegliche weitere Automatisierungen genutzt werden.
 Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherechen über alles hinaus, was aktuell am Markt der Lüftungsgeräte zu finden ist!
+
+---
+
+## 🛠️ Maßgefertigte Leiterplatte (PCB)
+
+Das Herzstück des Projekts ist eine eigens entwickelte Platine, die exakt in das vorhandene Gehäuse der VentoMaxx-Geräte passt.
+
+![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
+
+> [!TIP]
+> Wenn du Interesse an einer Platine für deine eigenen Geräte hast, kannst du mich gerne unter **thomas@engeroff.net** kontaktieren. 
+> Bitte beachte, dass ich noch nicht entschieden habe, ob ich die PCB-Produktionsdaten als Open Source zur Verfügung stellen werde.
 
 ---
 

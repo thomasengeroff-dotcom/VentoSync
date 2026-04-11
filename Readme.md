@@ -25,6 +25,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 ## 📑 Table of Contents
 
 - [Motivation](#motivation)
+- [Custom Made PCB](#️-custom-made-pcb)
 - [Comparison with VentoMaxx](#-comparison-with-ventomaxx-v-wrg)
 - [Features](#-features)
 - [Roadmap & Future Enhancements](#️-roadmap--future-enhancements)
@@ -50,6 +51,18 @@ Many years ago, as part of a house renovation, I installed the V-WRG decentraliz
 For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD41), which is integrated directly into the board (via a small additional PCB; Note: Currently the BME680 serves as a fallback, as the SCD41 PCB is still in production). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German.
 Since the ventilation units in the various rooms are usually in a very central position, I also use them directly for presence detection via a radar sensor, which can be mounted invisibly hidden behind the cover of the ventilation unit. The presence sensor is used for controlling the ventilation intensity in Standard Automatic mode and can also be used in Home Assistant for any other automations.
 According to my research, the range of functions of this custom development goes beyond everything currently found on the ventilation unit market!
+
+---
+
+## 🛠️ Custom made PCB
+
+The heart of the project is a custom developed circuit board that fits perfectly into the existing housing of the VentoMaxx units.
+
+![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
+
+> [!TIP]
+> If you are interested in obtaining a PCB for your own devices, please feel free to contact me at **thomas@engeroff.net**. 
+> Please note that I have not yet decided whether the PCB production files will be made open source.
 
 ---
 
@@ -84,6 +97,7 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
 - 🔄 **Efficient Heat Recovery**: Cyclic, bidirectional operation (push-pull) to maximize energy efficiency. This mode ignores CO2, humidity, and radar presence sensors.
 - 💨 **Cross-Ventilation (Summer Mode)**: Mode for permanent exhaust air flow, ideal for passive cooling on summer nights. Flexibly configurable via timer or as continuous operation. This mode ignores CO2, humidity, and radar presence sensors.
 - 🚀 **Boost Ventilation**: Intensive ventilation for quick air exchange. The device ventilates for 15 minutes with the **manually selected intensity** and then pauses for 105 minutes to effectively remove moisture and regenerate the ceramic heat exchanger. The cycle then repeats.
+- 🌡️ **Off**: The fan is switched off but all sensors (CO2, Temp, Radar) and the web dashboard remain fully active (without Light Sleep) to ensure gap-less measurement data in Home Assistant.The device acts in a **Monitoring Mode (Sensor-Only)**.
 
 ### 🛡️ Precision Sensors & Monitoring
 
@@ -103,11 +117,8 @@ Of course, this sensor can also be used for other automations in Home Assistant.
   - ✅ **Automatic Resume**: The system preserves its current operating mode (e.g., Automatic or Manual) and resumes operation seamlessly as soon as all windows are closed.
   - ✅ **Visual Feedback (5min Limit)**: A distinct pulsing pattern on the Master LED indicates the "Paused by Window" state. To avoid light pollution at night, the pulsing stops after 5 minutes while the fan remains safely stopped.
   - ✅ **HA Status Entity**: A dedicated binary sensor (`binary_sensor.fenstersperre_aktiv`) provides real-time visibility of the lock status in Home Assistant.
+  - > For a step-by-step guide on how to integrate multiple window sensors and create the required room entities, please refer to our **[Home Assistant Window Guard Setup Guide](documentation/Window-Guard-HA-Setup.md)**.
 
-#### **🏠 Home Assistant Configuration (Tutorial)**
-
-> [!TIP]
-> For a step-by-step guide on how to integrate multiple window sensors and create the required room entities, please refer to our **[Home Assistant Window Guard Setup Guide](documentation/Window-Guard-HA-Setup.md)**.
 - 📈 **Phase Position Continuity**: Changing the intensity mid-cycle no longer causes abrupt stops. The system now proportionally scales the current cycle progress to the new duration, ensuring the fan continues its operation seamlessly.
 - 🌊 **Slew-Rate Speed Transitions (Sanftanlauf)**: Fan speed changes are now smoothed at a rate of ~5% per second. This prevents harsh electrical surges and provides a more premium, quiet acoustic transition when adjusting ventilation levels.
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
@@ -214,9 +225,6 @@ The following "Advanced Automation" functions are in preparation:
 - **🏠 Away-From-Home Mode (Safety Dehumidification)**:
   - Automated protection mode for absence (vacation).
   - The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold.
-
-- **🌡️ Monitoring Mode (Sensor-Only)**:
-  - Mode in which the fan is stopped, but all sensors (CO2, Temp, Radar) and the web dashboard remain fully active (without Light Sleep) to ensure gap-less measurement data in Home Assistant.
 
 - **⏲️ Timed Ventilation**:
   - Manual supply air or exhaust air operation activatable via the dashboard/app with an integrated timer for targeted extraction (e.g., after cooking), then switching back to the desired mode.

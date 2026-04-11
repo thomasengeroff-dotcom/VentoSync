@@ -76,22 +76,23 @@ inline void check_master_led_error() {
 
   std::string target_effect = "None";
   float target_brightness = 0.0f;
+  float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
 
   if (peer_sync_error) {
     target_effect = "Error Peer";
-    target_brightness = 1.0f;
+    target_brightness = max_b;      // blink with user configured brightness of LED
   } else if (wifi_error_triggered) {
     target_effect = "Error WiFi";
-    target_brightness = 1.0f;
+    target_brightness = max_b;      // blink with user configured brightness of LED
   } else if (thermal_warning) {
     target_effect = "Warning Safety";
-    target_brightness = 1.0f;
+    target_brightness = 1.0f;       // blink with full brightness of LED
   } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_active()) {
     // K2: Only pulse the LED for the first 5 minutes (300,000 ms) to avoid disturbance at night.
     uint32_t lock_age = now - ventilation_ctrl->get_window_lock_activation_ms();
     if (lock_age < 300000) {
         target_effect = "Window Lock";
-        target_brightness = 1.0f;
+        target_brightness = max_b;  // blink with user configured brightness of LED
     }
   }
 
