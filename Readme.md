@@ -112,7 +112,7 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor can also be used for other automations in Home Assistant.
 - 📊 **Real VentoMaxx V-Curve**: The fan is controlled exactly according to the physical parameters of the original hardware (50% PWM = stop zone, linear scaling in both directions), which enables high-precision and material-friendly control.
-- 🪟 **Window Guard (Fenstersperre)**: Automatic room-wide ventilation pause when windows are open.
+- 🪟 **Window Guard (Fenstersperre)**: Automatic room-wide ventilation pause when windows are open. Includes a per-device **"Ignore Window Guard" switch** to bypass the lock for specific units if needed.
   - ✅ **Smart Pause (10s Delay)**: The guard engages after 10 seconds of continuous "open" state to prevent accidental triggers. All VentoSync units in the room immediately stop their fans to prevent energy waste.
   - ✅ **Automatic Resume**: The system preserves its current operating mode (e.g., Automatic or Manual) and resumes operation seamlessly as soon as all windows are closed.
   - ✅ **Visual Feedback (5min Limit)**: A distinct pulsing pattern on the Master LED indicates the "Paused by Window" state. To avoid light pollution at night, the pulsing stops after 5 minutes while the fan remains safely stopped.
@@ -158,6 +158,7 @@ To ensure an optimal user experience, the original control panel of the VentoMax
     - **2x Blinks**: Synchronization error between fans (room group). No ESP-NOW packets received from peers for >3 minutes. *(Only active when the "Peer monitoring" switch is enabled in the dashboard.)*
     - **3x Blinks**: The connection to the Wi-Fi router is interrupted. App control is currently not possible. *(Triggers only after 30 seconds of continuous connection loss — brief roaming drops are suppressed.)*
     - **4x Blinks**: Heat warning (50-60°C). The temperature inside the ventilation unit housing is too warm (e.g., due to direct sunlight or a malfunction). The system is still running but should be checked. The device switches off automatically at over 60°C.
+    - **Slow Pulse (1s On, 2s Off)**: Window Guard (Fenstersperre) active. All fans in the room are stopped. *(Automatically deactivated after 5 minutes to avoid light pollution.)*
 - You can find the detailed description of operation and control under [Operation](#-operation--control).
 
 ### 🏠 Integration
@@ -218,16 +219,17 @@ The following "Advanced Automation" functions are in preparation:
 - **🌙 Intelligent Night Mode**:
   - Time-controlled throttling of fan power to minimize noise during rest periods.
   - **Light Sensor Integration**: Automatic activation of a "Whisper-Quiet" profile at night via hardware twilight sensor (LDR/BH1750 support planned).
-  - Inclusion of presence detection (radar sensor).
-  - Inclusion of CO2 values for control.
+  - **Silent Sleep logic**: Using mmWave micro-movement (breathing detection) to switch to the quietest level and extend reversal cycles, minimizing mechanical switching noise in bedrooms.
+  - Inclusion of presence detection (radar sensor) and CO2 values for control.
   - Locally and remotely activatable.
 
-- **🏠 Away-From-Home Mode (Safety Dehumidification)**:
-  - Automated protection mode for absence (vacation).
-  - The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold.
+- **🏠 Away-From-Home Mode & Absence Logic**:
+  - **Safety Dehumidification**: The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold.
+  - **Short-term Absence Reduction**: Automatically reducing ventilation to a hygienic minimum when the room is empty (detected via radar), saving up to 35% energy.
 
-- **⏲️ Timed Ventilation**:
-  - Manual supply air or exhaust air operation activatable via the dashboard/app with an integrated timer for targeted extraction (e.g., after cooking), then switching back to the desired mode.
+- **⏲️ Timed Ventilation & Party Mode**:
+  - **Targeted extraction**: Manual supply air or exhaust air operation activatable via the dashboard/app with an integrated timer (e.g., after cooking).
+  - **Party Mode (Stoßlüftungs-Timer)**: A 4-hour high-intensity boost that automatically returns to the sensor-controlled automatic mode.
 
 - **❄️ Frost Protection Automation**:
   - Intelligent detection of impending frost on the ceramic heat exchanger at extreme outside temperatures. Automatic adjustment of cycle times or briefly deactivating supply air to regenerate the heat exchanger. The external NTC sensor can be used for this.
@@ -235,14 +237,23 @@ The following "Advanced Automation" functions are in preparation:
 - **📅 Self-Sufficient Weekly Schedule**:
   - Native implementation of schedules directly on the ESP32 to ensure comfort functions even if the central smart home control fails. Independent of this, schedules can be easily configured via Home Assistant. If this feature is implemented, it must be ensured that the schedules do not collide with schedules from Home Assistant.
 
-- **🔔 Advanced Alarm Logic**:
+- **🔔 Advanced Alarm & Filter Logic**:
   - Implementation of visual (Master LED) and digital (Push) alerts for critical conditions such as extreme humidity, frost danger, or critical CO2 values.
+  - **Smart Filter Alarm**: Moving from timer-based to sensor-based "Filter Full" detection using differential pressure measurement (via UART-connected sensors).
 
 - **Closed-Loop Speed Monitoring**:
   - Continuous monitoring of the fan speed via tachometer signal for constant volume flow and error detection (only for 4-PIN PWM fans).
 
 - **AI-Powered Ventilation Control**:
   - Proactive AI-powered ventilation control based on historical data and external forecasts (weather, CO2, humidity). See [📄 AI-Powered-Ventilation-Control](documentation/KI-gestützte-Lüftungssteuerung.md) for details.
+  - **Person Counting**: Estimating occupancy density via mmWave radar to adjust volume flow (CFM) proportionally.
+
+- **💨 Advanced Air Quality & Cooling Logic**:
+  - **Enthalpy-Balance / Dew Point monitoring**: ✅ **Implemented in Auto mode.** The system calculates absolute humidity ($g/m^3$) using the Magnus formula and restricts dehumidification if outdoor air is wetter than indoor air to prevent moisture intake. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for technical details.
+
+- **🔌 Expansion & Integration Options (via UART / S2I)**:
+  - **VOC Sensor Integration**: ✅ **Partly Implemented.** The BME680 provides IAQ/VOC data (pseudo-CO2). Future refinement includes a "Mixed-Air-Quality" demand logic that combines CO2 and VOC values for the control loop.
+  - **Smart Home Gateway (Modbus/KNX)**: Building a bridge for professional building automation systems to coordinate ventilation with heating or window states.
 
 ## 🖱️ Custom Circuit Board - PCB
 
@@ -712,7 +723,7 @@ Device A: Phase B (Exhaust) ←→  Device B: Phase A (Supply)
 
 Detailed technical information about sensor optimizations, ESPHome YAML syntax, I²C configuration, and other technical aspects can be found in the separate documentation:
 
-📄 **[Technical-Details.md](documentation/Technical-Details.md)**
+📄 **[Technical-Details.md](documentation/Technical-Details.md)** / **[Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md)**
 
 This documentation contains:
 

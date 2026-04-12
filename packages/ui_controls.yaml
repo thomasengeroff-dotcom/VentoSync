@@ -1,5 +1,5 @@
 # ==========================================================================
-# WRG Wohnraumlüftung – ESPHome Custom Component
+# VentoSync HRV – ESPHome Custom Component
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
@@ -379,6 +379,23 @@ text_sensor:
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION
 # ---------------------------------------------------------
+switch:
+  - platform: template
+    name: "Fenstersperre ignorieren"
+    id: ignore_window_guard_switch
+    icon: "mdi:window-open-variant"
+    entity_category: config
+    lambda: |-
+      return id(ventilation_ctrl)->is_ignoring_window_guard();
+    turn_on_action:
+      - lambda: |-
+          id(ignore_window_guard_val) = true;
+          id(ventilation_ctrl)->set_ignore_window_guard(true);
+    turn_off_action:
+      - lambda: |-
+          id(ignore_window_guard_val) = false;
+          id(ventilation_ctrl)->set_ignore_window_guard(false);
+
 select:
   # Ventilation Mode
   - platform: template

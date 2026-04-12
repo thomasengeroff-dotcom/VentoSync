@@ -4,6 +4,17 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.133] - 2026-04-12
+### Added
+- **"Fenstersperre ignorieren" Bypass**: Einführung eines gerätespezifischen Overrides, um die raumweite Fenstersperre für einzelne Einheiten zu deaktivieren. Inklusive NVS-Persistenz.
+- **Detaillierte Logik-Dokumentation**: Neues Dokument `documentation/Automatic-Mode-Logic.md` zur präzisen Beschreibung der Entscheidungsmatrix und PID-Steuerung des Automatik-Modus.
+- **Erweiterte Roadmap**: Detaillierung fortgeschrittener mmwave-Radar-Strategien (Silent Sleep, Personenzählung, Abwesenheits-Absenkung).
+
+### Changed
+- **Globales Rebranding**: Projektweite Umstellung des Namens von „WRG Wohnraumlüftung“ auf **„VentoSync HRV“** in allen Headers, Log-Ausgaben und Beschreibungen.
+- **Standardisierte Datei-Header**: Alle YAML- und C++-Dateien erhielten einen einheitlichen Header mit Lizenz- (GPL v3), Autor- und Versionsinformationen.
+- **LED-Feedback Optimierung**: Das "Window Guard" Blinkmuster wird nun unterdrückt, wenn der lokale Bypass aktiv ist. Die Grundhelligkeit der Master-LED bei aktiven Effekten wurde auf 30% reduziert, um Blendung bei Nacht zu vermeiden.
+
 ## [0.8.131] - 2026-04-11
 ### Added
 - **Status-Entität für Fenstersperre**: Neuer Binär-Sensor in Home Assistant (`binary_sensor.fenstersperre_aktiv`), der den gefilterten Zustand der Sperre anzeigt.

@@ -1,5 +1,5 @@
 // ==========================================================================
-// WRG Wohnraumlüftung – ESPHome Custom Component
+// VentoSync HRV – ESPHome Custom Component
 // https://github.com/thomasengeroff-dotcom/VentoSync
 //
 // Copyright (c) 2026 Thomas Engeroff
@@ -220,6 +220,7 @@ public:
       false; ///< True = YAML should send a packet next loop.
 
   bool window_guard_active_{false};
+  bool ignore_window_guard_{false};
   uint32_t window_sensor_on_start_ms_{0};
   uint32_t window_lock_activation_ms_{0};
 
@@ -250,7 +251,12 @@ public:
   void set_max_led_brightness_global(esphome::globals::RestoringGlobalsComponent<float> *g) { max_led_brightness_global_ = g; }
 
   bool is_window_guard_active() const { return window_guard_active_; }
+  bool is_ignoring_window_guard() const { return ignore_window_guard_; }
   uint32_t get_window_lock_activation_ms() const { return window_lock_activation_ms_; }
+  void set_ignore_window_guard(bool ignore) { 
+    ignore_window_guard_ = ignore;
+    update_hardware();
+  }
   void set_floor_id(uint8_t id) { floor_id = id; }   ///< Set floor group.
   void set_room_id(uint8_t id) { room_id = id; }     ///< Set room group.
   void set_device_id(uint8_t id) {
@@ -634,7 +640,7 @@ public:
     bool enable_fan = state.fan_enabled;
 
     // Apply Window Guard lock (using filtered state)
-    if (window_guard_active_) {
+    if (window_guard_active_ && !ignore_window_guard_) {
       enable_fan = false;
     }
 

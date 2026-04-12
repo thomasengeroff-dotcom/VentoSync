@@ -1,5 +1,5 @@
 # ==========================================================================
-# WRG Wohnraumlüftung – ESPHome Custom Component
+# VentoSync HRV – ESPHome Custom Component
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.132"
+  project_version: "0.8.133"
 
 globals:
   - id: thermal_warning_active

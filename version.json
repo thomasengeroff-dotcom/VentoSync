@@ -1,5 +1,5 @@
 {
-    "version": "0.8.132",
-    "date": "2026-04-11",
-    "description": "fix(window): resolve motor stop issue and update docs (v0.8.129)"
+    "version": "0.8.133",
+    "date": "2026-04-12",
+    "description": "feat: global rebranding to VentoSync HRV and Window Guard bypass (v0.8.135)"
 }

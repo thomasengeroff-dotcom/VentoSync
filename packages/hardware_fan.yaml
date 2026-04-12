@@ -1,10 +1,28 @@
 # ==========================================================================
-# WRG Wohnraumlüftung – FAN HARDWARE & CONTROL
+# VentoSync HRV – ESPHome Configuration for fan hardware
 # https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        hardware_fan.yaml
 # Description: Configuration for fan PWM output, tachometer sensors, 
 #              and the fan control component.
+# Author:      Thomas Engeroff
+# Created:     2026-01-28
+# Modified:    2026-03-21
 # ==========================================================================
 
 output:

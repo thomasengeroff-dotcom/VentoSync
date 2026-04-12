@@ -1,5 +1,5 @@
 # ==========================================================================
-# WRG Wohnraumlüftung – ESPHome Custom Component
+# VentoSync HRV – ESPHome Configuration for sensor BME680
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff

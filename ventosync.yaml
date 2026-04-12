@@ -102,6 +102,7 @@ esphome:
         - delay: 1s
         - lambda: |-
             run_system_boot_initialization();
+            id(ventilation_ctrl)->set_ignore_window_guard(id(ignore_window_guard_val));
 
         # Phase 2: ESP-NOW Discovery (staggered broadcasts)
         - delay: 1s
@@ -269,6 +270,12 @@ globals:
   - id: max_led_brightness
     type: float
     initial_value: "0.8"
+    restore_value: true
+
+  # Ignore Window Guard (per-device override)
+  - id: ignore_window_guard_val
+    type: bool
+    initial_value: "false"
     restore_value: true
 
 # ---------------------------------------------------------

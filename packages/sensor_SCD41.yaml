@@ -1,10 +1,28 @@
 # ==========================================================================
-# WRG Wohnraumlüftung – SCD41 CO2, Temperature & Humidity Sensor
+# VentoSync HRV – ESPHome Configuration for SCD41 SENSOR
 # https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        sensor_SCD41.yaml
 # Description: Configuration for SCD41 CO2 sensor.
 #              Includes CO2, temperature, humidity, and calibration.
+# Author:      Thomas Engeroff
+# Created:     2026-03-05
+# Modified:    2026-03-27
 # ==========================================================================
 
 sensor:
@@ -22,7 +40,7 @@ sensor:
             window_size: 5
             send_every: 3
     temperature_offset: 4.0 # Optional: default value is 4.0 °C
-    altitude_compensation: 250m # Replace 250m with your location's altitude
+    ambient_pressure_compensation_source: pressure # take pressure from BMP390 sensor
     automatic_self_calibration: true
     temperature:
       name: "SCD41 Temperatur"

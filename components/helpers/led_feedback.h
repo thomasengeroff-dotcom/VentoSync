@@ -1,5 +1,5 @@
 // ==========================================================================
-// WRG Wohnraumlüftung – ESPHome Custom Component
+// VentoSync HRV – ESPHome Custom Component
 // https://github.com/thomasengeroff-dotcom/VentoSync
 //
 // Copyright (c) 2026 Thomas Engeroff
@@ -87,7 +87,7 @@ inline void check_master_led_error() {
   } else if (thermal_warning) {
     target_effect = "Warning Safety";
     target_brightness = 1.0f;       // blink with full brightness of LED
-  } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_active()) {
+  } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_active() && !ventilation_ctrl->is_ignoring_window_guard()) {
     // K2: Only pulse the LED for the first 5 minutes (300,000 ms) to avoid disturbance at night.
     uint32_t lock_age = now - ventilation_ctrl->get_window_lock_activation_ms();
     if (lock_age < 300000) {
@@ -102,7 +102,7 @@ inline void check_master_led_error() {
     if (target_brightness > 0) {
       call.set_state(true);
       call.set_effect(target_effect);
-      call.set_brightness(target_brightness);
+      call.set_brightness(0.3f * target_brightness);
     } else if (is_master()) {
       // Master Device: LED always solid ON (dimmed) when no error is active
       call.set_state(true);
