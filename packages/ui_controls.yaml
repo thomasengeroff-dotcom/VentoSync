@@ -232,7 +232,7 @@ number:
 
   # Auto Mode: Min Fan Level (moisture protection)
   - platform: template
-    name: "Automatik Min Lüfterstufe"
+    name: "Smart-Automatik Min Lüfterstufe"
     id: automatik_min_luefterstufe
     icon: "mdi:water-percent"
     min_value: 1
@@ -251,7 +251,7 @@ number:
 
   # Auto Mode: Max Fan Level (noise limiter)
   - platform: template
-    name: "Automatik Max Lüfterstufe"
+    name: "Smart-Automatik Max Lüfterstufe"
     id: automatik_max_luefterstufe
     icon: "mdi:volume-off"
     min_value: 5
@@ -270,7 +270,7 @@ number:
 
   # Auto Mode CO2 Threshold
   - platform: template
-    name: "Automatik: CO2 Grenzwert"
+    name: "Smart-Automatik: CO2 Grenzwert"
     id: auto_co2_threshold
     icon: "mdi:molecule-co2"
     min_value: 400
@@ -289,7 +289,7 @@ number:
 
   # Auto Mode Humidity Threshold
   - platform: template
-    name: "Automatik: Feuchte Grenzwert"
+    name: "Smart-Automatik: Feuchte Grenzwert"
     id: auto_humidity_threshold
     icon: "mdi:water-percent"
     min_value: 40
@@ -325,7 +325,7 @@ number:
 
   # Auto Mode: Summer Cooling Indoor Temperature Threshold
   - platform: template
-    name: "Automatik: Sommerkühlung Schwelle"
+    name: "Smart-Automatik: Sommerkühlung Schwelle"
     id: auto_summer_cooling_threshold
     icon: "mdi:thermometer-alert"
     unit_of_measurement: "°C"
@@ -402,12 +402,12 @@ select:
     name: "Lüftermodus"
     id: luefter_modus
     options:
-      - "Automatik"
+      - "Smart-Automatik"
       - "Wärmerückgewinnung"
       - "Durchlüften"
       - "Stoßlüftung"
       - "Aus"
-    initial_option: "Automatik"
+    initial_option: "Smart-Automatik"
     set_action:
       - lambda: |-
           set_operating_mode_select(x); // W5: pass std::string directly, not c_str()

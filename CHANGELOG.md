@@ -4,6 +4,12 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.134] - 2026-04-14
+### Changed
+- **Smart-Automatik Rebranding**: Projektweite Umstellung des primären Automatik-Modus von „Standard Automatic“ auf **„Smart automatic“** (Englisch) bzw. „Smart-Automatik“ (Deutsch) in Dokumentation, UI und Home Assistant Entitäten.
+- **UI & Entitäten-Update**: Umbenennung der Steuerungs-Entitäten in Home Assistant für ein einheitliches Markenbild und bessere Benutzerführung.
+- **Dokumentations-Refining**: Aktualisierung der README mit korrekter Hersteller-Nennung (**Bosch**) für den BME680-Sensor und Präzisierung der Automatik-Beschreibungen.
+
 ## [0.8.133] - 2026-04-12
 ### Added
 - **"Fenstersperre ignorieren" Bypass**: Einführung eines gerätespezifischen Overrides, um die raumweite Fenstersperre für einzelne Einheiten zu deaktivieren. Inklusive NVS-Persistenz.
@@ -52,7 +58,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Changed
 - **PID-Regler Wartung**: Automatischer Reset der Integral-Speicher (I-Anteil) beim Umschalten zwischen CO2- und Feuchte-Priorität sowie beim Wechsel von Manuell zu Automatik. Dies verhindert "Überschwinger" (Integral Windup) nach langen Standzeiten.
-- **Boot-Modus Glitch-Fix**: Korrektur der Rampen-Initialisierung beim Systemstart. `last_committed_mode` startet nun im Standard-Automatik-Zustand (`MODE_ECO_RECOVERY`), was den ersten Rampen-Schritt sauber auf 1 begrenzt.
+- **Boot-Modus Glitch-Fix**: Korrektur der Rampen-Initialisierung beim Systemstart. `last_committed_mode` startet nun im Smart-Automatik-Zustand (`MODE_ECO_RECOVERY`), was den ersten Rampen-Schritt sauber auf 1 begrenzt.
 
 ### Removed
 - **Legacy Dead-Code**: Vollständige Entfernung der veralteten `get_co2_fan_level()` Funktion (Berechnung der diskreten Stufen) zugunsten der stufenlosen PID-Regelung. Alle Unit-Tests wurden entsprechend migriert.
@@ -718,7 +724,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
   - Dokumentation: `documentation/CO2-Automatik.md`.
   - **Unit Tests**: CO2-Logic Test Cases (`test_co2_logic`) hinzugefügt (Klassifikation, Schwellwerte, Hysterese, Min/Max-Clamping).
 - **Sommer-Kühlfunktion (Querlüftung) via ESP-NOW**:
-  - Erweiterung der "Standard-Automatik" um eine bedarfsgesteuerte passiv-kühlende Querlüftung an Sommermonaten.
+  - Erweiterung der "Smart-Automatik" um eine bedarfsgesteuerte passiv-kühlende Querlüftung an Sommermonaten.
   - Dezentrales Thermometer-Netzwerk: Die echten physikalischen Temperaturdaten der NTC-Sensoren (`temp_zuluft`/`temp_abluft`) werden ausgelesen, wenn die Lüfter im Querlüften einen konstanten Luftstrom haben.
   - Das `VentilationPacket` verteilt die präzisen Innen- und Außentemperaturen im Sekundentakt an die gesamte Lüftungsgruppe via ESP-NOW.
   - Automatisches Rückschalt-Sicherheitsnetz: Die Automatik erkennt gruppenweit sofort einen Temperaturanstieg der Außenluft und schaltet nahtlos alle Lüfter in den effizienten `Eco Recovery` (WRG) Modus zurück.

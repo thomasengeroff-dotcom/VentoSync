@@ -27,7 +27,7 @@ Diese Entitäten dienen der primären Steuerung des Lüfters und des Betriebsmod
 
 ## 2. Automatik & Regelung (Sensoren-getrieben)
 
-Mit diesen Entitäten wird das Verhalten des "Automatik" Modus konfiguriert.
+Mit diesen Entitäten wird das Verhalten des "Smart-Automatik" Modus konfiguriert.
 
 * **`number.auto_co2_threshold`** ("Automatik: CO2 Grenzwert")
   * *Typ:* Number (Slider)

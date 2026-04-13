@@ -180,7 +180,7 @@ globals:
     initial_value: "2" # Start at lower medium intensity
     restore_value: true
 
-  # Current operating mode index (0=Automatik, 1=WRG, 2=Durchlüften, 3=Stoßlüftung, 4=Aus)
+  # Current operating mode index (0=Smart-Automatik, 1=WRG, 2=Durchlüften, 3=Stoßlüftung, 4=Aus)
   - id: current_mode_index
     type: int
     initial_value: "0" # Default: Smart-Automatik
@@ -193,31 +193,31 @@ globals:
     initial_value: '""'
     restore_value: true
 
-  # Automatik: min fan level (moisture protection / DIN 1946-6 Feuchteschutz)
+  # Smart-Automatik: min fan level (moisture protection / DIN 1946-6 Feuchteschutz)
   - id: automatik_min_fan_level
     type: int
     initial_value: "2"
     restore_value: true
 
-  # Automatik: max fan level (noise control)
+  # Smart-Automatik: max fan level (noise control)
   - id: automatik_max_fan_level
     type: int
     initial_value: "7"
     restore_value: true
 
-  # Automatik Modus Aktivierungsstatus
+  # Smart-Automatik Modus Aktivierungsstatus
   - id: auto_mode_active
     type: bool
     initial_value: "true"
     restore_value: true
 
-  # Automatik CO2 Grenzwert (Wert in ppm, ab dem hochgeregelt wird)
+  # Smart-Automatik CO2 Grenzwert (Wert in ppm, ab dem hochgeregelt wird)
   - id: auto_co2_threshold_val
     type: int
     initial_value: "1000"
     restore_value: true
 
-  # Automatik Feuchte Grenzwert (Wert in %, ab dem hochgeregelt wird)
+  # Smart-Automatik Feuchte Grenzwert (Wert in %, ab dem hochgeregelt wird)
   - id: auto_humidity_threshold_val
     type: int
     initial_value: "60"
@@ -229,7 +229,7 @@ globals:
     initial_value: "0"
     restore_value: true
 
-  # Automatik Sommerkühlung Innentemperatur-Schwelle (°C)
+  # Smart-Automatik Sommerkühlung Innentemperatur-Schwelle (°C)
   - id: summer_cooling_threshold
     type: int
     initial_value: "22"

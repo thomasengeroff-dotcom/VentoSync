@@ -48,8 +48,8 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 ## Motivation
 
 Many years ago, as part of a house renovation, I installed the V-WRG decentralized residential ventilation from Ventomaxx (10 units) and was very satisfied with it. However, the proprietary control and the lack of integration into my smart home system always bothered me. Therefore, I decided to develop my own circuit board (PCB) including control software based on ESPHome, as there was no ready-made solution. This solution is open source and is intended to help other users who are in the same situation as I was.
-For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD41), which is integrated directly into the board (via a small additional PCB; Note: Currently the BME680 serves as a fallback, as the SCD41 PCB is still in production). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German.
-Since the ventilation units in the various rooms are usually in a very central position, I also use them directly for presence detection via a radar sensor, which can be mounted invisibly hidden behind the cover of the ventilation unit. The presence sensor is used for controlling the ventilation intensity in Standard Automatic mode and can also be used in Home Assistant for any other automations.
+For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD41), which is integrated directly into the board (via a small additional PCB; Note: Currently the Bosch BME680 serves as a fallback, as the SCD41 PCB is still in production). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German.
+Since the ventilation units in the various rooms are usually in a very central position, I also use them directly for presence detection via a radar sensor, which can be mounted invisibly hidden behind the cover of the ventilation unit. The presence sensor is used for controlling the ventilation intensity in Smart automatic mode and can also be used in Home Assistant for any other automations.
 According to my research, the range of functions of this custom development goes beyond everything currently found on the ventilation unit market!
 
 ---
@@ -77,7 +77,7 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | Fan Control | 3 fixed levels | **10 levels + stepless (PID)** |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
-| Synchronization | Control cable | ✅ Wireless (**ESP-NOW Protocol v7**) & Real-time Sync |
+| Synchronization | Control cable | ✅ Wireless (**ESP-NOW Protocol**) & Real-time Sync |
 | Versioning | Manual | ✅ Fully automatic (Patch-Level) |
 | Updates | Service technician | ✅ Over-the-Air (OTA) |
 | License | Proprietary | ✅ Open Source (GPL v3) |
@@ -92,12 +92,12 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 
 All devices in a room find each other automatically upon startup or room change via **dynamic ESP-NOW discovery** and subsequently communicate efficiently via unicast.
 
-- 🤖 **Standard Automatic**: Fully automatic control for maximum comfort and efficiency. Standard operation in heat recovery (push-pull) with dynamic adjustment to CO2 and humidity, taking weather data into account.
+- 🤖 **Smart automatic**: Fully automatic control for maximum comfort and efficiency. Standard operation in heat recovery (push-pull) with dynamic adjustment to CO2 and humidity, taking weather data into account.
 In summer, cross-ventilation for passive nightly cooling (when it is cooler outside than inside) is automatically activated. This mode is the standard in everyday life to ensure maximum energy efficiency and air quality. In future versions, I will further optimize this mode to further increase comfort and efficiency.
 - 🔄 **Efficient Heat Recovery**: Cyclic, bidirectional operation (push-pull) to maximize energy efficiency. This mode ignores CO2, humidity, and radar presence sensors.
 - 💨 **Cross-Ventilation (Summer Mode)**: Mode for permanent exhaust air flow, ideal for passive cooling on summer nights. Flexibly configurable via timer or as continuous operation. This mode ignores CO2, humidity, and radar presence sensors.
 - 🚀 **Boost Ventilation**: Intensive ventilation for quick air exchange. The device ventilates for 15 minutes with the **manually selected intensity** and then pauses for 105 minutes to effectively remove moisture and regenerate the ceramic heat exchanger. The cycle then repeats.
-- 🌡️ **Off**: The fan is switched off but all sensors (CO2, Temp, Radar) and the web dashboard remain fully active (without Light Sleep) to ensure gap-less measurement data in Home Assistant.The device acts in a **Monitoring Mode (Sensor-Only)**.
+- 🌡️ **Off**: The fan is switched off but all sensors (CO2, Temp, Radar) and the web dashboard remain fully active to ensure gap-less measurement data in Home Assistant. The device acts in a **Monitoring Mode (Sensors-only)**.
 
 ### 🛡️ Precision Sensors & Monitoring
 
@@ -132,7 +132,7 @@ The VentoMaxx system with this ESPHome control works outstandingly efficiently. 
 - **Level 5 (Increased Load):** ~3.2 - 3.7 Watts *(approx. $9.10 / year)*
 - **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. $15.75 / year)*
 
-Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at $0.30/kWh) amount to only around 15 dollars per year. In the most frequently used Standard Automatic mode (values fluctuate between level 1 and 3 at night or when absent), the real operating costs are extremely economical at **approx. 7 to 8.50 dollars per year** for the entire unit.
+Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at $0.30/kWh) amount to only around 15 dollars per year. In the most frequently used Smart automatic mode (values fluctuate between level 1 and 3 at night or when absent), the real operating costs are extremely economical at **approx. 7 to 8.50 dollars per year** for the entire unit.
 
 *Particularly noteworthy: These measurements include the continuous operation of all installed components – including the ESP32 control (Wi-Fi/ESP-NOW), the climate and CO2 sensors, as well as the continuously measuring mmWave radar presence sensor!*
 
@@ -191,7 +191,7 @@ The devices communicate via the [ESPHome ESP-NOW component](https://esphome.io/c
   > [!NOTE]
   > Due to the 254-character string limit in ESPHome Globals, the persistent peer list is limited to **approx. 14 peers** per device. This is more than sufficient for standard residential installations. No more than 14 devices must be in the same room group.
 - ⚙️ **Efficient Unicast Communication**: After initial discovery, the actual data transmission (PID demand, status, sync) takes place via targeted unicast packets to the known peers. This massively reduces the noise floor in the 2.4 GHz band and increases stability.
-- ⚙️ **Global Configuration Synchronization**: Changes to settings (e.g., CO2 limits, timers, Standard Automatic modes) on one device via Home Assistant or the control panel are mirrored in real-time wirelessly to all other synchronized peers.
+- ⚙️ **Global Configuration Synchronization**: Changes to settings (e.g., CO2 limits, timers, Smart automatic modes) on one device via Home Assistant or the control panel are mirrored in real-time wirelessly to all other synchronized peers.
 
 #### Discovery Process
 
@@ -410,7 +410,7 @@ The panel has 3 buttons and 9 status LEDs.
 | :--- | :---: | :--- | :--- |
 | **Power** | 🟢 1x | LED Panel | Lights up bright during operation. Dims to 20% brightness after 60s @ `ui_active_timeout` (default: 60s) (instead of turning off completely). |
 | **Master** | 🟢 1x | LED Panel | Lights up solid (dimmed) on Master Device (Device-ID=1). Signals malfunctions via blink pattern: **2x**: Peer sync lost >3min *(requires Peer monitoring switch)*  / **3x**: Wi-Fi loss >30s /  **4x**: Heat warning (50-60°C). Device switches off automatically at over 60°C. |
-| **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses** in Standard Automatic mode. Permanently on for Heat Recovery or Ventilation. |
+| **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses** in Smart automatic mode. Permanently on for Heat Recovery or Ventilation. |
 | **Mode R** (`LED_VEN`) | 🟢 1x | Right | Permanently on for Boost Ventilation or Ventilation. |
 | **Intensity** | 🟢 5x | LED Panel | Shows current fan level 1–10 (half/full brightness for 10 levels via 5 LEDs). Only visible when UI is active. |
 
@@ -430,13 +430,13 @@ The panel has 3 buttons and 9 status LEDs.
 
 ### 🔄 Detailed Operating Modes (Programs)
 
-The device cycles through the programs via the **Mode button (M)**. Upon initial **power-on**, **Mode 1 (Standard Automatic)** is active.
+The device cycles through the programs via the **Mode button (M)**. Upon initial **power-on**, **Mode 1 (Smart automatic)** is active.
 
 > **Hint:** The sequence when pressing the button is: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off → Auto...**
 
 ---
 
-#### 1. 🤖 Standard Automatic *(Standard / Recommended)* — `LED_WRG` 🟢 (pulses slowly)
+#### 1. 🤖 Smart automatic *(Standard / Recommended)* — `LED_WRG` 🟢 (pulses slowly)
 
 **This mode is the standard upon powering on** and handles all control tasks fully automatically. The ventilation system regulates itself independently based on environmental data and requires no manual intervention after initial HA configuration ("Set and forget").
 
@@ -471,7 +471,7 @@ For details, see [Feuchte-Management-HA-Sensor.md](documentation/Feuchte-Managem
 #### 2. ❄️ Heat Recovery (Eco Recovery) — `LED_WRG` 🟢
 
 - **HA Entity:** `select.modus_lueftungsanlage` → `Eco Recovery`
-- **Function:** Manual heat recovery operation without the Standard Automatic features. The air direction changes periodically, heat loss is reduced by up to 85%.
+- **Function:** Manual heat recovery operation without the Smart automatic features. The air direction changes periodically, heat loss is reduced by up to 85%.
 - **Cycle Times:** Adapt to the fan level: Level 1: **70 sec.**, Level 2: **65 sec.**, … Level 5: **50 sec.**
 - **Synchronization:** Phase A blows in, Phase B blows out — devices in push-pull arrangement, house pressure-neutral.
 
@@ -489,7 +489,7 @@ For details, see [Feuchte-Management-HA-Sensor.md](documentation/Feuchte-Managem
 
 - **HA Entity:** `select.modus_lueftungsanlage` → `Ventilation` + `number.lueftungsdauer` (Timer, 0 = endless)
 - **Function:** Constant air flow without change of direction. Half of the group sucks in, the other half blows out → cool draft through the living space.
-- **Note:** In Standard Automatic mode, cross-ventilation is **automatically** activated at high indoor temperatures.
+- **Note:** In Smart automatic mode, cross-ventilation is **automatically** activated at high indoor temperatures.
 
 ---
 
@@ -507,7 +507,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 #### Available Controls
 
 - **Fan**: Slider 0-10% to 100% (internally corresponds to the 10 levels of the control panel)
-- **Mode**: Selection (Standard Automatic / Eco Recovery / Boost Ventilation / Ventilation / Off)
+- **Mode**: Selection (Smart automatic / Eco Recovery / Boost Ventilation / Ventilation / Off)
 - **Timer**: Configuration for "Ventilation" (default: 30 min)
 - **LED Brightness**: `number.max_led_brightness` (0-100%, default: 80%) to limit the maximum panel brightness.
 - **CO2 Limit**: `number.auto_CO2_threshold` (always active in Automatik mode)
@@ -540,7 +540,7 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 
 The RPM range is optimized to allow for finer steps at low levels, while the power increases more rapidly at higher levels.
 
-> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM never at 50% = stop). In Standard Automatic mode (PID), the speed is regulated steplessly between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
+> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM never at 50% = stop). In Smart automatic mode (PID), the speed is regulated steplessly between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
 > 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery/Boost Ventilation), the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.
 
 #### Automatic Functions

@@ -1,6 +1,6 @@
-# 🤖 Standard Automatic Mode (Auto Logic)
+# 🤖 Smart automatic Mode (Auto Logic)
 
-The **Standard Automatic Mode** is the "brain" of VentoSync. It provides fully autonomous, sensor-driven ventilation control optimized for air quality, energy efficiency, and comfort. This document describes the technical implementation and the decision-making logic behind this mode.
+The **Smart automatic Mode** is the "brain" of VentoSync. It provides fully autonomous, sensor-driven ventilation control optimized for air quality, energy efficiency, and comfort. This document describes the technical implementation and the decision-making logic behind this mode.
 
 ---
 
