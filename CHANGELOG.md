@@ -4,6 +4,13 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.135] - 2026-04-15
+### Added
+- **Globaler Urlaubsmodus (Vacation Mode)**: Einführung eines hausweiten Energiesparmodus, der über einen Home Assistant Helfer (`input_boolean.ventosync_vacation_mode`) gesteuert wird.
+  - **Automatisches Save/Restore**: Das System speichert beim Aktivieren den aktuellen Modus und die Intensität und stellt diese beim Deaktivieren nahtlos wieder her.
+  - **Energiespar-Logik**: Automatische Umstellung aller Geräte auf „Stoßlüftung“ (Stufe 1) während der Abwesenheit.
+  - **Detaillierte Dokumentation**: Neue Schritt-für-Schritt-Anleitungen (`documentation/Vacation-Mode-HA-Setup-DE.md`) für die Einrichtung des Helfers in Home Assistant.
+
 ## [0.8.134] - 2026-04-14
 ### Changed
 - **Smart-Automatik Rebranding**: Projektweite Umstellung des primären Automatik-Modus von „Standard Automatic“ auf **„Smart automatic“** (Englisch) bzw. „Smart-Automatik“ (Deutsch) in Dokumentation, UI und Home Assistant Entitäten.

@@ -127,6 +127,9 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
 - 🔄 **Plain Text Direction Display**: A sensor entity shows the current air direction at any time ("Supply Air (In)", "Exhaust Air (Out)", or "Standstill"), which significantly simplifies diagnosis and monitoring of synchronization.
 
+- 🌴 **Vacation Mode**: Energy-saving mode primarily used when absent for longer periods. It automatically switches all devices in a room to Boost Ventilation (Stoßlüftung) at the lowest intensity (Level 1) to ensure basic air exchange while minimizing energy consumption. Deactivating it restores the previous system state. This may be activated for all devices at once using a Home Assistant Toggle Helper:
+  - > For a step-by-step guide on how to create the required Home Assistant Toggle Helper, please refer to our **[Home Assistant Vacation Mode Setup Guide](documentation/Vacation-Mode-HA-Setup.md)**.
+
 ### ⚡ Extremely Low Power Consumption
 
 The VentoMaxx system with this ESPHome control works outstandingly efficiently. By using a high-quality Traco power supply and precision PWM control of the ebm-papst motor, the real power (measured at 230V) is in a range that is significantly lower than many commercial systems:
@@ -239,6 +242,7 @@ The following "Advanced Automation" functions are in preparation:
   - Locally and remotely activatable.
 
 - **🏠 Away-From-Home Mode & Absence Logic**:
+  - **Configurable Vacation Mode**: Providing HA entities to allow users to explicitly choose which operating mode and intensity (e.g. Boost Ventilation vs Eco Recovery) is selected automatically when Vacation Mode is active.
   - **Safety Dehumidification**: The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold.
   - **Short-term Absence Reduction**: Automatically reducing ventilation to a hygienic minimum when the room is empty (detected via radar), saving up to 35% energy.
 

@@ -42,6 +42,10 @@ substitutions:
   # Default convention: binary_sensor.ventosync_window_lock_room_${room_id}
   window_sensor_id: "binary_sensor.ventosync_window_lock_room_${room_id}"
 
+  # VACATION MODE CONFIG
+  # Entity ID of the Home Assistant input_boolean helper for vacation mode.
+  vacation_sensor_id: "input_boolean.ventosync_vacation_mode"
+
 # ---------------------------------------------------------
 # PACKAGES & INCLUDES
 # ---------------------------------------------------------
@@ -184,6 +188,18 @@ globals:
   - id: current_mode_index
     type: int
     initial_value: "0" # Default: Smart-Automatik
+    restore_value: true
+
+  # Pre-Vacation Memory: Operating mode
+  - id: pre_vacation_mode_index
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # Pre-Vacation Memory: Fan intensity
+  - id: pre_vacation_intensity
+    type: int
+    initial_value: "2"
     restore_value: true
 
   # ESP-NOW dynamic peer list
