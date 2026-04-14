@@ -22,24 +22,25 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 
 ## 📑 Inhaltsverzeichnis
 
+- [🚀 Zusammenfassung & Überblick](#🚀-zusammenfassung--überblick)
 - [Motivation](#motivation)
-- [Maßgefertigte Leiterplatte (PCB)](#️-maßgefertigte-leiterplatte-pcb)
-- [Vergleich mit VentoMaxx](#-vergleich-mit-ventomaxx-v-wrg)
-- [Leistungsmerkmale](#-leistungsmerkmale)
-- [Roadmap & Zukünftige Erweiterungen](#️-roadmap--zukünftige-erweiterungen)
-- [ESP-NOW & Autonomie](#-esp-now-kabellose-autonomie)
-- [Hardware & BOM](#️-hardware--bill-of-materials-bom)
-- [Eigene Platine (PCB)](#-eigene-platine-pcb)
-- [Pinbelegung](#-pinbelegung--verkabelung)
-- [Installation](#-installation--software)
-- [Bedienung](#-bedienung--steuerung)
-- [Automatisierte Versionierung](#-automatisierte-versionierung)
-- [Wärmerückgewinnung](#-wärmerückgewinnung---so-funktionierts)
-- [Technische Details](#-technische-details--optimierungen)
-- [Projektstruktur](#-projektstruktur)
-- [Code-Architektur](#️-code-architektur--wartbarkeit)
-- [Troubleshooting](#-troubleshooting)
-- [Lizenz](#-lizenz)
+- [🛠️ Maßgefertigte Leiterplatte (PCB)](#🛠️-maßgefertigte-leiterplatte-pcb)
+- [🔄 Vergleich mit VentoMaxx](#🔄-vergleich-mit-ventomaxx-v-wrg)
+- [✨ Leistungsmerkmale](#✨-leistungsmerkmale)
+- [📡 ESP-NOW: Kabellose Autonomie](#📡-esp-now-kabellose-autonomie)
+- [🖱️ Eigene Platine - PCB](#🖱️-eigene-platine---pcb)
+- [🛠️ Hardware & Bill of Materials (BOM)](#🛠️-hardware--bill-of-materials-bom)
+- [🔌 Pinbelegung & Verkabelung](#🔌-pinbelegung--verkabelung)
+- [🛠️ Installation & Software](#🛠️-installation--software)
+- [🎮 Bedienung & Steuerung](#🎮-bedienung--steuerung)
+- [🧠 Wärmerückgewinnung - So funktioniert's](#🧠-wärmerückgewinnung---so-funktionierts)
+- [🔧 Technische Details & Optimierungen](#🔧-technische-details--optimierungen)
+- [📁 Projektstruktur](#📁-projektstruktur)
+- [🏗️ Code-Architektur & Wartbarkeit](#🏗️-code-architektur--wartbarkeit)
+- [🚀 Automatisierte Versionierung](#🚀-automatisierte-versionierung)
+- [⚠️ Sicherheitshinweise](#⚠️-sicherheitshinweise)
+- [🔍 Troubleshooting](#🔍-troubleshooting)
+- [📜 Lizenz](#📜-lizenz)
 
 ---
 
@@ -75,12 +76,13 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 | Lüfterregelung | 3 feste Stufen | **10 Stufen + stufenlos (PID)** |
 | Smart Home | ❌ | ✅ Home Assistant (nativ) |
 | Wartungsalarm | Timer-LED | ✅ Prädiktiv + Push |
-| Synchronisation | Steuerkabel | ✅ Kabellos (**ESP-NOW Protocol v4**) & Echtzeit-Sync |
+| Synchronisation | Stromleitung | ✅ Kabellos (**ESP-NOW Protocol**) & Echtzeit-Sync |
+| Updates | nur per Servicetechniker (muss eingeschickt werden) | ✅ Over-the-Air (OTA) |
 | Versionierung | Manuell | ✅ Vollautomatisch (Patch-Level) |
-| Updates | Servicetechniker | ✅ Over-the-Air (OTA) |
-| Lizenz | Proprietär | ✅ Open Source (MIT) |
+| Erweiterbarkeit | ❌ | ✅ System kann mit zusätzlichen Sensoren und Aktoren oder individuellen Funktionen erweitert werden |
+| Lizenz | Proprietär | ✅ Open Source (GPL v3) |
 
-� **Den vollständigen Feature-für-Feature Vergleich mit allen technischen Details findest du in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
+ **Den vollständigen Feature-für-Feature Vergleich mit allen technischen Details findest du in [📄 Comparison-VentoMaxx.md](documentation/Comparison-VentoMaxx.md).**
 
 ---
 
@@ -107,20 +109,19 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
   - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
   - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
 - 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen. Hierfür wird eine fortschrittliche PID-Regelung verwendet, welche die Lüfterleistung dynamisch an die gemessenen Werte anpasst. Die Regelung ist so optimiert, dass sie die Lüfterleistung so gering wie möglich hält, um den Energieverbrauch und die Geräuschentwicklung zu minimieren.
-- 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert.
-Natürlich kann dieser Sensor auch für andere Automatisierungen in Home Assistant genutzt werden.
-- 📊 **Echte VentoMaxx V-Kennlinie**: Der Lüfter wird exakt nach den physikalischen Parametern der Original-Hardware gesteuert (50% PWM = Stopp-Zone, lineare Skalierung in beide Richtungen), was eine hochpräzise und materialschonende Regelung ermöglicht.
+- 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert. Dieser Sensor wird natürlich auch Home Assistant zur Verfügung gestellt und kann für beliebige andere Automatisierungen genutzt werden.
+- 📊 **Echte VentoMaxx V-Kennlinie**: Basierend auf den physikalischen Parametern der Original-Hardware (50% PWM = Stopp-Zone), wurde die Kennlinie jedoch in den niedrigeren Stufen (Stufe 1-6) feiner abgestimmt, um akustisch noch dezenter zu bleiben.
 - 🪟 **Fenstersperre (Window Guard)**: Automatischer raumweiter Lüftungsstopp bei offenen Fenstern.
-  - ✅ **Smart Pause (10s Verzögerung)**: Die Sperre greift erst nach 10 Sekunden durchgehender Fenster-Öffnung, um kurzes Lüften/Nachschauen abzufedern. Alle VentoSync-Geräte im Raum stoppen sofort ihre Lüfter, um Energieverschwendung zu vermeiden.
+  - ✅ **Smart Pause (5s Verzögerung)**: Die Sperre greift erst nach 5 Sekunden durchgehender Fenster-Öffnung, um kurzes Lüften/Nachschauen abzufedern. Alle VentoSync-Geräte im Raum stoppen sofort ihre Lüfter, um Energieverschwendung zu vermeiden.
   - ✅ **Automatisches Fortsetzen**: Das System behält seinen aktuellen Betriebsmodus (z.B. Automatik oder Manuell) bei und nimmt den Betrieb nahtlos wieder auf, sobald alle Fenster geschlossen sind.
-  - ✅ **Visuelles Feedback (5min Limit)**: Ein markantes Pulsieren der Master-LED signalisiert den Zustand "Pause durch Fenster". Zur Vermeidung von Lichtstörungen nachts stoppt das Pulsieren nach 5 Minuten, während der Lüfter zum Schutz weiterhin gestoppt bleibt.
+  - ✅ **Visuelles Feedback (35s Limit)**: Ein markantes Pulsieren der Master-LED signalisiert den Zustand "Pause durch Fenster". Zur Vermeidung von Lichtstörungen nachts startet das Pulsieren nach 5 Sekunden und stoppt nach 35 Sekunden, während der Lüfter zum Schutz weiterhin gestoppt bleibt.
   - ✅ **HA Status-Entität**: Eine dedizierte Binär-Sensor-Entität (`binary_sensor.fenstersperre_aktiv`) bietet direkte Sichtbarkeit des Sperrstatus in Home Assistant.
 
 #### **🏠 Home Assistant Konfiguration (Tutorial)**
 
 > [!TIP]
 > Eine Schritt-für-Schritt-Anleitung zur Integration mehrerer Fenstersensoren und zur Erstellung der benötigten Raum-Entitäten findest du in unserem **[Home Assistant Fenstersperre (Window Guard) Setup Guide](documentation/Window-Guard-HA-Setup-DE.md)**.
-- 📈 **Phasen-Kontinuität**: Eine Änderung der Intensität mitten im Zyklus führt nicht mehr zu abrupten Stopps. Das System skaliert den aktuellen Zyklusfortschritt nun proportional zur neuen Dauer, sodass der Lüfter seinen Betrieb nahtlos fortsetzt.
+- 📈 **Phasen-Kontinuität**: Durch eine proportionale Skalierung des aktuellen Zyklusfortschritts an die neue Gesamtdauer setzt der Lüfter seinen Betrieb bei Intensitätsänderungen nahtlos fort.
 - 🌊 **Sanftanlauf (Slew-Rate Limiter)**: Änderungen der Lüftergeschwindigkeit werden nun mit einer Rate von ca. 5 % pro Sekunde geglättet. Dies verhindert abrupte elektrische Lastsprünge und sorgt für einen hochwertigeren, leisen akustischen Übergang bei der Anpassung der Lüftungsstufen.
 - **Virtuelle Drehzahlberechnung:** Intelligente virtuelle Drehzahlberechnung (4200 RPM @ 100%) als Fallback für den Standard-Lüfter ohne Tacho-Signal.
 - 🔄 **Klartext-Richtungsanzeige**: Eine neue Sensor-Entität zeigt jederzeit die aktuelle Luftrichtung ("Zuluft (Rein)", "Abluft (Raus)" oder "Stillstand") an, was die Diagnose und Überwachung der Synchronisation erheblich vereinfacht.
@@ -172,8 +173,21 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
 - **Diagnose-Tools**: Live-Überwachung aller Sensordaten als Kacheln mit Tagesverlaufsgraphen.
 - **Autarker Betrieb**: Änderung sämtlicher Anlagen-Einstellungen auch ohne Home Assistant möglich (dennoch empfohlen). Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z.B. `http://esptest.local/ui`) im Webbrowser auf. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
 
+#### WRG Dashboard - Lokales Web-Dashboard
+
 ![WRG Dashboard Einstellungen](documentation/screenshots/wrg-dashboard1.png)
+*WRG-Dashboard 1: Lokales Web-Dashboard mit wichtigsten Einstellungen und übersichtlicher Darstellung der wichtigsten Daten*
+
 ![WRG Dashboard Verbundene Geräte & Echtzeitdaten](documentation/screenshots/wrg-dashboard2.png)
+*WRG-Dashboard 2: Live-Ansicht der verbundenen Geräte und aller Sensordaten im lokalen Web-Dashboard*
+
+#### Standard ESPHome Dashboard
+
+![Standard Dashboard](documentation/screenshots/Control-Dashboard1.png)
+*Standard Dashboard: Lokales Web-Dashboard mit allen Entitäten und live Logs*
+
+![Standard Dashboard](documentation/screenshots/Control-Dashboard2.png)
+*Standard Dashboard: Lokales Web-Dashboard mit allen Entitäten und live Logs (Fortsetzung)*
 
 **📡 ESP-NOW Visualisierung**: Das lokale Web-Dashboard bietet eine Live-Ansicht aller via ESP-NOW verbundenen Geräte. Die Kachel "Verbundene Geräte (ESP-NOW)" visualisiert Node-ID, aktuellen Betriebsmodus, Drehzahl und Luft-Richtung (Phase) aller aktiven Peers in Echtzeit.
 
@@ -351,6 +365,23 @@ graph TD
 
 ## 🛠️ Installation & Software
 
+### 🚀 Schritt-für-Schritt Inbetriebnahme
+
+1. **Firmware vorbereiten**: Kompiliere die Firmware mit deinen eigenen WLAN-Zugangsdaten (via `secrets.yaml`).
+2. **Initiales Flashen**: Flashe den ESP (XIAO) initial per USB mit der VentoSync Firmware über das ESPHome Dashboard.
+3. **Hardware-Einbau**:
+   > [!CAUTION]
+   > **LEBENSGEFAHR:** Der Einbau des PCB und ESP in das VentoMaxx Lüftungsgerät erfordert Arbeiten an der **230V Netzspannung**. Dieser Schritt darf **ausnahmslos nur von einer Elektrofachkraft** durchgeführt werden.
+   Baue das PCB und den ESP gemäß Schaltplan in das Gehäuse des Lüftungsgerätes ein.
+4. **Netzwerk-Konfiguration**: Hinterlege die IP-Adresse im Router als **feste IP (Static IP)**, um eine dauerhaft stabile Erreichbarkeit zu garantieren.
+5. **Home Assistant Integration**: Füge das Gerät in Home Assistant unter der ESPHome-Integration hinzu (es wird i. d. R. sofort automatisch erkannt).
+6. **Einstellungen anpassen**: Passe nach der Integration die folgenden Basis-Einstellungen in der Home Assistant UI oder dem lokalen Dashboard an:
+   - **Device ID** (Eindeutige Nummer des Geräts)
+   - **Room ID** (Geräte mit gleicher Room ID synchronisieren sich)
+   - **Floor ID**
+7. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings über das lokale Web-Dashboard konfiguriert werden unter `http://<device-ip>` oder `http://<device-ip>/ui`.
+8. **Spaß haben**: Genieße dein smartes, energieeffizientes Lüftungssystem!
+
 ### Voraussetzungen
 
 - Installiertes ESPHome Dashboard (z.B. als Home Assistant Add-on)
@@ -372,10 +403,6 @@ ota_password: "OTAPasswort"
 
 Die Konfiguration nutzt NTCs mit einem B-Wert von 3435. Falls du andere Sensoren nutzt, passe den `b_constant` Wert im YAML Code an.
 
-### Flashen
-
-1. Verbinde den XIAO per USB.
-2. Klicke auf "Install".
 
 ---
 
@@ -525,7 +552,7 @@ Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **ein
 | **9** | 86 % | 7.8 % | 92.2 % | 3612 |
 | **10** | 100 % | 5.0 % | 95.0 % | 4200 |
 
-Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen eine feinere Abstufung ermöglicht, während in den höheren Stufen die Leistung schneller ansteigt.
+Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen (Stufe 1-6) eine feinere Abstufung ermöglicht, um akustisch noch dezenter zu bleiben, während in den höheren Stufen die Leistung schneller ansteigt.
 > ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl stufenlos zwischen `co2_min_fan_level` und `co2_max_fan_level` geregelt.
 > 🔄 **Software-Fan-Ramping:** Bei jedem Richtungswechsel (WRG/Stoßlüftung) führt das System eine **5-sekündige sanfte Abbrems- und Anlauframpe** durch. Dies schont den Motor und minimiert Umschaltgeräusche. Die Intensitäts-LEDs zeigen währenddessen bereits den Zielwert an.
 

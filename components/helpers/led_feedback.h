@@ -88,9 +88,9 @@ inline void check_master_led_error() {
     target_effect = "Warning Safety";
     target_brightness = 1.0f;       // blink with full brightness of LED
   } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_active() && !ventilation_ctrl->is_ignoring_window_guard()) {
-    // K2: Only pulse the LED for the first 5 minutes (300,000 ms) to avoid disturbance at night.
+    // K2: Pulse the LED starting after 5s and until 35s to avoid disturbance at night.
     uint32_t lock_age = now - ventilation_ctrl->get_window_lock_activation_ms();
-    if (lock_age < 300000) {
+    if (lock_age >= 5000 && lock_age < 35000) {
         target_effect = "Window Lock";
         target_brightness = max_b;  // blink with user configured brightness of LED
     }

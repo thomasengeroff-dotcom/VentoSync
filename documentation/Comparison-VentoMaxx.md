@@ -28,7 +28,7 @@ Die **ESPHome-Steuerung** bietet **100% der Original-Funktionalität** (inkl. al
 | **Automatik (CO2)** | ❌ Nein (nur optionale VOC-Schätzung) | ✅ **SCD41 (echtes CO2)**: Stufenlose PID-Regelung mit Deadband-Hysterese, konfigurierbarem Min/Max-Level | ✅ **Präzise & leise** |
 | **Automatik (Feuchte)** | Schwellwerte fest: 55%, 65%, 75% r.F. | ✅ **PID-Regler** mit konfigurierbarem Grenzwert (40-100%), Outdoor-Feuchte-Vergleich, Deadband-Hysterese (±2%) | ✅ **Anpassbar** + Outdoor-Check |
 | **Anwesenheit** | ❌ Nein | ✅ **mmWave-Radar (HLK-LD2450)**: 4 Profile (Keine Anpassung, Intensiv, Normal, Gering): je Raum kann Lüftungsintensität automatisch verringert oder erhöht werden bei Anwesenheit | ✅ **Bedarfsgerecht** |
-| **Fenstersperre** | ❌ Nein | ✅ **Window Guard**: Lüftung wird nach 10s Delay-Stopp bei offenem Fenster angehalten (raumweit via ESP-NOW) und setzt bei geschlossenen Fenstern automatisch im vorigen Modus fort | ✅ **Energieersparnis** |
+| **Fenstersperre** | ❌ Nein | ✅ **Window Guard**: Lüftung wird nach 5s Delay-Stopp bei offenem Fenster angehalten (raumweit via ESP-NOW) und setzt bei geschlossenen Fenstern automatisch im vorigen Modus fort | ✅ **Energieersparnis** |
 | **Sanftanlauf** | ✅ fest implementiert | ✅ **Slew-Rate Limiter**: Sanfte Übergänge (~5%/s) bei Drehzahländerungen | ⚖️ Gleichwertig |
 | **Phasen-Kontinuität** | ✅ fest implementiert | ✅ **Intelligente Skalierung**: Nahtlose Fortführung bei Intensitätswechseln | ⚖️ Gleichwertig |
 | **Nachtmodus** | ❌ Nein (manuell ausschalten) | 📋 Geplant: Zeitgesteuerte Drosselung/Dimming & Lichtsensor-Support | ✅ **Komfort** (in Planung) |

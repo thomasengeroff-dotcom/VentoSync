@@ -317,7 +317,7 @@ public:
     if (sensor_on) {
         if (window_sensor_on_start_ms_ == 0) window_sensor_on_start_ms_ = now;
         
-        if (!window_guard_active_ && (now - window_sensor_on_start_ms_ > 10000)) {
+        if (!window_guard_active_ && (now - window_sensor_on_start_ms_ > 5000)) {
             window_guard_active_ = true;
             window_lock_activation_ms_ = now;
             dirty = true;
