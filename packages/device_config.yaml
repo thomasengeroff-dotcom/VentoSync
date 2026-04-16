@@ -262,3 +262,8 @@ sensor:
     lambda: |-
       return id(config_device_id).state;
     update_interval: 60s
+
+  # Internal temperature sensor for ESP32-C6
+  - platform: internal_temperature
+    name: "Internal ESP32-C6 Temperature"
+    entity_category: diagnostic

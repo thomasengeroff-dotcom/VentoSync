@@ -126,65 +126,65 @@ inline std::queue<IncomingPacket> rx_queue;
 /// @name Global variables
 /// @{
 extern esphome::globals::GlobalsComponent<bool>
-    *system_on; ///< Master power state.
+    *const system_on; ///< Master power state.
 extern esphome::globals::GlobalsComponent<bool>
-    *ventilation_enabled; ///< Ventilation enabled flag.
+    *const ventilation_enabled; ///< Ventilation enabled flag.
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *current_mode_index; ///< Active mode index (0–3).
+    *const current_mode_index; ///< Active mode index (0–3).
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *fan_intensity_level; ///< Fan intensity (1–10).
+    *const fan_intensity_level; ///< Fan intensity (1–10).
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *automatik_min_fan_level; ///< Min fan level for auto control (moisture
+    *const automatik_min_fan_level; ///< Min fan level for auto control (moisture
                               ///< protection).
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *automatik_max_fan_level; ///< Max fan level for auto control (noise limit).
+    *const automatik_max_fan_level; ///< Max fan level for auto control (noise limit).
 
-extern esphome::globals::RestoringGlobalsComponent<bool> *auto_mode_active;
-extern esphome::globals::RestoringGlobalsComponent<int> *auto_co2_threshold_val;
+extern esphome::globals::RestoringGlobalsComponent<bool> *const auto_mode_active;
+extern esphome::globals::RestoringGlobalsComponent<int> *const auto_co2_threshold_val;
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *auto_humidity_threshold_val;
-extern esphome::globals::RestoringGlobalsComponent<int> *auto_presence_val;
+    *const auto_humidity_threshold_val;
+extern esphome::globals::RestoringGlobalsComponent<int> *const auto_presence_val;
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C).
-extern esphome::globals::GlobalsComponent<float> *co2_pid_result;
-extern esphome::globals::GlobalsComponent<float> *humidity_pid_result;
+    *const summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C).
+extern esphome::globals::GlobalsComponent<float> *const co2_pid_result;
+extern esphome::globals::GlobalsComponent<float> *const humidity_pid_result;
 extern esphome::globals::RestoringGlobalsComponent<float>
-    *filter_operating_hours;
-extern esphome::globals::RestoringGlobalsComponent<int> *filter_last_change_ts;
-extern esphome::globals::RestoringGlobalsComponent<int> *watchdog_restarts_count;
+    *const filter_operating_hours;
+extern esphome::globals::RestoringGlobalsComponent<int> *const filter_last_change_ts;
+extern esphome::globals::RestoringGlobalsComponent<int> *const watchdog_restarts_count;
 /// @}
 
 /// @name Template UI components
 /// @{
 extern esphome::template_::TemplateSelectWithSetAction<false, false, false, 0>
-    *luefter_modus; ///< Mode selector (WRG/Stoß/Durchlüften/Aus).
+    *const luefter_modus; ///< Mode selector (WRG/Stoß/Durchlüften/Aus).
 // auto_presence_behavior removed
 extern esphome::template_::TemplateNumber
-    *vent_timer; ///< Ventilation timer (minutes).
+    *const vent_timer; ///< Ventilation timer (minutes).
 extern esphome::template_::TemplateNumber
-    *fan_intensity_display; ///< Fan intensity display number.
+    *const fan_intensity_display; ///< Fan intensity display number.
 extern esphome::template_::TemplateNumber
-    *automatik_min_luefterstufe; ///< Min fan level for automated modes.
+    *const automatik_min_luefterstufe; ///< Min fan level for automated modes.
 extern esphome::template_::TemplateNumber
-    *automatik_max_luefterstufe; ///< Max fan level for automated modes.
+    *const automatik_max_luefterstufe; ///< Max fan level for automated modes.
 extern esphome::template_::TemplateNumber
-    *auto_presence_slider; ///< Presence compensation slider.
+    *const auto_presence_slider; ///< Presence compensation slider.
 extern esphome::template_::TemplateNumber
-    *auto_co2_threshold; ///< CO2 automated threshold.
+    *const auto_co2_threshold; ///< CO2 automated threshold.
 extern esphome::template_::TemplateNumber
-    *auto_humidity_threshold; ///< Humidity automated threshold.
+    *const auto_humidity_threshold; ///< Humidity automated threshold.
 extern esphome::template_::TemplateNumber
-    *sync_interval_config; ///< Time between auto-sync packets in minutes.
+    *const sync_interval_config; ///< Time between auto-sync packets in minutes.
 extern esphome::template_::TemplateNumber
-    *config_floor_id; ///< Persistent Floor ID number.
+    *const config_floor_id; ///< Persistent Floor ID number.
 extern esphome::template_::TemplateNumber
-    *config_room_id; ///< Persistent Room ID number.
+    *const config_room_id; ///< Persistent Room ID number.
 extern esphome::template_::TemplateNumber
-    *config_device_id;
+    *const config_device_id;
 extern esphome::template_::TemplateSelectWithSetAction<false, true, true, 0>
-    *config_phase;
-extern esphome::template_::TemplateSensor *watchdog_restarts;
-extern esphome::template_::TemplateTextSensor *espnow_peers_display; ///< Peer list display.
+    *const config_phase;
+extern esphome::template_::TemplateSensor *const watchdog_restarts;
+extern esphome::template_::TemplateTextSensor *const espnow_peers_display; ///< Peer list display.
 
 namespace led_state {
   inline std::string last_master_effect = "__none__";
@@ -193,78 +193,78 @@ namespace led_state {
 /// @}
 
 extern esphome::globals::RestoringGlobalsComponent<bool>
-    *peer_check_enabled; ///< ESP-NOW peer check on/off.
+    *const peer_check_enabled; ///< ESP-NOW peer check on/off.
 extern esphome::template_::TemplateSwitch
-    *peer_check_switch; ///< HA switch for peer check.
+    *const peer_check_switch; ///< HA switch for peer check.
 extern esphome::template_::TemplateSwitch
-    *fan_direction; ///< Hardware fan direction switch.
+    *const fan_direction; ///< Hardware fan direction switch.
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *auto_presence_val; ///< Presence bitmask.
+    *const auto_presence_val; ///< Presence bitmask.
 extern esphome::globals::GlobalsComponent<bool>
-    *ui_active; ///< Flag if UI should be active / bright.
+    *const ui_active; ///< Flag if UI should be active / bright.
 extern esphome::globals::RestoringGlobalsComponent<float>
-    *max_led_brightness; ///< Max brightness for LEDs.
+    *const max_led_brightness; ///< Max brightness for LEDs.
 extern esphome::globals::GlobalsComponent<bool>
-    *intensity_bounce_up; ///< True if we are cycling UP, false if DOWN.
+    *const intensity_bounce_up; ///< True if we are cycling UP, false if DOWN.
 extern esphome::globals::GlobalsComponent<bool>
-    *thermal_warning_active; ///< True if BMP390 detects >50°C.
+    *const thermal_warning_active; ///< True if BMP390 detects >50°C.
 
 /// @name Scripts
 /// @{
 extern esphome::script::RestartScript<>
-    *update_leds; ///< Refreshes all status LEDs.
+    *const update_leds; ///< Refreshes all status LEDs.
 extern esphome::script::RestartScript<>
-    *ui_timeout_script; ///< UI 30s timeout script.
+    *const ui_timeout_script; ///< UI 30s timeout script.
 extern esphome::script::RestartScript<>
-    *fan_speed_update; ///< Re-applies fan speed.
+    *const fan_speed_update; ///< Re-applies fan speed.
 extern esphome::script::SingleScript<float, int>
-    *set_fan_speed_and_direction;               ///< Sets PWM + direction.
-extern esphome::pid::PIDClimate *pid_co2;       ///< CO2 PID controller.
-extern esphome::pid::PIDClimate *pid_humidity;  ///< Humidity PID controller.
-extern esphome::sntp::SNTPComponent *sntp_time; ///< SNTP Time component.
+    *const set_fan_speed_and_direction;               ///< Sets PWM + direction.
+extern esphome::pid::PIDClimate *const pid_co2;       ///< CO2 PID controller.
+extern esphome::pid::PIDClimate *const pid_humidity;  ///< Humidity PID controller.
+extern esphome::sntp::SNTPComponent *const sntp_time; ///< SNTP Time component.
 /// @}
 
 /// @name Fan hardware
 /// @{
-extern esphome::speed::SpeedFan *lueftung_fan; ///< Main fan (speed platform).
+extern esphome::speed::SpeedFan *const lueftung_fan; ///< Main fan (speed platform).
 extern esphome::ledc::LEDCOutput
-    *fan_pwm_primary; ///< Primary PWM output (GPIO19).
+    *const fan_pwm_primary; ///< Primary PWM output (GPIO19).
 /// @}
 
 /// @name Sensors
 /// @{
-extern esphome::sensor::Sensor *scd41_co2; ///< SCD41 CO2 sensor.
+extern esphome::sensor::Sensor *const scd41_co2; ///< SCD41 CO2 sensor.
 extern esphome::template_::TemplateSensor
-    *effective_co2; ///< Unified CO2 sensor (SCD41 or BME680 fallback).
-extern esphome::sensor::Sensor *temperature; ///< Room Temperature (SCD41)
-extern esphome::ntc::NTC *temp_zuluft; ///< Supply Air Temperature (NTC Inside)
+    *const effective_co2; ///< Unified CO2 sensor (SCD41 or BME680 fallback).
+extern esphome::sensor::Sensor *const temperature; ///< Room Temperature (SCD41)
+extern esphome::ntc::NTC *const temp_zuluft; ///< Supply Air Temperature (NTC Inside)
 extern esphome::ntc::NTC
-    *temp_abluft; ///< Exhaust Air Temperature (NTC Outside)
-extern esphome::sensor::Sensor *scd41_humidity; ///< Indoor Humidity
+    *const temp_abluft; ///< Exhaust Air Temperature (NTC Outside)
+extern esphome::sensor::Sensor *const scd41_humidity; ///< Indoor Humidity
 extern esphome::homeassistant::HomeassistantSensor
-    *outdoor_humidity; ///< Outdoor Humidity (HA)
+    *const outdoor_humidity; ///< Outdoor Humidity (HA)
 extern esphome::binary_sensor::BinarySensor
-    *radar_presence; ///< Presence Sensor (Radar)
+    *const radar_presence; ///< Presence Sensor (Radar)
 extern esphome::homeassistant::HomeassistantBinarySensor
-    *sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
+    *const sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
 extern esphome::homeassistant::HomeassistantBinarySensor
-    *window_locked; ///< Window lock gate (HA: open windows in room)
+    *const window_locked; ///< Window lock gate (HA: open windows in room)
 /// @}
 
 /// @name Status LEDs (monochromatic light components)
 /// @{
-extern esphome::light::LightState *status_led_l1;    ///< Level indicator LED 1.
-extern esphome::light::LightState *status_led_l2;    ///< Level indicator LED 2.
-extern esphome::light::LightState *status_led_l3;    ///< Level indicator LED 3.
-extern esphome::light::LightState *status_led_l4;    ///< Level indicator LED 4.
-extern esphome::light::LightState *status_led_l5;    ///< Level indicator LED 5.
-extern esphome::light::LightState *status_led_power; ///< Power status LED.
+extern esphome::light::LightState *const status_led_l1;    ///< Level indicator LED 1.
+extern esphome::light::LightState *const status_led_l2;    ///< Level indicator LED 2.
+extern esphome::light::LightState *const status_led_l3;    ///< Level indicator LED 3.
+extern esphome::light::LightState *const status_led_l4;    ///< Level indicator LED 4.
+extern esphome::light::LightState *const status_led_l5;    ///< Level indicator LED 5.
+extern esphome::light::LightState *const status_led_power; ///< Power status LED.
 extern esphome::light::LightState
-    *status_led_master; ///< Master status LED (error indicator).
+    *const status_led_master; ///< Master status LED (error indicator).
 extern esphome::light::LightState
-    *status_led_mode_wrg; ///< Mode LED: Wärmerückgewinnung.
+    *const status_led_mode_wrg; ///< Mode LED: Wärmerückgewinnung.
 extern esphome::light::LightState
-    *status_led_mode_vent; ///< Mode LED: Ventilation.
+    *const status_led_mode_vent; ///< Mode LED: Ventilation.
 /// @}
 
 /**
@@ -273,7 +273,7 @@ extern esphome::light::LightState
  * @details This is the primary bridge between the helper functions and the
  *          custom component logic.
  */
-extern esphome::VentilationController *ventilation_ctrl;
+extern esphome::VentilationController *const ventilation_ctrl;
 
 // --- ESP-NOW Dynamic Discovery & Persistence -------------------------
 inline std::vector<uint8_t>
@@ -305,7 +305,7 @@ parse_mac_local(const std::string &str) {
 }
 
 extern esphome::globals::RestoringGlobalStringComponent<std::string, 255>
-    *espnow_peers; ///< ESP-NOW dynamic peer list (JSON-formatted MACs).
+    *const espnow_peers; ///< ESP-NOW dynamic peer list (JSON-formatted MACs).
 
 // NOTE: We use esphome::espnow::global_esp_now which is properly declared
 // as extern in espnow_component.h.
