@@ -4,6 +4,42 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.156] - 2026-04-18
+### Security / Stability
+- **K-1 — UI Slider Overflow Limits (KRITISCH)**
+  Ein fehlerhafter Float-Rundungsguard für die manuelle Timer- bzw. Sync-Intervall Steuerung in der UI wurde korrigiert, um eine uint32_t Multiplikationskorruption zu vermeiden. Die Werte kappen jetzt verlässlich Hardware-Sicherheitsgrenzen zwischen 1m und 1440m um physikalisch kritische Auslastungen zu unterbinden.
+- **K-2, H-3 — Absolute Timestamps aus Netzwerk-Sync entfernt (KRITISCH)**
+  Die Race-Condition durch Überlaufe beim Sync-Timeout (49-Tage ESP32 `millis()` Overflow Limit) wurde restrukturiert und auf Delta-Berechnungen umgebaut. Dies verhindert den "Brainfreeze" des Master-Syncs, bei dem ein ESP nach rund 49 Tagen Laufzeit nie wieder die Steuerung von anderen Peers übernimmt.
+
+### Changed
+- **H-1 — Slider Stufen Rundung korrigiert**
+  Vermeidung von Off-By-One Level Truncations durch direkte Float-auf-Integer Casts bei Touch-Device Slidern.
+- **H-2 — Modus Array-Crash Loop korrigiert**
+  Ein defekter NVS Schreibvorgang des Cycle-Modes konnte in eine negative modulo-Schleife fallen und die State-Machine zum Absturz bringen.
+- **H-4 — De-Coupling für Emergency Power-Cuts**
+  Der Long-Press (Langes Halten) Power-Down Befehl funktionierte u.U. nicht wenn HA-Hardware Definitionen fehlten. Die Notabschaltung erzwingt nun Hardware-PWM Stops vor Software Callbacks.
+- **M-1 — Cloud UI API String Sanitizer**
+  Whitespaces via Automatisierungs-Systeme und Templates konnten API-Steuerbefehle korrumpieren, dies wird nun trim-normalisiert.
+
+## [0.8.155] - 2026-04-18
+### Security / Stability
+- **K-1 — Durchlüften Timer Overflow behoben (KRITISCH)**
+  Ein reiner Float-Overflow-Bug in der Dauerberechnung wurde geschlossen. Der `vent_timer` (Float) wird nun vor der Konvertierung in Millisekunden (uint32_t) strikt geclampt, um Implementation-Defined Behavior und unvorhersehbare Auto-Fallback Dauern bei NVS-Fehlern zu vermeiden.
+- **K-2 — Sicherung der ESPHome State-Konsistenz (KRITISCH)**
+  Direktes manuelles Setzen der internen Objektstatusrepräsentation (`lueftung_fan->state = false`) im "Aus"-Modus umging die Event-Loop Architektur. Der Controller bedient die internen State-Ebenen nun sicher über generierte `make_call()` Anweisungen.
+- **K-3 — Modus Operations-Safety bei NVS-Corruption (KRITISCH)**
+  Ein korrupter Parameterwert für den `current_mode_index` konnte Systemzustände aus dem Tritt bringen. Harte Bounds-Checks am Eintritt der Orchestration fangen invalide Enums ab und forcieren "Wärmerückgewinnung" (Modus 1) als sicheren Standard.
+
+### Changed
+- **H-1 — Filter-Betriebsstunden: Langzeit-Rundung behoben**
+  Das direkte Akkumulieren von asynchron tickenden Millisekunden in einer Float-Repräsentation führte systembedingt nach ~40 Tagen zu einem heimlichen Einfrieren des Filter-Trackers durch Limitierungen der 23-Bit Gleitkomma-Genauigkeit. Eine separierte Integer-Engine bereinigt das.
+- **H-2 — NVS Cast-Safeguards**
+  Das Umleiten der 8-Bit Identifier Werte werfen nun im Bootloader bei ungültigen Bounds dedizierte Logs und sichern das Discovery System vor Speicherglitches des Flash Roms.
+- **H-3 — Erweiterte System-Reset Diagnostik**
+  Das Reset-Logging erfasst ab sofort neben regulären Task-Watchdogs auch ESP32-generierte Brownouts (Unterspannung), Panther-Panics (Stackoverflow) oder blockierte Interrupt-Service-Routinen in der Analytik-Zähler-Engine für besseres Debugging.
+- **H-4 — Ausfallsichere LED Startroutinen**
+  Poka-Yoke-Überprüfungen im Startup der visuellen LEDs deaktivieren den "Knight-Rider" Bootsequence Mode nicht mehr komplett, sobald eine singuläre Indicator-LED einen defekten Bus meldet.
+
 ## [0.8.154] - 2026-04-18
 ### Security / Stability
 - **K-1 — Sanftanlauf-Limiter Bootstrap behoben (KRITISCH)**

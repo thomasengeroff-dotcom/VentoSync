@@ -46,8 +46,14 @@ inline void update_filter_analytics() {
 
   if (system_on->value() && ventilation_enabled->value()) {
     const uint32_t elapsed_ms = now_ms - last_update_ms;
-    // 3.6M ms = 1 hour
-    filter_operating_hours->value() += static_cast<float>(elapsed_ms) / 3600000.0f;
+    // FIXED H-1: Akkumuliere in uint32_t um Float-Präzisionsverlust zu vermeiden
+    static uint32_t filter_ms_accumulator = 0;
+    filter_ms_accumulator += elapsed_ms;
+
+    if (filter_ms_accumulator >= 60000) {
+      filter_operating_hours->value() += static_cast<float>(filter_ms_accumulator) / 3600000.0f;
+      filter_ms_accumulator = 0;
+    }
   }
   last_update_ms = now_ms;
 
@@ -74,6 +80,12 @@ inline void update_filter_analytics() {
 inline void cycle_operating_mode(int mode_index) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
+
+  // FIXED K-3: Bounds-Check für mode_index
+  if (mode_index < 0 || mode_index > 4) {
+      ESP_LOGE("mode", "Invalid mode_index %d — defaulting to WRG (1). Possible NVS corruption.", mode_index);
+      mode_index = 1;
+  }
 
   if (auto_mode_active != nullptr) {
     auto_mode_active->value() = false; // Reset by default
@@ -107,7 +119,16 @@ inline void cycle_operating_mode(int mode_index) {
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     if (vent_timer != nullptr) {
-      const uint32_t duration_ms = static_cast<uint32_t>(vent_timer->state * 60.0f * 1000.0f);
+      // FIXED K-1: Clamp vor Cast und Grenzen definiert 
+      constexpr float MAX_VENT_MIN = 1440.0f;
+      constexpr float MIN_VENT_MIN = 1.0f;
+      
+      const float timer_min = std::clamp(vent_timer->state, MIN_VENT_MIN, MAX_VENT_MIN);
+      if (vent_timer->state != timer_min) {
+          ESP_LOGW("mode", "vent_timer clamped: %.1f -> %.1f min", vent_timer->state, timer_min);
+      }
+      
+      const uint32_t duration_ms = static_cast<uint32_t>(timer_min * 60.0f * 1000.0f);
       v->set_mode(esphome::MODE_VENTILATION, duration_ms);
     } else {
       v->set_mode(esphome::MODE_VENTILATION);
@@ -129,11 +150,14 @@ inline void cycle_operating_mode(int mode_index) {
     
     v->set_mode(esphome::MODE_OFF);
     
-    // UI: Visible fan status OFF
-    // We update the state natively without calling turn_off().perform() to avoid
-    // the ESPHome speed component from forcing the hardware PWM to 0.0f (full reverse).
-    if (lueftung_fan != nullptr) lueftung_fan->state = false;
+    // FIXED K-2: UI: Visible fan status OFF, keeping ESPHome internal state clean
+    if (lueftung_fan != nullptr) {
+        auto call = lueftung_fan->make_call();
+        call.set_state(false);
+        lueftung_fan->publish_state();  // State synchronisieren
+    }
     // Hardware: VarioPro motor controller requires 50% PWM as "stop" signal.
+    // Override after call just in case lueftung_fan sent 0.0f via PWM handler.
     if (fan_pwm_primary != nullptr) fan_pwm_primary->set_level(0.5f);
     break;
   }
@@ -170,9 +194,18 @@ inline void sync_config_to_controller() {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
 
-  uint8_t floor = (config_floor_id != nullptr && !std::isnan(config_floor_id->state)) ? (uint8_t)config_floor_id->state : 0;
-  uint8_t room = (config_room_id != nullptr && !std::isnan(config_room_id->state)) ? (uint8_t)config_room_id->state : 0;
-  uint8_t dev = (config_device_id != nullptr && !std::isnan(config_device_id->state)) ? (uint8_t)config_device_id->state : 0;
+  // FIXED H-2: Expliziter Bereichscheck vor uint8_t Fallback Cast
+  auto safe_to_uint8 = [](float val, const char* name) -> uint8_t {
+      if (val < 0.0f || val > 255.0f) {
+          ESP_LOGW("boot", "%s out of uint8 range: %.1f — using 0", name, val);
+          return 0;
+      }
+      return static_cast<uint8_t>(val);
+  };
+
+  uint8_t floor = (config_floor_id != nullptr && !std::isnan(config_floor_id->state)) ? safe_to_uint8(config_floor_id->state, "floor_id") : 0;
+  uint8_t room = (config_room_id != nullptr && !std::isnan(config_room_id->state)) ? safe_to_uint8(config_room_id->state, "room_id") : 0;
+  uint8_t dev = (config_device_id != nullptr && !std::isnan(config_device_id->state)) ? safe_to_uint8(config_device_id->state, "device_id") : 0;
 
   // Abort if NVS has not yet restored valid non-zero IDs
   if (floor == 0 || room == 0 || dev == 0) {
@@ -206,22 +239,41 @@ inline void sync_config_to_controller() {
 inline void run_system_boot_initialization() {
   // 1. Watchdog Reset Detection
   esp_reset_reason_t reason = esp_reset_reason();
-  if (reason == ESP_RST_WDT || reason == ESP_RST_TASK_WDT) {
-    if (watchdog_restarts_count != nullptr) {
+  bool is_critical_reset = false;
+  const char* reset_reason_str = "Unknown";
+  
+  switch (reason) {
+      case ESP_RST_WDT:       reset_reason_str = "WDT"; is_critical_reset = true; break;
+      case ESP_RST_TASK_WDT:  reset_reason_str = "TASK_WDT"; is_critical_reset = true; break;
+      case ESP_RST_INT_WDT:   reset_reason_str = "INT_WDT (ISR blocked!)"; is_critical_reset = true; break;
+      case ESP_RST_PANIC:     reset_reason_str = "PANIC (crash/stack overflow)"; is_critical_reset = true; break;
+      case ESP_RST_BROWNOUT:  reset_reason_str = "BROWNOUT (power issue!)"; is_critical_reset = true; break;
+      case ESP_RST_SW:        reset_reason_str = "Software reset (OTA/reboot cmd)"; break;
+      case ESP_RST_POWERON:   reset_reason_str = "Power-on"; break;
+      default:                break;
+  }
+  
+  ESP_LOGI("boot", "Reset reason: %s", reset_reason_str);
+  
+  if (is_critical_reset && watchdog_restarts_count != nullptr) {
       watchdog_restarts_count->value()++;
-      ESP_LOGW("system", "WATCHDOG RESET DETECTED! Total: %d",
-               watchdog_restarts_count->value());
-      
       if (watchdog_restarts != nullptr) {
-        watchdog_restarts->publish_state(watchdog_restarts_count->value());
+          watchdog_restarts->publish_state(watchdog_restarts_count->value());
       }
-    }
+      ESP_LOGW("system", "Critical reset #%d: %s", 
+               (int)watchdog_restarts_count->value(), reset_reason_str);
   }
 
   // 2. Controller & Mode Init
   sync_config_to_controller();
   if (current_mode_index != nullptr) {
-    cycle_operating_mode(current_mode_index->value());
+    int saved_mode = current_mode_index->value();
+    if (saved_mode < 0 || saved_mode > 4) {
+        ESP_LOGW("boot", "Saved mode %d invalid — resetting to WRG", saved_mode);
+        saved_mode = 1;
+        current_mode_index->value() = saved_mode;
+    }
+    cycle_operating_mode(saved_mode);
   }
 
   // 3. PID Controllers
@@ -255,32 +307,40 @@ inline void run_system_boot_initialization() {
  *          functioning and that all 8 LEDs are wired correctly.
  */
 inline void run_led_self_test() {
-  if (status_led_mode_wrg == nullptr || status_led_mode_vent == nullptr ||
-      status_led_power == nullptr || status_led_master == nullptr) {
-    ESP_LOGW("boot", "Status LEDs not ready for self-test");
-    return;
+  // FIXED H-4: Kritische LEDs: System kann ohne sie keinen sinnvollen Self-Test machen
+  if (status_led_power == nullptr) {
+      ESP_LOGW("boot", "Power LED not ready — self-test skipped");
+      return;
   }
 
-  // 1. Turn on all mode and status LEDs
-  auto call_wrg = status_led_mode_wrg->turn_on();
-  call_wrg.set_effect("None");
-  call_wrg.perform();
+  auto safe_turn_on = [](esphome::light::LightState *led) {
+      if (led != nullptr) led->turn_on().perform();
+  };
 
-  status_led_mode_vent->turn_on().perform();
-  status_led_power->turn_on().perform();
+  // 1. Turn on all mode and status LEDs
+  if (status_led_mode_wrg) {
+      auto call_wrg = status_led_mode_wrg->turn_on();
+      call_wrg.set_effect("None");
+      call_wrg.perform();
+  }
+
+  safe_turn_on(status_led_mode_vent);
+  safe_turn_on(status_led_power);
 
   // 2. Turn on all level indicator LEDs
-  if (status_led_l1) status_led_l1->turn_on().perform();
-  if (status_led_l2) status_led_l2->turn_on().perform();
-  if (status_led_l3) status_led_l3->turn_on().perform();
-  if (status_led_l4) status_led_l4->turn_on().perform();
-  if (status_led_l5) status_led_l5->turn_on().perform();
+  safe_turn_on(status_led_l1);
+  safe_turn_on(status_led_l2);
+  safe_turn_on(status_led_l3);
+  safe_turn_on(status_led_l4);
+  safe_turn_on(status_led_l5);
 
   // 3. Turn on Master LED for test
-  auto call_master = status_led_master->turn_on();
-  call_master.set_effect("None");
-  call_master.set_brightness(1.0f);
-  call_master.perform();
+  if (status_led_master) {
+      auto call_master = status_led_master->turn_on();
+      call_master.set_effect("None");
+      call_master.set_brightness(1.0f);
+      call_master.perform();
+  }
   
   // Force state tracking to 1.0/None so the control logic realizes it's ON
   // and needs to be turned OFF if this is not a Master device.

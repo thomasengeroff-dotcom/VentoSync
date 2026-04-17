@@ -1,5 +1,5 @@
 {
-    "version": "0.8.154",
+    "version": "0.8.158",
     "date": "2026-04-12",
     "description": "fix(fan_control): enforce slew-rate bootstrapping and OTA freeze-recovery"
 }

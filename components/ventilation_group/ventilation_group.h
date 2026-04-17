@@ -377,9 +377,11 @@ public:
     // 4. Fallback Sync Watchdog
     // If a device wakes up and mutes its broadcast to await the Master's state,
     // this watchdog guarantees that it won't stay isolated forever if the Master is offline.
-    if (sync_timeout_ms != 0 && now > sync_timeout_ms && !is_state_synced) {
+    // FIXED K-2/H-3: Evaluate via time delta to survive millis() overflow gracefully
+    if (sync_timeout_ms != 0 && !is_state_synced && (now - sync_timeout_ms > 30000)) {
       ESP_LOGW("vent", "Sync timeout reached! Did not receive master state within 30s. Forcing fallback group sync.");
       sync_timeout_ms = 0; // Prevent repetitive firing
+      is_state_synced = true; // Give up waiting
       pending_broadcast = true;
     }
 

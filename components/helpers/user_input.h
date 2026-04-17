@@ -46,13 +46,17 @@ inline void set_ventilation_timer(float value) {
   if (std::isnan(value) || ventilation_ctrl == nullptr) return;
   auto *v = ventilation_ctrl;
 
-  // Prevent overflow
-  if (value > static_cast<float>(UINT32_MAX / (60 * 1000))) {
-    ESP_LOGW("input", "Timer value too large: %f", value);
-    return;
+  // FIXED K-1: Clamp float to safe, physically sensible domain boundaries before cast
+  constexpr float MIN_TIMER_MIN = 1.0f;
+  constexpr float MAX_TIMER_MIN = 1440.0f; // 24 hours
+  
+  if (value < MIN_TIMER_MIN || value > MAX_TIMER_MIN) {
+      ESP_LOGW("input", "Timer value out of range: %.1f min (valid: %.0f-%.0f)", 
+               value, MIN_TIMER_MIN, MAX_TIMER_MIN);
+      value = std::clamp(value, MIN_TIMER_MIN, MAX_TIMER_MIN);
   }
 
-  uint32_t ms = static_cast<uint32_t>(value * 60 * 1000);
+  const uint32_t ms = static_cast<uint32_t>(value) * 60u * 1000u;
   if (v->state_machine.ventilation_duration_ms == ms)
     return;
 
@@ -77,13 +81,17 @@ inline void set_sync_interval_handler(float value) {
   if (std::isnan(value) || ventilation_ctrl == nullptr) return;
   auto *v = ventilation_ctrl;
 
-  // Prevent overflow
-  if (value > static_cast<float>(UINT32_MAX / (60 * 1000))) {
-    ESP_LOGW("input", "Sync interval value too large: %f", value);
-    return;
+  // FIXED K-1: Clamp float to safe domain boundaries before cast
+  constexpr float MIN_INTERVAL_MIN = 1.0f;
+  constexpr float MAX_INTERVAL_MIN = 1440.0f; // 24 hours
+  
+  if (value < MIN_INTERVAL_MIN || value > MAX_INTERVAL_MIN) {
+      ESP_LOGW("input", "Sync interval out of range: %.1f min (valid: %.0f-%.0f)", 
+               value, MIN_INTERVAL_MIN, MAX_INTERVAL_MIN);
+      value = std::clamp(value, MIN_INTERVAL_MIN, MAX_INTERVAL_MIN);
   }
 
-  v->set_sync_interval(static_cast<uint32_t>(value * 60 * 1000));
+  v->set_sync_interval(static_cast<uint32_t>(value) * 60u * 1000u);
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
 }
 
@@ -101,9 +109,10 @@ inline void set_fan_intensity_slider(float value) {
       fan_speed_update == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
-  int val = static_cast<int>(value);
+  // FIXED H-1: Use std::round before cast to prevent integer truncation off-by-one errors
+  int val = static_cast<int>(std::round(value));
   if (val < 1 || val > 10) {
-    ESP_LOGW("input", "Invalid fan intensity: %d", val);
+    ESP_LOGW("input", "Invalid fan intensity after rounding: %d (raw: %.2f)", val, value);
     return;
   }
 
@@ -132,19 +141,27 @@ inline void set_operating_mode_select(const std::string &x) {
   if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
+  // FIXED M-1: Normalize HA strings to strip accidental whitespace
+  auto trim = [](const std::string &s) -> std::string {
+      size_t start = s.find_first_not_of(" \t\r\n");
+      size_t end = s.find_last_not_of(" \t\r\n");
+      return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+  };
+  const std::string x_norm = trim(x);
+
   int mode_index = -1;
-  if (x == "Automatik")
+  if (x_norm == "Automatik")
     mode_index = 0;
-  else if (x == "Wärmerückgewinnung")
+  else if (x_norm == "Wärmerückgewinnung")
     mode_index = 1;
-  else if (x == "Durchlüften")
+  else if (x_norm == "Durchlüften")
     mode_index = 2;
-  else if (x == "Stoßlüftung")
+  else if (x_norm == "Stoßlüftung")
     mode_index = 3;
-  else if (x == "Aus")
+  else if (x_norm == "Aus")
     mode_index = 4;
   else {
-    ESP_LOGW("input", "Unknown operating mode string: '%s' — ignoring", x.c_str());
+    ESP_LOGW("input", "Unknown operating mode string: '%s' — ignoring", x_norm.c_str());
     return; // Do NOT apply unknown mode
   }
 
@@ -171,7 +188,10 @@ inline void handle_button_mode_click() {
   if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
-  current_mode_index->value() = (current_mode_index->value() + 1) % 5;
+  // FIXED H-2: Clamp modulo operand to guard against NVS value corruption
+  int current = static_cast<int>(current_mode_index->value());
+  current = std::clamp(current, 0, 4);
+  current_mode_index->value() = (current + 1) % 5;
   cycle_operating_mode(current_mode_index->value());
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   ui_active->value() = true;    // Activate UI immediately so LEDs render
@@ -205,7 +225,8 @@ inline void handle_button_power_short_click() {
     if (ventilation_ctrl != nullptr) {
       ventilation_ctrl->pending_broadcast = false;
       ventilation_ctrl->is_state_synced = false;
-      ventilation_ctrl->sync_timeout_ms = millis() + 30000; // 30s to receive master state
+      // FIXED K-2: Setup a relative start timer instead of an absolute timestamp logic
+      ventilation_ctrl->sync_timeout_ms = millis(); // Bootstart / Start-Zeitpunkt for timeout comparison
     }
     
     fan_speed_update->execute();
@@ -228,8 +249,9 @@ inline void handle_button_power_short_click() {
  * @warning Bypasses standard transition ramps for immediate halt.
  */
 inline void handle_button_power_long_click() {
+  // FIXED H-4: Removed lueftung_fan from the guard since long press must work even if fan is undefined
   if (ventilation_enabled == nullptr || system_on == nullptr || 
-      ventilation_ctrl == nullptr || lueftung_fan == nullptr || 
+      ventilation_ctrl == nullptr || 
       fan_pwm_primary == nullptr || ui_timeout_script == nullptr) return;
 
   if (ventilation_enabled->value()) {
