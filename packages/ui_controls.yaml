@@ -385,15 +385,13 @@ switch:
     id: ignore_window_guard_switch
     icon: "mdi:window-open-variant"
     entity_category: config
-    lambda: |-
-      return id(ventilation_ctrl)->is_ignoring_window_guard();
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
     turn_on_action:
       - lambda: |-
-          id(ignore_window_guard_val) = true;
           id(ventilation_ctrl)->set_ignore_window_guard(true);
     turn_off_action:
       - lambda: |-
-          id(ignore_window_guard_val) = false;
           id(ventilation_ctrl)->set_ignore_window_guard(false);
 
 select:

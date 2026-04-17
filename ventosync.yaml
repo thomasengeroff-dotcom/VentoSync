@@ -106,7 +106,7 @@ esphome:
         - delay: 1s
         - lambda: |-
             run_system_boot_initialization();
-            id(ventilation_ctrl)->set_ignore_window_guard(id(ignore_window_guard_val));
+            id(ventilation_ctrl)->set_ignore_window_guard(id(ignore_window_guard_switch).state);
 
         # Phase 2: ESP-NOW Discovery (staggered broadcasts)
         - delay: 1s
@@ -288,11 +288,7 @@ globals:
     initial_value: "0.8"
     restore_value: true
 
-  # Ignore Window Guard (per-device override)
-  - id: ignore_window_guard_val
-    type: bool
-    initial_value: "false"
-    restore_value: true
+
 
 # ---------------------------------------------------------
 # VENTILATION COMPONENT (External)

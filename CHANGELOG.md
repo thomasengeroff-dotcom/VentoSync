@@ -4,6 +4,14 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.160] - 2026-04-18
+### Fixed
+- **NVS-Verlust der Fenstersperre ("Fenstersperre ignorieren") behoben**
+  Der UI-Switch hat seinen Status nach System-Updates (OTA) oder Stromverlust regelmäßig vergessen, weil ESPHome Änderungen über Lambda-Zuweisungen nicht von selbst in den Flash-Speicher wegschreibt. 
+### Refactored
+- **Nativer NVS Restore-Mode für UI Switches (Wohnraumlüftung)**
+  Die überflüssige globale Variable (`ignore_window_guard_val`) wurde zur Speichereffizienz komplett gestrichen. Der Switch nutzt jetzt seinen nativen `restore_mode` via `optimistic: true` Evaluierung und synchronisiert diesen beim Boot-Vorgang naturgemäß in den C++ Core-Controller (Priorität `-10.0`).
+
 ## [0.8.156] - 2026-04-18
 ### Security / Stability
 - **K-1 — UI Slider Overflow Limits (KRITISCH)**
