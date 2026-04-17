@@ -30,6 +30,8 @@
  * @brief   Maps a raw CO2 ppm value to a human-readable air quality string.
  */
 inline std::string get_co2_classification(float co2_ppm) {
+  if (std::isnan(co2_ppm) || co2_ppm < 0.0f) return "Unbekannt";
+  if (co2_ppm > 10000.0f) return "Sensor-Fehler"; // Physikalisch unplausibel
   return VentilationLogic::get_co2_classification(co2_ppm);
 }
 
@@ -59,10 +61,19 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
   const bool is_wrg = (mode == esphome::MODE_ECO_RECOVERY);
   const bool is_intake = hw.direction_in;
 
+  // Boot-Guard: Keine Messung in den ersten 60s nach Boot
+  static bool boot_complete = false;
+  if (!boot_complete) {
+    if (now < 60000) return current_eff;
+    boot_complete = true;
+  }
+
   // Thermal stabilization: Wait at least 30s into the cycle before sampling
   constexpr uint32_t stable_time_ms = 30000;
   const uint32_t time_since_flip = now - last_direction_change_time;
-  const bool is_stable = time_since_flip > stable_time_ms;
+  // Sicherstellen dass mindestens EIN echter Richtungswechsel stattgefunden hat
+  const bool had_real_flip = (last_direction_change_time > 0);
+  const bool is_stable = had_real_flip && (time_since_flip > stable_time_ms);
 
   if (is_wrg && is_intake && is_stable) {
     if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
@@ -71,8 +82,30 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
     }
     float eff = VentilationLogic::calculate_heat_recovery_efficiency(
         t_raum, t_zuluft, t_aussen);
+        
+    // NaN abfangen (z.B. wenn T_raum == T_aussen -> Division durch 0)
+    if (std::isnan(eff) || std::isinf(eff)) {
+        ESP_LOGW("climate", 
+            "WRG efficiency calculation returned invalid value "
+            "(T_raum=%.1f, T_zuluft=%.1f, T_aussen=%.1f) — holding %.1f%%",
+            t_raum, t_zuluft, t_aussen, current_eff * 100.0f);
+        return current_eff;
+    }
+
+    // Physikalisch sinnvoller Bereich: 0% bis 110%
+    if (eff < 0.0f || eff > 1.1f) {
+        ESP_LOGW("climate",
+            "WRG efficiency out of plausible range: %.1f%% "
+            "(T_raum=%.1f, T_zuluft=%.1f, T_aussen=%.1f)",
+            eff * 100.0f, t_raum, t_zuluft, t_aussen);
+        return current_eff; // Halte letzten gültigen Wert
+    }
+
+    // Soft-Clamp für Anzeige: Werte zwischen 0% und 100%
+    eff = std::clamp(eff, 0.0f, 1.0f);
+
     ESP_LOGD("climate", "WRG Efficiency update: %.1f%% (Room:%.1f Zuluft:%.1f Out:%.1f)", 
-             eff, t_raum, t_zuluft, t_aussen);
+             eff * 100.0f, t_raum, t_zuluft, t_aussen);
     return eff;
   }
 
@@ -112,50 +145,63 @@ constexpr size_t NTC_WINDOW_SIZE = 3;
 inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
                                                   float new_value) {
   if (std::isnan(new_value)) {
-    return {}; // FIXED P3: Discard invalid sensor readings to prevent history pollution
+    return {};
+  }
+
+  // Bounds-Check für sensor_idx um Out-of-Bounds Zugriffe zu verhindern
+  if (sensor_idx < 0 || sensor_idx > 1) {
+    return new_value; 
   }
 
   if (ventilation_ctrl == nullptr) {
-    return new_value; // Fallback if controller is not bound
+    return new_value;
   }
 
   const uint32_t cycle_ms = ventilation_ctrl->state_machine.cycle_duration_ms;
   if (cycle_ms == 0) return new_value;
 
-  // Warn if cycle is too short for meaningful NTC stabilization.
-  if (cycle_ms < 30000) {
-    ESP_LOGW("ntc_filter",
-             "cycle_duration_ms=%u is very short (<30s). NTC stabilization "
-             "filter may never pass a value.",
-             cycle_ms);
+  // Zu kurze Zyklen: Filter kann nicht sinnvoll arbeiten
+  if (cycle_ms < NTC_MIN_WAIT_MS) {
+      ESP_LOGW("ntc_filter",
+          "Cycle too short (%ums < %ums min) for NTC stabilization. "
+          "Filter bypassed — raw values will be used.",
+          cycle_ms, NTC_MIN_WAIT_MS);
+      return new_value; 
   }
 
-  // Dynamic wait time: 40% of the cycle, but minimum 15 seconds
-  uint32_t wait_ms =
-      std::max(NTC_MIN_WAIT_MS, static_cast<uint32_t>(cycle_ms * 0.4f));
+  // --- NEU: History bei Richtungswechsel invalidieren ---
+  static uint32_t last_known_direction_change[2] = {0, 0};
+  
+  auto &history = ntc_history[sensor_idx];
 
-  // Safety check so we don't wait longer than the cycle itself minus 5s
-  if (wait_ms >= cycle_ms) {
-    wait_ms = cycle_ms > 5000 ? cycle_ms - 5000 : 0;
+  if (last_known_direction_change[sensor_idx] != last_direction_change_time) {
+      history.clear();
+      last_known_direction_change[sensor_idx] = last_direction_change_time;
+      ESP_LOGD("ntc_filter", "NTC[%d] history cleared after direction change", sensor_idx);
   }
+
+  // Dynamic wait time: 40% of the cycle, aber mindestens 15 Sekunden.
+  // Maximal cycle_ms - 5s, um noch Zeit zum Messen zu haben.
+  uint32_t wait_ms = std::clamp(
+      static_cast<uint32_t>(cycle_ms * 0.4f),
+      NTC_MIN_WAIT_MS,
+      cycle_ms > 5000 ? cycle_ms - 5000 : cycle_ms / 2
+  );
 
   // 1. Check if we are still within the mandatory thermal adjustment wait time
   if (millis() - last_direction_change_time < wait_ms) {
-    return {}; // Discard value while ceramic adjusts
+    return {}; 
   }
 
   // 2. Add current value to history window
-  auto &history = ntc_history[sensor_idx];
   history.push_back(new_value);
-
-  // Maintain maximum window size limit
   if (history.size() > NTC_WINDOW_SIZE) {
     history.pop_front();
   }
 
   // 3. Wait until the window is full for a reliable stabilization check
   if (history.size() < NTC_WINDOW_SIZE) {
-    return {}; // Discard value while checking buffer window fills up
+    return {}; 
   }
 
   // 4. Calculate deviation via STL
@@ -163,10 +209,8 @@ inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
   
   // 5. Evaluate stability
   if ((*max_it - *min_it) <= NTC_MAX_DEVIATION) {
-    // Temperature is stable!
     return new_value;
   } else {
-    // Still fluctuating, discard update
     return {};
   }
 }

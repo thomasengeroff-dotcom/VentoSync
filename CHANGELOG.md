@@ -4,6 +4,23 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.152] - 2026-04-17
+### Security / Stability
+- **K-1 — WRG-Effizienz Ausgabe-Validierung (KRITISCH)**
+  Ein fehlender Clamp in der Effizienzberechnung (`calculate_heat_recovery_efficiency`) konnte potenziell Werte jenseits von 1.0 (z.B. >100%) oder mathematische Fehler (NaN/Inf) bei Gleichheit der Temperaturen direkt an Home Assistant melden. Eingefügte Plausibilitätskorridore ([0.0, 1.1]) und ein harter Clamp auf `1.0` garantieren sichere Anzeige-Metriken.
+- **K-2 — NTC-Filter: Sliding-Window Invalidierung (KRITISCH)**
+  Die Temperatur-Stabilisierungs-History der NTC Sensoren wurde bei einem Wechsel der Luftrichtung nicht invalidiert. Dadurch wurden alte thermische Werte in den Puffer verschleppt und der Filter hat fälschlicherweise "stabil" gemeldet. Das Sliding-Window unterbindet nun thermische Pollution durch ein `history.clear()` nach jedem Wechsel.
+- **H-1 — NTC-Filter: Out-of-Bounds Protection**
+  Der von außen übergebene `sensor_idx` für die History greift nun nicht mehr blind auf das Array zu, sondern wird vorher strikt mittels Bounds-Check auf das Sensor-Limit `(0, 1)` geprüft.
+
+### Changed
+- **H-2 — WRG-Effizienz: Boot-Safety Guard**
+  Die Heuristik zum Messen der Effizienz ("erst 30s nach Flip") triggerte versehentlich sofort nach dem ESP-Kaltstart, weil `last_direction_change_time = 0` falsch evaluiert wurde. Ein dediziertes 60s Boot-Flag sorgt jetzt dafür, dass während der Anlaufphase keine instabilen Messungen durchrutschen.
+- **H-3 — NTC-Filter: Safety-Clamp bei kurzen Zyklen gefixt**
+  Fehlerhafte Mindestwartezeiten, die den Stabilisierungsfilter im Worst-Case komplett deaktivierten, wenn der WRG-Zyklus extrem kurz eingestellt war, wurden überarbeitet. Kurze Zyklen profitieren nun von einem offiziellen Bypass inkl. Warning Log.
+- **M-1 — CO2-Klassifizierung validiert Daten**
+  Der ungenutzte Wrapper `get_co2_classification()` validiert Werte vor der Weitergabe nun gegen `NaN`, tieferliegendes Negative und astronomische Werte (über `10000 ppm`), um komische Strings in Home Assistant abzufangen.
+
 ## [0.8.151] - 2026-04-17
 ### Security / Stability
 - **K-1 — Division-by-Zero in Hysterese-Berechnung behoben (KRITISCH)**
