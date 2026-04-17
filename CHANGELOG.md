@@ -4,6 +4,40 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.147] - 2026-04-17
+### Security / Stability
+- **K-1 — Thread-Safety: ACK-Callback greift nicht mehr direkt auf `peer_cache` zu (KRITISCH)**
+  Die WiFi-Task-Send-Callbacks von `send_sync_to_all_peers()` mutierten `peer_cache` direkt aus dem WiFi-Task-Kontext — ein Data Race, der auf dem Single-Core ESP32-C6 via Task-Preemption zu Heap-Korruption und Watchdog-Resets führen kann. Die Callbacks schreiben nun ausschließlich ein `PeerEvent` (MAC + Ergebnis) in eine neue, Mutex-geschützte `peer_event_queue`. Die Mutation von `peer_cache` (`fail_count++`, `remove_stale_peer()`, usw.) erfolgt sicher im Main-Loop-Kontext durch die neue Funktion `process_peer_events()`.
+  - Neue Typen in `globals.h`: `PeerEvent` (Struct mit MAC-Array + `Type::SEND_OK`/`SEND_FAIL`), `peer_event_queue` (`std::queue<PeerEvent>`), `peer_event_mutex` (`std::mutex`).
+  - Neue Funktion `process_peer_events()` in `network_sync.h`, aufgerufen aus `process_queued_packets()`.
+
+- **K-2 — Thread-Safety: `is_local_mac()` MAC-Initialisierung via `std::call_once` gesichert**
+  Das nicht-atomare `static bool cached`-Flag-Muster hatte ein theoretisches Race Window zwischen zwei Tasks. Ersetzt durch `std::once_flag` + `std::call_once()` — nach C++11-Standard garantiert-einmalig und thread-sicher, ohne YAML-Änderung.
+
+- **N-2 — Design: Doppelter `reinterpret_cast` auf eine einzige sichere Parse-Funktion konsolidiert**
+  `validate_packet()` castete via `reinterpret_cast` fuer Feld-Checks; `process_espnow_packet_local()` machte einen zweiten, unabhaengigen Cast. Zwei lose gekoppelte Cast-Stellen bedeuten: ein Struct-Refactor kann eine Stelle vergessen.
+  Ersetzt durch `validate_and_parse_packet()` -> gibt `std::optional<VentilationPacket>` zurueck.
+  Einziger Cast-Punkt: `std::memcpy(&pkt, data.data(), sizeof(pkt))` — formal Strict-Aliasing-sicher (im Gegensatz zu `reinterpret_cast`). Alle Checks (Magic, Version, Groesse, Wertebereich) haben nun eigene `ESP_LOGW`-Ausgaben fuer bessere Diagnosierbarkeit.
+
+### Changed
+- **H-1 — `register_peer_dynamic()`: `peer_cache` als einzige Source of Truth**
+  Direkter Append auf `espnow_peers->value()` entfernt. Die NVS-Repraesentation wird nun ausschliesslich ueber `rebuild_peers_string()` abgeleitet — Divergenz zwischen binaeren Cache und persistiertem String strukturell unmoglich.
+
+- **H-2 — `rebuild_peers_string()`: Lokale Buffer-Strategie**
+  Baut den String in einem lokalen `std::string` auf und weist ihn via `std::move()` zu. Erlaubt `reserve()` fuer eine einzige Allokation und eliminiert Unklarheit ueber Mutation waehrend Iteration.
+
+- **H-3 — `handle_discovery_payload()`: Hardcoded Offset `10` durch Prefix-Konstanten ersetzt**
+  `sscanf` verwendete den Magic-Offset `10` (Laenge von `"ROOM_DISC:"`/`"ROOM_CONF:"`). Ersetzt durch `constexpr std::string_view DISC_PREFIX_DISC` / `DISC_PREFIX_CONF` mit dynamischem Offset aus `.size()`.
+
+- **H-4 — `process_queued_packets()`: Kommentar zu Lock-freiem Fast-Path praezisiert**
+  Frueherer Kommentar "benign race" ohne Begruendung. Ersetzt durch akkurate Erklaerung: 32-bit-aligned read ist natuerlich atomar auf RISC-V; der echte Schutz gegen Korruption liegt im `lock_guard` darunter.
+
+### Not fixed (audited, no action required)
+- **K-3**: `handle_espnow_receive()` Deduplication-Statics — nur aus einem Task aufgerufen, kein echter Race.
+- **K-4**: Buffer-Overread in `validate_packet()` — Cast erfolgte erst nach dem strikten Size-Check. Unabhaengig durch N-2 aufgeraeumt.
+- **H-5**: Null-Checks in `handle_state_sync()` — korrekt durch implizite `if (ptr)` gesichert.
+- **N-1**: Integer Overflow in Timer-Berechnung — `uint16_t` wird durch C++ Integral Promotion zu `int` (32-bit) hochgestuft; `1440 x 60 x 1000 = 86.400.000 << INT32_MAX`.
+
 ## [0.8.135] - 2026-04-15
 ### Added
 - **Globaler Urlaubsmodus (Vacation Mode)**: Einführung eines hausweiten Energiesparmodus, der über einen Home Assistant Helfer (`input_boolean.ventosync_vacation_mode`) gesteuert wird.

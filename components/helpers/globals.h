@@ -117,6 +117,20 @@ inline std::mutex rx_queue_mutex;
 /// FIFO queue of packets waiting for main-loop processing.
 inline std::queue<IncomingPacket> rx_queue;
 
+// --- Thread-Safe ESP-NOW Send-ACK Event Queue (K-1 Fix) -------------------
+/// @brief ACK result event enqueued by the WiFi-task send callback.
+/// The callback MUST NOT mutate peer_cache directly (Data Race risk) — it
+/// only pushes a PeerEvent here; the main loop drains and applies mutations.
+struct PeerEvent {
+  std::array<uint8_t, 6> mac;
+  enum class Type : uint8_t { SEND_OK, SEND_FAIL } type;
+};
+
+/// Mutex protecting peer_event_queue (write: WiFi task, read: main loop).
+inline std::mutex peer_event_mutex;
+/// FIFO queue of send-ACK results waiting for main-loop processing.
+inline std::queue<PeerEvent> peer_event_queue;
+
 // --- Component pointer declarations (extern) ---------------------------
 // FIXED #8: All pointers are declared `extern` so this header can be compiled
 // independently. The definitions are the `static` variables in

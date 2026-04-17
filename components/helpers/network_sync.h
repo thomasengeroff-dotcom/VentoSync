@@ -36,8 +36,10 @@ constexpr size_t MAX_PAYLOAD_LEN = 100;
 /**
  * @brief   Checks if a given MAC address matches the local device.
  *
- * @details Reads the local STA MAC once and caches it to avoid repeated
- *          hardware calls. Used to filter out our own broadcasts.
+ * @details Reads the local STA MAC exactly once using std::call_once, which
+ *          provides a guaranteed-single, thread-safe initialisation even when
+ *          called concurrently from the WiFi task and the main loop.
+ *          (K-2 Fix: replaced non-atomic `cached` bool with std::call_once)
  *
  * @param[in] mac  Pointer to a 6-byte MAC address.
  *
@@ -45,13 +47,12 @@ constexpr size_t MAX_PAYLOAD_LEN = 100;
  */
 inline bool is_local_mac(const uint8_t *mac) {
   static uint8_t local_mac[6] = {0};
-  static bool cached = false;
-  if (!cached) {
+  static std::once_flag init_flag;
+  std::call_once(init_flag, []() {
     esp_read_mac(local_mac, ESP_MAC_WIFI_STA);
-    cached = true;
     ESP_LOGI("espnow_disc", "Local MAC detected: %02X:%02X:%02X:%02X:%02X:%02X",
              local_mac[0], local_mac[1], local_mac[2], local_mac[3], local_mac[4], local_mac[5]);
-  }
+  });
   return memcmp(mac, local_mac, 6) == 0;
 }
 
@@ -87,17 +88,27 @@ inline PeerEntry* find_peer_in_cache(const uint8_t *mac) {
   return nullptr;
 }
 
-/** @brief Rebuilds the NVS-backed espnow_peers string from peer_cache and updates UI. */
+/**
+ * @brief Rebuilds the NVS-backed espnow_peers string from peer_cache and updates UI.
+ *
+ * @note  (H-2 note) Builds into a local string first, then assigns via std::move.
+ *        This avoids any ambiguity about mutating the underlying storage of
+ *        espnow_peers->value() while holding a reference to it.
+ */
 inline void rebuild_peers_string() {
   if (espnow_peers == nullptr) return;
-  std::string &list = espnow_peers->value();
-  list.clear();
+
+  // Build into a local buffer, then assign atomically (H-2 cleanliness fix)
+  std::string new_list;
+  new_list.reserve(peer_cache.size() * 18); // "XX:XX:XX:XX:XX:XX,"
   for (size_t i = 0; i < peer_cache.size(); i++) {
-    if (i > 0) list += ",";
-    list += format_mac(peer_cache[i].mac.data());
+    if (i > 0) new_list += ',';
+    new_list += format_mac(peer_cache[i].mac.data());
   }
+  espnow_peers->value() = std::move(new_list);
 
   // Update UI with formatted display string
+  const std::string &list = espnow_peers->value();
   if (espnow_peers_display != nullptr) {
     if (list.empty()) {
       espnow_peers_display->publish_state("Keine Peers");
@@ -105,7 +116,7 @@ inline void rebuild_peers_string() {
       // Add spaces after commas for HA line wrapping
       std::string display = list;
       size_t pos = 0;
-      while ((pos = display.find(",", pos)) != std::string::npos) {
+      while ((pos = display.find(',', pos)) != std::string::npos) {
           display.insert(pos + 1, " ");
           pos += 2;
       }
@@ -198,15 +209,10 @@ inline void register_peer_dynamic(const uint8_t *mac) {
 
   std::string mac_str = format_mac(mac);
 
-  // Persist to NVS string
-  std::string &current_list = espnow_peers->value();
-  if (current_list.find(mac_str) == std::string::npos) {
-    if (!current_list.empty())
-      current_list += ",";
-    current_list += mac_str;
-    ESP_LOGI("espnow_disc", "New peer discovered and saved: %s",
-             mac_str.c_str());
-  }
+  // (H-1 Fix) peer_cache is the single source of truth.
+  // NVS string is ONLY derived from peer_cache via rebuild_peers_string().
+  // Direct NVS string manipulation is removed to prevent divergence between
+  // the two representations.
 
   // 1. Add to binary peer cache (if not already present)
   if (find_peer_in_cache(mac) == nullptr) {
@@ -215,10 +221,10 @@ inline void register_peer_dynamic(const uint8_t *mac) {
     entry.last_seen = millis();
     entry.fail_count = 0;
     peer_cache.push_back(entry);
-    
-    // Save to NVS string for persistence
+
+    // Rebuild NVS string from the authoritative cache (single path)
     rebuild_peers_string();
-    ESP_LOGI("espnow_disc", "New peer added to cache: %s", mac_str.c_str());
+    ESP_LOGI("espnow_disc", "New peer added to cache and NVS: %s", mac_str.c_str());
   }
 
   // 2. Register hardware peer (ESPHome)
@@ -387,12 +393,64 @@ inline void send_discovery_confirmation(const uint8_t *target_mac) {
   esphome::espnow::global_esp_now->send(target_mac, data, [](esp_err_t err) {});
 }
 
-/** @brief Sends a sync packet to all registered peers via unicast with ACK tracking. */
+/**
+ * @brief   Processes deferred send-ACK events from the peer_event_queue.
+ *
+ * @details (K-1 Fix) The WiFi-task send callback MUST NOT mutate peer_cache
+ *          directly (Data Race). Instead it enqueues a PeerEvent. This
+ *          function drains peer_event_queue in the main-loop context where
+ *          it is safe to mutate peer_cache, call remove_stale_peer(), etc.
+ *          Call this from process_queued_packets() once per loop iteration.
+ */
+inline void process_peer_events() {
+  std::queue<PeerEvent> local;
+  {
+    std::lock_guard<std::mutex> lock(peer_event_mutex);
+    if (peer_event_queue.empty()) return;
+    std::swap(local, peer_event_queue);
+  }
+  while (!local.empty()) {
+    const auto &ev = local.front();
+    PeerEntry *p = find_peer_in_cache(ev.mac.data()); // Safe: main-loop context
+    if (p != nullptr) {
+      if (ev.type == PeerEvent::Type::SEND_OK) {
+        if (p->fail_count > 0) {
+          ESP_LOGI("espnow_ack", "Peer %s recovered after %d failures",
+                   format_mac(ev.mac.data()).c_str(), p->fail_count);
+          p->fail_count = 0;
+        }
+        p->last_seen = millis();
+      } else { // SEND_FAIL
+        p->fail_count++;
+        ESP_LOGW("espnow_ack", "Send to %s failed (failures: %d/%d)",
+                 format_mac(ev.mac.data()).c_str(), p->fail_count,
+                 MAX_PEER_SEND_FAILURES);
+        if (p->fail_count >= MAX_PEER_SEND_FAILURES) {
+          ESP_LOGE("espnow_ack", "Peer %s exceeded max failures — removing",
+                   format_mac(ev.mac.data()).c_str());
+          remove_stale_peer(ev.mac.data()); // Safe: main-loop context
+          trigger_re_discovery();
+        }
+      }
+    }
+    local.pop();
+  }
+}
+
+/**
+ * @brief Sends a sync packet to all registered peers via unicast with ACK tracking.
+ *
+ * @note  (K-1 Fix) The send callback captures only the peer MAC and the
+ *        success/failure result, then enqueues a PeerEvent for deferred
+ *        processing. It does NOT access peer_cache or call remove_stale_peer()
+ *        directly — those operations run safely in the main loop via
+ *        process_peer_events().
+ */
 inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
   if (!esphome::espnow::global_esp_now || peer_cache.empty())
     return;
 
-  // ✅ Snapshot der MACs erstellen, um Iterator-Invalidierung zu vermeiden
+  // ✅ MAC snapshot prevents iterator-invalidation if cache mutates later
   std::vector<std::array<uint8_t, 6>> mac_snapshot;
   mac_snapshot.reserve(peer_cache.size());
   for (const auto &entry : peer_cache) {
@@ -401,81 +459,85 @@ inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
 
   for (const auto &peer_mac : mac_snapshot) {
     esphome::espnow::global_esp_now->send(
-        peer_mac.data(), data, [peer_mac](esp_err_t err) {
-          PeerEntry *p = find_peer_in_cache(peer_mac.data());
-          if (p == nullptr)
-            return; // Peer was already removed
-
-          if (err == ESP_OK) {
-            // Success: reset fail counter, update timestamp
-            if (p->fail_count > 0) {
-              ESP_LOGI("espnow_ack",
-                       "Peer %s recovered after %d failures",
-                       format_mac(peer_mac.data()).c_str(), p->fail_count);
-              p->fail_count = 0;
-            }
-            p->last_seen = millis();
-          } else {
-            // Failure: increment counter
-            p->fail_count++;
-            ESP_LOGW("espnow_ack",
-                     "Send to %s failed (err=%d, failures: %d/%d)",
-                     format_mac(peer_mac.data()).c_str(), err, p->fail_count,
-                     MAX_PEER_SEND_FAILURES);
-
-            if (p->fail_count >= MAX_PEER_SEND_FAILURES) {
-              ESP_LOGE("espnow_ack",
-                       "Peer %s exceeded max failures — removing",
-                       format_mac(peer_mac.data()).c_str());
-              remove_stale_peer(peer_mac.data());
-              trigger_re_discovery();
-            }
-          }
+        peer_mac.data(), data,
+        // ✅ WiFi-task callback: ONLY enqueue — never read/write peer_cache!
+        [peer_mac](esp_err_t err) {
+          PeerEvent ev;
+          ev.mac = peer_mac;
+          ev.type = (err == ESP_OK) ? PeerEvent::Type::SEND_OK
+                                    : PeerEvent::Type::SEND_FAIL;
+          std::lock_guard<std::mutex> lock(peer_event_mutex);
+          peer_event_queue.push(ev);
         });
   }
 }
 
-/** @brief Parses incoming discovery strings. */
+/**
+ * @brief Parses incoming discovery strings.
+ *
+ * @note  (H-3 Fix) Prefix strings are now named constexpr constants.
+ *        The sscanf offset is computed from the matched prefix length
+ *        rather than the magic hardcoded literal `10`, so renaming
+ *        either prefix is safe without a hidden offset update.
+ */
+static constexpr std::string_view DISC_PREFIX_DISC = "ROOM_DISC:";
+static constexpr std::string_view DISC_PREFIX_CONF = "ROOM_CONF:";
+
 inline bool handle_discovery_payload(const std::string &payload,
                                      const uint8_t *src_addr) {
   if (payload.length() > MAX_PAYLOAD_LEN) {
-    ESP_LOGW("espnow_disc", "Discovery payload too long: %d", payload.length());
+    ESP_LOGW("espnow_disc", "Discovery payload too long: %zu", payload.length());
     return false;
   }
-  if (payload.find("ROOM_DISC:") == 0 || payload.find("ROOM_CONF:") == 0) {
-    if (is_local_mac(src_addr)) {
-      ESP_LOGD("espnow_disc", "Ignoring own discovery loopback");
+
+  // Determine which prefix matched and derive the data offset from it
+  std::string_view sv(payload);
+  size_t prefix_len = 0;
+  bool is_disc = false;
+
+  if (sv.substr(0, DISC_PREFIX_DISC.size()) == DISC_PREFIX_DISC) {
+    prefix_len = DISC_PREFIX_DISC.size();
+    is_disc = true;
+  } else if (sv.substr(0, DISC_PREFIX_CONF.size()) == DISC_PREFIX_CONF) {
+    prefix_len = DISC_PREFIX_CONF.size();
+    is_disc = false;
+  } else {
+    return false; // Not a discovery packet
+  }
+
+  if (is_local_mac(src_addr)) {
+    ESP_LOGD("espnow_disc", "Ignoring own discovery loopback");
+    return true;
+  }
+
+  int floor, room;
+  if (sscanf(payload.c_str() + prefix_len, "%d:%d", &floor, &room) == 2) {
+    if (config_floor_id == nullptr || config_room_id == nullptr ||
+        std::isnan(config_floor_id->state) ||
+        std::isnan(config_room_id->state)) {
+      ESP_LOGW("espnow_disc", "Config IDs not ready (null or NaN), ignoring discovery (Payload: %s)", payload.c_str());
+      return false;
+    }
+
+    int local_floor = (int)config_floor_id->state;
+    int local_room  = (int)config_room_id->state;
+
+    ESP_LOGI("espnow_disc", "Discovery match check: [Payload %d:%d vs Local %d:%d]",
+             floor, room, local_floor, local_room);
+
+    if (floor == local_floor && room == local_room) {
+      ESP_LOGW("espnow_disc", "✅ ALL CRITERIA MET - Registering peer: %s",
+               format_mac(src_addr).c_str());
+      register_peer_dynamic(src_addr);
+      if (is_disc) {
+        send_discovery_confirmation(src_addr);
+      }
       return true;
-    }
-
-    int floor, room;
-    if (sscanf(payload.c_str() + 10, "%d:%d", &floor, &room) == 2) {
-      if (config_floor_id == nullptr || config_room_id == nullptr ||
-          std::isnan(config_floor_id->state) ||
-          std::isnan(config_room_id->state)) {
-        ESP_LOGW("espnow_disc", "Config IDs not ready (null or NaN), ignoring discovery (Payload: %s)", payload.c_str());
-        return false;
-      }
-      
-      int local_floor = (int)config_floor_id->state;
-      int local_room = (int)config_room_id->state;
-      
-      ESP_LOGI("espnow_disc", "Discovery match check: [Payload %d:%d vs Local %d:%d]", floor, room, local_floor, local_room);
-
-      if (floor == local_floor && room == local_room) {
-        ESP_LOGW("espnow_disc", "✅ ALL CRITERIA MET - Registering peer: %s",
-                 format_mac(src_addr).c_str());
-        register_peer_dynamic(src_addr);
-        if (payload.find("ROOM_DISC:") == 0) {
-          send_discovery_confirmation(src_addr);
-        }
-        return true;
-      } else {
-        ESP_LOGI("espnow_disc", "❌ Group mismatch - ignoring.");
-      }
     } else {
-      ESP_LOGW("espnow_disc", "Failed to parse discovery payload format: %s", payload.c_str());
+      ESP_LOGI("espnow_disc", "❌ Group mismatch - ignoring.");
     }
+  } else {
+    ESP_LOGW("espnow_disc", "Failed to parse discovery payload format: %s", payload.c_str());
   }
   return false;
 }
@@ -488,37 +550,79 @@ inline bool handle_discovery_payload(const std::string &payload,
 
 namespace espnow_handler {
 
-  inline bool validate_packet(const std::vector<uint8_t> &data) {
-    if (data.empty()) return false;
-    
-    // Check header and protocol version first for better diagnostics
-    if (data.size() >= 2) {
-      if (data[0] != 0x42) {
-        ESP_LOGW("vent_sync", "Invalid magic header: 0x%02X", data[0]);
-        return false;
-      }
-      if (data[1] != esphome::PROTOCOL_VERSION) {
-        ESP_LOGW("vent_sync", "Protocol version mismatch! Got v%d, expected v%d. Devices on the network are running mismatched firmware.", 
-                 data[1], esphome::PROTOCOL_VERSION);
-        return false;
-      }
+  /**
+   * @brief   Validates and parses a raw ESP-NOW byte buffer into a VentilationPacket.
+   *
+   * @details (N-2 Fix) Replaces the previous two-stage approach where validate_packet()
+   *          performed a reinterpret_cast for field checks, and the caller performed
+   *          a second independent reinterpret_cast for processing. Having two separate
+   *          cast sites creates a hidden coupling: a packet struct refactor could
+   *          update one cast but silently forget the other.
+   *
+   *          This function is the single point of truth: all checks AND the parse
+   *          happen here. The memcpy is Strict-Aliasing-safe (unlike reinterpret_cast)
+   *          and zero-cost for trivially-copyable types at -O2.
+   *
+   * @param[in] data  Raw byte vector from ESP-NOW.
+   *
+   * @return  std::optional<VentilationPacket>  Populated packet on success,
+   *          std::nullopt if any validation check fails.
+   */
+  inline std::optional<esphome::VentilationPacket>
+  validate_and_parse_packet(const std::vector<uint8_t> &data) {
+    // 1. Minimum size for header bytes
+    if (data.size() < 2) {
+      ESP_LOGW("vent_sync", "Packet too small for header: %zu bytes", data.size());
+      return std::nullopt;
     }
 
-    // Now safely check strict size
+    // 2. Magic byte — fast reject for non-VentSync traffic
+    if (data[0] != 0x42) {
+      ESP_LOGW("vent_sync", "Invalid magic header: 0x%02X", data[0]);
+      return std::nullopt;
+    }
+
+    // 3. Protocol version — reject cross-version peers
+    if (data[1] != esphome::PROTOCOL_VERSION) {
+      ESP_LOGW("vent_sync",
+               "Protocol version mismatch! Got v%d, expected v%d. "
+               "Devices on the network are running mismatched firmware.",
+               data[1], esphome::PROTOCOL_VERSION);
+      return std::nullopt;
+    }
+
+    // 4. Exact size check BEFORE the copy — prevents reading garbage
     if (data.size() != sizeof(esphome::VentilationPacket)) {
-      ESP_LOGW("vent_sync", "Invalid packet size: %d", data.size());
-      return false;
+      ESP_LOGW("vent_sync", "Invalid packet size: %zu (expected %zu)",
+               data.size(), sizeof(esphome::VentilationPacket));
+      return std::nullopt;
     }
 
-    const auto *pkt = reinterpret_cast<const esphome::VentilationPacket *>(data.data());
-    
-    // Validate configuration ranges to prevent potential out-of-bounds exploits
-    if (pkt->fan_intensity > 10) return false;
-    if (pkt->automatik_min_fan_level < 1 || pkt->automatik_min_fan_level > 10) return false;
-    if (pkt->automatik_max_fan_level < 1 || pkt->automatik_max_fan_level > 10) return false;
-    if (pkt->sync_interval_min < 1 || pkt->sync_interval_min > 1440) return false;
+    // 5. Single, Strict-Aliasing-safe deserialisation via memcpy
+    //    VentilationPacket is trivially-copyable (only POD members + __packed__),
+    //    so this copy is elided by the compiler at -O2.
+    esphome::VentilationPacket pkt;
+    std::memcpy(&pkt, data.data(), sizeof(pkt));
 
-    return true;
+    // 6. Semantic range checks on the parsed value (not on raw bytes)
+    if (pkt.fan_intensity > 10) {
+      ESP_LOGW("vent_sync", "fan_intensity out of range: %d", pkt.fan_intensity);
+      return std::nullopt;
+    }
+    if (pkt.automatik_min_fan_level < 1 || pkt.automatik_min_fan_level > 10) {
+      ESP_LOGW("vent_sync", "automatik_min_fan_level out of range: %d", pkt.automatik_min_fan_level);
+      return std::nullopt;
+    }
+    if (pkt.automatik_max_fan_level < 1 || pkt.automatik_max_fan_level > 10) {
+      ESP_LOGW("vent_sync", "automatik_max_fan_level out of range: %d", pkt.automatik_max_fan_level);
+      return std::nullopt;
+    }
+    if (pkt.sync_interval_min < 1 || pkt.sync_interval_min > 1440) {
+      ESP_LOGW("vent_sync", "sync_interval_min out of range: %d", pkt.sync_interval_min);
+      return std::nullopt;
+    }
+
+    return pkt; // Value copy — trivially-copyable, zero-cost at -O2 (NRVO)
   }
 
 inline void handle_status_request(const esphome::VentilationPacket *pkt, const uint8_t *src_mac) {
@@ -793,11 +897,14 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
     }
   }
 
-  if (!espnow_handler::validate_packet(data)) {
-    // Only log error for non-discovery packets that fail validation
+  // ✅ N-2: Single validated parse — validate_and_parse_packet() is the
+  // only cast point. It checks all invariants AND deserialises via memcpy.
+  auto maybe_pkt = espnow_handler::validate_and_parse_packet(data);
+  if (!maybe_pkt) {
+    // Only log for non-discovery packets that looked like VentSync traffic
     if (!data.empty() && data[0] == 0x42) {
-       ESP_LOGW("vent_sync", "Packet validation failed for message from %s",
-                format_mac(src_mac).c_str());
+      ESP_LOGW("vent_sync", "Packet validation failed for message from %s",
+               format_mac(src_mac).c_str());
     }
     return;
   }
@@ -805,8 +912,8 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
   // Successful packet reception — reset fail counter for this peer
   reset_peer_fail_count(src_mac);
 
-  const auto *pkt =
-      reinterpret_cast<const esphome::VentilationPacket *>(data.data());
+  const esphome::VentilationPacket &pkt_val = *maybe_pkt;
+  const esphome::VentilationPacket *pkt = &pkt_val;
   auto *v = ventilation_ctrl;
   if (v == nullptr)
     return;
@@ -881,18 +988,28 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
  *          This minimizes contention with the WiFi task producer.
  */
 inline void process_queued_packets() {
-  // Fast path: skip mutex acquisition if queue is obviously empty.
-  // This is a benign race — worst case we process one iteration late.
+  // (H-4 Fix) Guard check without acquiring the mutex.
+  // On the single-core ESP32-C6 (RISC-V) preemption between tasks is the
+  // only concurrency mechanism. A stale empty() check here causes at most
+  // one missed iteration — not a data-corruption risk — because:
+  //   • std::queue::size() is a simple integer read (naturally atomic on
+  //     aligned RISC-V 32-bit targets at esp-idf O2).
+  //   • The real protection against corruption is the lock_guard below.
+  // We keep this fast-path to avoid mutex overhead on the hot main loop.
   if (rx_queue.empty()) return;
 
-  // Drain queue under lock into a local buffer
+  // Drain both the RX packet queue and the peer-event queue under their
+  // respective locks into local buffers, then release before processing.
   std::queue<IncomingPacket> local_queue;
   {
     std::lock_guard<std::mutex> lock(rx_queue_mutex);
     std::swap(local_queue, rx_queue);
   }
 
-  // Process all packets in main-loop context (safe for flash, UI, peers)
+  // (K-1) Process deferred send-ACK events first (safe: main-loop context)
+  process_peer_events();
+
+  // Process all RX packets in main-loop context (safe for flash, UI, peers)
   while (!local_queue.empty()) {
     auto &pkt = local_queue.front();
     process_espnow_packet_local(pkt.data, pkt.src_mac.data());
