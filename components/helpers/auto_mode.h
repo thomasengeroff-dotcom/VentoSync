@@ -46,11 +46,34 @@
  * @return  Absolute humidity in g/m³.
  */
 inline float calculate_absolute_humidity(float rh_percent, float temp_c) {
-  if (std::isnan(rh_percent) || std::isnan(temp_c)) return NAN;
-  // Magnus formula: e_s(T) = 6.112 * exp(17.67 * T / (T + 243.5)) [hPa]
-  const float e_s = 6.112f * std::exp(17.67f * temp_c / (temp_c + 243.5f));
-  // Absolute humidity: AH = 216.7 * (rH/100 * e_s) / (273.15 + T) [g/m³]
-  return 216.7f * (rh_percent / 100.0f * e_s) / (273.15f + temp_c);
+    if (std::isnan(rh_percent) || std::isnan(temp_c)) return NAN;
+    
+    // Physikalische Plausibilitätsgrenzen
+    if (temp_c <= -243.0f || temp_c > 100.0f) {
+        ESP_LOGW("auto_mode", "Temperature out of physical range: %.1f°C", temp_c);
+        return NAN;
+    }
+    if (rh_percent < 0.0f || rh_percent > 100.0f) {
+        ESP_LOGW("auto_mode", "RH out of range: %.1f%%", rh_percent);
+        return NAN;
+    }
+    
+    // Magnus formula: e_s(T) = 6.112 * exp(17.67 * T / (T + 243.5)) [hPa]
+    const float e_s = 6.112f * std::exp(17.67f * temp_c / (temp_c + 243.5f));
+    const float denominator = 273.15f + temp_c;
+    
+    if (std::abs(denominator) < 0.001f) return NAN;
+    
+    // Absolute humidity: AH = 216.7 * (rH/100 * e_s) / (273.15 + T) [g/m³]
+    const float result = 216.7f * (rh_percent / 100.0f * e_s) / denominator;
+    
+    // Physikalisch unmögliche Ausgabe abfangen
+    if (result < 0.0f || result > 100.0f) {
+        ESP_LOGW("auto_mode", "AH result out of range: %.3f g/m³", result);
+        return NAN;
+    }
+    
+    return result;
 }
 
 namespace auto_mode {
@@ -108,15 +131,23 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
   const bool is_intake = hw_state.direction_in;
   const int internal_mode = (int)current_mode;
 
+  auto read_sensor = [](esphome::sensor::Sensor *s) -> float {
+      if (s == nullptr) return NAN;
+      float val = s->state;
+      return (val > -50.0f && val < 100.0f) ? val : NAN;
+  };
+
   if (internal_mode == esphome::MODE_VENTILATION) {
     if (is_intake) {
-        if (temp_abluft != nullptr) local_out = temp_abluft->state;
+        local_out = read_sensor(temp_zuluft);
+        if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
     } else {
-        if (std::isnan(local_in) && temp_zuluft != nullptr) local_in = temp_zuluft->state;
+        local_out = read_sensor(temp_abluft);
+        if (std::isnan(local_in)) local_in = read_sensor(temp_zuluft);
     }
   } else if (internal_mode == esphome::MODE_ECO_RECOVERY) {
-    if (temp_abluft != nullptr) local_out = temp_abluft->state;
-    if (std::isnan(local_in) && temp_zuluft != nullptr) local_in = temp_zuluft->state;
+    local_out = read_sensor(temp_abluft);
+    if (std::isnan(local_in)) local_in = read_sensor(temp_zuluft);
   }
 
   // Update controller state for networking
@@ -277,11 +308,17 @@ inline float calculate_combined_demand(uint32_t now, float eff_in_temp, float ef
   // 5. Peer Integration (Symmetric group behavior)
   float effective_demand = local_demand;
   if (!std::isnan(v->last_peer_pid_demand) && (now - v->last_peer_pid_demand_time < PEER_TIMEOUT_MS)) {
-    if (std::isnan(effective_demand) || v->last_peer_pid_demand > effective_demand) {
-      if (v->last_peer_pid_demand > (effective_demand + 0.05f)) {
-        ESP_LOGI("auto_mode", "Adopting higher peer demand: %.2f (Local: %.2f)", v->last_peer_pid_demand, effective_demand);
+    float peer_demand = std::clamp(v->last_peer_pid_demand, 0.0f, 1.0f);
+    
+    if (!std::isnan(effective_demand) && peer_demand > effective_demand + 0.5f) {
+        ESP_LOGW("auto_mode", "Large peer demand deviation: peer=%.2f local=%.2f — check peer sensor health", peer_demand, effective_demand);
+    }
+    
+    if (std::isnan(effective_demand) || peer_demand > effective_demand) {
+      if (peer_demand > (effective_demand + 0.05f)) {
+        ESP_LOGI("auto_mode", "Adopting higher peer demand: %.2f (Local: %.2f)", peer_demand, effective_demand);
       }
-      effective_demand = v->last_peer_pid_demand;
+      effective_demand = peer_demand;
     }
   }
 
@@ -335,7 +372,9 @@ inline void evaluate_auto_mode(bool force) {
     current_mode = target_mode; // Update local snapshot for correct demand mapping
   }
 
-  // 3. Air Quality Power Management
+  // 4. Presence-based demand adjustment (if LD2450 data available)
+  
+  // 5. Air Quality Power Management
   float demand = auto_mode::calculate_combined_demand(now, eff_in, eff_out);
 
   // FIXED: If demand is NAN (e.g., all sensors offline/unstable), we abort to hold the last state
@@ -344,7 +383,7 @@ inline void evaluate_auto_mode(bool force) {
      return;
   }
   
-  // 5. Calculate target level with hysteresis and ramping
+  // 6. Calculate target level with hysteresis and ramping
   int min_l = static_cast<int>(automatik_min_fan_level->value());
   int max_l = static_cast<int>(automatik_max_fan_level->value());
   if (min_l > max_l) std::swap(min_l, max_l);
@@ -356,6 +395,10 @@ inline void evaluate_auto_mode(bool force) {
   bool slave_following_master = false;
   if (v->device_id != 1) { // I am a Slave
     // Check if we have a recent state from the Master
+    // NOTE: v->peers is updated in process_espnow_packet_local() when
+    // a MSG_STATE or MSG_STATUS_RESPONSE is received. It mirrors the
+    // fan_intensity and device_id from the last received packet.
+    // Maximum staleness: PEER_TIMEOUT_MS (defined in globals.h).
     for (const auto &peer : v->peers) {
       if (peer.device_id == 1 && (now - peer.last_seen_ms < PEER_TIMEOUT_MS)) {
         target_level = peer.fan_intensity;
@@ -376,7 +419,11 @@ inline void evaluate_auto_mode(bool force) {
     float hysteresis_band = step_size * LEVEL_HYSTERESIS;
     
     // Current demand center relative to current level
-    float current_demand_center = static_cast<float>(current_level - min_l) * step_size;
+    // K-1 Fix: Clamp current level before math
+    int safe_current = std::clamp(current_level, min_l, max_l);
+    float current_demand_center = (max_l > min_l) 
+        ? static_cast<float>(safe_current - min_l) / static_cast<float>(max_l - min_l) 
+        : 0.5f;
 
     if (demand > current_demand_center + step_size * 0.5f + hysteresis_band) {
       target_level = raw_target; // Clearly above -> go up
@@ -407,7 +454,7 @@ inline void evaluate_auto_mode(bool force) {
     target_level = std::max(target_level, current_level - max_ramp_step);
   }
 
-  // 6. Commit State Updates
+  // 7. Commit State Updates
   if (current_level != target_level) {
     if (slave_following_master) {
        ESP_LOGD("auto_mode", "Slave following Master level: %d (Local demand: %.2f)", target_level, demand);

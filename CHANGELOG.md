@@ -4,6 +4,21 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.151] - 2026-04-17
+### Security / Stability
+- **K-1 — Division-by-Zero in Hysterese-Berechnung behoben (KRITISCH)**
+  Ein Fehler in der Hysterese-Kalkulation des Automatikmodus konnte potenziell Inf/NaN Werte provozieren, wenn `current_level` außerhalb der Bandbreite zwischen `min_l` und `max_l` lag. Es wurde ein defensiver `std::clamp` implementiert, um den Wert vorher zu limitieren und Endlos-Ramping zu unterbinden.
+- **K-2 — Numerische Instabilität bei absoluter Feuchtekalkulation behoben (KRITISCH)**
+  Die fehlenden Bounds-Checks auf absurde Sensor-Temperaturen produzierten in der `calculate_absolute_humidity()` Funktion potenziell negative absolute Feuchtigkeitswerte durch Division durch negative Nenner oder astronomische Exponenten (z.B. via NaN Propagation). Temperaturgrenzen und Ergebnisvalidierung verhindern nun ein Fehlverhalten des PID-Managers.
+- **H-2 — Peer-Demand Plausibilitätsprüfungen eingefügt**
+  Fehlerhafte PID-Sensordaten eines Peers werden nicht mehr blind übernommen, da sie den lokalen Lüfter unnötigerweise auf Maximum rampten konnten. Peer-Werte werden nun sauber auf die Grenzen `0.0` bis `1.0` gekappt (`std::clamp`) und asynchrone Sprünge werfen nun klare Warnungen (Log).
+- **H-3 — Asymmetrische NTC-Sensorik-Fallbacks gefixt**
+  Beim Kreuzabgleichen der Injektions- und Extraktionskanäle kam es im `Ventilation`-Modus zu falsch zugeordneten Sensoren (`local_in`/`local_out`), wodurch das System temporär blind für Innenwerte werden konnte. Der Sensor-Mapping-Prozess nutzt nun stabile Fallbacks und logische Symmetrie durch das `read_sensor()` Lambda.
+
+### Changed
+- **H-1, K-3 — Klarstellung Master Peer Authority Logiken**
+  Dokumentations-Refactoring zur Klärung, weshalb der Master im Auto Mode über die lokale `v->peers` Variable iteriert (Staleness <= PEER_TIMEOUT_MS) und Begradigung der fehlerhaften Schrittnummerierungen in der Automode-Evaluation.
+
 ## [0.8.149] - 2026-04-17
 ### Security / Stability
 - **K-1 — Null-Pointer-Dereferenzierungen in LED-Steuerung (KRITISCH)**
