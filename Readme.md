@@ -455,6 +455,20 @@ The panel has 3 buttons and 9 status LEDs.
 | Ventilation (Summer) | 🟢 | 🟢 |
 | Off / System OFF | ⚫ | ⚫ |
 
+**Intensity LED Assignment (Standard "Fill Bar"):**
+
+It is highly intuitive that each of the 5 LEDs represents exactly 2 intensity levels. The LED fills halfway (50%) first, then completely (100%), before the next LED is activated:
+
+- **Level 1**:  ◖ ◯ ◯ ◯ ◯  *(LED 1 @ 50%)*
+- **Level 2**:  ⬤ ◯ ◯ ◯ ◯  *(LED 1 @ 100%)*
+- **Level 3**:  ⬤ ◖ ◯ ◯ ◯  *(LED 2 starts @ 50%)*
+- **Level 4**:  ⬤ ⬤ ◯ ◯ ◯  *(LED 2 @ 100%)*
+- **...**
+- **Level 9**:  ⬤ ⬤ ⬤ ⬤ ◖  *(LED 5 @ 50%)*
+- **Level 10**: ⬤ ⬤ ⬤ ⬤ ⬤  *(LED 5 @ 100%)*
+
+This allows the "tip" of the indicator to move fluidly and logically from left to right, similar to a standard volume indicator on a smartphone.
+
 > **60 Seconds Auto-Dimming:** All status LEDs (Mode, Intensity, Master) fade out gently 60 seconds (configurable) after the last button press. The **Power LED** remains on dimmed at 20%. With each button press, all LEDs are reactivated. Exception: The **Master LED continues to signal error states**, even after the timeout.
 
 ---

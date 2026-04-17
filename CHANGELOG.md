@@ -4,6 +4,22 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.149] - 2026-04-17
+### Security / Stability
+- **K-1 — Null-Pointer-Dereferenzierungen in LED-Steuerung (KRITISCH)**
+  Die ungeschützten Pointer-Aufrufe in `led_feedback.h` (`status_led_...->turn_off()`) wurden durch die neuen `led_guard`-Helferfunktionen abgelöst. Ein fehlender Eintrag im YAML crasht nun nicht mehr den ESP32, da jeder Zugriff sicher via `if (led != nullptr)` geschützt ist. Fehlen essenzielle Zeiger wie der der Power-LED, führt dies nun zu einem ausfallsicheren Early-Exit (M-3).
+- **K-2 — Variables Shadowing in Master-LED behoben**
+  Eine gefährliche Re-Deklaration von `max_b` im inneren Scope der Master-Funktion logisch korrigiert, um asynchrones Helligkeits-Clipping künftig auszuschließen.
+
+### Changed
+- **H-1, H-2 — Stabileres State-Tracking & Sentinel Boot-Flags**
+  Static Initializer wurden durch dedizierte Bool-Flags (`first_call`, `initialized`) ersetzt. Dies stoppt False-Positive WLAN-Fehler während der Boot-Phase auf dem Master und erzwingt garantiert ein sicheres erstes Initial-Rendering aller Status-LEDs aus jedem beliebigen Boot-Zustand.
+- **H-3, M-2 — Refactoring zu Lookup-Table ("Fill Bar") + I2C-Overhead halbiert**
+  Ein überlanges, fehleranfälliges 60-Zeilen `switch`-Statement wurde ins effiziente `LedLevelConfig` Array ausgelagert. Unnötige "immer alle aus, dann 3 wieder an" Befehle entfallen — dies entlastet den I2C-Bus drastisch (<5 Transaktionen statt z.T. >10).
+  - **Neues "Fill Bar"-Design**: Entgegen der vorherigen, teils asymmetrischen Ansteuerung agiert die 5-Stufige Level-Matrix (für 10-Intensitäten) nun als gewohnter Füllbalken (jede LED macht exakt zwei Schritte: 20% → 100%, bevor die nächste greift).
+- **M-1 — Deterministischere "Sync-Loss" Erkennung**
+  Die Heuristik zum Triggern des Master-Peer-Fehlers (2x Blinken) wurde geschärft. Es wird nicht mehr ein abgeleiteter Demand geprüft, sondern direkt die Timestamps der einzelnen verbuchten Peers auslesbar gemacht.
+
 ## [0.8.147] - 2026-04-17
 ### Security / Stability
 - **K-1 — Thread-Safety: ACK-Callback greift nicht mehr direkt auf `peer_cache` zu (KRITISCH)**

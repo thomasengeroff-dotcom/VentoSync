@@ -26,6 +26,45 @@
 #pragma once
 #include "globals.h"
 
+namespace led_guard {
+
+inline void turn_off_safe(esphome::light::LightState *led) {
+    if (led != nullptr) led->turn_off().perform();
+}
+
+inline void turn_on_safe(esphome::light::LightState *led, float brightness) {
+    if (led != nullptr) led->turn_on().set_brightness(brightness).perform();
+}
+
+inline void turn_on_effect_safe(esphome::light::LightState *led, const char *effect, float brightness = -1.0f) {
+    if (led == nullptr) return;
+    auto call = led->turn_on();
+    call.set_effect(effect);
+    if (brightness >= 0.0f) call.set_brightness(brightness);
+    call.perform();
+}
+
+inline void turn_off_all_leds() {
+    turn_off_safe(status_led_power);
+    turn_off_safe(status_led_mode_wrg);
+    turn_off_safe(status_led_mode_vent);
+    turn_off_safe(status_led_l1);
+    turn_off_safe(status_led_l2);
+    turn_off_safe(status_led_l3);
+    turn_off_safe(status_led_l4);
+    turn_off_safe(status_led_l5);
+}
+
+inline void turn_off_level_leds() {
+    turn_off_safe(status_led_l1);
+    turn_off_safe(status_led_l2);
+    turn_off_safe(status_led_l3);
+    turn_off_safe(status_led_l4);
+    turn_off_safe(status_led_l5);
+}
+
+} // namespace led_guard
+
 /**
  * @brief   Checks for system error conditions and signals them via the Master LED.
  *
@@ -51,7 +90,15 @@ inline void check_master_led_error() {
   uint32_t now = millis();
   
   // Implement 30s Hysteresis to suppress "phantom" errors during brief signal drops (roaming)
-  static uint32_t last_connected_ms = now;
+  static uint32_t last_connected_ms = 0;
+  static bool first_call = true;
+
+  if (first_call) {
+    // Starte den Hysterese-Timer erst ab dem ersten Aufruf
+    last_connected_ms = now;
+    first_call = false;
+  }
+
   if (is_functionally_connected) {
     last_connected_ms = now;
   }
@@ -62,14 +109,14 @@ inline void check_master_led_error() {
   bool peer_sync_error = false;
   bool peer_check_active = (peer_check_enabled != nullptr) && peer_check_enabled->value();
   
-  if (ventilation_ctrl != nullptr && peer_check_active) {
-    // If we have peers expected but none seen for 3 minutes (Reduced from 5min)
-    // We only trigger this after the system has been up for at least 3 minutes to allow for discovery.
-    if (ventilation_ctrl->has_peer_pid_demand && 
-        (now > 180000) &&
-        (now - ventilation_ctrl->last_peer_pid_demand_time > 180000)) {
-      peer_sync_error = true;
+  if (peer_check_active && !peer_cache.empty() && now > 180000) {
+    uint32_t max_silence = 0;
+    for (const auto &peer : peer_cache) {
+        uint32_t silence = now - peer.last_seen;
+        max_silence = std::max(max_silence, silence);
     }
+    // Error wenn der am längsten schweigende Peer > 3 Minuten still war
+    peer_sync_error = (max_silence > 180000);
   }
 
   bool thermal_warning = (thermal_warning_active != nullptr) && thermal_warning_active->value();
@@ -107,7 +154,6 @@ inline void check_master_led_error() {
       // Master Device: LED always solid ON (dimmed) when no error is active
       call.set_state(true);
       call.set_effect("None");
-      const float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
       call.set_brightness(0.3f * max_b);
     } else {
       // Slave Device / No Error: Turn off entirely.
@@ -144,6 +190,12 @@ inline void update_leds_logic() {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
 
+  // Kritische Pointer prüfen — ohne diese ist kein sinnvoller Output möglich
+  if (status_led_power == nullptr) {
+      ESP_LOGE("led", "status_led_power is null — LED update aborted");
+      return;
+  }
+
   const int current_mode = v->state_machine.current_mode;
   const bool is_on = (system_on != nullptr) ? system_on->value() : true;
   const bool is_ui_active = (ui_active != nullptr) ? ui_active->value() : true;
@@ -152,13 +204,20 @@ inline void update_leds_logic() {
   const int intensity = (fan_intensity_level != nullptr) ? (int)fan_intensity_level->value() : 1;
 
   // FIXED: State tracking to prevent log spam and I2C flooding
-  // Initialize with values that ensure the first run always executes
-  static bool last_system_on = !is_on;
-  static bool last_ui_active = !is_ui_active;
-  static int last_mode = -1;
-  static int last_intensity = -1;
-  static float last_max_b = -1.0f;
-  static bool last_auto = !is_auto;
+  static bool  last_system_on  = false;
+  static bool  last_ui_active  = false;
+  static int   last_mode       = -1;
+  static int   last_intensity  = -1;
+  static float last_max_b      = -1.0f;
+  static bool  last_auto       = false;
+
+  static bool initialized = false;
+  if (!initialized) {
+      initialized = true;
+      last_system_on = !is_on;
+      last_ui_active = !is_ui_active;
+      last_auto      = !is_auto;
+  }
 
   bool changed = (is_on != last_system_on) || (is_ui_active != last_ui_active) || 
                  (current_mode != last_mode) || (intensity != last_intensity) || 
@@ -178,120 +237,77 @@ inline void update_leds_logic() {
 
   // 0. Case: System is OFF
   if (!is_on) {
-    status_led_power->turn_off().perform();
-    status_led_mode_wrg->turn_off().perform();
-    status_led_mode_vent->turn_off().perform();
-    status_led_l1->turn_off().perform();
-    status_led_l2->turn_off().perform();
-    status_led_l3->turn_off().perform();
-    status_led_l4->turn_off().perform();
-    status_led_l5->turn_off().perform();
+    led_guard::turn_off_all_leds();
     return;
   }
 
   // 1. Case: UI Inactive (Dimming/Night mode)
   if (!is_ui_active) {
-    // Dim Power LED to 10% of max
-    status_led_power->turn_on().set_brightness(0.1f * max_b).perform();
-
-    // Turn off all others
-    status_led_mode_wrg->turn_off().perform();
-    status_led_mode_vent->turn_off().perform();
-    status_led_l1->turn_off().perform();
-    status_led_l2->turn_off().perform();
-    status_led_l3->turn_off().perform();
-    status_led_l4->turn_off().perform();
-    status_led_l5->turn_off().perform();
+    led_guard::turn_on_safe(status_led_power, 0.1f * max_b);
+    led_guard::turn_off_safe(status_led_mode_wrg);
+    led_guard::turn_off_safe(status_led_mode_vent);
+    led_guard::turn_off_level_leds();
     return;
   }
 
   // 2. Case: UI Active and System On (Normal operation)
-  status_led_power->turn_on().set_brightness(max_b).perform();
+  led_guard::turn_on_safe(status_led_power, max_b);
 
   // Mode LEDs
-  status_led_mode_wrg->turn_off().perform();
-  status_led_mode_vent->turn_off().perform();
+  led_guard::turn_off_safe(status_led_mode_wrg);
+  led_guard::turn_off_safe(status_led_mode_vent);
 
   if (current_mode != esphome::MODE_OFF) {
     if (is_auto) {
-      // Smart-Automatik: Left LED pulses slowly
-      auto call = status_led_mode_wrg->turn_on();
-      call.set_effect("Automatik Pulse");
-      call.perform();
+      led_guard::turn_on_effect_safe(status_led_mode_wrg, "Automatik Pulse");
     } else if (current_mode == esphome::MODE_ECO_RECOVERY) {
-      // Manual WRG: Left LED solid on
-      status_led_mode_wrg->turn_on().set_effect("None").set_brightness(max_b).perform();
+      led_guard::turn_on_effect_safe(status_led_mode_wrg, "None", max_b);
     } else if (current_mode == esphome::MODE_STOSSLUEFTUNG) {
-      // Stoßlüftung: Right LED on
-      status_led_mode_vent->turn_on().set_brightness(max_b).perform();
+      led_guard::turn_on_safe(status_led_mode_vent, max_b);
     } else if (current_mode == esphome::MODE_VENTILATION) {
-      // Durchlüften: Both LEDs on (solid)
-      status_led_mode_wrg->turn_on().set_effect("None").set_brightness(max_b).perform();
-      status_led_mode_vent->turn_on().set_brightness(max_b).perform();
+      led_guard::turn_on_effect_safe(status_led_mode_wrg, "None", max_b);
+      led_guard::turn_on_safe(status_led_mode_vent, max_b);
     }
   }
 
   // 3. Level LEDs (1-10 mapped to 5 LEDs)
-  status_led_l1->turn_off().perform();
-  status_led_l2->turn_off().perform();
-  status_led_l3->turn_off().perform();
-  status_led_l4->turn_off().perform();
-  status_led_l5->turn_off().perform();
-
   if (current_mode != esphome::MODE_OFF) {
-    switch (intensity) {
-    case 10:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l5->turn_on().set_brightness(1.0f * max_b).perform();
-      break;
-    case 9:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l5->turn_on().set_brightness(0.5f * max_b).perform();
-      break;
-    case 8:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l4->turn_on().set_brightness(1.0f * max_b).perform();
-      break;
-    case 7:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l4->turn_on().set_brightness(0.5f * max_b).perform();
-      break;
-    case 6:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l3->turn_on().set_brightness(1.0f * max_b).perform();
-      break;
-    case 5:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l3->turn_on().set_brightness(0.5f * max_b).perform();
-      break;
-    case 4:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(1.0f * max_b).perform();
-      break;
-    case 3:
-      status_led_l1->turn_on().set_brightness(1.0f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(0.5f * max_b).perform();
-      break;
-    case 2:
-      status_led_l1->turn_on().set_brightness(0.5f * max_b).perform();
-      status_led_l2->turn_on().set_brightness(0.5f * max_b).perform();
-      break;
-    case 1:
-      status_led_l1->turn_on().set_brightness(0.5f * max_b).perform();
-      break;
-    default: break;
+    // Input-Validation mit explizitem Log
+    if (intensity < 1 || intensity > 10) {
+        ESP_LOGW("led", "Invalid intensity %d — clamping to [1,10]", intensity);
     }
+    int idx = std::clamp(intensity, 1, 10) - 1;
+
+    struct LedLevelConfig { float l1, l2, l3, l4, l5; };
+    static constexpr LedLevelConfig LEVEL_TABLE[10] = {
+        {0.2f, 0.0f, 0.0f, 0.0f, 0.0f},  // 1  (LED 1 halb)
+        {1.0f, 0.0f, 0.0f, 0.0f, 0.0f},  // 2  (LED 1 voll)
+        {1.0f, 0.2f, 0.0f, 0.0f, 0.0f},  // 3  (LED 2 halb)
+        {1.0f, 1.0f, 0.0f, 0.0f, 0.0f},  // 4  (LED 2 voll)
+        {1.0f, 1.0f, 0.2f, 0.0f, 0.0f},  // 5  (LED 3 halb)
+        {1.0f, 1.0f, 1.0f, 0.0f, 0.0f},  // 6  (LED 3 voll)
+        {1.0f, 1.0f, 1.0f, 0.2f, 0.0f},  // 7  (LED 4 halb)
+        {1.0f, 1.0f, 1.0f, 1.0f, 0.0f},  // 8  (LED 4 voll)
+        {1.0f, 1.0f, 1.0f, 1.0f, 0.2f},  // 9  (LED 5 halb)
+        {1.0f, 1.0f, 1.0f, 1.0f, 1.0f},  // 10 (LED 5 voll)
+    };
+    const auto &cfg = LEVEL_TABLE[idx];
+
+    esphome::light::LightState *leds[5] = {
+        status_led_l1, status_led_l2, status_led_l3, 
+        status_led_l4, status_led_l5
+    };
+    float brightnesses[5] = {cfg.l1, cfg.l2, cfg.l3, cfg.l4, cfg.l5};
+
+    for (int i = 0; i < 5; i++) {
+        if (leds[i] == nullptr) continue;
+        if (brightnesses[i] > 0.0f) {
+            leds[i]->turn_on().set_brightness(brightnesses[i] * max_b).perform();
+        } else {
+            leds[i]->turn_off().perform();
+        }
+    }
+  } else {
+      led_guard::turn_off_level_leds();
   }
 }
