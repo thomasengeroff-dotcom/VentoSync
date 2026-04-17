@@ -1,5 +1,5 @@
 {
-    "version": "0.8.152",
+    "version": "0.8.154",
     "date": "2026-04-12",
-    "description": "feat: global rebranding to VentoSync HRV and Window Guard bypass (v0.8.135)"
+    "description": "fix(fan_control): enforce slew-rate bootstrapping and OTA freeze-recovery"
 }

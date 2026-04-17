@@ -44,10 +44,18 @@ constexpr float RAMPING_LOWER_BOUND = 0.01f; // Lower bound for active ramping p
  * @see     VentilationLogic::calculate_fan_pwm()
  */
 inline void set_fan_logic(float speed, int direction) {
-  if (fan_pwm_primary == nullptr) return;
-
+  // Berechnung ist immer sicher (reine Funktion, keine Pointer)
   const float pwm = VentilationLogic::calculate_fan_pwm(speed, direction);
-  fan_pwm_primary->set_level(pwm);
+
+  // Hardware-Ausgabe nur wenn Komponente vorhanden
+  if (fan_pwm_primary != nullptr) {
+    fan_pwm_primary->set_level(pwm);
+  } else {
+    ESP_LOGW("fan", "fan_pwm_primary is null — PWM output suppressed");
+  }
+
+  // State immer aktualisieren (auch im Simulation/Test-Modus ohne Hardware)
+  // damit calculate_virtual_fan_rpm() korrekte Werte liefert.
   last_fan_pwm_level = pwm;
 }
 
@@ -57,7 +65,8 @@ inline void set_fan_logic(float speed, int direction) {
  * @return Target speed fraction (0.1 to 1.0)
  */
 inline float level_to_speed(float level) {
-  return VentilationLogic::calculate_fan_speed_from_intensity(static_cast<int>(std::round(level)));
+  int clamped = std::clamp(static_cast<int>(std::round(level)), 1, 10);
+  return VentilationLogic::calculate_fan_speed_from_intensity(clamped);
 }
 
 /**
@@ -66,17 +75,28 @@ inline float level_to_speed(float level) {
  */
 inline float calculate_manual_demand(float base_intensity) {
   float intensity = base_intensity;
+  float comp = 0.0f;
   
   if (radar_presence != nullptr && radar_presence->has_state() && radar_presence->state) {
     if (auto_presence_val != nullptr) {
-      const float comp = static_cast<float>(auto_presence_val->value());
+      comp = static_cast<float>(auto_presence_val->value());
       if (comp != 0.0f) {
         intensity += comp;
-        ESP_LOGD("fan", "Applying presence compensation: %.1f (Base: %.1f)", comp, base_intensity);
       }
     }
   }
-  return std::clamp(intensity, 1.0f, 10.0f);
+  
+  float clamped = std::clamp(intensity, 1.0f, 10.0f);
+  if (comp != 0.0f) {
+    if (clamped != intensity) {
+        ESP_LOGD("fan", "Presence compensation clamped: %.1f -> %.1f (Base: %.1f, Comp: %.1f)",
+                 intensity, clamped, base_intensity, comp);
+    } else {
+        ESP_LOGD("fan", "Presence compensation applied: %.1f -> %.1f (Comp: %.1f)",
+                 base_intensity, clamped, comp);
+    }
+  }
+  return clamped;
 }
 
 /**
@@ -179,15 +199,22 @@ inline void update_fan_logic() {
   // 2. Base Speed Calculation with Smooth Slew-Rate (Sanftanlauf)
   const float base_speed = get_current_target_speed();
   
+  // FIXED K-1: Start from 0.0f instead of jumping to base_speed
   if (last_slew_update_ms == 0) {
-    current_smoothed_speed = base_speed;
+    current_smoothed_speed = 0.0f;
     last_slew_update_ms = now;
   }
   
   uint32_t dt = now - last_slew_update_ms;
   last_slew_update_ms = now;
   
-  if (dt > 1000) dt = 1000; // Cap dt after long pauses
+  // FIXED K-3: Recovery after long pauses (e.g. OTA update)
+  if (dt > 5000) {
+      ESP_LOGW("fan", "Long pause detected (%ums) — resetting slew state", dt);
+      current_smoothed_speed = (current_smoothed_speed + base_speed) * 0.5f;
+      dt = 100;
+  }
+  if (dt > 1000) dt = 1000;
   
   // Slew rate: ~10% (0.10) per second
   const float slew_rate = 0.10f * (float)dt / 1000.0f;
@@ -201,32 +228,32 @@ inline void update_fan_logic() {
   }
 
   float speed = current_smoothed_speed;
+  int direction = (fan_direction != nullptr && fan_direction->state) ? 1 : 0;
 
   // 3. Hardware Ramping Application
   if (ventilation_ctrl != nullptr) {
     const esphome::HardwareState state = ventilation_ctrl->state_machine.get_target_state(now);
     speed *= state.ramp_factor;
+    // FIXED H-3: Read direction consistently from calculated state, not just stale pseudo-state
+    direction = state.direction_in ? 1 : 0;
 
+    // FIXED M-3: Simplification of ramping logs
+    const bool is_actively_ramping = state.ramp_factor > RAMPING_LOWER_BOUND && state.ramp_factor < RAMPING_UPPER_BOUND;
+    
     // Rate-limited log during transition phases
-    if (state.ramp_factor < RAMPING_UPPER_BOUND && state.ramp_factor > RAMPING_LOWER_BOUND &&
-        (now - ventilation_ctrl->last_ramp_log_ms > 1000)) {
+    if (is_actively_ramping && (now - ventilation_ctrl->last_ramp_log_ms > 1000)) {
       ESP_LOGD("fan_ramp", "Ramping speed: %.2f (Base: %.2f, Factor: %.2f)",
                speed, base_speed, state.ramp_factor);
       ventilation_ctrl->last_ramp_log_ms = now;
       ventilation_ctrl->was_ramping = true;
-    } else if (ventilation_ctrl->was_ramping && (state.ramp_factor >= RAMPING_UPPER_BOUND || state.ramp_factor <= RAMPING_LOWER_BOUND)) {
+    } else if (ventilation_ctrl->was_ramping && !is_actively_ramping) {
       ESP_LOGD("fan_ramp", "Ramping complete. Target speed reached: %.2f (Factor: %.2f)",
                speed, state.ramp_factor);
       ventilation_ctrl->was_ramping = false;
     }
   }
 
-  // 4. Direction Resolution
-  // Read current direction from the fan_direction switch component pseudo-state:
-  // OFF = Direction: Abluft (Raus) (PWM < 50%)
-  // ON  = Direction: Zuluft (Rein) (PWM > 50%)
-  const int direction = (fan_direction != nullptr && fan_direction->state) ? 1 : 0;
-
+  // 4. Dispatch Physical Update
   set_fan_logic(speed, direction);
 }
 
@@ -235,10 +262,10 @@ inline void update_fan_logic() {
  */
 inline void notify_fan_direction_changed() {
   last_direction_change_time = millis();
-  ntc_history[0].clear();
-  ntc_history[1].clear();
-  ESP_LOGD("ntc_filter",
-           "Fan direction changed. Resetting NTC history buffers.");
+  // NOTE: NTC history invalidation is handled automatically by
+  // filter_ntc_stable() via last_direction_change_time comparison.
+  // Do NOT clear ntc_history here to avoid dual-invalidation logic paths.
+  ESP_LOGD("ntc_filter", "Fan direction changed at t=%u", last_direction_change_time);
 }
 
 /**
@@ -254,6 +281,10 @@ inline bool is_fan_slider_off(float value) {
  * @param iteration Cycle step (0-99).
  */
 inline float calculate_ramp_up(int iteration) {
+  if (iteration < 0 || iteration > 99) {
+      ESP_LOGW("fan", "calculate_ramp_up: iteration %d out of [0,99]", iteration);
+      iteration = std::clamp(iteration, 0, 99);
+  }
   return VentilationLogic::calculate_ramp_up(iteration);
 }
 
@@ -262,5 +293,9 @@ inline float calculate_ramp_up(int iteration) {
  * @param iteration Cycle step (0-99).
  */
 inline float calculate_ramp_down(int iteration) {
+  if (iteration < 0 || iteration > 99) {
+      ESP_LOGW("fan", "calculate_ramp_down: iteration %d out of [0,99]", iteration);
+      iteration = std::clamp(iteration, 0, 99);
+  }
   return VentilationLogic::calculate_ramp_down(iteration);
 }

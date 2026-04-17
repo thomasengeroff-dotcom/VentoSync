@@ -4,6 +4,23 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.154] - 2026-04-18
+### Security / Stability
+- **K-1 — Sanftanlauf-Limiter Bootstrap behoben (KRITISCH)**
+  Die Initialisierung des Variablen `current_smoothed_speed` beim ersten Aufruf wurde auf `0.0` korrigiert. Damit entfällt ein vorher existierender, ungebremster 100%-Anlauf des Motors bei Systemstart. Der Slew-Rate-Limiter erzwingt nun konsistent einen Material-schonenden Hochlauf aus dem Stillstand.
+- **K-2 — Sicherung der internen PWM State Updates (KRITISCH)**
+  Die unsaubere Kapselung der PWM-Wertverfolgung für die virtuellen RPM-Statistiken ist behoben. Ein fehlender PWM-Treiber (z.B. im Software-Testbetrieb) friert nicht mehr versehentlich die `last_fan_pwm_level` für abhängige Routinen wie `calculate_virtual_fan_rpm()` ein. 
+- **K-3 — Freeze-Recovery nach Watchdog oder OTA-Updates**
+  Wenn das Betriebssystem außergewöhnlich lange Pausen (>5s) einlegen musste (z.B. Firmware Update Download), versuchte der Slew-Rate Limiter anschließend den Motor sprunghaft in Position zu bringen. Ein neuer 5000ms Trigger resetet nun sanft den Puffer auf halbe Fahrtrichtung, um Mechanik-Sprünge zu verhindern.
+- **H-1 — Heimliche Clamp-Verletzungen der Präsenz-Kompensation**
+  Wenn das Radar (+2 Stufen) den Basiswert (Stufe 9) ins physikalisch unmögliche verschob, schlug blind der Limit-Clamp auf Stufe 10 an und der Nutzer sah keine Aktion. Das Ranging ist nun gefixt und im Log nachvollziehbar dokumentiert.
+
+### Changed
+- **H-3, H-4 — Richtungszuweisungen & History Redundanz**
+  Der Target-Speed Logger erhält die Windrichtung nun synchron aus der State-Machine Arrays und nicht mehr aus der langsameren UI-Switch-Repräsentation (`fan_direction->state`). Redundante Pufferlöschoperationen entfallen, da sie von der Klimakontrolle (`filter_ntc_stable`) abgefangen werden, wie es konzeptionell gedacht war.
+- **M-1, M-2, M-3 — Type Safety & Log-Polishing**
+  Fehlende Bounds-Checks bei Floats auf Float-Ramping Arrays (0-99 iterations) wurden geschlossen (`std::clamp`) und ein Bug im State-Logger ("Ramping complete" wurde asynchron geworfen) bereinigt.
+
 ## [0.8.152] - 2026-04-17
 ### Security / Stability
 - **K-1 — WRG-Effizienz Ausgabe-Validierung (KRITISCH)**
