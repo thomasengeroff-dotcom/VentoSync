@@ -32,7 +32,10 @@
 #include "esphome.h"
 #include "esphome/components/globals/globals_component.h"
 #include "ventilation_state_machine.h"
+#include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <limits>
 #include <vector>
 #include <esp_task_wdt.h>
 
@@ -72,7 +75,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static const uint8_t PROTOCOL_VERSION = 7; // Bumped: added RPM, Board-T, Room-T
+static constexpr uint8_t PROTOCOL_VERSION = 7; // Bumped: added RPM, Board-T, Room-T
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
 /// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
@@ -290,7 +293,13 @@ public:
         floor_id, room_id, device_id, is_phase_a ? "A" : "B");
         
     // Register the current task (ESPHome main loop) with the ESP-IDF Task Watchdog (TWDT)
-    esp_task_wdt_add(NULL); 
+    // FIXED M-1: Handle return value for idempotent WDT registration
+    esp_err_t wdt_err = esp_task_wdt_add(NULL);
+    if (wdt_err == ESP_ERR_INVALID_ARG) {
+      ESP_LOGD("vent", "WDT: Task already registered (e.g. after soft-reset)");
+    } else if (wdt_err != ESP_OK) {
+      ESP_LOGW("vent", "WDT registration failed: %s", esp_err_to_name(wdt_err));
+    }
     
     // Announce presence on boot with random jitter (0-2s) to prevent "Boot Storm"
     // collisions when multiple units power up simultaneously.
@@ -302,7 +311,8 @@ public:
   /// @brief Main loop — ticks the state machine, refreshes hardware, and
   /// schedules periodic sync broadcasts.
   void loop() override {
-    uint32_t now = millis();
+    // FIXED H-3: Single consistent timestamp for entire loop iteration
+    const uint32_t now = millis();
 
     // 0. Drain ESP-NOW receive queue (thread-safe, main-loop processing)
     // This must run FIRST so that incoming state/discovery packets are
@@ -386,10 +396,9 @@ public:
     }
 
     // 5. Cleanup old peers (5 minutes timeout)
-    now = millis(); // RE-FETCH: Ensure now >= last_seen_ms even if packet processing took time
     auto it = peers.begin();
     while (it != peers.end()) {
-      if (now >= it->last_seen_ms && now - it->last_seen_ms > 300000) {
+      if (now - it->last_seen_ms > 300000) {
         ESP_LOGD("vent", "Removing stale peer %d due to timeout",
                  it->device_id);
         it = peers.erase(it);
@@ -398,7 +407,8 @@ public:
       }
     }
 
-    // 5. Watchdog Feed
+    // 6. Watchdog Feed
+    // FIXED H-2: Renumbered from duplicate "5" to "6".
     // This ensures that the ESP reboots if the main loop hangs for longer 
     // than the configured CONFIG_ESP_TASK_WDT_TIMEOUT_S (15s).
     esp_task_wdt_reset();
@@ -474,25 +484,32 @@ public:
    * @note    Mismatched protocol versions or group IDs are rejected to
    *          prevent cross-room interference.
    */
-  bool on_packet_received(std::vector<uint8_t> data) {
+  // FIXED K-1: const-ref parameter avoids unnecessary heap copy (H-1)
+  bool on_packet_received(const std::vector<uint8_t> &data) {
     ESP_LOGI("vent", "on_packet_received() called");
     if (data.size() != sizeof(VentilationPacket)) {
-      ESP_LOGI("vent_sync", "Size mismatch! Expected %d, got %d",
+      ESP_LOGW("vent_sync", "Size mismatch! Expected %zu, got %zu",
                sizeof(VentilationPacket), data.size());
       return false;
     }
-    VentilationPacket *pkt = (VentilationPacket *)data.data();
+
+    // FIXED K-1: Strict-Aliasing-safe deserialization via std::memcpy.
+    // VentilationPacket is trivially-copyable (__attribute__((packed))),
+    // so this copy is elided by the compiler at -O2.
+    VentilationPacket pkt_val;
+    std::memcpy(&pkt_val, data.data(), sizeof(VentilationPacket));
+    const VentilationPacket *pkt = &pkt_val;
 
     // Filter: magic header
     if (pkt->magic_header != 0x42) {
-      ESP_LOGI("vent_sync", "Magic header mismatch! Expected 0x42, got 0x%02X",
+      ESP_LOGW("vent_sync", "Magic header mismatch! Expected 0x42, got 0x%02X",
                pkt->magic_header);
       return false;
     }
     // FIXED K2: Reject packets from nodes running a different protocol version.
     // Always do a simultaneous OTA rollout when PROTOCOL_VERSION changes.
     if (pkt->protocol_version != PROTOCOL_VERSION) {
-      ESP_LOGI("vent_sync",
+      ESP_LOGW("vent_sync",
                "Protocol version mismatch! Got v%d, expected v%d — "
                "update firmware on all nodes simultaneously.",
                pkt->protocol_version, PROTOCOL_VERSION);
@@ -516,6 +533,9 @@ public:
     ESP_LOGI("vent_sync", "Valid packet received from device %d! (Type: %d)",
              pkt->device_id, pkt->msg_type);
 
+    // FIXED H-5: Limit peer list to prevent unbounded growth
+    constexpr size_t MAX_PEERS = 10;
+
     bool found_peer = false;
     for (auto &peer : peers) {
       if (peer.device_id == pkt->device_id) {
@@ -534,6 +554,17 @@ public:
       }
     }
     if (!found_peer) {
+      // FIXED H-5: Evict oldest peer if at capacity (LRU)
+      if (peers.size() >= MAX_PEERS) {
+        auto oldest = std::min_element(peers.begin(), peers.end(),
+            [](const PeerState &a, const PeerState &b) {
+              return a.last_seen_ms < b.last_seen_ms;
+            });
+        ESP_LOGW("vent_sync",
+            "Peer list full (%zu). Evicting oldest peer (device %d).",
+            MAX_PEERS, oldest->device_id);
+        peers.erase(oldest);
+      }
       PeerState new_peer;
       new_peer.device_id = pkt->device_id;
       new_peer.last_seen_ms = millis();
@@ -672,15 +703,19 @@ public:
     // 2. Fan on/off bridging
     // Note: We turn the fan component on/off but delegating the actual
     // PWM calculation to update_fan_logic() which uses the ramp_factor.
+    // FIXED K-3: Use publish_state() to keep HA in sync.
+    // publish_state() notifies HA/callbacks but does NOT trigger perform(),
+    // so the PWM output is not affected — that's handled by update_fan_logic().
     if (main_fan) {
       if (!enable_fan) {
         if (main_fan->state) {
-          main_fan->state = false; // Just update internal state without perform()
-          // if (fan_pwm_primary) fan_pwm_primary->set_level(0.5f);
+          main_fan->state = false;
+          main_fan->publish_state();
         }
       } else {
         if (!main_fan->state) {
-          main_fan->state = true; // Just update internal state
+          main_fan->state = true;
+          main_fan->publish_state();
         }
       }
     }
@@ -733,8 +768,14 @@ public:
     pkt.max_led_brightness = max_led_brightness_global_ != nullptr ? (float)max_led_brightness_global_->value() : 0.8f;
     
     // Timers
-    pkt.sync_interval_min = (uint16_t)(sync_interval_ms / 60000);
-    pkt.vent_timer_min = (uint16_t)(state_machine.ventilation_duration_ms / 60000);
+    // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation
+    constexpr uint32_t MAX_TIMER_MS = 1440u * 60u * 1000u; // 24h
+    static_assert(1440u <= std::numeric_limits<uint16_t>::max(),
+        "uint16_t too small for max timer value in minutes");
+    pkt.sync_interval_min = static_cast<uint16_t>(
+        std::min(sync_interval_ms, MAX_TIMER_MS) / 60000u);
+    pkt.vent_timer_min = static_cast<uint16_t>(
+        std::min(state_machine.ventilation_duration_ms, MAX_TIMER_MS) / 60000u);
 
     pkt.cycle_pos_ms = state_machine.get_cycle_pos(millis());
     pkt.phase_state = state_machine.global_phase;

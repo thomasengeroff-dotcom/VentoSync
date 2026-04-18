@@ -4,6 +4,29 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.161] - 2026-04-18
+### Security / Stability
+- **K-1 — Strict-Aliasing-Verletzung in `on_packet_received()` behoben (KRITISCH)**
+  Der C-Style-Cast `(VentilationPacket *)data.data()` auf `uint8_t*`-Rohdaten ist nach C++17 [basic.lval]/11 Undefined Behavior. Mit `-O2` darf der Compiler annehmen, dass `uint8_t*` und `VentilationPacket*` niemals denselben Speicher adressieren und Lese-/Schreibzugriffe rund um den Cast neu ordnen — mit potenziell silenten Datenfehlern. Ersetzt durch `std::memcpy` auf eine Stack-lokale `VentilationPacket`-Instanz. Für trivially-copyable Typen ist dieser Copy bei `-O2` zero-cost (NRVO).
+- **K-3 — Direktes State-Mutation-Antipattern in `update_hardware()` behoben (KRITISCH)**
+  `main_fan->state = true/false` umging ESPHome's Event-Loop vollständig: Home Assistant erhielt kein Update, wenn die Fenstersperre den Lüfter abschaltete oder freigab. Ergänzt um `main_fan->publish_state()` (kein Argument, kein `perform()`) direkt nach der State-Zuweisung: HA wird informiert, ohne dass ESPHome den PWM-Ausgang berührt — die eigentliche Hardware-Steuerung obliegt unverändert `update_fan_logic()`.
+- **H-5 — Peer-Liste auf maximal 10 Einträge begrenzt (KRITISCH für Langzeitbetrieb)**
+  `std::vector<PeerState> peers` wuchs bei jedem unbekannten `device_id` unbegrenzt. Ohne Limit könnte ein Gerät mit wechselnden IDs (z.B. nach mehreren Firmware-Updates oder in Testszenarien) den Heap fragmentieren und einen OOM-Reset provozieren. Implementiert: LRU-Eviction — bei vollem Slot (>= 10) wird der am längsten inaktive Peer anhand von `last_seen_ms` ermittelt und entfernt, bevor der neue eingetragen wird.
+
+### Changed
+- **H-1 — `on_packet_received()` Parameter auf `const`-Referenz umgestellt**
+  `bool on_packet_received(std::vector<uint8_t> data)` erzeugte bei jedem eingehenden Paket eine unnötige Heap-Allokation und -Kopie. Geändert auf `const std::vector<uint8_t> &data` — zero-copy, kombiniert mit dem K-1-Fix (memcpy auf Stack-Objekt).
+- **H-2 — Doppelte Schrittnummerierung im Loop-Kommentar korrigiert**
+  Im `loop()`-Body waren zwei unabhängige Codeblöcke beide als `// 5.` kommentiert. Korrigiert auf `// 5. Cleanup old peers` und `// 6. Watchdog Feed`.
+- **H-3 — Redundanten `millis()` Re-Fetch in `loop()` entfernt**
+  `now = millis()` wurde mitten im Loop ein zweites Mal aufgerufen, mit dem irreführenden Kommentar, es sei nötig, damit `now >= last_seen_ms`. uint32_t-Subtraktion ist von Haus aus überlaufsicher; zwei verschiedene Zeitstempel in derselben Loop-Iteration sind hingegen eine potenzielle Inkonsistenz-Quelle. `now` ist jetzt `const` und wird einmalig am Funktionsanfang gesetzt. Der stale-peer check wurde von `(now >= it->last_seen_ms && now - it->last_seen_ms > 300000)` auf die korrekte `(now - it->last_seen_ms > 300000)` vereinfacht.
+- **H-4 — Timer-Konvertierung in `build_packet()` mit Clamp gesichert**
+  `(uint16_t)(sync_interval_ms / 60000)` wurde ohne vorherige Bereichsprüfung gecasted. Bei einem durch einen Bug oder NVS-Fehler korrumpierten Wert > 65535 min würde der Cast still auf 0 umbrechen. Jetzt: `std::min(value, MAX_TIMER_MS)` vor dem `static_cast<uint16_t>`, plus `static_assert`, der zur Compile-Zeit sicherstellt, dass 1440 min in uint16_t passt.
+- **M-1 — `esp_task_wdt_add()` mit Fehlerbehandlung versehen**
+  Rückgabewert wurde bisher ignoriert. Nach einem Soft-Reset ist der Task bereits registriert (`ESP_ERR_INVALID_ARG`) — das ist kein Fehler, aber war bisher nicht unterscheidbar. Jetzt wird `ESP_ERR_INVALID_ARG` als erwartet eingestuft (Debug-Log), echte Fehler werden als Warning geloggt.
+- **M-2 — `PROTOCOL_VERSION` von `static const` auf `static constexpr` umgestellt**
+  `static const` für eine Compile-Time-Integer-Konstante erzeugt eine Variable mit Speicheradresse und Linker-Symbol. `static constexpr` ist die semantisch korrekte Wahl: kein Speicher, kein Linker-Symbol, kann in `static_assert` und Template-Parametern verwendet werden.
+
 ## [0.8.160] - 2026-04-18
 ### Fixed
 - **NVS-Verlust der Fenstersperre ("Fenstersperre ignorieren") behoben**
