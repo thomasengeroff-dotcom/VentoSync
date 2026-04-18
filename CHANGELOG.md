@@ -4,6 +4,27 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.162] - 2026-04-18
+### Security / Stability
+- **K-1 — int64→int32 Cast-Overflow in `set_cycle_duration()` behoben (KRITISCH)**
+  `time_offset_ms = (int32_t)target_offset` wurde ohne Bereichsprüfung ausgeführt. Wenn `target_offset` nach der Normalisierung außerhalb des int32_t-Bereichs lag, führte dies zu falschen Richtungswechsel-Zeitpunkten. Jetzt: `std::clamp` gegen `INT32_MAX` vor dem Cast.
+- **K-2 — Division-by-Zero und Ramp-Overlap in `get_target_state()` behoben (KRITISCH)**
+  Bei extrem kurzen Halbzyklen (`cycle_duration_ms < 2 × RAMP_DURATION_MS`) überlappten sich Ramp-Up und Ramp-Down — der `ramp_factor` wurde erst auf Anlauf und direkt danach auf Auslauf gesetzt. Neuer Guard springt die Rampenlogik komplett, wenn der Halbzyklus zu kurz für zwei separate 5s-Rampen ist. Tote Variable `full` entfernt (S-1).
+- **K-3 — Tote Variable `changed` in `set_mode()` entfernt (KRITISCH)**
+  `bool changed = (current_mode != mode)` wurde nach dem Early-Return nie wieder gelesen. Durch direkte inline-Vergleichung ersetzt: `if (current_mode == mode && duration == ventilation_duration_ms) return;`. Die Timer-Reset-Logik für `ventilation_start_time` war bereits korrekt.
+- **K-4 — Division-by-Zero in `get_cycle_pos()` behoben (KRITISCH)**
+  `raw_pos % (int64_t)period` crashte wenn `cycle_duration_ms == 0` (period = 0 → Modulo durch Null). Guard `if (cycle_duration_ms == 0) return 0;` + Overflow-Prüfung für `period = cycle_duration_ms * 2` eingefügt.
+
+### Changed
+- **H-2 — Zero-Guard für `sync_time()` eingefügt**
+  `time_offset_ms %= (int32_t)period` ohne vorherige Prüfung auf `cycle_duration_ms == 0` crashte mit Division-by-Zero. Guard hinzugefügt, C-Style-Cast durch `static_cast` ersetzt.
+- **H-3 — Input-Validierung in `set_cycle_duration()` gehärtet**
+  `ms == 0` Guard gegen ungültige Eingaben und Overflow-Guard für `ms * 2` eingefügt. `new_period` und `old_half` als `const` deklariert, Code-Reihenfolge optimiert.
+
+### Not fixed (audited, no action required)
+- **H-1 — Future-Start-Time Guard in `update()`**
+  Der vorgeschlagene Guard `if (ventilation_start_time <= now)` würde die korrekte `millis()`-Wraparound-Behandlung nach 49,7 Tagen brechen. Beispiel: `start_time = 4.294.000.000`, `now = 500.000` (5s nach Overflow) — der Guard würde den Timer fälschlicherweise zurücksetzen, obwohl `now - start_time` korrekt ~5s ergibt. uint32_t-Subtraktion ist inhärent überlaufsicher; der Finding erübrigt sich.
+
 ## [0.8.161] - 2026-04-18
 ### Security / Stability
 - **K-1 — Strict-Aliasing-Verletzung in `on_packet_received()` behoben (KRITISCH)**

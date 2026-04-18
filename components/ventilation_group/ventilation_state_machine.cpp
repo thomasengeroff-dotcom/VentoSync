@@ -24,6 +24,7 @@
 // Modified:    2026-03-19
 // ==========================================================================
 #include "ventilation_state_machine.h"
+#include <climits>
 
 namespace esphome {
 
@@ -88,8 +89,8 @@ bool VentilationStateMachine::update(uint32_t now) {
 /// @param now       Current millis() timestamp (used to start timers).
 /// @param duration  For MODE_VENTILATION: auto-stop duration in ms (0 = infinite).
 void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint32_t duration) {
-    bool changed = (current_mode != mode);
-    if (!changed && duration == ventilation_duration_ms) return;
+    // FIXED K-3: Removed dead variable 'changed'; simplified early-return
+    if (current_mode == mode && duration == ventilation_duration_ms) return;
 
     current_mode = mode;
     ventilation_duration_ms = duration;
@@ -110,14 +111,20 @@ void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint3
 /// @param now Current millis() timestamp.
 /// @param ms  Half-cycle duration in milliseconds (e.g. 70000 = 70 s per direction).
 void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
+    // FIXED H-3: Guard against invalid input value
+    if (ms == 0) return;
     if (cycle_duration_ms == ms) return;
     if (cycle_duration_ms == 0) {
         cycle_duration_ms = ms;
         return;
     }
 
+    // FIXED H-3: Overflow guard for ms * 2
+    const uint32_t new_period = ms * 2;
+    if (new_period < ms) return; // uint32_t overflow
+
+    const uint32_t old_half = cycle_duration_ms; // Guaranteed > 0 here
     uint32_t old_pos = get_cycle_pos(now);
-    uint32_t old_half = cycle_duration_ms;
     
     // Calculate proportional position for the new cycle
     uint64_t exact_new_pos;
@@ -130,7 +137,6 @@ void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
         exact_new_pos = (uint64_t)ms + ((uint64_t)progress_in_b * (uint64_t)ms / (uint64_t)old_half);
     }
     
-    uint32_t new_period = ms * 2;
     uint32_t new_pos = (uint32_t)exact_new_pos;
     
     // We want: (now + target_offset) % new_period == new_pos
@@ -143,7 +149,10 @@ void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
         target_offset += new_period; // Handle negative wrapping
     }
     
-    time_offset_ms = (int32_t)target_offset;
+    // FIXED K-1: Clamp before int32_t cast to prevent overflow
+    constexpr int64_t MAX_OFFSET = static_cast<int64_t>(INT32_MAX);
+    target_offset = std::clamp(target_offset, -MAX_OFFSET, MAX_OFFSET);
+    time_offset_ms = static_cast<int32_t>(target_offset);
     cycle_duration_ms = ms;
 }
 
@@ -153,6 +162,9 @@ void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
 /// @param now            Current millis() timestamp.
 /// @param target_pos_ms  Cycle position reported by the peer (0 … 2×cycle_duration_ms).
 void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
+    // FIXED H-2: Guard against division-by-zero if cycle not yet configured
+    if (cycle_duration_ms == 0) return;
+
     uint32_t period = cycle_duration_ms * 2;
     // Use the safe get_cycle_pos() helper to avoid rollover issues
     uint32_t my_pos = get_cycle_pos(now);
@@ -166,7 +178,7 @@ void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
     if (std::abs(diff) > 500) {
         time_offset_ms += diff;
         // Keep offset within [-period, period] to avoid int32_t overflow after months of syncs
-        time_offset_ms %= (int32_t)period;
+        time_offset_ms %= static_cast<int32_t>(period);
     }
 }
 
@@ -185,7 +197,12 @@ uint32_t VentilationStateMachine::get_remaining_duration(uint32_t now) const {
 /// @param now  Current millis() timestamp.
 /// @return Position in ms within [0 … 2×cycle_duration_ms).
 uint32_t VentilationStateMachine::get_cycle_pos(uint32_t now) const {
+    // FIXED K-4: Guard against division-by-zero when cycle not yet configured
+    if (cycle_duration_ms == 0) return 0;
+
     uint32_t period = cycle_duration_ms * 2;
+    if (period < cycle_duration_ms) return 0; // Overflow guard
+
     int64_t raw_pos = (int64_t)now + (int64_t)time_offset_ms;
     int64_t mod_pos = raw_pos % (int64_t)period;
     if (mod_pos < 0) {
@@ -220,21 +237,27 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
 
     // --- Ramping Logic (for WRG and Stoßlüftung) ---
     // Only apply ramping in modes that have cyclic direction changes
-    if (current_mode == MODE_ECO_RECOVERY || current_mode == MODE_STOSSLUEFTUNG) {
-        uint32_t pos = get_cycle_pos(now);
-        uint32_t half = cycle_duration_ms;
-        uint32_t full = half * 2;
+    // FIXED K-2: Guard against RAMP_DURATION_MS == 0 (defense-in-depth,
+    //   currently constexpr 5000) and ramp overlap when half-cycle is
+    //   shorter than 2× ramp duration.
+    // FIXED S-1: Removed dead variable 'full'.
+    if ((current_mode == MODE_ECO_RECOVERY || current_mode == MODE_STOSSLUEFTUNG) &&
+        RAMP_DURATION_MS > 0 && cycle_duration_ms >= 2 * RAMP_DURATION_MS) {
+        const uint32_t pos = get_cycle_pos(now);
+        const uint32_t half = cycle_duration_ms;
 
-        // Simplify position to half-cycle relative [0 ... half]
-        uint32_t phase_pos = pos % half;
+        // Simplify position to half-cycle relative [0 ... half)
+        const uint32_t phase_pos = pos % half;
         
         if (phase_pos < RAMP_DURATION_MS) {
             // 1. Ramp Up: 0.0 -> 1.0 in the first 5s
-            state.ramp_factor = (float)phase_pos / (float)RAMP_DURATION_MS;
+            state.ramp_factor = static_cast<float>(phase_pos)
+                              / static_cast<float>(RAMP_DURATION_MS);
         } else if (phase_pos > (half - RAMP_DURATION_MS)) {
             // 2. Ramp Down: 1.0 -> 0.0 in the last 5s
-            uint32_t remaining = half - phase_pos;
-            state.ramp_factor = (float)remaining / (float)RAMP_DURATION_MS;
+            const uint32_t remaining = half - phase_pos;
+            state.ramp_factor = static_cast<float>(remaining)
+                              / static_cast<float>(RAMP_DURATION_MS);
         }
     }
 
