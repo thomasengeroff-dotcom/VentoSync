@@ -4,6 +4,45 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.169] - 2026-04-18
+### Fixed
+- **Smart-Automatik Modus springt zurück zu Wärmerückgewinnung (BUGFIX)**
+  Beim Wechsel in den Modus "Smart-Automatik" wurde die HA-Select-Entity sofort
+  auf "Wärmerückgewinnung" zurückgesetzt. Ursache: String-Mismatch zwischen den
+  C++-Konstanten (`"Automatik"`) und den YAML-Select-Optionen (`"Smart-Automatik"`).
+  ESPHome lehnt ungültige `publish_state()`-Werte still ab und behält den letzten
+  gültigen Wert bei. Betraf zwei Stellen:
+  - `system_lifecycle.h`: `mode_names[0]` von `"Automatik"` → `"Smart-Automatik"`
+  - `network_sync.h`: `mode_str` bei `auto_mode_active` von `"Automatik"` → `"Smart-Automatik"`
+  Der Bug entstand beim Umbenennen "Automatik" → "Smart-Automatik" in einer früheren
+  Session: die YAML-Optionen wurden damals aktualisiert, die C++-Strings nicht.
+  
+- **Smart-Automatik Modus-Sync über ESP-NOW wird vom Slave ignoriert (BUGFIX)**
+  Ein Wechsel auf Smart-Automatik durch den Master wurde von den Slaves nicht übernommen, 
+  wenn diese bereits in "Wärmerückgewinnung" waren. Ursache: Beide Modi basieren auf 
+  dem gleichen Enum (`MODE_ECO_RECOVERY`). Die alte ESP-NOW Logik verglich nur dieses
+  Enum und hielt den Sync für unnötig, wodurch der Wechsel ignoriert wurde.
+  Fix: Die Sync-Bedingung in `ventilation_group.h` prüft nun zusätzlich den via ESP-NOW 
+  übertragenen HA-Modus-Index (`pkt->current_mode_index`). `network_sync.h` übernimmt
+  diesen Index 1:1, um das UI und das globale `auto_mode_active`-Flag präzise zu steuern.
+
+- **Lokale UI Auswahl von Smart-Automatik wird ignoriert (BUGFIX)**
+  Die C++ Funktion `set_operating_mode_select` in `user_input.h` erwartete beim
+  Klick im Dashboard noch immer den String `"Automatik"`. Da das ESPHome-Select 
+  aber `"Smart-Automatik"` liefert, wurde die Eingabe mit einer Log-Warnung verworfen 
+  und der Modus fiel zurück.
+  Fix: String auf `"Smart-Automatik"` aktualisiert.
+
+- **`esphome logs` Disconnect-Loop nach ESPHome 2026.4.0 Update (HOTFIX)**
+  Der Log-Monitor crashte wiederholt mit `AttributeError: 'NumberInfo' object has
+  no attribute 'accuracy_decimals'`. Ursache: `aioesphomeapi==44.15.0` übergibt bei
+  bestimmten State-Updates ein `NumberInfo`-Objekt an `_format_sensor()`, das
+  `accuracy_decimals` (in `NumberInfo` nicht vorhanden) erwartet. Die Firmware
+  und OTA-Funktion waren nicht betroffen — nur der Python-Log-Client.
+  Hotfix: `hasattr(info, "accuracy_decimals")`-Guard in
+  `aioesphomeapi/state_log_formatter.py`. Muss nach einem `pip upgrade` ggf.
+  erneut angewendet werden.
+
 ## [0.8.163] - 2026-04-18
 ### Security / Stability
 - **K-2 — Stoßlüftungs-Konstanten mit Compile-Zeit-Verifikation abgesichert**

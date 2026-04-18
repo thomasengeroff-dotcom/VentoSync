@@ -615,11 +615,13 @@ public:
           (int32_t)pkt->remaining_duration_ms -
           (int32_t)state_machine.get_remaining_duration(millis());
       if (pkt->current_mode != state_machine.current_mode ||
+          (mode_index_global_ != nullptr && pkt->current_mode_index != mode_index_global_->value()) ||
           (pkt->current_mode == MODE_VENTILATION &&
            std::abs(time_diff) > 2000)) {
 
-        ESP_LOGI("vent", "Syncing mode from peer %d (Type: %d): %d",
-                 pkt->device_id, pkt->msg_type, pkt->current_mode);
+        ESP_LOGI("vent", "Syncing mode from peer %d (Type: %d): mode=%d idx=%d",
+                 pkt->device_id, pkt->msg_type, pkt->current_mode, pkt->current_mode_index);
+
         // Set logical state without triggering an echo broadcast
         state_machine.set_mode((VentilationMode)pkt->current_mode, millis(),
                                pkt->remaining_duration_ms);

@@ -762,37 +762,34 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
     fan_intensity_display->publish_state(pkt->fan_intensity);
   }
 
-  int new_mode_idx = -1; // -1 = Don't update unless determined
+  int new_mode_idx = pkt->current_mode_index; // Trust the master's explicit UI index
   std::string mode_str = "Wärmerückgewinnung";
 
+  // 1. Sync global power switches based on the transmitted core state
   if (v->state_machine.current_mode == esphome::MODE_OFF) {
-    new_mode_idx = 4;
-    mode_str = "Aus";
-    if (ventilation_enabled)
-      ventilation_enabled->value() = false;
-    if (system_on)
-      system_on->value() = false;
-    if (auto_mode_active)
-      auto_mode_active->value() = false;
+    if (ventilation_enabled) ventilation_enabled->value() = false;
+    if (system_on) system_on->value() = false;
   } else {
-    if (ventilation_enabled)
-      ventilation_enabled->value() = true;
-    if (system_on)
-      system_on->value() = true;
+    if (ventilation_enabled) ventilation_enabled->value() = true;
+    if (system_on) system_on->value() = true;
+  }
 
-    if (auto_mode_active != nullptr && auto_mode_active->value()) {
-      new_mode_idx = 0;
-      mode_str = "Automatik";
-    } else if (v->state_machine.current_mode == esphome::MODE_ECO_RECOVERY) {
-      new_mode_idx = 1;
-      mode_str = "Wärmerückgewinnung";
-    } else if (v->state_machine.current_mode == esphome::MODE_VENTILATION) {
-      new_mode_idx = 2;
-      mode_str = "Durchlüften";
-    } else if (v->state_machine.current_mode == esphome::MODE_STOSSLUEFTUNG) {
-      new_mode_idx = 3;
-      mode_str = "Stoßlüftung";
-    }
+  // 2. Map the peer's UI mode back to local text state and adjust auto_mode
+  if (new_mode_idx == 0) {
+    mode_str = "Smart-Automatik"; // FIXED: Explicit string match
+    if (auto_mode_active) auto_mode_active->value() = true;
+  } else if (new_mode_idx == 1) {
+    mode_str = "Wärmerückgewinnung";
+    if (auto_mode_active) auto_mode_active->value() = false;
+  } else if (new_mode_idx == 2) {
+    mode_str = "Durchlüften";
+    if (auto_mode_active) auto_mode_active->value() = false;
+  } else if (new_mode_idx == 3) {
+    mode_str = "Stoßlüftung";
+    if (auto_mode_active) auto_mode_active->value() = false;
+  } else if (new_mode_idx == 4) {
+    mode_str = "Aus";
+    if (auto_mode_active) auto_mode_active->value() = false;
   }
 
   if (current_mode_index != nullptr && (new_mode_idx != current_mode_index->value() || force)) {

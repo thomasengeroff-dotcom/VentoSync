@@ -92,7 +92,10 @@ inline void cycle_operating_mode(int mode_index) {
   }
 
   // Mode names for HA select sync (must match luefter_modus options exactly)
-  static constexpr const char *mode_names[] = {"Automatik", "Wärmerückgewinnung",
+  // FIXED: "Smart-Automatik" must match ui_controls.yaml select options EXACTLY.
+  // Previously "Automatik" caused ESPHome to reject the publish_state() call
+  // and revert the select to the last valid option ("Wärmerückgewinnung").
+  static constexpr const char *mode_names[] = {"Smart-Automatik", "Wärmerückgewinnung",
                                                "Durchlüften", "Stoßlüftung", "Aus"};
   static_assert(sizeof(mode_names) / sizeof(mode_names[0]) == 5, "Mode names array size mismatch");
 

@@ -150,7 +150,7 @@ inline void set_operating_mode_select(const std::string &x) {
   const std::string x_norm = trim(x);
 
   int mode_index = -1;
-  if (x_norm == "Automatik")
+  if (x_norm == "Smart-Automatik") // FIXED: Must match YAML exactly
     mode_index = 0;
   else if (x_norm == "Wärmerückgewinnung")
     mode_index = 1;
