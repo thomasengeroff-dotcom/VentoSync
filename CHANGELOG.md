@@ -4,6 +4,27 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.163] - 2026-04-18
+### Security / Stability
+- **K-2 — Stoßlüftungs-Konstanten mit Compile-Zeit-Verifikation abgesichert**
+  `STOSS_ACTIVE_MS` und `STOSS_PAUSE_MS` verwendeten `UL`-Suffix statt portablem `u`. Da `unsigned long` auf 32-Bit-Plattformen (ESP32-C6 RISC-V) nur 32 Bit breit ist, wäre ein zukünftiger Wert >4,29 Milliarden still übergelaufen. Jetzt: `u`-Suffix + `static_assert` verifiziert die erwarteten Werte und den Gesamtzyklus zur Compile-Zeit.
+- **H-2 — `VentilationMode` Enum um expliziten `uint8_t` Underlying Type ergänzt**
+  Der Enum ohne Typ-Angabe ließ dem Compiler freie Wahl (potenziell `int` = 4 Byte). Da `VentilationPacket::current_mode` als `uint8_t` serialisiert und über ESP-NOW übertragen wird, ist eine implizite Narrowing-Conversion die Folge. Mit `enum VentilationMode : uint8_t` ist die Paket-Kompatibilität nun vom Typ-System garantiert. `static_assert(sizeof(VentilationMode) == sizeof(uint8_t))` verifiziert dies zur Compile-Zeit.
+
+### Changed
+- **H-1 — Parameternamen-Konflikt `now_ms` vs. `now` zwischen Header und Implementation behoben**
+  `get_target_state()` und `get_remaining_duration()` verwendeten `now_ms` im Header aber `now` im .cpp — inkonsistent mit `get_cycle_pos(uint32_t now)`. Alle Deklarationen auf konsistentes `now` normalisiert.
+- **H-3 — Totes Feld `needs_update` aus `HardwareState` entfernt**
+  Das Feld wurde in `get_target_state()` stets auf `false` gesetzt und nirgends ausgewertet. Entfernt in Header und Implementation.
+- **M-1 — `DEFAULT_CYCLE_DURATION_MS` als benannte Konstante mit `static_assert` eingeführt**
+  Der Default-Wert 70000 war bisher ein Magic Number. Jetzt als `static constexpr` Klassenmember mit `static_assert(DEFAULT_CYCLE_DURATION_MS >= 2 * RAMP_DURATION_MS)` gegen die Rahmenbedingung des K-2-Fixes aus dem .cpp abgesichert: Wenn jemand den Default unter 10000ms senkt, schlägt die Kompilierung fehl.
+- **M-2 — Serialisierungs-Dokumentation für `VentilationMode` Enum-Werte**
+  Explizite Warnung im Doxygen-Kommentar, dass die Enum-Werte nicht umbenannt werden dürfen, da sie über ESP-NOW serialisiert werden. Trailing-Comma für zukünftige Erweiterbarkeit.
+
+### Not fixed (audited, no action required)
+- **K-1 — Default `cycle_duration_ms = 70000`**
+  Der Default-Wert ist eine bewusste Engineering-Entscheidung: Das System startet in einem sicheren, bekannten Zustand. Das Boot-Race-Window (~100-2000ms mit dem Default statt dem konfigurierten Wert) ist folgenlos, da der Slew-Rate-Limiter den Motor ohnehin sanft hochfährt. Die K-4-Guards im .cpp (Division-by-Zero bei 0) fangen den Fall ab, falls jemand den Default auf 0 ändert.
+
 ## [0.8.162] - 2026-04-18
 ### Security / Stability
 - **K-1 — int64→int32 Cast-Overflow in `set_cycle_duration()` behoben (KRITISCH)**

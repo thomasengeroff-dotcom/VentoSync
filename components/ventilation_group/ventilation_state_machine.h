@@ -39,21 +39,26 @@
 namespace esphome {
 
 /// @brief Operating modes for the ventilation system.
-enum VentilationMode {
-  MODE_OFF = 0, ///< System idle — fan stopped.
-  MODE_ECO_RECOVERY =
-      1, ///< Heat recovery — alternating IN/OUT each half-cycle.
-  MODE_VENTILATION =
-      2, ///< Continuous ventilation — single direction with optional timer.
-  MODE_STOSSLUEFTUNG = 3 ///< Burst ventilation — 15 min ON / 105 min OFF cycle.
+/// IMPORTANT: These values are serialized into VentilationPacket (uint8_t)
+/// and transmitted via ESP-NOW. Do NOT renumber existing values — this
+/// would break protocol compatibility. Bump PROTOCOL_VERSION if adding modes.
+enum VentilationMode : uint8_t {
+  MODE_OFF = 0,            ///< System idle — fan stopped.
+  MODE_ECO_RECOVERY = 1,   ///< Heat recovery — alternating IN/OUT each half-cycle.
+  MODE_VENTILATION = 2,    ///< Continuous ventilation — single direction with optional timer.
+  MODE_STOSSLUEFTUNG = 3,  ///< Burst ventilation — 15 min ON / 105 min OFF cycle.
 };
+
+static_assert(sizeof(VentilationMode) == sizeof(uint8_t),
+    "VentilationMode must fit in uint8_t for VentilationPacket compatibility");
 
 /// @brief Snapshot of desired hardware outputs, computed by the state machine.
 struct HardwareState {
   bool fan_enabled;  ///< true = fan should run, false = fan off.
   bool direction_in; ///< true = intake (IN), false = exhaust (OUT).
   float ramp_factor; ///< 0.0 (stop) to 1.0 (full target speed).
-  bool needs_update; ///< Reserved — caller compares against previous state.
+  // FIXED H-3: Removed dead field 'needs_update' — was always false, never read.
+  // Caller (VentilationController) compares ramp_factor/dirty flag instead.
 };
 
 /**
@@ -71,11 +76,18 @@ class VentilationStateMachine {
 public:
   static constexpr uint32_t RAMP_DURATION_MS =
       5000; ///< 5s ramp up/down duration.
+
+  // FIXED M-1: Named default for compile-time verification against RAMP_DURATION_MS
+  static constexpr uint32_t DEFAULT_CYCLE_DURATION_MS = 70000;
+  static_assert(DEFAULT_CYCLE_DURATION_MS >= 2 * RAMP_DURATION_MS,
+      "Default cycle_duration_ms must be >= 2x RAMP_DURATION_MS "
+      "for ramp-up and ramp-down to fit without overlap");
+
   // --- Configuration ---
   bool is_phase_a =
       true; ///< Phase group assignment (A starts IN, B starts OUT).
   uint32_t cycle_duration_ms =
-      70000; ///< Half-cycle duration in ms (default 70 s).
+      DEFAULT_CYCLE_DURATION_MS; ///< Half-cycle duration in ms (default 70 s).
 
   // --- State ---
   VentilationMode current_mode = MODE_ECO_RECOVERY; ///< Active operating mode.
@@ -97,8 +109,16 @@ public:
       false; ///< Alternates direction each active phase.
 
   /// Stoßlüftung constants (15 min active, 105 min pause = 2 h total cycle).
-  static constexpr uint32_t STOSS_ACTIVE_MS = 15UL * 60 * 1000;
-  static constexpr uint32_t STOSS_PAUSE_MS = 105UL * 60 * 1000;
+  // FIXED K-2: Use u suffix + static_assert for compile-time overflow verification
+  static constexpr uint32_t STOSS_ACTIVE_MS = 15u * 60u * 1000u;
+  static constexpr uint32_t STOSS_PAUSE_MS  = 105u * 60u * 1000u;
+
+  static_assert(STOSS_ACTIVE_MS == 900000u,
+      "STOSS_ACTIVE_MS unexpected value — check for multiplication overflow");
+  static_assert(STOSS_PAUSE_MS == 6300000u,
+      "STOSS_PAUSE_MS unexpected value — check for multiplication overflow");
+  static_assert(STOSS_ACTIVE_MS + STOSS_PAUSE_MS > STOSS_ACTIVE_MS,
+      "STOSS total cycle overflows uint32_t");
 
   /// @brief One-time initialization (reserved for future use).
   void setup();
@@ -131,14 +151,14 @@ public:
    *
    * @return  HardwareState  A composite struct for the low-level drivers.
    */
-  HardwareState get_target_state(uint32_t now_ms) const;
+  HardwareState get_target_state(uint32_t now) const;
   /**
    * @brief   Calculates the remaining duration for timed modes.
    *
    * @details Used for Stoßlüftung and manual ventilation timers.
    *          Returns 0 for infinite (untimed) modes.
    */
-  uint32_t get_remaining_duration(uint32_t now_ms) const;
+  uint32_t get_remaining_duration(uint32_t now) const;
   /// @brief Current position in the full direction cycle (for sync packets).
   uint32_t get_cycle_pos(uint32_t now) const;
 };

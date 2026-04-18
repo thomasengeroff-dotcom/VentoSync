@@ -1,5 +1,5 @@
 {
-    "version": "0.8.162",
+    "version": "0.8.163",
     "date": "2026-04-18",
     "description": "refactor(ui): fix Non-Volatile Storage (NVS) sync for window guard UI switch"
 }

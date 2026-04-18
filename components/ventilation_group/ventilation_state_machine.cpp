@@ -221,7 +221,6 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
     state.fan_enabled = true;
     state.direction_in = true;
     state.ramp_factor = 1.0f; // Default: full speed
-    state.needs_update = false;
 
     if (current_mode == MODE_OFF) {
         state.fan_enabled = false;
