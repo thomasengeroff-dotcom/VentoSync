@@ -755,21 +755,29 @@ Diese Dokumentation enthält:
 
 ```text
 VentoSync/
-├── ventosync.yaml      # Hauptkonfiguration (minimal)
-├── esp32c6_common.yaml            # Gemeinsame ESP32-C6 Einstellungen
-├── device_config.yaml             # Dynamische Gerätekonfiguration
+├── ventosync.yaml                 # Vollversion (SCD41, BME680, LD2450)
+├── ventosync_bme680_only.yaml     # Variante (Nur BME680)
+├── ventosync_radar_only.yaml      # Variante (Nur LD2450)
+├── ventosync_nosensor.yaml        # Variante (Keine Klima-/Radar-Sensoren)
+├── ventosync_base.yaml            # Gemeinsame Basis-Konfiguration
 ├── secrets.yaml                   # WLAN-Daten (Git-ignored)
 ├── packages/                      # Geteilte YAML-Module
-│   ├── hardware_io.yaml           # Hardware (PCA9685, MCP23017, LEDs)
-│   ├── hardware_fan.yaml          # Zentrale Lüfterkonfiguration (PWM, RPM, Fan-Entity)
-│   ├── sensor_BMP390.yaml         # Bosch BMP390 (Druck, Luftdruck-Trend, Thermal Guard)
-│   ├── sensor_SCD41.yaml          # Sensirion SCD41 (CO2, Temp, Hum, Calibration)
-│   ├── sensor_NTC.yaml            # Analoge NTC-Fühler (Zuluft/Abluft) & ADC-Setup
-│   ├── sensor_BME680.yaml         # Bosch BME680 (IAQ & Gas Fallback)
-│   ├── sensor_LD2450.yaml         # HLK-LD2450 Radar (Präsenz, Targets)
-│   ├── sensors_climate.yaml       # Übergreifende Klimastatistiken & WRG-Effizienz
-│   ├── ui_controls.yaml           # HA GUI-Elemente (Slider, Selects, Alarm)
-│   ├── logic_automation.yaml      # Steuerungslogik, PIDs, Intervalle, Wartung
+│   ├── base/                      # Allgemeine Geräte- und ESP32-C6-Settings
+│   ├── communication/             # ESP-NOW Protokolle
+│   ├── io/                        # Hardware IO, Lüfter und Taster
+│   ├── sensors/                   # Alle Sensoren und deren Mocks
+│   │   ├── mock_bme680.yaml       # Mock für fehlenden BME680
+│   │   ├── mock_radar.yaml        # Mock für fehlendes LD2450
+│   │   ├── mock_scd41.yaml        # Mock für fehlenden SCD41
+│   │   ├── sensor_BME680.yaml     # Bosch BME680 (IAQ & Gas Fallback)
+│   │   ├── sensor_BMP390.yaml     # Bosch BMP390 (Druck, Thermal Guard)
+│   │   ├── sensor_LD2450.yaml     # HLK-LD2450 Radar (Präsenz, Targets)
+│   │   ├── sensor_NTC.yaml        # Analoge NTC-Fühler (Zuluft/Abluft)
+│   │   ├── sensor_SCD41.yaml      # Sensirion SCD41 (CO2, Temp, Hum)
+│   │   └── sensors_climate.yaml   # Klimastatistiken & WRG-Effizienz
+│   ├── actuators/                 # PID-Regler, Automatik & Sicherheitslogik
+│   ├── integration/               # Home Assistant Imports & Exports
+│   └── ui/                        # Web GUI, LEDs, Diagnose
 
 ├── components/                    # Lokale Custom C++-Komponenten
 │   ├── automation_helpers.h       # C++ Helper-Funktionen für Lambdas
@@ -798,15 +806,17 @@ Die Firmware folgt einem **mehrstufigen modularen Architekturansatz**, der Wartb
 
 #### **1. YAML Modularisierung (Packages)**
 
-Die ehemals gewaltige Hauptdatei `ventosync.yaml` wurde drastisch verschlankt, um die Lesbarkeit und Pflege zu vereinfachen. Das Projekt nutzt intensiv die ESPHome `packages:` Funktion, um in sich geschlossene Logikbausteine in separate YAML-Dateien auszulagern:
+Die ehemals gewaltige Hauptdatei wurde drastisch verschlankt, um die Lesbarkeit und Pflege zu vereinfachen. Das Projekt nutzt intensiv die ESPHome `packages:` Funktion, um in sich geschlossene Logikbausteine in separate YAML-Dateien auszulagern. Seit Version 0.8.171 ist das `packages/`-Verzeichnis streng hierarchisch gegliedert:
 
-- **`hardware_io.yaml`**: Kapselt die gesamte physische Hardware. Beinhaltet I2C-Busse, Port-Expander (MCP23017, PCA9685), Basis-Pinbelegungen und Power-Toggles.
-- **`sensors_climate.yaml`**: Beinhaltet die zentrale Mess-Peripherie (SCD41 CO2, BMP390 Druck, NTC-Temperaturfühler) und klimabasierte Berechnungen (z. B. Effizienz der Wärmerückgewinnung).
-- **`sensor_BME680.yaml`** & **`sensor_LD2450.yaml`**: Spezifische Pakete für den IAQ-Gassensor und das mmWave-Radar zur besseren Modularität und Hardware-Austauschbarkeit.
-- **`ui_controls.yaml`**: Isoliert alle Entitäten, die in Home Assistant als Steuerelemente auftauchen (Slider für Timer und Setup, Dropdowns zur Modus-Wahl, sowie logische LED-Lichter).
-- **`logic_automation.yaml`**: Das "Gehirn", wenn es um Abläufe geht. Hier sitzen die komplexen PID-Klimaregler, Automatisierungen per Interval, zyklische Fan-Ramp-Skripte sowie die Input-Logik der Hardwaretaster am Bedienpanel.
+- **`base/`**: Enthält die grundlegende ESP32-C6 Gerätekonfiguration.
+- **`io/`**: Kapselt die physische Hardware. Beinhaltet I2C-Busse, Port-Expander, Basis-Pinbelegungen und die zentrale Lüfterkonfiguration.
+- **`sensors/`**: Beinhaltet die gesamte Mess-Peripherie (SCD41, BME680, Radar, NTCs). 
+  - 🧩 **Sensor-Mocks**: Fehlt ein Sensor (z.B. SCD41), springen automatisch Mocks (`mock_scd41.yaml`) ein. Diese verhindern Compile-Fehler, unterdrücken Log-Spamming und blenden nicht vorhandene Sensoren dank `internal: true` nahtlos aus Home Assistant aus.
+- **`actuators/`**: Das "Gehirn" der Anlage. Hier sitzen hochperformante Automatisierungen, PID-Klimaregler und die sicherheitskritische thermische Abschaltung (`logic_safety.yaml`).
+- **`integration/`**: Isoliert alle externen Home Assistant Datenpunkte (`homeassistant.yaml`), um das System autark lauffähig zu halten.
+- **`ui/`**: Enthält Web GUI, Diagnose-Entitäten und Status-LEDs.
 
-Die Hauptdatei (`ventosync.yaml`) fungiert nun lediglich als "Klebstoff", der Basisvariablen definiert, C++ Abhängigkeiten lädt und diese vier Modul-Dateien zusammenführt.
+Die Hauptdateien (`ventosync.yaml` etc.) fungieren nun lediglich als schlanke "Wrapper", die die `ventosync_base.yaml` importieren und je nach Variante spezifische Sensoren oder Mocks dazuladen.
 
 #### **2. `automation_helpers.h` - Zentrale Helper-Bibliothek**
 
@@ -931,14 +941,28 @@ py -3.13 -m pip install --upgrade esphome
 
 ### 2. Firmware Kompilieren & Flashen
 
-Kompiliere die Firmware und lade sie auf das Gerät. Ersetze `ventosync.yaml` durch den Namen deiner YAML-Datei.
+VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Hardware die passende Konfigurationsdatei:
+
+- **`ventosync.yaml`**: Vollversion (SCD41, BME680, LD2450)
+- **`ventosync_bme680_only.yaml`**: Variante mit BME680 (ohne SCD41/LD2450)
+- **`ventosync_radar_only.yaml`**: Variante mit Radar (ohne Klima-Sensoren)
+- **`ventosync_nosensor.yaml`**: Basis-Lüftungssteuerung ohne Sensoren
+
+Nutze das Skript `upload_all.sh` für automatisches Kompilieren und Flashen auf deine Geräte:
 
 ```bash
-# Kompilieren
-py -3.13 -m esphome compile ventosync.yaml
+# Kompiliert und flasht alle im Skript definierten Geräte
+./upload_all.sh
+```
 
-# Oder direkt flashen (mit OTA-Update über IP)
-py -3.13 -m esphome upload ventosync.yaml --device <IP-Adresse>
+Alternativ manuell für ein einzelnes Gerät per ESPHome CLI:
+
+```bash
+# 1. Konfiguration prüfen
+esphome config ventosync_nosensor.yaml
+
+# 2. Kompilieren und direkt via OTA flashen (benötigt IP-Adresse)
+esphome run ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
 ```
 
 ### 3. OTA-Updates
