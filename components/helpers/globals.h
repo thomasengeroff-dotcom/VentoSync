@@ -247,7 +247,7 @@ extern esphome::ledc::LEDCOutput
 
 /// @name Sensors
 /// @{
-#ifdef VENTOSYNC_NO_CLIMATE
+#ifdef VENTOSYNC_NO_SCD41
 extern esphome::template_::TemplateSensor *const scd41_co2; ///< SCD41 CO2 sensor.
 extern esphome::template_::TemplateSensor *const scd41_humidity; ///< Indoor Humidity
 #else

@@ -1,5 +1,28 @@
 # ==========================================================================
-# VentoSync HRV – ESPHome NO SENSOR configuration
+# VentoSync HRV – ESPHome Main configuration for the room ventilation system
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        ventosync_nosensor.yaml
+# Description: ESPHome configuration variant for devices with no climate/radar sensors.
+#              Controls fan, clusters via ESP-NOW, and integrates with HA.
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
 # ==========================================================================
 
 substitutions:
@@ -8,10 +31,12 @@ substitutions:
 esphome:
   platformio_options:
     build_flags:
-      - "-DVENTOSYNC_NO_CLIMATE"
+      - "-DVENTOSYNC_NO_SCD41"
+      - "-DVENTOSYNC_NO_BME680"
       - "-DVENTOSYNC_NO_RADAR"
 
 packages:
   base: !include ventosync_base.yaml
-  mock_climate: !include packages/sensors/mock_climate.yaml
+  mock_scd41: !include packages/sensors/mock_scd41.yaml
+  mock_bme680: !include packages/sensors/mock_bme680.yaml
   mock_radar: !include packages/sensors/mock_radar.yaml

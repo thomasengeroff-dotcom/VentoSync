@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# File:        ventosync_radar_only.yaml
-# Description: ESPHome configuration variant for devices with LD2450 radar sensor only.
+# File:        ventosync_bme680_only.yaml
+# Description: ESPHome configuration variant for devices with BME680 sensor only.
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
@@ -26,16 +26,16 @@
 # ==========================================================================
 
 substitutions:
-  hide_climate_sensors: "true"
+  hide_climate_sensors: "false"
 
 esphome:
   platformio_options:
     build_flags:
       - "-DVENTOSYNC_NO_SCD41"
-      - "-DVENTOSYNC_NO_BME680"
+      - "-DVENTOSYNC_NO_RADAR"
 
 packages:
   base: !include ventosync_base.yaml
   mock_scd41: !include packages/sensors/mock_scd41.yaml
-  mock_bme680: !include packages/sensors/mock_bme680.yaml
-  ld2450: !include packages/sensors/sensor_LD2450.yaml
+  bme680: !include packages/sensors/sensor_BME680.yaml
+  mock_radar: !include packages/sensors/mock_radar.yaml

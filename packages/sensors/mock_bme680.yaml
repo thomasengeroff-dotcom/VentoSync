@@ -1,0 +1,24 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Mock Configuration for missing BME680 sensor
+# ==========================================================================
+sensor:
+  - platform: template
+    id: bme680_temperature
+    name: "BME680 Temperatur (Mock)"
+    unit_of_measurement: "°C"
+    internal: true
+    lambda: 'return NAN;'
+    
+  - platform: template
+    id: bme680_humidity
+    name: "BME680 Luftfeuchtigkeit (Mock)"
+    unit_of_measurement: "%"
+    internal: true
+    lambda: 'return NAN;'
+    
+  - platform: template
+    id: iaq_co2eq
+    name: "BME680 IAQ CO2eq (Mock)"
+    unit_of_measurement: "ppm"
+    internal: true
+    lambda: 'return NAN;'

@@ -4,6 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.177] - 2026-04-22
+### Added
+- **Weitere Hardware-Variante**: `ventosync_bme680_only.yaml` für Geräte mit BME680, aber ohne SCD41/LD2450.
+- **Granulare Sensor-Mocks**: Aufteilung der Mocks in `mock_scd41.yaml` und `mock_bme680.yaml` für maximale Flexibilität bei der Sensor-Kombination.
+- **Automatisierte Bereitstellung**: Das `upload_all.sh` Skript wurde vollständig auf die neue modulare Struktur umgestellt und weist jedem Gerät (Büro, Flur, Wohnraum) automatisch die passende Firmware-Variante zu.
+
+### Changed
+- **Verfeinerte Build-Flags**: Umstellung auf granulare Flags (`-DVENTOSYNC_NO_SCD41`, `-DVENTOSYNC_NO_BME680`, `-DVENTOSYNC_NO_RADAR`) für präzise C++ Typ-Steuerung in `globals.h`.
+- **Standardisierte Datei-Header**: Alle Haupt-Konfigurationsdateien verfügen nun über den vollständigen GPLv3-Standardheader.
+
 ## [0.8.173] - 2026-04-21
 ### Added
 - **Hardware-Varianten (Wrapper)**: Neue Konfigurationsdateien für unterschiedliche Hardware-Ausstattungen (`ventosync_nosensor.yaml` und `ventosync_radar_only.yaml`).
