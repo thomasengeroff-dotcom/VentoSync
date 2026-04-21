@@ -1,0 +1,110 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        logic_buttons.yaml
+# Description: Configuration and logic for the physical control panel buttons.
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
+# ==========================================================================
+
+# ---------------------------------------------------------
+# CONTROL PANEL BUTTONS (Input)
+# ---------------------------------------------------------
+binary_sensor:
+  # Button Power (right) - On/Off (MCP23017 GPA0)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 0 # GPA0
+      mode:
+        input: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Power"
+    internal: true # not needed in HA
+    id: button_power
+    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    filters:
+      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
+      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+    on_click:
+      - min_length: 50ms
+        max_length: 4999ms
+        then:
+          - lambda: |-
+              handle_button_power_short_click();
+      - min_length: 5000ms
+        max_length: 9999ms
+        then:
+          - lambda: |-
+              handle_button_power_long_click();
+      - min_length: 10000ms
+        max_length: 60000ms
+        then:
+          - lambda: |-
+              handle_button_power_long_click();
+          - button.press: force_restart_button
+
+  # Button Mode (left) - Mode Control (MCP23017 GPA1)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 1 # GPA1
+      mode:
+        input: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Mode"
+    internal: true # not needed in HA
+    id: button_mode
+    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    filters:
+      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
+      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+    on_click:
+      then:
+        - lambda: |-
+            handle_button_mode_click();
+
+  # Button Level (Middle) - Speed Level (MCP23017 GPA2)
+  - platform: gpio
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 2 # GPA2
+      mode:
+        input: true
+      inverted: true # Pressed = Low -> Inverted = ON
+    name: "Button Fan Intensity"
+    internal: true # not needed in HA
+    id: button_level
+    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    filters:
+      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
+      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+    on_click:
+      # Short press: Cycle through intensity levels 1→10→1
+      - min_length: 50ms
+        max_length: 749ms # Slightly shorter than the hold handler delay
+        then:
+          - lambda: |-
+              handle_button_level_click();
+    on_press:
+      - script.execute: intensity_hold_handler
+    on_release:
+      - script.stop: intensity_hold_handler
+      - lambda: sync_settings_to_peers();

@@ -1,5 +1,5 @@
 # ==========================================================================
-# VentoSync HRV – ESPHome Custom Component
+# VentoSync HRV – ESPHome Configuration
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
@@ -21,7 +21,7 @@
 # Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-27
+# Modified:    2026-04-21
 # ==========================================================================
 
 substitutions:

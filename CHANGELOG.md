@@ -4,6 +4,22 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.171] - 2026-04-21
+### Added
+- **Standardisierte Datei-Header**: Alle YAML-Konfigurationsdateien in `packages/` und die Hauptdatei `ventosync.yaml` verfügen nun über einen einheitlichen, professionellen Header inklusive GPLv3-Lizenz, Dateibeschreibung und Metadaten.
+- **Neue Sub-Pakete**: Einführung von `ui_lights.yaml`, `ui_diagnostics.yaml` und `homeassistant.yaml` zur besseren Kapselung von UI-Elementen und externen Integrationen.
+
+### Changed
+- **Struktur-Refactoring (Modularisierung)**: Komplette Reorganisation des `packages/`-Verzeichnisses in eine hierarchische Unterordner-Struktur (`base/`, `actuators/`, `io/`, `ui/`, `integration/`, `sensors/`). Dies verbessert die Übersichtlichkeit und Wartbarkeit erheblich.
+- **Logik-Entkopplung**:
+    - Hochperformante Steuerungslogik (Lüfter-Skripte, Urlaubsmodus) wurde in `actuators/logic_automation.yaml` zentralisiert.
+    - Sicherheitshritische thermische Abschaltung wurde in ein eigenes Modul `actuators/logic_safety.yaml` ausgelagert.
+    - Externe Home Assistant Datenpunkte wurden konsequent in `integration/homeassistant.yaml` isoliert, um das System unabhängiger von der Zentrale betreiben zu können.
+- **Dokumentations-Update**: Die `packages/Readme.md` wurde vollständig überarbeitet und spiegelt nun die neue Verzeichnisstruktur und die funktionalen Zuständigkeiten der Module wider.
+
+### Fixed
+- **ID-Konflikt gelöst**: Behebung eines Fehlers mit doppelt definierten IDs (`pid_humidity_output`), der durch die Extraktion der PID-Logik entstanden war.
+
 ## [0.8.169] - 2026-04-18
 ### Fixed
 - **Smart-Automatik Modus springt zurück zu Wärmerückgewinnung (BUGFIX)**

@@ -1,0 +1,67 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Configuration for logic and automation
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        logic_maintenance.yaml
+# Description: Filter Maintenance timers and reset logic.
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
+# ==========================================================================
+binary_sensor:
+
+  - platform: template
+    name: "Filterwechsel Alarm"
+    id: filter_change_alarm
+    icon: "mdi:air-filter"
+    device_class: problem
+    lambda: |-
+      // Alarm if operating hours > 8760h (365 days)
+      if (id(filter_operating_hours) > 8760.0f) return true;
+      // Alarm if > 3 years (94608000s) since last filter change
+      if (id(filter_last_change_ts) > 0) {
+        auto now_ts = id(sntp_time).now().timestamp;
+        if (now_ts > 0 && (now_ts - id(filter_last_change_ts)) > 94608000) return true;
+      }
+      return false;
+
+sensor:
+  - platform: template
+    name: "Filter Betriebstage"
+    id: filter_operating_days_sensor
+    icon: "mdi:counter"
+    unit_of_measurement: "Tage"
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    lambda: |-
+      return id(filter_operating_hours) / 24.0f;
+    update_interval: 300s
+
+button:
+  - platform: template
+    name: "Filterwechsel (Reset)"
+    id: filter_reset_btn
+    icon: "mdi:restart"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(filter_operating_hours) = 0.0f;
+          id(filter_last_change_ts) = id(sntp_time).now().timestamp;
+          id(filter_change_alarm).publish_state(false);
+          id(filter_operating_days_sensor).publish_state(0);
+          ESP_LOGI("filter", "Filter counters reset. Timestamp: %d", id(filter_last_change_ts));

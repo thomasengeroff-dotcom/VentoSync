@@ -18,10 +18,10 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        device_config.yaml
-# Description: Shared device-level configurations (WiFi, API, OTA).
+# Description: Persistent device configuration and runtime IDs.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-27
+# Modified:    2026-04-21
 # ==========================================================================
 # ---------------------------------------------------------
 # DEVICE CONFIGURATION
@@ -267,3 +267,26 @@ sensor:
   - platform: internal_temperature
     name: "Internal ESP32-C6 Temperature"
     entity_category: diagnostic
+
+# ---------------------------------------------------------
+# SCRIPTS (Complex Logic)
+# ---------------------------------------------------------
+script:
+  # --- Light Sleep Management ---
+  # Reduces power by turning off WiFi and LEDs
+  - id: system_sleep
+    mode: restart  # Note: 'light_sleep' is not a valid execution mode for a script.
+    then:
+      - lambda: |-
+          ESP_LOGI("sleep", "Entering Light Sleep Mode (WiFi OFF, LEDs OFF)");
+      - switch.turn_off: pca9685_oe
+      - wifi.disable:
+
+  # Restores full operation
+  - id: system_wakeup
+    mode: restart
+    then:
+      - lambda: |-
+          ESP_LOGI("sleep", "Waking up from Light Sleep (WiFi ON, LEDs ON)");
+      - wifi.enable:
+      - switch.turn_on: pca9685_oe

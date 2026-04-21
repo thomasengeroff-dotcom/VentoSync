@@ -1,0 +1,93 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        esp_now.yaml
+# Description: ESP-NOW communication and peer discovery for device cluster.
+# Author:      Thomas Engeroff
+# Created:     2026-03-07
+# Modified:    2026-04-21
+# ==========================================================================
+
+espnow:
+  id: espnow_component
+  auto_add_peer: false
+  # FF:FF:FF:FF:FF:FF must be in peers for the C++ send() API to broadcast discovery/status packets.
+  # on_broadcast will still correctly handle incoming packets with the broadcast MAC.
+  peers:
+    - FF:FF:FF:FF:FF:FF
+
+  # on_receive ONLY triggers for registered peers (defined above).
+  # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
+  on_broadcast:
+    - lambda: |-
+        /** @brief Multiplexer for ESP-NOW broadcasts. Handles discovery and group status. */
+        ESP_LOGW("espnow_low", "BROADCAST packet received! Size: %d", size);
+        std::vector<uint8_t> packet(data, data + size);
+        handle_espnow_receive(packet, info.src_addr);
+
+  # For robustness, we also handle registered peers (e.g. if we add them dynamically)
+  on_receive:
+    - lambda: |-
+        /** @brief Multiplexer for direct Unicast packets (e.g., status responses). */
+        ESP_LOGW("espnow_low", "RECEIVE packet from registered peer! Size: %d", size);
+        std::vector<uint8_t> packet(data, data + size);
+        handle_espnow_receive(packet, info.src_addr);
+
+  on_unknown_peer:
+    - lambda: |-
+        /** @brief Discovery entry point: allows registration of new devices. */
+        ESP_LOGW("espnow_low", "UNKNOWN PEER packet! Size: %d", size);
+        std::vector<uint8_t> packet(data, data + size);
+        handle_espnow_receive(packet, info.src_addr);
+
+# ---------------------------------------------------------
+# ESP-NOW PEER DISCOVERY & HEALTH
+# ---------------------------------------------------------
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          /**
+           * @brief   Periodic watchdog for peer presence.
+           * @details If no peers are found during normal operation, the device
+           *          re-triggers discovery to recover from network splits.
+           */
+          if (peer_cache.empty()) {
+            ESP_LOGI("espnow_disc", 
+                     "No peers found — retrying discovery...");
+            send_discovery_broadcast();
+          }
+
+script:
+  # ESP-NOW Discovery: Load peers from flash and send discovery broadcast
+  # Called from the boot interval once ESP-NOW is fully ready
+  - id: espnow_discovery
+    mode: single
+    then:
+      - lambda: load_peers_from_runtime_cache(); # W4: renamed from load_peers_from_flash
+      - lambda: send_discovery_broadcast();
+      - delay: 2s
+      - lambda: request_peer_status();
+
+      # LED Self-Test and UI start (moved from boot to avoid bus contention)
+      - delay: 500ms
+      - lambda: run_led_self_test();
+      - delay: 3s
+      - script.execute: ui_timeout_script
+      - script.execute: fan_speed_update

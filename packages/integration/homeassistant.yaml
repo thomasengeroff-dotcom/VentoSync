@@ -1,0 +1,63 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Configuration for Home Assistant integration
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        homeassistant.yaml
+# Description: External data points imported from Home Assistant.
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
+# ==========================================================================
+
+sensor:
+  # Home Assistant Data (Automation): 
+  # Entity filled with data from Home Assistant. 
+  # Must be configured as described in readme.md
+  - platform: homeassistant
+    name: "Außenluftfeuchtigkeit"
+    id: outdoor_humidity
+    entity_id: sensor.outdoor_humidity
+    internal: true
+
+binary_sensor:
+  # Summer mode gate for automatic summer cooling.
+  # Provided by HA template: season (April-October) AND outdoor temp > 18°C.
+  # When unavailable (HA offline), defaults to false → heat recovery stays active (safe).
+  - platform: homeassistant
+    name: "Sommerbetrieb"
+    id: sommerbetrieb
+    entity_id: binary_sensor.sommerbetrieb
+    internal: true
+
+  # Window Guard (Fenstersperre) - HA State
+  - platform: homeassistant
+    name: "Fenstersperre"
+    id: window_locked
+    entity_id: ${window_sensor_id}
+    internal: true
+    
+  # Vacation Mode (Urlaubsmodus) - HA State
+  - platform: homeassistant
+    name: "Urlaubsmodus Sensor"
+    id: vacation_mode_ha
+    entity_id: ${vacation_sensor_id}
+    internal: true
+    on_press:
+      - script.execute: handle_vacation_mode_on
+    on_release:
+      - script.execute: handle_vacation_mode_off

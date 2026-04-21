@@ -21,7 +21,7 @@
 # Description: Definition of hardware pins, LED drivers, and basic sensors.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-19
+# Modified:    2026-04-21
 # ==========================================================================
 # ---------------------------------------------------------
 # I2C BUS CONFIGURATION
@@ -100,23 +100,6 @@ output:
     pca9685_id: pwm_hub
     channel: 15 # LED_VENV
     id: out_led_vent
-
-  # --- PID Dummy Outputs (capturing the cooling demand 0.0 - 1.0) ---
-  - platform: template
-    id: pid_co2_output
-    type: float
-    write_action:
-      - globals.set:
-          id: co2_pid_result
-          value: !lambda "return state;"
-
-  - platform: template
-    id: pid_humidity_output
-    type: float
-    write_action:
-      - globals.set:
-          id: humidity_pid_result
-          value: !lambda "return state;"
 
 switch:
   # MCP23017 Reset (Active Low)

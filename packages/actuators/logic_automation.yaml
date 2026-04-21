@@ -1,5 +1,5 @@
 # ==========================================================================
-# VentoSync HRV – ESPHome Configuration for logic and automation
+# VentoSync HRV – ESPHome Custom Component
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
@@ -21,7 +21,7 @@
 # Description: Core project automation logic and scripts.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-27
+# Modified:    2026-04-21
 # ==========================================================================
 # ---------------------------------------------------------
 # GLOBALS
@@ -36,47 +36,6 @@ globals:
     type: int
     initial_value: '0'
     restore_value: yes
-
-# ---------------------------------------------------------
-# PID CLIMATE CONTROLLERS (Internal)
-# ---------------------------------------------------------
-climate:
-  - platform: pid
-    name: "PID CO2 Automatik"
-    id: pid_co2
-    sensor: effective_co2
-    default_target_temperature: 1000 # Target CO2 in ppm
-    cool_output: pid_co2_output # Output for fan speed
-    internal: true
-    control_parameters:
-      # P-part: 0.002 means +20% fan power per 100ppm above target.
-      kp: 0.002
-      # I-part: Extremely low! (~1.8% more power per minute at 100ppm excess)
-      ki: 0.000003
-      kd: 0.0
-      output_averaging_samples: 5
-    deadband_parameters:
-      # Narrow deadband for smooth ramp-down to 0%
-      threshold_high: 10.0
-      threshold_low: -10.0
-
-  - platform: pid
-    name: "PID Feuchte Automatik"
-    id: pid_humidity
-    sensor: scd41_humidity
-    default_target_temperature: 60
-    cool_output: pid_humidity_output
-    internal: true
-    control_parameters:
-      # P-part: At 60% setpoint, kp:0.1 means at 65% rH it runs softly at 50%
-      kp: 0.1
-      # I-part: Also reduced significantly (approx. +3% power per minute at 5% residual humidity)
-      ki: 0.0001
-      kd: 0.0
-      output_averaging_samples: 5
-    deadband_parameters:
-      threshold_high: 1.0
-      threshold_low: -1.0
 
 # ---------------------------------------------------------
 # AUTOMATIONS & SWITCHES
@@ -98,49 +57,39 @@ switch:
           id(fan_direction).publish_state(false);
       - script.execute: fan_speed_update
 
-  # ESP-NOW Peer Check (disable to suppress Master LED blinking without peers)
-  - platform: template
-    name: "ESP-NOW Peerprüfung"
-    id: peer_check_switch
-    icon: "mdi:access-point-network"
-    optimistic: false
-    lambda: |-
-      return id(peer_check_enabled);
-    turn_on_action:
-      - lambda: |-
-          id(peer_check_enabled) = true;
-          sync_settings_to_peers();
-          ESP_LOGI("espnow", "Peer check enabled");
-    turn_off_action:
-      - lambda: |-
-          id(peer_check_enabled) = false;
-          sync_settings_to_peers();
-          ESP_LOGI("espnow", "Peer check disabled");
-
 # ---------------------------------------------------------
 # SCRIPTS (Complex Logic)
 # ---------------------------------------------------------
 script:
-  # LED Logic Handler
-  - id: update_leds
+  # --- Vacation Mode Logic ---
+  - id: handle_vacation_mode_on
     mode: restart
     then:
       - lambda: |-
-          update_leds_logic();
+          // Save current state
+          id(pre_vacation_mode_index) = id(current_mode_index);
+          id(pre_vacation_intensity) = id(fan_intensity_level);
+          
+          // Activate Boost Ventilation (Stoßlüftung) on Level 1
+          set_operating_mode_select("Stoßlüftung");
+          set_fan_intensity_slider(1.0);
+          ESP_LOGI("vacation", "Vacation Mode ACTIVATED by HA (Stoßlüftung, Level 1)");
 
-  # Auto-Dimming UI Timer (30s)
-  - id: ui_timeout_script
+  - id: handle_vacation_mode_off
     mode: restart
     then:
-      - globals.set:
-          id: ui_active
-          value: "true"
-      - script.execute: update_leds
-      - delay: 30s
-      - globals.set:
-          id: ui_active
-          value: "false"
-      - script.execute: update_leds
+      - lambda: |-
+          // Restore previous state
+          int mode_idx = id(pre_vacation_mode_index);
+          std::string mode_str = "Smart-Automatik";
+          if (mode_idx == 1) mode_str = "Wärmerückgewinnung";
+          else if (mode_idx == 2) mode_str = "Durchlüften";
+          else if (mode_idx == 3) mode_str = "Stoßlüftung";
+          else if (mode_idx == 4) mode_str = "Aus";
+          
+          set_operating_mode_select(mode_str);
+          set_fan_intensity_slider(id(pre_vacation_intensity));
+          ESP_LOGI("vacation", "Vacation Mode DEACTIVATED by HA (back to mode %d, level %d)", mode_idx, (int)id(pre_vacation_intensity));
 
   # Unified Fan Speed and Direction Control
   - id: set_fan_speed_and_direction
@@ -157,25 +106,6 @@ script:
     then:
       - lambda: update_fan_logic();
 
-  # --- Light Sleep Management ---
-  # Reduces power by turning off WiFi and LEDs
-  - id: system_sleep
-    mode: restart  # Note: 'light_sleep' is not a valid execution mode for a script.
-    then:
-      - lambda: |-
-          ESP_LOGI("sleep", "Entering Light Sleep Mode (WiFi OFF, LEDs OFF)");
-      - switch.turn_off: pca9685_oe
-      - wifi.disable:
-
-  # Restores full operation
-  - id: system_wakeup
-    mode: restart
-    then:
-      - lambda: |-
-          ESP_LOGI("sleep", "Waking up from Light Sleep (WiFi ON, LEDs ON)");
-      - wifi.enable:
-      - switch.turn_on: pca9685_oe
-
   # Intensity Hold Handler: every 1s, trigger the bounce logic in automation_helpers.h
   - id: intensity_hold_handler
     mode: restart
@@ -187,112 +117,6 @@ script:
           then:
             - lambda: handle_intensity_bounce();
             - delay: 500ms
-
-  # ESP-NOW Discovery: Load peers from flash and send discovery broadcast
-  # Called from the boot interval once ESP-NOW is fully ready
-  - id: espnow_discovery
-    mode: single
-    then:
-      - lambda: load_peers_from_runtime_cache(); # W4: renamed from load_peers_from_flash
-      - lambda: send_discovery_broadcast();
-      - delay: 2s
-      - lambda: request_peer_status();
-
-      # LED Self-Test and UI start (moved from boot to avoid bus contention)
-      - delay: 500ms
-      - lambda: run_led_self_test();
-      - delay: 3s
-      - script.execute: ui_timeout_script
-      - script.execute: fan_speed_update
-
-# ---------------------------------------------------------
-# CONTROL PANEL BUTTONS (Input)
-# ---------------------------------------------------------
-binary_sensor:
-  # Button Power (right) - On/Off (MCP23017 GPA0)
-  - platform: gpio
-    pin:
-      mcp23xxx: mcp23017_hub
-      number: 0 # GPA0
-      mode:
-        input: true
-      inverted: true # Pressed = Low -> Inverted = ON
-    name: "Button Power"
-    internal: true # not needed in HA
-    id: button_power
-    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
-    filters:
-      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
-      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
-    on_click:
-      - min_length: 50ms
-        max_length: 4999ms
-        then:
-          - lambda: |-
-              handle_button_power_short_click();
-      - min_length: 5000ms
-        max_length: 9999ms
-        then:
-          - lambda: |-
-              handle_button_power_long_click();
-      - min_length: 10000ms
-        max_length: 60000ms
-        then:
-          - lambda: |-
-              handle_button_power_long_click();
-          - button.press: force_restart_button
-
-  # Button Mode (left) - Mode Control (MCP23017 GPA1)
-  - platform: gpio
-    pin:
-      mcp23xxx: mcp23017_hub
-      number: 1 # GPA1
-      mode:
-        input: true
-      inverted: true # Pressed = Low -> Inverted = ON
-    name: "Button Mode"
-    internal: true # not needed in HA
-    id: button_mode
-    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
-    filters:
-      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
-      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
-    on_click:
-      then:
-        - lambda: |-
-            handle_button_mode_click();
-
-  # Button Level (Middle) - Speed Level (MCP23017 GPA2)
-  - platform: gpio
-    pin:
-      mcp23xxx: mcp23017_hub
-      number: 2 # GPA2
-      mode:
-        input: true
-      inverted: true # Pressed = Low -> Inverted = ON
-    name: "Button Fan Intensity"
-    internal: true # not needed in HA
-    id: button_level
-    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
-    filters:
-      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
-      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
-    on_click:
-      # Short press: Cycle through intensity levels 1→10→1
-      - min_length: 50ms
-        max_length: 749ms # Slightly shorter than the hold handler delay
-        then:
-          - lambda: |-
-              handle_button_level_click();
-    on_press:
-      - script.execute: intensity_hold_handler
-    on_release:
-      - script.stop: intensity_hold_handler
-      - lambda: sync_settings_to_peers();
-
-
-
-# moved to ventosync.yaml or handled via script triggers
 
 # ---------------------------------------------------------
 # VENTILATION CONTROL

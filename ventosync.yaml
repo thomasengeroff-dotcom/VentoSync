@@ -1,4 +1,5 @@
-# VentoSync – Advanced ESPHome-based smart HRV
+# ==========================================================================
+# VentoSync HRV – ESPHome Main configuration for the room ventilation system
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
@@ -21,7 +22,7 @@
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-03-21
+# Modified:    2026-04-21
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -51,18 +52,26 @@ substitutions:
 # ---------------------------------------------------------
 # Include common settings (WiFi, Logger, API) and device-specific configs
 packages:
-  common: !include packages/esp32c6_common.yaml
-  device_config_pkg: !include packages/device_config.yaml
-  hardware: !include packages/hardware_io.yaml
-  sensors: !include packages/sensors_climate.yaml
-  fan_hardware: !include packages/hardware_fan.yaml
-  bmp390: !include packages/sensor_BMP390.yaml
-  scd41: !include packages/sensor_SCD41.yaml
-  ntc: !include packages/sensor_NTC.yaml
-  bme680: !include packages/sensor_BME680.yaml
-  ld2450: !include packages/sensor_LD2450.yaml
-  ui: !include packages/ui_controls.yaml
-  logic: !include packages/logic_automation.yaml
+  common: !include packages/base/esp32c6_common.yaml
+  device_config_pkg: !include packages/base/device_config.yaml
+  hardware: !include packages/io/hardware_io.yaml
+  communication: !include packages/communication/esp_now.yaml
+  sensors: !include packages/sensors/sensors_climate.yaml
+  fan_hardware: !include packages/io/hardware_fan.yaml
+  bmp390: !include packages/sensors/sensor_BMP390.yaml
+  scd41: !include packages/sensors/sensor_SCD41.yaml
+  ntc: !include packages/sensors/sensor_NTC.yaml
+  bme680: !include packages/sensors/sensor_BME680.yaml
+  ld2450: !include packages/sensors/sensor_LD2450.yaml
+  ui: !include packages/ui/ui_controls.yaml
+  lights: !include packages/ui/ui_lights.yaml
+  diagnostics: !include packages/ui/ui_diagnostics.yaml
+  logic: !include packages/actuators/logic_automation.yaml
+  buttons: !include packages/io/logic_buttons.yaml
+  pid: !include packages/actuators/logic_pid.yaml
+  maintenance: !include packages/actuators/logic_maintenance.yaml
+  safety: !include packages/actuators/logic_safety.yaml
+  integration: !include packages/integration/homeassistant.yaml
 
 external_components:
   - source:
@@ -139,24 +148,6 @@ esphome:
     - priority: -100  # After all components initialized
       then:
         - switch.turn_on: pca9685_oe
-            
-# ---------------------------------------------------------
-# ESP-NOW PEER DISCOVERY & HEALTH
-# ---------------------------------------------------------
-interval:
-  - interval: 60s
-    then:
-      - lambda: |-
-          /**
-           * @brief   Periodic watchdog for peer presence.
-           * @details If no peers are found during normal operation, the device
-           *          re-triggers discovery to recover from network splits.
-           */
-          if (peer_cache.empty()) {
-            ESP_LOGI("espnow_disc", 
-                     "No peers found — retrying discovery...");
-            send_discovery_broadcast();
-          }
 
 # ---------------------------------------------------------
 # GLOBAL VARIABLES (State Memory)
@@ -318,42 +309,6 @@ ventilation_group:
 ventilation_logic:
 
 # ---------------------------------------------------------
-# ESP-NOW COMMUNICATION
-# ---------------------------------------------------------
-# Configures peer-to-peer communication with the Slave/Consumer device
-espnow:
-  id: espnow_component
-  auto_add_peer: false
-  # FF:FF:FF:FF:FF:FF must be in peers for the C++ send() API to broadcast discovery/status packets.
-  # on_broadcast will still correctly handle incoming packets with the broadcast MAC.
-  peers:
-    - FF:FF:FF:FF:FF:FF
-
-  # on_receive ONLY triggers for registered peers (defined above).
-  # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
-  on_broadcast:
-    - lambda: |-
-        /** @brief Multiplexer for ESP-NOW broadcasts. Handles discovery and group status. */
-        ESP_LOGW("espnow_low", "BROADCAST packet received! Size: %d", size);
-        std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet, info.src_addr);
-
-  # For robustness, we also handle registered peers (e.g. if we add them dynamically)
-  on_receive:
-    - lambda: |-
-        /** @brief Multiplexer for direct Unicast packets (e.g., status responses). */
-        ESP_LOGW("espnow_low", "RECEIVE packet from registered peer! Size: %d", size);
-        std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet, info.src_addr);
-
-  on_unknown_peer:
-    - lambda: |-
-        /** @brief Discovery entry point: allows registration of new devices. */
-        ESP_LOGW("espnow_low", "UNKNOWN PEER packet! Size: %d", size);
-        std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet, info.src_addr);
-
-# ---------------------------------------------------------
 # CUSTOM WRG DASHBOARD
 # ---------------------------------------------------------
 wrg_dashboard:
@@ -391,14 +346,3 @@ wrg_dashboard:
   luefter_modus_id: luefter_modus
   lueftung_fan_id: lueftung_fan
   ventilation_ctrl_id: ventilation_ctrl
-
-# ---------------------------------------------------------
-# ESP-NOW DIAGNOSTICS
-# ---------------------------------------------------------
-text_sensor:
-  - platform: template
-    name: "ESP-NOW Peers"
-    id: espnow_peers_display
-    icon: "mdi:access-point-network"
-    entity_category: diagnostic
-    update_interval: never

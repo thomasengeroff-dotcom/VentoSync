@@ -1,0 +1,84 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Configuration for internal PID climate controllers
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        logic_pid.yaml
+# Description: Configuration for internal PID climate controllers (CO2 & Humidity).
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
+# ==========================================================================
+
+# ---------------------------------------------------------
+# PID CLIMATE CONTROLLERS (Internal)
+# ---------------------------------------------------------
+climate:
+  - platform: pid
+    name: "PID CO2 Automatik"
+    id: pid_co2
+    sensor: effective_co2
+    default_target_temperature: 1000 # Target CO2 in ppm
+    cool_output: pid_co2_output # Output for fan speed
+    internal: true
+    control_parameters:
+      # P-part: 0.002 means +20% fan power per 100ppm above target.
+      kp: 0.002
+      # I-part: Extremely low! (~1.8% more power per minute at 100ppm excess)
+      ki: 0.000003
+      kd: 0.0
+      output_averaging_samples: 5
+    deadband_parameters:
+      # Narrow deadband for smooth ramp-down to 0%
+      threshold_high: 10.0
+      threshold_low: -10.0
+
+  - platform: pid
+    name: "PID Feuchte Automatik"
+    id: pid_humidity
+    sensor: scd41_humidity
+    default_target_temperature: 60
+    cool_output: pid_humidity_output
+    internal: true
+    control_parameters:
+      # P-part: At 60% setpoint, kp:0.1 means at 65% rH it runs softly at 50%
+      kp: 0.1
+      # I-part: Also reduced significantly (approx. +3% power per minute at 5% residual humidity)
+      ki: 0.0001
+      kd: 0.0
+      output_averaging_samples: 5
+    deadband_parameters:
+      threshold_high: 1.0
+      threshold_low: -1.0
+
+output:
+  # --- PID Dummy Outputs (capturing the cooling demand 0.0 - 1.0) ---
+  - platform: template
+    id: pid_co2_output
+    type: float
+    write_action:
+      - globals.set:
+          id: co2_pid_result
+          value: !lambda "return state;"
+
+  - platform: template
+    id: pid_humidity_output
+    type: float
+    write_action:
+      - globals.set:
+          id: humidity_pid_result
+          value: !lambda "return state;"

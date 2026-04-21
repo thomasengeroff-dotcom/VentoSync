@@ -23,141 +23,8 @@
 # Created:     2026-03-07
 # Modified:    2026-03-27
 # ==========================================================================
-# ---------------------------------------------------------
-# LED LIGHTS (Monochromatic for Dimming)
-# ---------------------------------------------------------
-light:
-  - platform: monochromatic
-    output: out_led_pwr
-    name: "Status LED Power"
-    id: status_led_power
-    internal: true
-    default_transition_length: 0.5s # nice fading effect
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
-    
-  - platform: monochromatic
-    output: out_led_master
-    name: "Status LED Master"
-    id: status_led_master
-    internal: true
-    default_transition_length: 0s
-    gamma_correct: 1.0
-    effects:
-      - strobe:
-          name: "Error Peer"
-          colors:
-            - state: true
-              brightness: 100%
-              duration: 500ms
-            - state: false
-              duration: 200ms
-            - state: true
-              brightness: 100%
-              duration: 500ms
-            - state: false
-              duration: 5000ms
-      - strobe:
-          name: "Error WiFi"
-          colors:
-            - state: true
-              brightness: 100%
-              duration: 500ms
-            - state: false
-              duration: 200ms
-            - state: true
-              brightness: 100%
-              duration: 500ms
-            - state: false
-              duration: 200ms
-            - state: true
-              brightness: 100%
-              duration: 500ms
-            - state: false
-              duration: 5000ms
-      - strobe:
-          name: "Warning Safety"
-          colors:
-            - state: true
-              brightness: 100%
-              duration: 100ms
-            - state: false
-              duration: 100ms
-            - state: true
-              brightness: 100%
-              duration: 100ms
-            - state: false
-              duration: 100ms
-            - state: true
-              brightness: 100%
-              duration: 100ms
-            - state: false
-              duration: 100ms
-            - state: true
-              brightness: 100%
-              duration: 100ms
-            - state: false
-              duration: 2000ms
-      - strobe:
-          name: "Window Lock"
-          colors:
-            - state: true
-              brightness: 100%
-              duration: 1000ms
-            - state: false
-              duration: 2000ms
-  - platform: monochromatic
-    output: out_led_wrg
-    name: "Status LED Modus WRG"
-    id: status_led_mode_wrg # ID expected by automation_helpers.h
-    internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0
-    effects:
-      - pulse:
-          name: "Automatik Pulse"
-          transition_length: 3.5s
-          update_interval: 3.5s
-          min_brightness: 5%
-          max_brightness: 100%
-  - platform: monochromatic
-    output: out_led_vent
-    name: "Status LED Modus Vent"
-    id: status_led_mode_vent # Automation helper expects this ID
-    internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
 
-  # Level LEDs
-  - platform: monochromatic
-    output: out_led_l1
-    id: status_led_l1
-    #internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
-  - platform: monochromatic
-    output: out_led_l2
-    id: status_led_l2
-    #internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
-  - platform: monochromatic
-    output: out_led_l3
-    id: status_led_l3
-    #internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
-  - platform: monochromatic
-    output: out_led_l4
-    id: status_led_l4
-    #internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
-  - platform: monochromatic
-    output: out_led_l5
-    id: status_led_l5
-    #internal: true
-    default_transition_length: 0.5s
-    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+
 
 # ---------------------------------------------------------
 # UI CONTROLS (Home Assistant)
@@ -410,53 +277,32 @@ select:
       - lambda: |-
           set_operating_mode_select(x); // W5: pass std::string directly, not c_str()
 
-# ---------------------------------------------------------
-# FILTER MAINTENANCE
-# ---------------------------------------------------------
-binary_sensor:
-
-  - platform: template
-    name: "Filterwechsel Alarm"
-    id: filter_change_alarm
-    icon: "mdi:air-filter"
-    device_class: problem
-    lambda: |-
-      // Alarm if operating hours > 8760h (365 days)
-      if (id(filter_operating_hours) > 8760.0f) return true;
-      // Alarm if > 3 years (94608000s) since last filter change
-      if (id(filter_last_change_ts) > 0) {
-        auto now_ts = id(sntp_time).now().timestamp;
-        if (now_ts > 0 && (now_ts - id(filter_last_change_ts)) > 94608000) return true;
-      }
-      return false;
-
-sensor:
-  - platform: template
-    name: "Filter Betriebstage"
-    id: filter_operating_days_sensor
-    icon: "mdi:counter"
-    unit_of_measurement: "Tage"
-    accuracy_decimals: 0
-    entity_category: diagnostic
-    lambda: |-
-      return id(filter_operating_hours) / 24.0f;
-    update_interval: 300s
-
 button:
-  - platform: template
-    name: "Filterwechsel (Reset)"
-    id: filter_reset_btn
-    icon: "mdi:restart"
-    entity_category: config
-    on_press:
-      - lambda: |-
-          id(filter_operating_hours) = 0.0f;
-          id(filter_last_change_ts) = id(sntp_time).now().timestamp;
-          id(filter_change_alarm).publish_state(false);
-          id(filter_operating_days_sensor).publish_state(0);
-          ESP_LOGI("filter", "Filter counters reset. Timestamp: %d", id(filter_last_change_ts));
-
   - platform: restart
     name: "ESP Neustart erzwingen"
     id: force_restart_button
     entity_category: config
+
+# ---------------------------------------------------------
+# SCRIPTS (Complex Logic)
+# ---------------------------------------------------------
+script:
+  # LED Logic Handler
+  - id: update_leds
+    mode: restart
+    then:
+      - lambda: |-
+          update_leds_logic();
+  # Auto-Dimming UI Timer (30s)
+  - id: ui_timeout_script
+    mode: restart
+    then:
+      - globals.set:
+          id: ui_active
+          value: "true"
+      - script.execute: update_leds
+      - delay: 30s
+      - globals.set:
+          id: ui_active
+          value: "false"
+      - script.execute: update_leds

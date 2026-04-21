@@ -1,5 +1,5 @@
 # ==========================================================================
-# VentoSync HRV – ESPHome Configuration for sensor LD2450
+# VentoSync HRV – ESPHome Configuration for sensor BMP390
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
 # Copyright (c) 2026 Thomas Engeroff
@@ -17,32 +17,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# File:        sensor_LD2450.yaml
-# Description: Configuration for sensor HLK-LD2450 RADAR SENSOR
-#              Includes: Presence, Target Count, Moving/Still detection
-#              The UART is defined in hardware_io.yaml (id: uart_ld2450)
+# File:        sensor_BMP390.yaml
+# Description: Configuration for BMP390 sensor and safety automation.
+#              Includes multi-stage temperature monitoring for Traco PSU.
 # Author:      Thomas Engeroff
-# Created:     2026-03-28
-# Modified:    2026-03-28
+# Created:     2026-03-05
+# Modified:    2026-04-21
 # ==========================================================================
 
-ld2450:
-  - id: ld2450_radar
-    uart_id: uart_ld2450
-
 sensor:
-  - platform: ld2450
-    ld2450_id: ld2450_radar
-    target_count:
-      name: "Radar Anzahl Ziele"
+  # BMP390 Environmental Data (Temperature & Pressure)
+  - platform: bmp3xx_i2c
+    temperature:
+      name: "BMP390 Temperatur"
+      id: temperature
+      accuracy_decimals: 1
+      oversampling: 16x
+      filters:
+        - median:
+            window_size: 5
+            send_every: 5
 
-binary_sensor:
-  - platform: ld2450
-    ld2450_id: ld2450_radar
-    has_target:
-      name: "Radar Anwesenheit"
-      id: radar_presence
-    has_moving_target:
-      name: "Radar Bewegung"
-    has_still_target:
-      name: "Radar Stillstand"
+    pressure:
+      name: "BMP390 Luftdruck"
+      id: pressure
+      accuracy_decimals: 1
+      oversampling: 16x
+    address: 0x76
+    update_interval: 60s
+    iir_filter: 2x

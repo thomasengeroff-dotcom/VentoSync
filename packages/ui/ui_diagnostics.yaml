@@ -1,0 +1,59 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        ui_diagnostics.yaml
+# Description: Network and system diagnostic UI entities.
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
+# ==========================================================================
+
+# ---------------------------------------------------------
+# ESP-NOW DIAGNOSTICS
+# ---------------------------------------------------------
+text_sensor:
+  - platform: template
+    name: "ESP-NOW Peers"
+    id: espnow_peers_display
+    icon: "mdi:access-point-network"
+    entity_category: diagnostic
+    update_interval: never
+
+# ---------------------------------------------------------
+# DIAGNOSTIC SWITCHES
+# ---------------------------------------------------------
+switch:
+  # ESP-NOW Peer Check (disable to suppress Master LED blinking without peers)
+  - platform: template
+    name: "ESP-NOW Peerprüfung"
+    id: peer_check_switch
+    icon: "mdi:access-point-network"
+    optimistic: false
+    lambda: |-
+      return id(peer_check_enabled);
+    turn_on_action:
+      - lambda: |-
+          id(peer_check_enabled) = true;
+          sync_settings_to_peers();
+          ESP_LOGI("espnow", "Peer check enabled");
+    turn_off_action:
+      - lambda: |-
+          id(peer_check_enabled) = false;
+          sync_settings_to_peers();
+          ESP_LOGI("espnow", "Peer check disabled");

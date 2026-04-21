@@ -21,21 +21,13 @@
 # Description: Configuration for climate sensors (BME390, SCD41) and IAQ.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-27
+# Modified:    2026-04-21
 # ==========================================================================
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
 # ---------------------------------------------------------
 
 sensor:
-  # Home Assistant Data (Automation): 
-  # Entity filled with data from Home Assistant. 
-  # Must be configured as described in readme.md
-  - platform: homeassistant
-    name: "Außenluftfeuchtigkeit"
-    id: outdoor_humidity
-    entity_id: sensor.outdoor_humidity
-    internal: true
 
   # ---------------------------------------------------------
   # HEAT RECOVERY EFFICIENCY CALCULATION
@@ -117,51 +109,3 @@ text_sensor:
       if (!std::isnan(id(bme680_temperature).state)) return std::string("BME680");
       return std::string("Kein Raumsensor");
 
-# ---------------------------------------------------------
-# HOME ASSISTANT BINARY SENSORS
-# ---------------------------------------------------------
-binary_sensor:
-  # Summer mode gate for automatic summer cooling.
-  # Provided by HA template: season (April-October) AND outdoor temp > 18°C.
-  # When unavailable (HA offline), defaults to false → heat recovery stays active (safe).
-  - platform: homeassistant
-    name: "Sommerbetrieb"
-    id: sommerbetrieb
-    entity_id: binary_sensor.sommerbetrieb
-    internal: true
-  # Window Guard (Fenstersperre) - HA State
-  - platform: homeassistant
-    name: "Fenstersperre"
-    id: window_locked
-    entity_id: ${window_sensor_id}
-    internal: true
-    
-  # Vacation Mode (Urlaubsmodus) - HA State
-  - platform: homeassistant
-    name: "Urlaubsmodus Sensor"
-    id: vacation_mode_ha
-    entity_id: ${vacation_sensor_id}
-    internal: true
-    on_press:
-      - lambda: |-
-          // Save current state
-          id(pre_vacation_mode_index) = id(current_mode_index);
-          id(pre_vacation_intensity) = id(fan_intensity_level);
-          
-          // Activate Boost Ventilation (Stoßlüftung) on Level 1
-          set_operating_mode_select("Stoßlüftung");
-          set_fan_intensity_slider(1.0);
-          ESP_LOGI("vacation", "Vacation Mode ACTIVATED by HA (Stoßlüftung, Level 1)");
-    on_release:
-      - lambda: |-
-          // Restore previous state
-          int mode_idx = id(pre_vacation_mode_index);
-          std::string mode_str = "Smart-Automatik";
-          if (mode_idx == 1) mode_str = "Wärmerückgewinnung";
-          else if (mode_idx == 2) mode_str = "Durchlüften";
-          else if (mode_idx == 3) mode_str = "Stoßlüftung";
-          else if (mode_idx == 4) mode_str = "Aus";
-          
-          set_operating_mode_select(mode_str);
-          set_fan_intensity_slider(id(pre_vacation_intensity));
-          ESP_LOGI("vacation", "Vacation Mode DEACTIVATED by HA (back to mode %d, level %d)", mode_idx, (int)id(pre_vacation_intensity));

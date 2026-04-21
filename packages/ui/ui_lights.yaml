@@ -1,0 +1,161 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        ui_lights.yaml
+# Description: LED indicator configurations and animations.
+# Author:      Thomas Engeroff
+# Created:     2026-04-21
+# Modified:    2026-04-21
+# ==========================================================================
+
+# ---------------------------------------------------------
+# LED LIGHTS (Monochromatic for Dimming)
+# ---------------------------------------------------------
+light:
+  - platform: monochromatic
+    output: out_led_pwr
+    name: "Status LED Power"
+    id: status_led_power
+    internal: true
+    default_transition_length: 0.5s # nice fading effect
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+    
+  - platform: monochromatic
+    output: out_led_master
+    name: "Status LED Master"
+    id: status_led_master
+    internal: true
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    effects:
+      - strobe:
+          name: "Error Peer"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 200ms
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 5000ms
+      - strobe:
+          name: "Error WiFi"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 200ms
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 200ms
+            - state: true
+              brightness: 100%
+              duration: 500ms
+            - state: false
+              duration: 5000ms
+      - strobe:
+          name: "Warning Safety"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 100ms
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 100ms
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 100ms
+            - state: true
+              brightness: 100%
+              duration: 100ms
+            - state: false
+              duration: 2000ms
+      - strobe:
+          name: "Window Lock"
+          colors:
+            - state: true
+              brightness: 100%
+              duration: 1000ms
+            - state: false
+              duration: 2000ms
+  - platform: monochromatic
+    output: out_led_wrg
+    name: "Status LED Modus WRG"
+    id: status_led_mode_wrg # ID expected by automation_helpers.h
+    internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0
+    effects:
+      - pulse:
+          name: "Automatik Pulse"
+          transition_length: 3.5s
+          update_interval: 3.5s
+          min_brightness: 5%
+          max_brightness: 100%
+  - platform: monochromatic
+    output: out_led_vent
+    name: "Status LED Modus Vent"
+    id: status_led_mode_vent # Automation helper expects this ID
+    internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+
+  # Level LEDs
+  - platform: monochromatic
+    output: out_led_l1
+    id: status_led_l1
+    #internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l2
+    id: status_led_l2
+    #internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l3
+    id: status_led_l3
+    #internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l4
+    id: status_led_l4
+    #internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
+  - platform: monochromatic
+    output: out_led_l5
+    id: status_led_l5
+    #internal: true
+    default_transition_length: 0.5s
+    gamma_correct: 1.0 # Optional: adjusts brightness curve for human eye
