@@ -1,0 +1,9 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Mock Configuration for missing radar sensor
+# ==========================================================================
+binary_sensor:
+  - platform: template
+    id: radar_presence
+    name: "Radar Anwesenheit (Mock)"
+    internal: true
+    lambda: 'return false;'

@@ -4,6 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.173] - 2026-04-21
+### Added
+- **Hardware-Varianten (Wrapper)**: Neue Konfigurationsdateien für unterschiedliche Hardware-Ausstattungen (`ventosync_nosensor.yaml` und `ventosync_radar_only.yaml`).
+- **Sensor-Mocks**: Neue Pakete `mock_climate.yaml` und `mock_radar.yaml` ermöglichen das Kompilieren der Firmware auch ohne SCD41, BME680 oder LD2450. Diese Mocks verhindern Spamming im Log und geben saubere `NAN`/`false`-Werte an die internen C++-Regler weiter.
+- **C++ Preprocessor Flags**: Einführung von `-DVENTOSYNC_NO_CLIMATE` und `-DVENTOSYNC_NO_RADAR` Build-Flags für saubere, konfliktfreie C++-Deklarationen in `globals.h`.
+
+### Changed
+- **Base-Konfiguration (`ventosync_base.yaml`)**: Die `ventosync.yaml` wurde vollständig entschlackt. Der gesamte gemeinsame Code (Hardware-Pins, UI, Netzwerk, Lüfter) liegt nun zentral in der Base-Datei. Die Hauptdateien fungieren nur noch als schlanke Wrapper.
+- **Home Assistant Entitäten aufgeräumt**: Fehlende Sensoren (via Mocks) und davon abgeleitete Berechnungen (z.B. "Effektiver CO2 Wert", "WRG Effizienz") werden durch `internal: true` dynamisch vor Home Assistant versteckt. Es gibt keine "Unknown"-Sensoren mehr im Dashboard.
+
 ## [0.8.171] - 2026-04-21
 ### Added
 - **Standardisierte Datei-Header**: Alle YAML-Konfigurationsdateien in `packages/` und die Hauptdatei `ventosync.yaml` verfügen nun über einen einheitlichen, professionellen Header inklusive GPLv3-Lizenz, Dateibeschreibung und Metadaten.

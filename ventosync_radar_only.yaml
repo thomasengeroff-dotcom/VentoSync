@@ -1,9 +1,16 @@
 # ==========================================================================
-# VentoSync HRV – ESPHome Main configuration (FULL VERSION)
+# VentoSync HRV – ESPHome RADAR ONLY configuration
 # ==========================================================================
+
+substitutions:
+  hide_climate_sensors: "true"
+
+esphome:
+  platformio_options:
+    build_flags:
+      - "-DVENTOSYNC_NO_CLIMATE"
 
 packages:
   base: !include ventosync_base.yaml
-  scd41: !include packages/sensors/sensor_SCD41.yaml
-  bme680: !include packages/sensors/sensor_BME680.yaml
+  mock_climate: !include packages/sensors/mock_climate.yaml
   ld2450: !include packages/sensors/sensor_LD2450.yaml

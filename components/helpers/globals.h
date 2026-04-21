@@ -247,18 +247,28 @@ extern esphome::ledc::LEDCOutput
 
 /// @name Sensors
 /// @{
+#ifdef VENTOSYNC_NO_CLIMATE
+extern esphome::template_::TemplateSensor *const scd41_co2; ///< SCD41 CO2 sensor.
+extern esphome::template_::TemplateSensor *const scd41_humidity; ///< Indoor Humidity
+#else
 extern esphome::sensor::Sensor *const scd41_co2; ///< SCD41 CO2 sensor.
+extern esphome::sensor::Sensor *const scd41_humidity; ///< Indoor Humidity
+#endif
+
+#ifdef VENTOSYNC_NO_RADAR
+extern esphome::template_::TemplateBinarySensor *const radar_presence; ///< Presence Sensor (Radar)
+#else
+extern esphome::binary_sensor::BinarySensor *const radar_presence; ///< Presence Sensor (Radar)
+#endif
+
 extern esphome::template_::TemplateSensor
     *const effective_co2; ///< Unified CO2 sensor (SCD41 or BME680 fallback).
 extern esphome::sensor::Sensor *const temperature; ///< Room Temperature (SCD41)
 extern esphome::ntc::NTC *const temp_zuluft; ///< Supply Air Temperature (NTC Inside)
 extern esphome::ntc::NTC
     *const temp_abluft; ///< Exhaust Air Temperature (NTC Outside)
-extern esphome::sensor::Sensor *const scd41_humidity; ///< Indoor Humidity
 extern esphome::homeassistant::HomeassistantSensor
     *const outdoor_humidity; ///< Outdoor Humidity (HA)
-extern esphome::binary_sensor::BinarySensor
-    *const radar_presence; ///< Presence Sensor (Radar)
 extern esphome::homeassistant::HomeassistantBinarySensor
     *const sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
 extern esphome::homeassistant::HomeassistantBinarySensor

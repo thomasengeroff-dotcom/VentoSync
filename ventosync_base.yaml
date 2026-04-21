@@ -1,0 +1,345 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Main configuration for the room ventilation system
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        ventosync.yaml
+# Description: Main ESPHome configuration for the room ventilation system.
+#              Controls fan, clusters via ESP-NOW, and integrates with HA.
+# Author:      Thomas Engeroff
+# Created:     2026-01-27
+# Modified:    2026-04-21
+# ==========================================================================
+substitutions:
+  device_name: ventosync
+  friendly_name: "VentoSync - Smart HRV"
+
+  # VENTILATION CONFIG - Default Values
+  # These are initial values. The actual configuration can be changed
+  # via Home Assistant and is stored persistently in flash memory.
+  floor_id: "1"
+  room_id: "1"
+  device_id: "1"
+  # Phase A = Starts with INTAKE (Rein). Phase B = Starts with EXHAUST (Raus).
+  # Devices on same wall should have same phase.
+  is_phase_a: "true"
+
+  # WINDOW GUARD CONFIG
+  # Entity ID of the Home Assistant binary sensor (group) for windows in this room.
+  # Default convention: binary_sensor.ventosync_window_lock_room_${room_id}
+  window_sensor_id: "binary_sensor.ventosync_window_lock_room_${room_id}"
+
+  # VACATION MODE CONFIG
+  # Entity ID of the Home Assistant input_boolean helper for vacation mode.
+  vacation_sensor_id: "input_boolean.ventosync_vacation_mode"
+
+# ---------------------------------------------------------
+# PACKAGES & INCLUDES
+# ---------------------------------------------------------
+# Include common settings (WiFi, Logger, API) and device-specific configs
+packages:
+  common: !include packages/base/esp32c6_common.yaml
+  device_config_pkg: !include packages/base/device_config.yaml
+  hardware: !include packages/io/hardware_io.yaml
+  communication: !include packages/communication/esp_now.yaml
+  sensors: !include packages/sensors/sensors_climate.yaml
+  fan_hardware: !include packages/io/hardware_fan.yaml
+  bmp390: !include packages/sensors/sensor_BMP390.yaml
+  ntc: !include packages/sensors/sensor_NTC.yaml
+  ui: !include packages/ui/ui_controls.yaml
+  lights: !include packages/ui/ui_lights.yaml
+  diagnostics: !include packages/ui/ui_diagnostics.yaml
+  logic: !include packages/actuators/logic_automation.yaml
+  buttons: !include packages/io/logic_buttons.yaml
+  pid: !include packages/actuators/logic_pid.yaml
+  maintenance: !include packages/actuators/logic_maintenance.yaml
+  safety: !include packages/actuators/logic_safety.yaml
+  integration: !include packages/integration/homeassistant.yaml
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esphome:
+  includes:
+    - components/helpers/globals.h
+    - components/helpers/network_sync.h
+    - components/helpers/climate.h
+    - components/helpers/auto_mode.h
+    - components/helpers/fan_control.h
+    - components/helpers/system_lifecycle.h
+    - components/helpers/led_feedback.h
+    - components/helpers/user_input.h
+  name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
+  on_boot:
+    # Enable External Antenna early at boot (Priority 900 starts before WiFi)
+    - priority: 900
+      then:
+      - lambda: |-
+          // GPIO 3 (WIFI_ENABLE) LOW activates the RF switch circuitry
+          gpio_reset_pin((gpio_num_t)3);
+          gpio_set_direction((gpio_num_t)3, GPIO_MODE_OUTPUT);
+          gpio_set_level((gpio_num_t)3, 0);
+
+          // Brief delay for the switch to stabilize
+          vTaskDelay(pdMS_TO_TICKS(100));
+
+          // GPIO 14 (WIFI_ANT_CONFIG) HIGH selects the U.FL connector
+          gpio_reset_pin((gpio_num_t)14);
+          gpio_set_direction((gpio_num_t)14, GPIO_MODE_OUTPUT);
+          gpio_set_level((gpio_num_t)14, 1); 
+
+          ESP_LOGI("boot", "Hardware RF Switch: External U.FL Antenna activated.");
+
+    # Phase 1: Core initialization (WiFi + NVS ready at priority -10)
+    - priority: -10.0
+      then:
+        - delay: 1s
+        - lambda: |-
+            run_system_boot_initialization();
+            id(ventilation_ctrl)->set_ignore_window_guard(id(ignore_window_guard_switch).state);
+
+        # Phase 2: ESP-NOW Discovery (staggered broadcasts)
+        - delay: 1s
+        - lambda: |-
+            /**
+             * @brief First discovery broadcast to find room peers.
+             */
+            send_discovery_broadcast();
+        - delay: 2s
+        - lambda: |-
+            /**
+             * @brief Second discovery broadcast to handle potential RF congestion on boot.
+             */
+            send_discovery_broadcast();
+        - delay: 2s
+        - lambda: |-
+            /**
+             * @brief   Final broadcast and explicit status request.
+             * @details Ensures all devices in the room are aware of our presence
+             *          and we adopt the current Master's state immediately.
+             */
+            // Final broadcast + status request
+            send_discovery_broadcast();
+        - delay: 1s
+        - lambda: |-
+            request_peer_status();
+            ESP_LOGI("boot", "Phase 2 complete: Discovery finished");
+    
+    # FIX — start with LEDs disabled, enable after PCA9685 init
+    - priority: -100  # After all components initialized
+      then:
+        - switch.turn_on: pca9685_oe
+
+# ---------------------------------------------------------
+# GLOBAL VARIABLES (State Memory)
+# ---------------------------------------------------------
+globals:
+  # Main system power state
+  - id: system_on
+    type: bool
+    initial_value: "true"
+
+  # Ventilation enabled state (referenced by button logic)
+  - id: ventilation_enabled
+    type: bool
+    initial_value: "true"
+
+  # Operating mode (0=WRG, 1=Durchlüften, 2=Aus)
+  - id: operating_mode
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # Fan intensity level (1-10)
+  - id: fan_intensity_level
+    type: int
+    initial_value: "2" # Start at lower medium intensity
+    restore_value: true
+
+  # Current operating mode index (0=Smart-Automatik, 1=WRG, 2=Durchlüften, 3=Stoßlüftung, 4=Aus)
+  - id: current_mode_index
+    type: int
+    initial_value: "0" # Default: Smart-Automatik
+    restore_value: true
+
+  # Pre-Vacation Memory: Operating mode
+  - id: pre_vacation_mode_index
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # Pre-Vacation Memory: Fan intensity
+  - id: pre_vacation_intensity
+    type: int
+    initial_value: "2"
+    restore_value: true
+
+  # ESP-NOW dynamic peer list
+  - id: espnow_peers
+    type: std::string
+    max_restore_data_length: 254
+    initial_value: '""'
+    restore_value: true
+
+  # Smart-Automatik: min fan level (moisture protection / DIN 1946-6 Feuchteschutz)
+  - id: automatik_min_fan_level
+    type: int
+    initial_value: "2"
+    restore_value: true
+
+  # Smart-Automatik: max fan level (noise control)
+  - id: automatik_max_fan_level
+    type: int
+    initial_value: "7"
+    restore_value: true
+
+  # Smart-Automatik Modus Aktivierungsstatus
+  - id: auto_mode_active
+    type: bool
+    initial_value: "true"
+    restore_value: true
+
+  # Smart-Automatik CO2 Grenzwert (Wert in ppm, ab dem hochgeregelt wird)
+  - id: auto_co2_threshold_val
+    type: int
+    initial_value: "1000"
+    restore_value: true
+
+  # Smart-Automatik Feuchte Grenzwert (Wert in %, ab dem hochgeregelt wird)
+  - id: auto_humidity_threshold_val
+    type: int
+    initial_value: "60"
+    restore_value: true
+
+  # Anwesenheits-Lüfter-Anpassung (-5 bis +5)
+  - id: auto_presence_val
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # Smart-Automatik Sommerkühlung Innentemperatur-Schwelle (°C)
+  - id: summer_cooling_threshold
+    type: int
+    initial_value: "22"
+    restore_value: true
+
+  # PID Control Outputs (0.0 to 1.0)
+  - id: co2_pid_result
+    type: float
+    initial_value: "0.0"
+
+  - id: humidity_pid_result
+    type: float
+    initial_value: "0.0"
+
+  # Filter Maintenance Tracking
+  - id: filter_operating_hours
+    type: float
+    initial_value: "0.0"
+    restore_value: true
+
+  - id: filter_last_change_ts
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # UI state tracking
+  - id: ui_active
+    type: bool
+    initial_value: "false"
+
+  # ESP-NOW peer check (disable to suppress Master LED blinking when no peers are connected)
+  - id: peer_check_enabled
+    type: bool
+    initial_value: "true"
+    restore_value: true
+
+  # LED Brightness control
+  - id: max_led_brightness
+    type: float
+    initial_value: "0.8"
+    restore_value: true
+
+
+
+# ---------------------------------------------------------
+# VENTILATION COMPONENT (External)
+# ---------------------------------------------------------
+ventilation_group:
+  id: ventilation_ctrl
+  floor_id: ${floor_id}
+  room_id: ${room_id}
+  device_id: ${device_id}
+  is_phase_a: ${is_phase_a}
+  main_fan: lueftung_fan
+  direction_switch: fan_direction
+  window_sensor: window_locked
+  fan_rpm_sensor: fan_rpm
+  board_temp_sensor: temperature
+  scd41_temp_sensor: scd41_temperature
+  bme680_temp_sensor: bme680_temperature
+  mode_index_global: current_mode_index
+  automatik_min_fan_level_global: automatik_min_fan_level
+  automatik_max_fan_level_global: automatik_max_fan_level
+  auto_co2_threshold_global: auto_co2_threshold_val
+  auto_humidity_threshold_global: auto_humidity_threshold_val
+  auto_presence_global: auto_presence_val
+  max_led_brightness_global: max_led_brightness
+
+# Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
+ventilation_logic:
+
+# ---------------------------------------------------------
+# CUSTOM WRG DASHBOARD
+# ---------------------------------------------------------
+wrg_dashboard:
+  web_server_base_id: my_web_server_base
+  temperature_id: temperature
+  pressure_id: pressure
+  outdoor_humidity_id: outdoor_humidity
+  scd41_co2_id: scd41_co2
+  effective_co2_id: effective_co2
+  scd41_temperature_id: scd41_temperature
+  scd41_humidity_id: scd41_humidity
+  bme680_temperature_id: bme680_temperature
+  bme680_humidity_id: bme680_humidity
+  temp_zuluft_id: temp_zuluft
+  temp_abluft_id: temp_abluft
+  heat_recovery_efficiency_id: heat_recovery_efficiency
+  fan_rpm_id: fan_rpm
+  filter_operating_days_id: filter_operating_days_sensor
+  filter_change_alarm_id: filter_change_alarm
+  radar_presence_id: radar_presence
+  scd41_co2_bewertung_id: effective_co2_bewertung
+  device_id_id: dashboard_device_id
+  floor_id_id: dashboard_floor_id
+  room_id_id: dashboard_room_id
+  phase_id: dashboard_phase
+  direction_display_id: direction_display
+  vent_timer_id: vent_timer
+  sync_interval_config_id: sync_interval_config
+  fan_intensity_display_id: fan_intensity_display
+  automatik_min_luefterstufe_id: automatik_min_luefterstufe
+  automatik_max_luefterstufe_id: automatik_max_luefterstufe
+  auto_co2_threshold_id: auto_co2_threshold
+  auto_humidity_threshold_id: auto_humidity_threshold
+  auto_presence_slider_id: auto_presence_slider
+  luefter_modus_id: luefter_modus
+  lueftung_fan_id: lueftung_fan
+  ventilation_ctrl_id: ventilation_ctrl

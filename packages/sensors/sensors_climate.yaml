@@ -37,6 +37,7 @@ sensor:
   - platform: template
     name: "WRG Effizienz"
     id: heat_recovery_efficiency
+    internal: ${hide_climate_sensors}
     unit_of_measurement: "%"
     state_class: "measurement"
     accuracy_decimals: 1
@@ -62,6 +63,7 @@ sensor:
   - platform: template
     name: "Effektiver CO2 Wert"
     id: effective_co2
+    internal: ${hide_climate_sensors}
     unit_of_measurement: "ppm"
     device_class: "carbon_dioxide"
     state_class: "measurement"
@@ -93,6 +95,7 @@ text_sensor:
   - platform: template
     name: "CO2 Bewertung"
     id: effective_co2_bewertung
+    internal: ${hide_climate_sensors}
     icon: "mdi:circle-slice-8"
     update_interval: 60s
     lambda: |-
@@ -102,6 +105,7 @@ text_sensor:
   - platform: template
     name: "WRG Referenz-Messpunkt"
     id: wrg_reference_sensor
+    internal: ${hide_climate_sensors}
     icon: "mdi:target-variant"
     update_interval: 60s
     lambda: |-
