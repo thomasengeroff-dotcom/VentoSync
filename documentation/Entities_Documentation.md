@@ -84,7 +84,7 @@ Diese Entitäten repräsentieren die von den Hardware-Sensoren gelesenen Werte s
   * `sensor.iaq_co2eq` (Luftqualität CO2-Äquivalent)
   * `sensor.bme680_temperature` (Temp °C)
   * `sensor.bme680_humidity` (Feuchte %)
-  * `sensor.bme680_pressure_absolute` (Luftdruck hPa)
+  * `sensor.bme680_pressure_relative` (Relativer Luftdruck hPa)
   * `sensor.bme680_dewpoint` (Taupunkt °C)
   * `sensor.iaq_trend` (IAQ Trend ppm/min)
   * `text_sensor.iaq_level` (IAQ Bewertung)
@@ -157,3 +157,14 @@ Die physischen LEDs auf dem Controller-Interface.
 * **`text_sensor.own_mac_address`** ("Eigene MAC Adresse"): Zur eindeutigen Identifizierung der Hardware.
 * **`text_sensor.espnow_peers_display`** ("ESP-NOW Peers"): Liste der aktuell synchronisierten MAC-Adressen in der Gruppe.
 * **`sensor.current_floor_id`**, **`sensor.current_room_id`**, **`sensor.current_device_id`**: Diagnose-Sensoren, die die aktuell im Controller aktiven IDs spiegeln.
+
+## 9. Flash-Speicher & Lebensdauer (NVS)
+
+Um den Flash-Speicher des ESP32 vor vorzeitigem Verschleiß (Wear-Out) zu schützen, nutzt die Firmware für hochfrequente Daten eine **Tiered-Storage-Strategie**:
+
+* **Echtzeit (RAM):** Daten werden in Echtzeit verarbeitet und sind im Dashboard aktuell (z.B. Betriebsstunden, BME680 Burn-In Counter).
+* **Sync-Intervall (NVS):** Der Schreibvorgang in den permanenten Speicher erfolgt nur alle **30 Minuten**.
+* **Konfiguration:** Manuelle Einstellungsänderungen (Modus, Zielwerte) werden weiterhin **sofort** gespeichert.
+
+> [!NOTE]
+> Nach einem plötzlichen Stromausfall können maximal die Daten der letzten 29 Minuten verloren gehen. Dies ist ein bewusster Design-Kompromiss zur Maximierung der Hardware-Lebensdauer auf >10 Jahre.

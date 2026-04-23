@@ -36,8 +36,13 @@ globals:
     type: float
     restore_value: true
     initial_value: "0.0"
-  # Burn-in counter (minutes)
+  # Burn-in counter in memory (minutes) - updated every minute
   - id: burn_in_counter
+    type: int
+    restore_value: false
+    initial_value: "0"
+  # Saved burn-in counter in flash - updated every 30 mins
+  - id: saved_burn_in
     type: int
     restore_value: true
     initial_value: "0"
@@ -61,8 +66,8 @@ sensor:
       oversampling: 8x
       internal: true
     pressure:
-      name: "BME680 Luftdruck (Relativ)"
-      id: bme680_pressure_relative
+      name: "BME680 Luftdruck (Absolut)"
+      id: bme680_pressure_absolute
       oversampling: 4x
       internal: true
     humidity:
@@ -102,12 +107,12 @@ sensor:
       return temp + TEMP_OFFSET;
 
   # ---------------------------------------------------------
-  # Absolute air pressure (altitude-corrected)
+  # Relative air pressure (altitude-corrected to sea level)
   # Adjust location altitude in meters!
   # ---------------------------------------------------------
   - platform: template
-    name: "BME680 Luftdruck (Absolut)"
-    id: bme680_pressure_absolute
+    name: "BME680 Luftdruck (Relativ)"
+    id: bme680_pressure_relative
     icon: "mdi:gauge"
     unit_of_measurement: "hPa"
     accuracy_decimals: 1
@@ -117,7 +122,7 @@ sensor:
     lambda: |-
       // Adjust location altitude in meters above sea level (matching SCD41: 250m)
       static const float ALTITUDE = 250.0f;
-      float p = id(bme680_pressure_relative).state;
+      float p = id(bme680_pressure_absolute).state;
       float t = id(bme680_temperature).state;
       if (std::isnan(p) || std::isnan(t)) return NAN;
       // Barometric formula
@@ -185,15 +190,19 @@ sensor:
       float gas = id(gas_resistance).state;
       if (std::isnan(gas) || gas < 1000.0f) return baseline;
 
+      sample_count++;
+
       // Load saved baseline on first start
-      if (baseline == 0.0f && id(saved_baseline) > 1000.0f) {
-        baseline = id(saved_baseline);
-        warmed_up = true;
-        ESP_LOGI("bme680", "Baseline restored: %.0f Ohm", baseline);
+      if (sample_count == 1) {
+        id(burn_in_counter) = id(saved_burn_in);
+        if (baseline == 0.0f && id(saved_baseline) > 1000.0f) {
+          baseline = id(saved_baseline);
+          warmed_up = true;
+          ESP_LOGI("bme680", "Baseline restored: %.0f Ohm, Burn-in: %d min", baseline, id(burn_in_counter));
+        }
       }
 
-      sample_count++;
-      id(burn_in_counter) = id(burn_in_counter) + 1;
+      id(burn_in_counter) += 1;
 
       if (!warmed_up) {
         if (baseline == 0.0f) {
@@ -215,7 +224,8 @@ sensor:
       if (save_counter >= 30) {
         save_counter = 0;
         id(saved_baseline) = baseline;
-        ESP_LOGD("bme680", "Baseline saved: %.0f Ohm", baseline);
+        id(saved_burn_in) = id(burn_in_counter);
+        ESP_LOGD("bme680", "Baseline saved: %.0f Ohm, Burn-in saved: %d min", baseline, id(saved_burn_in));
       }
       return baseline;
 
@@ -372,6 +382,7 @@ button:
         - lambda: |-
             id(saved_baseline) = 0.0f;
             id(burn_in_counter) = 0;
+            id(saved_burn_in) = 0;
             ESP_LOGW("bme680", "Baseline reset! 48h burn-in required.");
         - logger.log:
             level: WARN

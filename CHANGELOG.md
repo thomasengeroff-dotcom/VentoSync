@@ -4,6 +4,19 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.187] - 2026-04-23
+### Added
+- **Tiered NVS Storage für Filter-Betriebsstunden**: Die Filter-Laufzeit wird nun im RAM minutengenau akkumuliert, aber nur alle 30 Minuten dauerhaft im Flash (NVS) gespeichert. Dies verhindert den Verschleiß des Flash-Speichers durch zu häufige Schreibvorgänge (NVS Wear-Out) bei gleichzeitiger Erhaltung der Persistenz über Reboots hinweg.
+
+### Changed
+- **Nomenklatur der Luftdruck-Sensoren**: Umbenennung der BME680-Entitäten zur fachlichen Korrektheit. `bme680_pressure` wurde zu `bme680_pressure_absolute` (statischer Druck) und `bme680_sea_level_pressure` zu `bme680_pressure_relative` (auf Meereshöhe korrigiert).
+- **Härtung der Einstellungen-Synchronisation**: Optimierung der Zuweisungslogik für via ESP-NOW empfangene Parameter. Die Nutzung des ESPHome-eigenen Polling-Mechanismus garantiert nun, dass Konfigurationsänderungen (z.B. CO2-Grenzwerte) nur bei tatsächlicher Änderung in den Flash geschrieben werden, was die Systemstabilität erhöht.
+
+### Fixed
+- **BME680 NVS Wear-Out (Kritisch)**: Behebung eines kritischen Architekturfehlers, bei dem der Gas-Basiswert-Zähler (`burn_in_counter`) jede Minute einen Flash-Schreibvorgang auslöste. Die neue RAM-basierte Zählung mit 30-minütigem Sync-Intervall reduziert die Schreiblast von 1440 auf max. 48 Vorgänge pro Tag.
+- **Filter-Persistenz**: Korrektur eines Fehlers, bei dem die akkumulierten Filter-Betriebsstunden nach einem Neustart des Geräts verloren gingen.
+- **Dokumentations-Update**: Aktualisierung der `Entities_Documentation.md` zur Erläuterung der "Tiered Storage" Strategie und der neuen Sensor-IDs.
+
 ## [0.8.177] - 2026-04-22
 ### Added
 - **Weitere Hardware-Variante**: `ventosync_bme680_only.yaml` für Geräte mit BME680, aber ohne SCD41/LD2450.

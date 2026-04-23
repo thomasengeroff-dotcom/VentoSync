@@ -50,9 +50,12 @@ inline void update_filter_analytics() {
     static uint32_t filter_ms_accumulator = 0;
     filter_ms_accumulator += elapsed_ms;
 
-    if (filter_ms_accumulator >= 60000) {
+    // Accumulate time. We only add to the float and trigger an NVS save every 30 minutes
+    // to prevent NVS Wear-Out (max 48 writes/day).
+    if (filter_ms_accumulator >= 1800000) { // 30 minutes
       filter_operating_hours->value() += static_cast<float>(filter_ms_accumulator) / 3600000.0f;
       filter_ms_accumulator = 0;
+      ESP_LOGD("filter", "Filter operating hours updated and NVS save triggered: %.2f", filter_operating_hours->value());
     }
   }
   last_update_ms = now_ms;

@@ -85,7 +85,9 @@ esphome:
     - components/helpers/system_lifecycle.h
     - components/helpers/led_feedback.h
     - components/helpers/user_input.h
+
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
+
   on_boot:
     # Enable External Antenna early at boot (Priority 900 starts before WiFi)
     - priority: 900
