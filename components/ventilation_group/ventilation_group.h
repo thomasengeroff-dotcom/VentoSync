@@ -125,6 +125,7 @@ struct __attribute__((packed)) VentilationPacket {
 /// @brief Represents the latest known state of a peer device in the same room.
 struct PeerState {
   uint32_t last_seen_ms;
+  std::array<uint8_t, 6> mac;
   uint8_t device_id;
   uint8_t current_mode;
   uint8_t fan_intensity;
@@ -485,7 +486,7 @@ public:
    *          prevent cross-room interference.
    */
   // FIXED K-1: const-ref parameter avoids unnecessary heap copy (H-1)
-  bool on_packet_received(const std::vector<uint8_t> &data) {
+  bool on_packet_received(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
     ESP_LOGI("vent", "on_packet_received() called");
     if (data.size() != sizeof(VentilationPacket)) {
       ESP_LOGW("vent_sync", "Size mismatch! Expected %zu, got %zu",
@@ -522,13 +523,6 @@ public:
                pkt->floor_id, pkt->room_id, floor_id, room_id);
       return false;
     }
-    if (pkt->device_id == device_id) {
-      ESP_LOGI("vent_sync",
-               "Ignored own packet (device %d). Check for ID collision if this "
-               "is not a loopback!",
-               device_id);
-      return false;
-    }
 
     ESP_LOGI("vent_sync", "Valid packet received from device %d! (Type: %d)",
              pkt->device_id, pkt->msg_type);
@@ -538,8 +532,9 @@ public:
 
     bool found_peer = false;
     for (auto &peer : peers) {
-      if (peer.device_id == pkt->device_id) {
+      if (std::memcmp(peer.mac.data(), src_mac, 6) == 0) {
         peer.last_seen_ms = millis();
+        peer.device_id = pkt->device_id;
         peer.current_mode = pkt->current_mode;
         peer.fan_intensity = pkt->fan_intensity;
         peer.phase_state = pkt->phase_state;
@@ -566,6 +561,7 @@ public:
         peers.erase(oldest);
       }
       PeerState new_peer;
+      std::copy(src_mac, src_mac + 6, new_peer.mac.begin());
       new_peer.device_id = pkt->device_id;
       new_peer.last_seen_ms = millis();
       new_peer.current_mode = pkt->current_mode;

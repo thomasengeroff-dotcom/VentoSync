@@ -4,6 +4,13 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.197] - 2026-04-24
+### Fixed
+- **ESP-NOW Peer-Tracking & Dashboard-Anzeige**: Behebung eines Fehlers, bei dem Peers im Web-Dashboard überschrieben wurden oder gar nicht erschienen, wenn mehrere Geräte die gleiche `device_id` (z.B. Standardwert 1) verwendeten.
+    - Umstellung des Peer-Trackings im `VentilationController` von `device_id` auf die eindeutige **MAC-Adresse** (`src_mac`).
+    - Härtung der Loopback-Erkennung: Eigene Pakete werden nun zuverlässig anhand der lokalen MAC-Adresse gefiltert (`is_local_mac`), statt sich auf die konfigurierbare `device_id` zu verlassen.
+    - Dies stellt sicher, dass das Dashboard auch bei ID-Kollisionen alle physischen Geräte korrekt auflistet und die gegenseitige Steuerung (Mode/Fan-Sync) robust funktioniert.
+
 ## [0.8.187] - 2026-04-23
 ### Added
 - **Tiered NVS Storage für Filter-Betriebsstunden**: Die Filter-Laufzeit wird nun im RAM minutengenau akkumuliert, aber nur alle 30 Minuten dauerhaft im Flash (NVS) gespeichert. Dies verhindert den Verschleiß des Flash-Speichers durch zu häufige Schreibvorgänge (NVS Wear-Out) bei gleichzeitiger Erhaltung der Persistenz über Reboots hinweg.

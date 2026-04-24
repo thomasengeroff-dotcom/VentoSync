@@ -894,6 +894,11 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
     }
   }
 
+  if (is_local_mac(src_mac)) {
+    ESP_LOGD("vent_sync", "Ignored own packet (loopback).");
+    return;
+  }
+
   // ✅ N-2: Single validated parse — validate_and_parse_packet() is the
   // only cast point. It checks all invariants AND deserialises via memcpy.
   auto maybe_pkt = espnow_handler::validate_and_parse_packet(data);
@@ -921,7 +926,7 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
     return;
   }
 
-  bool changed = v->on_packet_received(data);
+  bool changed = v->on_packet_received(data, src_mac);
 
   if (static_cast<esphome::MessageType>(pkt->msg_type) ==
           esphome::MSG_STATUS_RESPONSE &&
