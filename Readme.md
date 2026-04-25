@@ -66,6 +66,8 @@ The heart of the project is a custom developed circuit board that fits perfectly
 > If you are interested in obtaining a PCB for your own devices, please feel free to contact me at **thomas@engeroff.net**. 
 > Please note that I have not yet decided whether the PCB production files will be made open source.
 
+![PCB in Housing with Antenna](EasyEDA-Pro/PCB%20mounting/PCB-FAN-ANT-in-Gehäuse.jpg)
+
 ---
 
 ## 🔄 Comparison with VentoMaxx V-WRG
@@ -108,14 +110,14 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
   - ✅ **Photoacoustic sensing** for precise CO2 measurement (400-5000 ppm), integrated temperature and humidity measurement (SCD41), Documentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
   - ✅ **BME680 Optimization**: Switching to the standard platform (without BSEC2) saves massive compilation time. IAQ is now calculated via an efficient template.
   - ⚠️ **Note:** Since the SCD41 PCB is still in production, the **BME680** currently serves as a fallback (IAQ index). The code automatically detects if the SCD41 is present.
-  - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**.
-  - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
-  - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
+  - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**:
+  -- **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
+  -- **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
 - 📊 **Automatic Intensity Control**: The system can automatically increase fan power as CO2 levels or humidity rise for optimal indoor air quality. Advanced PID control is used for this, which dynamically adjusts the fan power to the measured values. The control is optimized to keep the fan power as low as possible to minimize energy consumption and noise.
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
-- 📊 **Real VentoMaxx V-Curve**: Based on the physical parameters of the original hardware (50% PWM = stop zone), the curve has been optimized with finer granularity in the lower levels (Levels 1-6) to ensure even more discreet acoustic operation.
-- 🪟 **Window Guard (Fenstersperre)**: Automatic room-wide ventilation pause when windows are open. Includes a per-device **"Ignore Window Guard" switch** to bypass the lock for specific units if needed.
+- 📊 **Optimized VentoMaxx Ventilation Curve**: Based on the physical parameters of the original hardware (50% PWM = stop zone), the curve has been optimized with finer granularity in the lower levels (Levels 1-6) to ensure even more discreet acoustic operation.
+- 🪟 **Window Guard**: Automatic room-wide ventilation pause when windows are open. Includes a per-device **"Ignore Window Guard" switch** to bypass the lock for specific units if needed.
   - ✅ **Smart Pause (5s Delay)**: The guard engages after 5 seconds of continuous "open" state to prevent accidental triggers. All VentoSync units in the room immediately stop their fans to prevent energy waste.
   - ✅ **Automatic Resume**: The system preserves its current operating mode (e.g., Automatic or Manual) and resumes operation seamlessly as soon as all windows are closed.
   - ✅ **Visual Feedback (35s Limit)**: A distinct pulsing pattern on the Master LED indicates the "Paused by Window" state. To avoid light pollution at night, the pulsing starts after 5 seconds and stops after 35 seconds while the fan remains safely stopped.
@@ -123,7 +125,7 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
   - > For a step-by-step guide on how to integrate multiple window sensors and create the required room entities, please refer to our **[Home Assistant Window Guard Setup Guide](documentation/Window-Guard-HA-Setup.md)**.
 
 - 📈 **Phase Position Continuity**: The system proportionally scales the current cycle progress to the new duration whenever the intensity is adjusted, ensuring the fan continues its operation seamlessly.
-- 🌊 **Slew-Rate Speed Transitions (Sanftanlauf)**: Fan speed changes are smoothed at a rate of ~5% per second. This prevents harsh electrical surges and provides a more premium, quiet acoustic transition when adjusting ventilation levels.
+- 🌊 **Slew-Rate Speed Transitions**: Fan speed changes are smoothed at a rate of ~5% per second. This prevents harsh electrical surges and provides a more premium, quiet acoustic transition when adjusting ventilation levels.
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
 - 🔄 **Plain Text Direction Display**: A sensor entity shows the current air direction at any time ("Supply Air (In)", "Exhaust Air (Out)", or "Standstill"), which significantly simplifies diagnosis and monitoring of synchronization.
 
@@ -134,11 +136,11 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
 
 The VentoMaxx system with this ESPHome control works outstandingly efficiently. By using a high-quality Traco power supply and precision PWM control of the ebm-papst motor, the real power (measured at 230V) is in a range that is significantly lower than many commercial systems:
 
-- **Level 1 (Base Ventilation):** ~2.7 - 2.9 Watts *(approx. $7.36 / year)*
-- **Level 5 (Increased Load):** ~3.2 - 3.7 Watts *(approx. $9.10 / year)*
-- **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. $15.75 / year)*
+- **Level 1 (Base Ventilation):** ~2.7 - 2.9 Watts *(approx. €7.36 / year)*
+- **Level 5 (Increased Load):** ~3.2 - 3.7 Watts *(approx. €9.10 / year)*
+- **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. €15.75 / year)*
 
-Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at $0.30/kWh) amount to only around 15 dollars per year. In the most frequently used Smart automatic mode (values fluctuate between level 1 and 3 most of the time), the real operating costs are extremely economical at **approx. 7 to 8.50 dollars per year** for the entire unit.
+Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at €0.30/kWh) amount to only around 15 euros per year. In the most frequently used Smart automatic mode (values fluctuate between level 1 and 3 most of the time), the real operating costs are extremely economical at **approx. 7 to 8.50 euros per year** for the entire unit.
 Note: This is not a 100% accurate laboratory measurement. I determined these values using a Shelly 1PM mini.
 
 *Particularly noteworthy: These measurements include the continuous operation of all installed components – including the ESP32 control (Wi-Fi/ESP-NOW), the climate and CO2 sensors, as well as the continuously measuring mmWave radar presence sensor!*
@@ -163,7 +165,7 @@ To ensure an optimal user experience, the original control panel of the VentoMax
     - **2x Blinks**: Synchronization error between fans (room group). No ESP-NOW packets received from peers for >3 minutes. *(Only active when the "Peer monitoring" switch is enabled in the dashboard.)*
     - **3x Blinks**: The connection to the Wi-Fi router is interrupted. App control is currently not possible. *(Triggers only after 30 seconds of continuous connection loss — brief roaming drops are suppressed.)*
     - **4x Blinks**: Heat warning (50-60°C). The temperature inside the ventilation unit housing is too warm (e.g., due to direct sunlight or a malfunction). The system is still running but should be checked. The device switches off automatically at over 60°C.
-    - **Slow Pulse (1s On, 2s Off)**: Window Guard (Fenstersperre) active. All fans in the room are stopped. *(Starts after 5s, automatically deactivated after 35s to avoid light pollution.)*
+    - **Slow Pulse (1s On, 2s Off)**: Window Guard active. All fans in the room are stopped. *(Starts after 5s, automatically deactivated after 35s to avoid light pollution.)*
 - You can find the detailed description of operation and control under [Operation](#-operation--control).
 
 ### 🏠 Integration
@@ -227,6 +229,9 @@ The devices communicate via the [ESPHome ESP-NOW component](https://esphome.io/c
 
 You can find more information in the [official ESPHome documentation](https://esphome.io/components/espnow.html).
 
+- 📡 **Optimized Signal Strength**: To ensure maximum reliability for Wi-Fi and ESP-NOW communication—even when installed further away from the router, behind walls or other obstacles—an external antenna is connected via a U.FL connector to the ESP32-C6 and the esp is configured to use the external antenna instead of the internal PCB antenna.
+
+![Antenna PCB in Housing](EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg)
 ---
 
 ## 🗺️ Roadmap & Future Enhancements
@@ -305,7 +310,7 @@ In addition, I have developed an SCD41 PCB that positions the SCD41 CO2 sensor p
 
 | Component | Description | Documentation |
 | :--- | :--- | :--- |
-| **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. *The technical connection is described in the following document: [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)* | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. ![Fan Connection](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg) | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2 sensor (Real CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch high-precision barometric pressure sensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch gas sensor (fallback for IAQ/air quality) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
