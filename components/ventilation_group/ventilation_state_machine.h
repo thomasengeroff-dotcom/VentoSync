@@ -120,22 +120,40 @@ public:
   static_assert(STOSS_ACTIVE_MS + STOSS_PAUSE_MS > STOSS_ACTIVE_MS,
       "STOSS total cycle overflows uint32_t");
 
-  /// @brief One-time initialization (reserved for future use).
+  /**
+   * @brief   One-time initialization (reserved for future use).
+   */
   void setup();
 
-  /// @brief Main tick — call every loop(). Returns true if hardware state may
-  /// have changed.
+  /**
+   * @brief   Main tick — advanced every loop cycle.
+   * @details Advanced timers (Stoßlüftung, Manual Timer) and direction cycle.
+   * @param[in] now  Current system time in milliseconds.
+   * @return  true if any state change occurred (hardware update needed).
+   */
   bool update(uint32_t now);
 
   // --- Actions ---
 
-  /// @brief Switch operating mode and (re)start mode-specific timers.
+  /**
+   * @brief   Switch operating mode and (re)start mode-specific timers.
+   * @param[in] mode      Target VentilationMode.
+   * @param[in] now       Current system time in milliseconds.
+   * @param[in] duration  For MODE_VENTILATION: auto-stop timer in ms (0 = infinite).
+   */
   void set_mode(VentilationMode mode, uint32_t now, uint32_t duration = 0);
-  /// @brief Update the half-cycle duration (one direction) for alternating
-  /// airflow, maintaining the current cycle proportion.
+  /**
+   * @brief   Update the half-cycle duration (one direction) for alternating
+   *          airflow, maintaining the current cycle proportion.
+   * @param[in] now  Current system time in milliseconds.
+   * @param[in] ms   New half-cycle duration in milliseconds.
+   */
   void set_cycle_duration(uint32_t now, uint32_t ms);
-  /// @brief Align local cycle phase with a peer's reported position (ESP-NOW
-  /// sync).
+  /**
+   * @brief   Align local cycle phase with a peer's reported position.
+   * @param[in] now            Current system time in milliseconds.
+   * @param[in] target_pos_ms  Target cycle position (0 to 2xHalfCycle).
+   */
   void sync_time(uint32_t now, uint32_t target_pos_ms);
 
   // --- Getters ---
@@ -159,7 +177,11 @@ public:
    *          Returns 0 for infinite (untimed) modes.
    */
   uint32_t get_remaining_duration(uint32_t now) const;
-  /// @brief Current position in the full direction cycle (for sync packets).
+  /**
+   * @brief   Returns the current position in the full direction cycle.
+   * @param[in] now  Current system time in milliseconds.
+   * @return  Position in milliseconds (0 to 2xHalfCycle).
+   */
   uint32_t get_cycle_pos(uint32_t now) const;
 };
 

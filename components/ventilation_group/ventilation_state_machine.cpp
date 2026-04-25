@@ -28,17 +28,21 @@
 
 namespace esphome {
 
-/// @brief Initializes the state machine. Called once at boot.
-/// Reserved for future use (e.g. restoring persisted state).
+/**
+ * @brief   Initializes the state machine. Called once at boot.
+ * @details Reserved for future use (e.g. restoring persisted state).
+ */
 void VentilationStateMachine::setup() {
     // Initial setup if needed
 }
 
-/// @brief Main tick — called every loop iteration to advance timers and cycle phase.
-/// Handles ventilation timer expiry, Stoßlüftung on/off cycling, and global
-/// direction phase transitions. Returns true if any state changed (hardware update needed).
-/// @param now  Current millis() timestamp.
-/// @return true if hardware outputs should be refreshed.
+/**
+ * @brief   Main tick — advanced every loop cycle.
+ * @details Handles ventilation timer expiry, Stoßlüftung on/off cycling, and global
+ *          direction phase transitions.
+ * @param[in] now  Current system time in milliseconds.
+ * @return  true if any state changed (hardware update needed).
+ */
 bool VentilationStateMachine::update(uint32_t now) {
     bool dirty = false;
 
@@ -83,11 +87,13 @@ bool VentilationStateMachine::update(uint32_t now) {
     return dirty;
 }
 
-/// @brief Switches the operating mode and resets mode-specific timers.
-/// No-op if mode and duration are identical to current values.
-/// @param mode      Target mode (MODE_OFF, MODE_ECO_RECOVERY, MODE_STOSSLUEFTUNG, MODE_VENTILATION).
-/// @param now       Current millis() timestamp (used to start timers).
-/// @param duration  For MODE_VENTILATION: auto-stop duration in ms (0 = infinite).
+/**
+ * @brief   Switches the operating mode and resets mode-specific timers.
+ * @details No-op if mode and duration are identical to current values.
+ * @param[in] mode      Target mode (MODE_OFF, MODE_ECO_RECOVERY, etc.).
+ * @param[in] now       Current system time in milliseconds.
+ * @param[in] duration  For MODE_VENTILATION: auto-stop duration in ms (0 = infinite).
+ */
 void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint32_t duration) {
     // FIXED K-3: Removed dead variable 'changed'; simplified early-return
     if (current_mode == mode && duration == ventilation_duration_ms) return;
@@ -105,11 +111,12 @@ void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint3
     }
 }
 
-/// @brief Updates the half-cycle duration (one direction) for the alternating airflow.
-/// A full cycle = 2 × cycle_duration_ms (intake + exhaust).
-/// Maintains proportional progress in the current cycle to avoid abrupt jumps.
-/// @param now Current millis() timestamp.
-/// @param ms  Half-cycle duration in milliseconds (e.g. 70000 = 70 s per direction).
+/**
+ * @brief   Updates the half-cycle duration (one direction) for the alternating airflow.
+ * @details Maintains proportional progress in the current cycle to avoid abrupt jumps.
+ * @param[in] now  Current system time in milliseconds.
+ * @param[in] ms   Half-cycle duration in milliseconds (e.g. 70000 = 70 s).
+ */
 void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
     // FIXED H-3: Guard against invalid input value
     if (ms == 0) return;
@@ -156,11 +163,13 @@ void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
     cycle_duration_ms = ms;
 }
 
-/// @brief Synchronizes the local cycle phase with a peer device received via ESP-NOW.
-/// Adjusts the internal time_offset so that both devices switch direction at the same time.
-/// Only applies correction if the drift exceeds 200 ms (jitter suppression).
-/// @param now            Current millis() timestamp.
-/// @param target_pos_ms  Cycle position reported by the peer (0 … 2×cycle_duration_ms).
+/**
+ * @brief   Synchronizes the local cycle phase with a peer device.
+ * @details Adjusts the internal time_offset so that both devices switch direction
+ *          simultaneously. Only applies correction if drift exceeds 500 ms.
+ * @param[in] now            Current system time in milliseconds.
+ * @param[in] target_pos_ms  Cycle position reported by the peer (0 to 2xHalfCycle).
+ */
 void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
     // FIXED H-2: Guard against division-by-zero if cycle not yet configured
     if (cycle_duration_ms == 0) return;
@@ -182,9 +191,11 @@ void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
     }
 }
 
-/// @brief Returns the remaining time for MODE_VENTILATION in milliseconds.
-/// Returns 0 if no timer is set (infinite mode) or if the timer has already expired.
-/// @param now  Current millis() timestamp.
+/**
+ * @brief   Returns the remaining time for MODE_VENTILATION in milliseconds.
+ * @param[in] now  Current system time in milliseconds.
+ * @return  Remaining duration in milliseconds (0 if expired or infinite).
+ */
 uint32_t VentilationStateMachine::get_remaining_duration(uint32_t now) const {
     if (ventilation_duration_ms == 0) return 0;
     uint32_t elapsed = now - ventilation_start_time;
@@ -192,10 +203,12 @@ uint32_t VentilationStateMachine::get_remaining_duration(uint32_t now) const {
     return ventilation_duration_ms - elapsed;
 }
 
-/// @brief Returns the current position within the full direction cycle.
-/// Used for ESP-NOW sync packets so peers can align their phase.
-/// @param now  Current millis() timestamp.
-/// @return Position in ms within [0 … 2×cycle_duration_ms).
+/**
+ * @brief   Returns the current position within the full direction cycle.
+ * @details Used for ESP-NOW sync packets so peers can align their phase.
+ * @param[in] now  Current system time in milliseconds.
+ * @return  Position in ms within [0 to 2×cycle_duration_ms).
+ */
 uint32_t VentilationStateMachine::get_cycle_pos(uint32_t now) const {
     // FIXED K-4: Guard against division-by-zero when cycle not yet configured
     if (cycle_duration_ms == 0) return 0;
@@ -211,11 +224,12 @@ uint32_t VentilationStateMachine::get_cycle_pos(uint32_t now) const {
     return (uint32_t)mod_pos;
 }
 
-/// @brief Computes the desired hardware outputs (fan on/off, direction) based on
-/// the current mode, cycle phase, and Stoßlüftung state.
-/// The caller compares the result to the previous state to decide whether to
-/// actually toggle GPIOs.
-/// @return HardwareState with fan_enabled and direction_in fields set.
+/**
+ * @brief   Computes the desired hardware outputs based on mode and phase.
+ * @details Determines fan state, direction, and ramp factor.
+ * @param[in] now  Current system time in milliseconds.
+ * @return  HardwareState struct containing target outputs.
+ */
 HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
     HardwareState state;
     state.fan_enabled = true;

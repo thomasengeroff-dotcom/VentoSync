@@ -245,42 +245,64 @@ public:
   binary_sensor::BinarySensor *window_sensor_{nullptr}; ///< Injected window lock sensor.
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
+  /** @brief Sets the binary sensor used for window locking. */
   void set_window_sensor(binary_sensor::BinarySensor *s) { window_sensor_ = s; }
+  /** @brief Sets the global mode index reference. */
   void set_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { mode_index_global_ = g; }
+  /** @brief Sets the global minimum fan level reference. */
   void set_automatik_min_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { automatik_min_fan_level_global_ = g; }
+  /** @brief Sets the global maximum fan level reference. */
   void set_automatik_max_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { automatik_max_fan_level_global_ = g; }
+  /** @brief Sets the global CO2 threshold reference. */
   void set_auto_co2_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_co2_threshold_global_ = g; }
+  /** @brief Sets the global humidity threshold reference. */
   void set_auto_humidity_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_humidity_threshold_global_ = g; }
+  /** @brief Sets the global presence preference reference. */
   void set_auto_presence_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_presence_global_ = g; }
+  /** @brief Sets the global max LED brightness reference. */
   void set_max_led_brightness_global(esphome::globals::RestoringGlobalsComponent<float> *g) { max_led_brightness_global_ = g; }
 
+  /** @return true if the window guard safety lock is active. */
   bool is_window_guard_active() const { return window_guard_active_; }
+  /** @return true if the window guard is being bypassed. */
   bool is_ignoring_window_guard() const { return ignore_window_guard_; }
+  /** @return timestamp when the window guard was activated. */
   uint32_t get_window_lock_activation_ms() const { return window_lock_activation_ms_; }
+  /** @brief Bypasses or restores the window guard safety lock. */
   void set_ignore_window_guard(bool ignore) { 
     ignore_window_guard_ = ignore;
     update_hardware();
   }
-  void set_floor_id(uint8_t id) { floor_id = id; }   ///< Set floor group.
-  void set_room_id(uint8_t id) { room_id = id; }     ///< Set room group.
+  /** @brief Sets the floor group for ESP-NOW filtering. */
+  void set_floor_id(uint8_t id) { floor_id = id; }
+  /** @brief Sets the room group for ESP-NOW filtering. */
+  void set_room_id(uint8_t id) { room_id = id; }
+  /** @brief Sets the unique device ID (Master is 1). */
   void set_device_id(uint8_t id) {
     if (device_id == id) return;
     device_id = id;
     ESP_LOGI("vent", "Controller Device ID updated to: %d", id);
-  } ///< Set unique device ID.
+  }
+  /** @brief Sets the phase group (A or B). */
   void set_is_phase_a(bool phase_a) {
     state_machine.is_phase_a = phase_a;
     update_hardware();
-  } ///< Set phase group.
+  }
+  /** @brief Binds the main fan component. */
   void set_main_fan(fan::Fan *fan) {
     main_fan = fan;
-  } ///< Bind the fan component.
+  }
+  /** @brief Binds the direction switch component. */
   void set_direction_switch(switch_::Switch *sw) {
     direction_switch = sw;
-  } ///< Bind the direction switch.
+  }
+  /** @brief Binds the local RPM sensor. */
   void set_fan_rpm_sensor(sensor::Sensor *s) { fan_rpm_sensor_ = s; }
+  /** @brief Binds the local board temperature sensor. */
   void set_board_temp_sensor(sensor::Sensor *s) { board_temp_sensor_ = s; }
+  /** @brief Binds the local room temperature sensor (Primary). */
   void set_scd41_temp_sensor(sensor::Sensor *s) { scd41_temp_sensor_ = s; }
+  /** @brief Binds the local room temperature sensor (Fallback). */
   void set_bme680_temp_sensor(sensor::Sensor *s) { bme680_temp_sensor_ = s; }
 
   VentilationController() {}
@@ -419,8 +441,12 @@ public:
 
   // --- ACTIONS ---
 
-  /// @brief Updates the half-cycle duration and refreshes hardware / notifies
-  /// peers.
+  /**
+   * @brief   Updates the half-cycle duration and refreshes hardware.
+   * @param[in] ms          Half-cycle duration in milliseconds.
+   * @param[in] refresh_hw  If true, hardware is refreshed immediately.
+   * @param[in] notify      If true, a broadcast is scheduled.
+   */
   void set_cycle_duration(uint32_t ms, bool refresh_hw = true, bool notify = true) {
     if (ms == state_machine.cycle_duration_ms)
       return;
@@ -432,17 +458,26 @@ public:
     if (notify) pending_broadcast = true;
   }
 
-  /// @brief Changes the auto-sync broadcast interval.
+  /**
+   * @brief   Changes the auto-sync broadcast interval.
+   * @param[in] ms  New interval in milliseconds.
+   */
   void set_sync_interval(uint32_t ms) {
     sync_interval_ms = ms;
     ESP_LOGI("vent", "Sync interval updated to %d ms", sync_interval_ms);
     trigger_sync();
   }
 
-  /// @brief Manually triggers a broadcast on the next 1s interval.
+  /**
+   * @brief   Manually schedules a sync broadcast for the next loop.
+   */
   void trigger_sync() { pending_broadcast = true; }
 
-  /// @brief Sets the fan intensity level (1–10) and notifies peers.
+  /**
+   * @brief   Sets the fan intensity level (1–10) and notifies peers.
+   * @param[in] intensity  Target level (1 to 10).
+   * @param[in] notify     If true, a broadcast is scheduled.
+   */
   void set_fan_intensity(uint8_t intensity, bool notify = true) {
     if (current_fan_intensity == intensity)
       return;
@@ -453,20 +488,21 @@ public:
     if (notify) pending_broadcast = true;
   }
 
-  /// @brief Switches operating mode, delegates to state machine, refreshes HW,
-  /// notifies peers.
-  /// @param mode     Target VentilationMode.
-  /// @param duration For MODE_VENTILATION: auto-stop timer in ms (0 =
-  /// infinite).
+  /**
+   * @brief   Switches operating mode and notifies peers.
+   * @param[in] mode      Target VentilationMode.
+   * @param[in] duration  Optional timer for MODE_VENTILATION.
+   * @param[in] notify    If true, a broadcast is scheduled.
+   */
   void set_mode(VentilationMode mode, uint32_t duration = 0, bool notify = true) {
     if (state_machine.current_mode == mode &&
         duration == state_machine.ventilation_duration_ms)
       return;
-
+ 
     ESP_LOGI("vent", "Mode change: %d -> %d (Duration: %d ms, Notify: %s)",
              state_machine.current_mode, mode, duration, notify ? "YES" : "NO");
     state_machine.set_mode(mode, millis(), duration);
-
+ 
     update_hardware();
     if (notify) pending_broadcast = true;
   }
@@ -658,14 +694,20 @@ public:
 
   // --- HELPERS ---
 
-  /// @brief Convenience wrapper — returns remaining ventilation timer in ms.
+  /**
+   * @brief   Returns the remaining ventilation timer duration.
+   * @return  Duration in milliseconds (0 if infinite or expired).
+   */
   uint32_t get_remaining_duration() {
     return state_machine.get_remaining_duration(millis());
   }
 
-  /// @brief Applies the state machine's target state to the physical hardware.
-  /// Sets the direction switch and handles fan on/off bridging.
-  /// The actual PWM/speed logic is handled by update_fan_logic().
+  /**
+   * @brief   Applies the target state to the physical hardware.
+   * @details Sets direction switch and updates fan logic.
+   * @param[in] state      Target HardwareState.
+   * @param[in] force_log  If true, hardware status is logged regardless of interval.
+   */
   void update_hardware(const HardwareState &state, bool force_log = false) {
     bool target_in = state.direction_in;
     bool enable_fan = state.fan_enabled;
@@ -723,7 +765,9 @@ public:
     ::update_fan_logic();
   }
 
-  /// @brief Convenience wrapper that calculates current state and applies it.
+  /**
+   * @brief   Calculates current target state and applies it to hardware.
+   */
   void update_hardware() {
     update_hardware(state_machine.get_target_state(millis()));
   }

@@ -12,6 +12,6 @@ This component implements a high-performance local web interface for the VentoSy
 
 ## ⚙️ Key Mechanisms
 
-- **Local Servicing**: All assets are stored on the ESP32-C6 flash, allowing the dashboard to function entirely offline.
+- **Hybrid Servicing**: While the core logic and JSON API function entirely offline, the dashboard currently loads **Tailwind CSS** and **Chart.js** via an external CDN. Local assets (like Material Design Icons) are stored in the `assets/` folder but are currently not referenced in `dashboard_html.h` to minimize flash usage.
 - **REST API**: Provides a lightweight JSON API used by both the internal frontend and external integration tools.
 - **Multi-Client Support**: Optimized for simultaneous connections across multiple browser instances.

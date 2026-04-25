@@ -19,17 +19,13 @@
 //
 // File:        auto_mode.h
 // Description: Logic for the Ventilation Auto Mode Controller.
+//              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
 // Modified:    2026-03-29
 // ==========================================================================
 #pragma once
 #include "globals.h"
-
-/**
- * @brief Logic for the Ventilation Auto Mode Controller.
- * Final refactored version addressing all safety and maintainability concerns.
- */
 
 /**
  * @brief   Calculates absolute humidity (g/m³) from relative humidity and temperature.

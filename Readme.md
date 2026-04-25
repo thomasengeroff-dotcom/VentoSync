@@ -177,6 +177,9 @@ To ensure an optimal user experience, the original control panel of the VentoMax
 - **Diagnostic Tools**: Live monitoring of all sensor data as tiles with daily history graphs.
 - **Standalone Capability**: Change all system settings without needing Home Assistant (though HA is still recommended). Simply go to **`http://<your-IP-address>/ui`** (or e.g., `http://esptest.local/ui`) in your web browser. *(Note: The root URL `/` still shows the standard ESPHome UI)*
 
+> [!IMPORTANT]
+> **Hybrid-Offline Operation**: While all core logic and data processing run 100% locally on the ESP32-C6 (even without internet), the local web dashboard currently loads **Tailwind CSS** and **Chart.js** via an external CDN (`https://cdn.tailwindcss.com`...). This means an internet connection is required to display the dashboard's styling and graphs correctly. Local assets, such as custom fonts, are currently not used to keep the flash footprint minimal.
+
 #### WRG Dashboard - Local Web Dashboard
 
 ![WRG Dashboard Settings](documentation/screenshots/wrg-dashboard1.png)

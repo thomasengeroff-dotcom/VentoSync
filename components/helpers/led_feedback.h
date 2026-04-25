@@ -28,40 +28,61 @@
 
 namespace led_guard {
 
-inline void turn_off_safe(esphome::light::LightState *led) {
-    if (led != nullptr) led->turn_off().perform();
-}
+  /**
+   * @brief   Turns off an LED if it is not a nullptr.
+   * @param[in] led  Pointer to the LightState component.
+   */
+  inline void turn_off_safe(esphome::light::LightState *led) {
+      if (led != nullptr) led->turn_off().perform();
+  }
 
-inline void turn_on_safe(esphome::light::LightState *led, float brightness) {
-    if (led != nullptr) led->turn_on().set_brightness(brightness).perform();
-}
+  /**
+   * @brief   Turns on an LED with specified brightness if it is not a nullptr.
+   * @param[in] led         Pointer to the LightState component.
+   * @param[in] brightness  Target brightness (0.0 to 1.0).
+   */
+  inline void turn_on_safe(esphome::light::LightState *led, float brightness) {
+      if (led != nullptr) led->turn_on().set_brightness(brightness).perform();
+  }
 
-inline void turn_on_effect_safe(esphome::light::LightState *led, const char *effect, float brightness = -1.0f) {
-    if (led == nullptr) return;
-    auto call = led->turn_on();
-    call.set_effect(effect);
-    if (brightness >= 0.0f) call.set_brightness(brightness);
-    call.perform();
-}
+  /**
+   * @brief   Turns on an LED with a specific effect and optional brightness.
+   * @param[in] led         Pointer to the LightState component.
+   * @param[in] effect      Name of the effect to start.
+   * @param[in] brightness  Optional brightness override.
+   */
+  inline void turn_on_effect_safe(esphome::light::LightState *led, const char *effect, float brightness = -1.0f) {
+      if (led == nullptr) return;
+      auto call = led->turn_on();
+      call.set_effect(effect);
+      if (brightness >= 0.0f) call.set_brightness(brightness);
+      call.perform();
+  }
 
-inline void turn_off_all_leds() {
-    turn_off_safe(status_led_power);
-    turn_off_safe(status_led_mode_wrg);
-    turn_off_safe(status_led_mode_vent);
-    turn_off_safe(status_led_l1);
-    turn_off_safe(status_led_l2);
-    turn_off_safe(status_led_l3);
-    turn_off_safe(status_led_l4);
-    turn_off_safe(status_led_l5);
-}
+  /**
+   * @brief   Turns off all 8 physical UI LEDs.
+   */
+  inline void turn_off_all_leds() {
+      turn_off_safe(status_led_power);
+      turn_off_safe(status_led_mode_wrg);
+      turn_off_safe(status_led_mode_vent);
+      turn_off_safe(status_led_l1);
+      turn_off_safe(status_led_l2);
+      turn_off_safe(status_led_l3);
+      turn_off_safe(status_led_l4);
+      turn_off_safe(status_led_l5);
+  }
 
-inline void turn_off_level_leds() {
-    turn_off_safe(status_led_l1);
-    turn_off_safe(status_led_l2);
-    turn_off_safe(status_led_l3);
-    turn_off_safe(status_led_l4);
-    turn_off_safe(status_led_l5);
-}
+  /**
+   * @brief   Turns off only the 5 level indicator LEDs.
+   */
+  inline void turn_off_level_leds() {
+      turn_off_safe(status_led_l1);
+      turn_off_safe(status_led_l2);
+      turn_off_safe(status_led_l3);
+      turn_off_safe(status_led_l4);
+      turn_off_safe(status_led_l5);
+  }
 
 } // namespace led_guard
 

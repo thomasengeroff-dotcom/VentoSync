@@ -347,38 +347,72 @@ inline uint32_t last_direction_change_time = 0;
 /// @}
 
 // --- FORWARD DECLARATIONS ---
+// --- FORWARD DECLARATIONS ---
+/** @brief Resets thermal stabilization timers after a direction flip. */
 inline void notify_fan_direction_changed();
+/** @brief Filter for NTC stabilization. Returns NaN if not stable. */
 inline esphome::optional<float> filter_ntc_stable(int sensor_idx, float new_value);
+/** @brief Checks if a MAC matches this device. */
 inline bool is_local_mac(const uint8_t *mac);
+/** @brief Registers a new peer in the dynamic discovery list. */
 inline void register_peer_dynamic(const uint8_t *mac);
+/** @brief Loads saved peers from NVS into runtime cache. */
 inline void load_peers_from_runtime_cache();
+/** @brief Broadcasts a discovery packet to find other units. */
 inline void send_discovery_broadcast();
+/** @brief Requests status from a specific peer. */
 inline void request_peer_status();
+/** @brief Acknowledges a discovery request from a peer. */
 inline void send_discovery_confirmation(const uint8_t *target_mac);
+/** @brief Sends a packet to all registered peers. */
 inline void send_sync_to_all_peers(const std::vector<uint8_t> &data);
+/** @brief Broadcasts current settings to all peers. */
 inline void sync_settings_to_peers();
+/** @brief High-level ESP-NOW receive entry point. */
 inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac);
+/** @brief Drains the thread-safe RX queue. */
 inline void process_queued_packets();
+/** @brief Removes a peer from the runtime and persistent list. */
 inline void remove_stale_peer(const uint8_t *mac);
+/** @brief Triggers a new discovery phase. */
 inline void trigger_re_discovery();
+/** @brief Resets the failure counter for a specific peer. */
 inline void reset_peer_fail_count(const uint8_t *mac);
+/** @brief Rebuilds the JSON string for peer display. */
 inline void rebuild_peers_string();
+/** @brief Sets the ventilation timer from a UI value. */
 inline void set_ventilation_timer(float value);
+/** @brief Sets the sync interval from a UI value. */
 inline void set_sync_interval_handler(float value);
+/** @brief Sets the fan intensity from a UI slider. */
 inline void set_fan_intensity_slider(float value);
+/** @brief Sets the operating mode from a UI select. */
 inline void set_operating_mode_select(const std::string &x);
+/** @brief Cycles mode on button click. */
 inline void handle_button_mode_click();
+/** @brief Toggles power on button short-click. */
 inline void handle_button_power_short_click();
+/** @brief Shuts down system on button long-click. */
 inline void handle_button_power_long_click();
+/** @brief Cycles intensity on button click. */
 inline void handle_button_level_click();
+/** @brief Cycles intensity on button hold. */
 inline void handle_intensity_bounce();
+/** @brief Evaluates Smart-Automatik logic. */
 inline void evaluate_auto_mode(bool force = false);
+/** @brief Updates filter wear-out analytics. */
 inline void update_filter_analytics();
+/** @brief Orchestrates a mode transition. */
 inline void cycle_operating_mode(int mode_index);
+/** @brief Syncs YAML config to C++ controller. */
 inline void sync_config_to_controller();
+/** @brief Main system boot sequence. */
 inline void run_system_boot_initialization();
+/** @brief Hardware LED self-test. */
 inline void run_led_self_test();
+/** @brief Periodic LED update logic. */
 inline void update_leds_logic();
+/** @brief Checks for system errors via Master LED. */
 inline void check_master_led_error();
 
 /**
@@ -403,11 +437,19 @@ inline bool is_master() {
 inline bool is_from_master(const esphome::VentilationPacket *pkt) {
   return pkt->device_id == 1;
 }
+/** @brief Dispatches PWM and direction to hardware. */
 inline void set_fan_logic(float speed, int direction);
+/** @brief Converts intensity level to speed fraction. */
 inline float level_to_speed(float level);
+/** @brief Calculates the target speed based on mode. */
 inline float get_current_target_speed();
+/** @brief Returns RPM (physical or virtual fallback). */
 inline float calculate_virtual_fan_rpm(float raw_rpm);
+/** @brief Main fan control loop tick. */
 inline void update_fan_logic();
+/** @brief Checks if the fan is logically OFF. */
 inline bool is_fan_slider_off(float value);
+/** @brief Returns ramp-up multiplier (0.0 to 1.0). */
 inline float calculate_ramp_up(int iteration);
+/** @brief Returns ramp-down multiplier (1.0 to 0.0). */
 inline float calculate_ramp_down(int iteration);

@@ -388,8 +388,3 @@ build_and_populate_packet(esphome::MessageType type) {
   return ventilation_ctrl->build_packet(type);
 }
 
-// --- Boot-time Initialization Helpers ----------------------------------
-
-/// @brief Synchronizes persistent configuration values from HA numbers to the
-/// C++ controller. Called during on_boot to ensure the controller has the
-/// correct IDs before any ESP-NOW traffic.

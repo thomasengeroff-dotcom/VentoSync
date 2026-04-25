@@ -4,6 +4,12 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.200] - 2026-04-25
+### Added
+- **Vollständiges Dokumentations-Audit (Doxygen)**: Umfassende Dokumentation des gesamten C++-Codes im `components/`-Verzeichnis. Alle Funktionen und Methoden in `.h` und `.cpp` Dateien verfügen nun über standardisierte Doxygen-Kommentare (`@brief`, `@param`, `@return`), um die Wartbarkeit und die Onboarding-Experience für neue Entwickler zu verbessern.
+    - Betrifft: `VentilationController`, `VentilationStateMachine`, `VentilationLogic`, `WrgDashboard` sowie alle Hilfs-Header in `components/helpers/`.
+- **Hybrid-Offline Dokumentation**: Aktualisierung der README-Dateien zur Klarstellung des Asset-Status. Das lokale Web-Dashboard nutzt für maximale Flexibilität Tailwind CSS und Chart.js über CDNs, während die gesamte physikalische Steuerungslogik (PID, Sensor-Fusion, ESP-NOW) weiterhin zu 100% lokal und offline-fähig auf dem ESP32-C6 läuft.
+
 ## [0.8.197] - 2026-04-24
 ### Fixed
 - **ESP-NOW Peer-Tracking & Dashboard-Anzeige**: Behebung eines Fehlers, bei dem Peers im Web-Dashboard überschrieben wurden oder gar nicht erschienen, wenn mehrere Geräte die gleiche `device_id` (z.B. Standardwert 1) verwendeten.

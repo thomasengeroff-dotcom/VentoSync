@@ -51,8 +51,18 @@ struct DashboardAction {
 
 class WrgDashboard : public Component, public AsyncWebHandler {
 public:
+  /**
+   * @brief   Initializes the web server handler.
+   */
   void setup() override;
+  /**
+   * @brief   Processes the action queue in the main loop context.
+   */
   void loop() override;
+  /**
+   * @brief   Returns the setup priority.
+   * @return  WIFI priority minus 1.0.
+   */
   float get_setup_priority() const override {
     return setup_priority::WIFI - 1.0f;
   }
@@ -123,9 +133,21 @@ public:
   void set_lueftung_fan(fan::Fan *f) { lueftung_fan_ = f; }
   void set_ventilation_ctrl(esphome::VentilationController *c) { ventilation_ctrl_ = c; }
 
-  // AsyncWebHandler overrides
+  /**
+   * @brief   Checks if the request can be handled by this component.
+   * @param[in] request  The incoming AsyncWebServerRequest.
+   * @return  true if the URL is /ui, /state, or /set.
+   */
   bool canHandle(AsyncWebServerRequest *request) const override;
+  /**
+   * @brief   Handles the incoming web request.
+   * @param[in] request  The incoming AsyncWebServerRequest.
+   */
   void handleRequest(AsyncWebServerRequest *request) override;
+  /**
+   * @brief   Indicates if the request handler is trivial.
+   * @return  false.
+   */
   bool isRequestHandlerTrivial() const override { return false; }
 
 protected:

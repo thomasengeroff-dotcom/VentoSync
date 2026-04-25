@@ -56,14 +56,21 @@ inline bool is_local_mac(const uint8_t *mac) {
   return memcmp(mac, local_mac, 6) == 0;
 }
 
-/** @brief Checks if this is the only device in the room group. */
+/**
+ * @brief   Checks if this is the only device in the room group.
+ * @return  true if peer_cache is empty.
+ */
 inline bool is_single_device_group() {
   return peer_cache.empty();
 }
 
 // --- Peer Cache Helpers -------------------------------------------------
 
-/** @brief Formats a MAC address as a human-readable string. */
+/**
+ * @brief   Formats a MAC address as a human-readable string.
+ * @param[in] mac  Pointer to a 6-byte MAC address.
+ * @return  std::string in format "AA:BB:CC:DD:EE:FF".
+ */
 inline std::string format_mac(const uint8_t *mac) {
   char buf[20];
   snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -169,7 +176,10 @@ inline void trigger_re_discovery() {
   request_peer_status();
 }
 
-/** @brief Resets the fail counter for a peer on successful communication. */
+/**
+ * @brief   Resets the fail counter for a peer on successful communication.
+ * @param[in] mac  Pointer to the 6-byte MAC address.
+ */
 inline void reset_peer_fail_count(const uint8_t *mac) {
   PeerEntry *entry = find_peer_in_cache(mac);
   if (entry != nullptr && entry->fail_count > 0) {
@@ -625,6 +635,13 @@ namespace espnow_handler {
     return pkt; // Value copy — trivially-copyable, zero-cost at -O2 (NRVO)
   }
 
+  /**
+   * @brief   Handles an incoming MSG_STATUS_REQUEST.
+   * @details Verifies the Room/Floor ID and immediately responds with a 
+   *          MSG_STATUS_RESPONSE via Unicast.
+   * @param[in] pkt       Pointer to the parsed VentilationPacket.
+   * @param[in] src_mac   MAC address of the requester.
+   */
 inline void handle_status_request(const esphome::VentilationPacket *pkt, const uint8_t *src_mac) {
   if (config_floor_id != nullptr && config_room_id != nullptr &&
       pkt->floor_id == (int)config_floor_id->state &&
@@ -642,6 +659,12 @@ inline void handle_status_request(const esphome::VentilationPacket *pkt, const u
   }
 }
 
+/**
+ * @brief   Synchronizes configuration fields from a received packet.
+ * @details Updates local Home Assistant template entities (thresholds,
+ *          timers, brightness) to match the group leader (Master).
+ * @param[in] pkt  Pointer to the parsed VentilationPacket.
+ */
 inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   bool dirty = false;
   auto *v = ventilation_ctrl;
@@ -736,6 +759,12 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   }
 }
 
+/**
+ * @brief   Synchronizes global system state (Mode, Intensity, Power) from a peer.
+ * @details Maps external VentilationPacket indices back to local UI components.
+ * @param[in] pkt    Pointer to the parsed VentilationPacket.
+ * @param[in] force  If true, state is applied even if no change is detected.
+ */
 inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force = false) {
   auto *v = ventilation_ctrl;
   if (v == nullptr)

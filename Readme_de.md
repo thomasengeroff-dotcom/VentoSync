@@ -176,6 +176,9 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
 - **Diagnose-Tools**: Live-Überwachung aller Sensordaten als Kacheln mit Tagesverlaufsgraphen.
 - **Autarker Betrieb**: Änderung sämtlicher Anlagen-Einstellungen auch ohne Home Assistant möglich (dennoch empfohlen). Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z.B. `http://esptest.local/ui`) im Webbrowser auf. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
 
+> [!IMPORTANT]
+> **Hybrid-Offline-Betrieb**: Während die gesamte Kernlogik und Datenverarbeitung zu 100 % lokal auf dem ESP32-C6 läuft (auch ohne Internet), lädt das lokale Web-Dashboard aktuell **Tailwind CSS** und **Chart.js** über ein externes CDN (`https://cdn.tailwindcss.com`...). Das bedeutet, dass eine Internetverbindung erforderlich ist, um das Styling und die Graphen des Dashboards korrekt anzuzeigen. Lokale Assets (wie die Webfont) sind zwar vorbereitet, werden aber aktuell nicht genutzt, um den Speicherverbrauch (Flash) minimal zu halten.
+
 #### WRG Dashboard - Lokales Web-Dashboard
 
 ![WRG Dashboard Einstellungen](documentation/screenshots/wrg-dashboard1.png)

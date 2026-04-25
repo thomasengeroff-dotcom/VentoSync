@@ -123,6 +123,10 @@ void WrgDashboard::dispatch_set_(const std::string &key,
   }
 }
 
+/**
+ * @brief   Routes the request to the appropriate handler based on the URL.
+ * @param[in] request  The incoming AsyncWebServerRequest.
+ */
 void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
   char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
   auto url = request->url_to(url_buf);
@@ -135,6 +139,10 @@ void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
   }
 }
 
+/**
+ * @brief   Serves the main dashboard HTML page.
+ * @param[in] request  The incoming AsyncWebServerRequest.
+ */
 void WrgDashboard::handle_root_(AsyncWebServerRequest *request) {
   AsyncWebServerResponse *response =
       request->beginResponse(200, "text/html", DASHBOARD_HTML);
@@ -145,6 +153,11 @@ void WrgDashboard::handle_root_(AsyncWebServerRequest *request) {
   request->send(response);
 }
 
+/**
+ * @brief   Generates and serves the current system state as JSON.
+ * @details Includes sensor values, peer list, and current configuration.
+ * @param[in] request  The incoming AsyncWebServerRequest.
+ */
 void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   JsonDocument doc;
   auto get_f = [](sensor::Sensor *s) -> float {
@@ -254,6 +267,11 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   request->send(200, "application/json", response.c_str());
 }
 
+/**
+ * @brief   Handles incoming /set requests to change system parameters.
+ * @details Validates the ID against ALLOWED_KEYS and pushes the action to the queue.
+ * @param[in] request  The incoming AsyncWebServerRequest.
+ */
 void WrgDashboard::handle_set_(AsyncWebServerRequest *request) {
   static const std::unordered_set<std::string> ALLOWED_KEYS = {
       "luefter_modus", "fan_intensity_display", "automatik_min_luefterstufe",

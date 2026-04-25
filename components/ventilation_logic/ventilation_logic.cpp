@@ -29,9 +29,11 @@
 #include "esphome/core/log.h"
 #endif
 
-/// @brief Calculates Wärmerückgewinnung (heat recovery) efficiency.
-/// @returns Efficiency in [0, 100] %, or 0 if inputs are invalid 
-///          or indoor/outdoor ΔT is too small for meaningful calculation.
+/**
+ * @brief   Calculates Wärmerückgewinnung (heat recovery) efficiency.
+ * @details η = (T_supply − T_outside) / (T_indoor − T_outside) × 100.
+ * @return  Efficiency in [0, 100] %, or 0 if inputs are invalid.
+ */
 float VentilationLogic::calculate_heat_recovery_efficiency(float t_raum, float t_zuluft, float t_aussen) {
   // Guard against NaN from sensor read failures
   if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
@@ -63,12 +65,20 @@ float VentilationLogic::calculate_heat_recovery_efficiency(float t_raum, float t
   return result;
 }
 
-/// @brief Determines if the manual speed slider is below the "off" threshold (< 1.0).
+/**
+ * @brief   Determines if the manual speed slider is below the "off" threshold.
+ * @param[in] value  Slider intensity (1 to 10).
+ * @return  true if value < 1.0.
+ */
 bool VentilationLogic::is_fan_slider_off(float value) {
     return value < 1.0; 
 }
 
-/// @brief Linear ramp-up over 100 iterations: returns iteration / 100.
+/**
+ * @brief   Linear ramp-up over 100 iterations.
+ * @param[in] iteration  Step index (0-100).
+ * @return  Ramp factor (0.0 to 1.0).
+ */
 float VentilationLogic::calculate_ramp_up(int iteration) {
     if (iteration < 0) return 0.0f;
     if (iteration > 100) return 1.0f;
@@ -76,7 +86,11 @@ float VentilationLogic::calculate_ramp_up(int iteration) {
     return (float)iteration / 100.0f;
 }
 
-/// @brief Linear ramp-down over 100 iterations: returns (100 − iteration) / 100.
+/**
+ * @brief   Linear ramp-down over 100 iterations.
+ * @param[in] iteration  Step index (0-100).
+ * @return  Ramp factor (1.0 to 0.0).
+ */
 float VentilationLogic::calculate_ramp_down(int iteration) {
     if (iteration < 0) return 1.0f;
     if (iteration > 100) return 0.0f;
@@ -84,11 +98,21 @@ float VentilationLogic::calculate_ramp_down(int iteration) {
     return (100.0f - (float)iteration) / 100.0f;
 }
 
-/// @brief Cycles fan intensity: 1→2→…→10→1 (wraps at 10).
+/**
+ * @brief   Cycles fan intensity: 1→2→…→10→1.
+ * @param[in] current_level  Current level (1-10).
+ * @return  Next level.
+ */
 int VentilationLogic::get_next_fan_level(int current_level) {
     return (current_level % 10) + 1;  // 1->2->...->10->1
 }
 
+/**
+ * @brief   Maps fan intensity to actual hardware motor speed.
+ * @details Quadratic mapping for finer control at low levels.
+ * @param[in] intensity  Fan level (1-10).
+ * @return  Target speed fraction (0.1 to 1.0).
+ */
 float VentilationLogic::calculate_fan_speed_from_intensity(int intensity) {
     // Quadratic mapping for finer control at low levels.
     // Formula: v(x) = 0.005 * (x-1)^2 + 0.055 * (x-1) + 0.1
@@ -97,6 +121,13 @@ float VentilationLogic::calculate_fan_speed_from_intensity(int intensity) {
     return 0.005f * x * x + 0.055f * x + 0.10f;
 }
 
+/**
+ * @brief   Calculates the PWM duty cycle for the VentoMaxx fan.
+ * @details 50% = STOP, < 50% = Direction A, > 50% = Direction B.
+ * @param[in] speed      Target speed fraction (0.1 to 1.0).
+ * @param[in] direction  Target direction (0 = Exhaust, 1 = Intake).
+ * @return  PWM duty cycle (0.02 to 0.98).
+ */
 float VentilationLogic::calculate_fan_pwm(float speed, int direction) {
     // Clamp speed to valid range
     speed = std::max(0.0f, std::min(1.0f, speed));
@@ -119,6 +150,12 @@ float VentilationLogic::calculate_fan_pwm(float speed, int direction) {
     return std::max(0.02f, std::min(0.98f, pwm));
 }
 
+/**
+ * @brief   Calculates the dynamic WRG cycle duration based on fan intensity.
+ * @details Level 1: 70s, Level 10: 50s.
+ * @param[in] intensity  Fan intensity level (1-10).
+ * @return  Cycle duration in milliseconds.
+ */
 uint32_t VentilationLogic::calculate_dynamic_cycle_duration(int intensity) {
     // Level 1: 70s, Level 10: 50s
     int clamped_intensity = std::max(1, std::min(10, intensity));
@@ -126,6 +163,13 @@ uint32_t VentilationLogic::calculate_dynamic_cycle_duration(int intensity) {
     return (uint32_t)(std::round(duration_s) * 1000.0f);
 }
 
+/**
+ * @brief   Calculates the virtual fan RPM based on speed and direction.
+ * @param[in] speed                Current target speed (0.0 to 1.0).
+ * @param[in] direction_is_intake  True if direction is Zuluft.
+ * @param[in] ramp_factor          Software ramping factor (0.0 to 1.0).
+ * @return  Virtual RPM (negative for Exhaust).
+ */
 float VentilationLogic::calculate_virtual_fan_rpm(float speed, bool direction_is_intake, float ramp_factor) {
     float effective_speed = speed * ramp_factor;
     if (effective_speed < 0.05f) return 0.0f;
@@ -134,8 +178,11 @@ float VentilationLogic::calculate_virtual_fan_rpm(float speed, bool direction_is
     return direction_is_intake ? rpm : -rpm;
 }
 
-/// @brief Maps CO2 ppm to a human-readable German air-quality label.
-/// Follows Umweltbundesamt (German Federal Environment Agency) guidance.
+/**
+ * @brief   Maps CO2 ppm to a human-readable German air-quality label.
+ * @param[in] co2_ppm  CO2 concentration in ppm.
+ * @return  Classification string (e.g. "Gut", "Schlecht").
+ */
 std::string VentilationLogic::get_co2_classification(float co2_ppm) {
     if (std::isnan(co2_ppm) || co2_ppm <= 0) return "Unbekannt";
     int val = (int)co2_ppm;
