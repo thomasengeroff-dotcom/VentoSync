@@ -42,6 +42,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 - [🏗️ Code Architecture & Maintainability](#🏗️-code-architecture--maintainability)
 - [🚀 Automated Versioning](#🚀-automated-versioning)
 - [⚠️ Safety Instructions](#⚠️-safety-instructions)
+- [⚖️ Legal Disclaimer](#⚖️-legal-disclaimer)
 - [🔍 Troubleshooting](#🔍-troubleshooting)
 - [📜 License](#📜-license)
 
@@ -129,8 +130,11 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
 - 🔄 **Plain Text Direction Display**: A sensor entity shows the current air direction at any time ("Supply Air (In)", "Exhaust Air (Out)", or "Standstill"), which significantly simplifies diagnosis and monitoring of synchronization.
 
-- 🌴 **Vacation Mode**: Energy-saving mode primarily used when absent for longer periods. It automatically switches all devices in a room to Boost Ventilation (Stoßlüftung) at the lowest intensity (Level 1) to ensure basic air exchange while minimizing energy consumption. Deactivating it restores the previous system state. This may be activated for all devices at once using a Home Assistant Toggle Helper:
-  - > For a step-by-step guide on how to create the required Home Assistant Toggle Helper, please refer to our **[Home Assistant Vacation Mode Setup Guide](documentation/Vacation-Mode-HA-Setup.md)**.
+- 🌴 **Vacation Mode**: Energy-saving mode primarily used when absent for longer periods. When activated, it saves the current state and switches all devices in the room to a configurable mode and fan intensity. Deactivating it fully restores the previous system state. The mode can be activated for all devices simultaneously via a Home Assistant Toggle Helper.
+  - 🛠️ **Configurable via HA entities** (visible in the device's *Configuration* section):
+    - `select.urlaubsmodus_betriebsmodus` — Choose the operating mode when vacation is active (Smart-Automatik / Wärmerückgewinnung / Durchlüften / Stoßlüftung / Aus). Default: `Stoßlüftung`.
+    - `number.urlaubsmodus_intensitat` — Set the fan intensity level (1–10) during vacation. Default: `1`.
+  > For a step-by-step guide on how to create the required Home Assistant Toggle Helper, please refer to our **[Home Assistant Vacation Mode Setup Guide](documentation/Vacation-Mode-HA-Setup.md)**.
 
 ### ⚡ Extremely Low Power Consumption
 
@@ -252,9 +256,8 @@ The following "Advanced Automation" functions are in preparation:
   - Locally and remotely activatable.
 
 - **🏠 Away-From-Home Mode & Absence Logic**:
-  - **Configurable Vacation Mode**: Providing HA entities to allow users to explicitly choose which operating mode and intensity (e.g. Boost Ventilation vs Eco Recovery) is selected automatically when Vacation Mode is active.
-  - **Safety Dehumidification**: The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold.
-  - **Short-term Absence Reduction**: Automatically reducing ventilation to a hygienic minimum when the room is empty (detected via radar), saving up to 35% energy.
+  - **Safety Dehumidification**: The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold. (currently not planned to be implemented)
+  - **Short-term Absence Reduction**: Automatically reducing ventilation to a hygienic minimum when the room is empty (detected via radar), saving up to 35% energy. (only possible if sensor can really detect human presence in the whole room - this can be tested in the future)
 
 - **⏲️ Timed Ventilation & Party Mode**:
   - **Targeted extraction**: Manual supply air or exhaust air operation activatable via the dashboard/app with an integrated timer (e.g., after cooking).
@@ -278,7 +281,7 @@ The following "Advanced Automation" functions are in preparation:
   - **Person Counting**: Estimating occupancy density via mmWave radar to adjust volume flow (CFM) proportionally.
 
 - **💨 Advanced Air Quality & Cooling Logic**:
-  - **Enthalpy-Balance / Dew Point monitoring**: ✅ **Implemented in Auto mode.** The system calculates absolute humidity ($g/m^3$) using the Magnus formula and restricts dehumidification if outdoor air is wetter than indoor air to prevent moisture intake. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for technical details.
+  - **Enthalpy-Balance / Dew Point monitoring**: ✅ **Implemented in Auto mode.** The system calculates absolute humidity ($g/m^3$) using the Magnus formula and restricts dehumidification if outdoor air is better than indoor air to prevent moisture intake. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for technical details.
 
 - **🔌 Expansion & Integration Options (via UART / S2I)**:
   - **VOC Sensor Integration**: ✅ **Partly Implemented.** The BME680 provides IAQ/VOC data (pseudo-CO2). Future refinement includes a "Mixed-Air-Quality" demand logic that combines CO2 and VOC values for the control loop.
@@ -570,6 +573,9 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **LED Brightness**: `number.max_led_brightness` (0-100%, default: 80%) to limit the maximum panel brightness.
 - **CO2 Limit**: `number.auto_CO2_threshold` (always active in Automatik mode)
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
+- **Vacation Mode** *(Configuration)*:
+  - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)
+  - `number.urlaubsmodus_intensitat` — Fan intensity when vacation is active, 1–10 (default: `1`)
 
 👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Entities_Documentation.md](documentation/Entities_Documentation.md)**.
 
@@ -1023,6 +1029,12 @@ Common issues and their solutions:
 - **📊 Sensor shows NaN:**
   - Check the physical connection of the SCD41 or BME680 sensor.
   - Ensure the I2C bus is properly initialized (see logs).
+
+## ⚖️ Legal Disclaimer
+
+This project is an independent open-source development. It is **not** affiliated with, endorsed by, or associated with **VentoMaxx GmbH**. The use of the trade name "VentoMaxx" is for identification and compatibility description purposes only.
+
+While every effort has been made to ensure the safety and functionality of this firmware and the corresponding PCB design, the end-user assumes all responsibility for installation, wiring, and usage. Modifying your ventilation unit may void your warranty and should only be performed by qualified individuals.
 
 ---
 

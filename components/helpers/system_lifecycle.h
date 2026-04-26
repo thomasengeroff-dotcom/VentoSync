@@ -94,13 +94,8 @@ inline void cycle_operating_mode(int mode_index) {
     auto_mode_active->value() = false; // Reset by default
   }
 
-  // Mode names for HA select sync (must match luefter_modus options exactly)
-  // FIXED: "Smart-Automatik" must match ui_controls.yaml select options EXACTLY.
-  // Previously "Automatik" caused ESPHome to reject the publish_state() call
-  // and revert the select to the last valid option ("Wärmerückgewinnung").
-  static constexpr const char *mode_names[] = {"Smart-Automatik", "Wärmerückgewinnung",
-                                               "Durchlüften", "Stoßlüftung", "Aus"};
-  static_assert(sizeof(mode_names) / sizeof(mode_names[0]) == 5, "Mode names array size mismatch");
+  // Mode names for HA select sync — defined centrally in globals.h as MODE_NAMES[].
+  // Must match `luefter_modus` select options in ui_controls.yaml EXACTLY.
 
   switch (mode_index) {
   case 0: // Automatik
@@ -175,7 +170,7 @@ inline void cycle_operating_mode(int mode_index) {
 
   // Sync HA select dropdown
   if (mode_index >= 0 && mode_index < 5) {
-    std::string mode_str = mode_names[mode_index];
+    std::string mode_str = MODE_NAMES[mode_index];
     if (luefter_modus != nullptr && std::string(luefter_modus->current_option()) != mode_str) {
       luefter_modus->publish_state(mode_str);
     }

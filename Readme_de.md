@@ -39,6 +39,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 - [🏗️ Code-Architektur & Wartbarkeit](#🏗️-code-architektur--wartbarkeit)
 - [🚀 Automatisierte Versionierung](#🚀-automatisierte-versionierung)
 - [⚠️ Sicherheitshinweise](#⚠️-sicherheitshinweise)
+- [⚖️ Rechtlicher Haftungsausschluss](#⚖️-rechtlicher-haftungsausschluss)
 - [🔍 Troubleshooting](#🔍-troubleshooting)
 - [📜 Lizenz](#📜-lizenz)
 
@@ -1005,6 +1006,12 @@ Häufige Probleme und deren Lösungen:
 - **📊 Sensor zeigt NaN:**
   - Physische Verbindung der Sensoren (SCD41/BME680) prüfen.
   - I2C-Bus Initialisierung kontrollieren (Logs).
+
+## ⚖️ Rechtlicher Haftungsausschluss
+
+Dieses Projekt ist eine unabhängige Open-Source-Entwicklung. Es steht in **keiner** Verbindung zu der **VentoMaxx GmbH** und wird von dieser weder unterstützt noch empfohlen. Die Verwendung des Markennamens „VentoMaxx“ dient ausschließlich Identifikations- und Kompatibilitätszwecken.
+
+Obwohl alle Anstrengungen unternommen wurden, um die Sicherheit und Funktionalität dieser Firmware und des zugehörigen PCB-Designs zu gewährleisten, übernimmt der Endbenutzer die volle Verantwortung für die Installation, Verkabelung und Nutzung. Modifikationen an Ihrem Lüftungsgerät können zum Erlöschen der Garantie führen und sollten nur von qualifiziertem Fachpersonal durchgeführt werden.
 
 ---
 

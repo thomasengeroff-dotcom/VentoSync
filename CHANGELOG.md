@@ -4,6 +4,20 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.210] - 2026-04-26
+### Added
+- **Konfigurierbarer Urlaubsmodus**: Einführung neuer Home Assistant Entitäten zur individuellen Konfiguration des Urlaubsmodus.
+    - `select.urlaubsmodus_betriebsmodus`: Auswahl des Zielmodus (z.B. Stoßlüftung, Wärmerückgewinnung, Aus).
+    - `number.urlaubsmodus_intensitat`: Einstellung der Lüfterstufe (1-10) für die Dauer der Abwesenheit.
+    - Diese Einstellungen erlauben es, das Systemverhalten bei längerer Abwesenheit präzise an saisonale Anforderungen oder persönliche Vorlieben anzupassen.
+- **Rechtlicher Haftungsausschluss (Legal Disclaimer)**: Ergänzung der Dokumentation um einen Haftungsausschluss zur Klarstellung der Unabhängigkeit von der VentoMaxx GmbH und der Eigenverantwortung des Nutzers bei Installation und Betrieb.
+
+### Changed
+- **Zentralisierung der Betriebsmodi (C++ Constants)**: Refactoring der Betriebsmodus-Namen in eine zentrale Konstante in `globals.h`.
+    - Alle C++ Komponenten und YAML-Lambdas greifen nun auf eine "Single Source of Truth" (`MODE_NAMES[]`) zu.
+    - Dies verbessert die Wartbarkeit signifikant, da Modus-Bezeichnungen nun an einer einzigen Stelle im Code gepflegt werden können.
+- **Dokumentations-Update**: Aktualisierung der `Readme.md` und `Readme_de.md` bezüglich der neuen Urlaubsmodus-Funktionen und der Roadmap.
+
 ## [0.8.200] - 2026-04-25
 ### Added
 - **Vollständiges Dokumentations-Audit (Doxygen)**: Umfassende Dokumentation des gesamten C++-Codes im `components/`-Verzeichnis. Alle Funktionen und Methoden in `.h` und `.cpp` Dateien verfügen nun über standardisierte Doxygen-Kommentare (`@brief`, `@param`, `@return`), um die Wartbarkeit und die Onboarding-Experience für neue Entwickler zu verbessern.

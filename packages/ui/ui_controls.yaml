@@ -207,6 +207,25 @@ number:
           id(auto_summer_cooling_threshold).publish_state(x);
           ESP_LOGI("auto_mode", "Sommerkühlung Schwelle auf %d°C gesetzt", (int)x);
 
+
+  # Vacation Mode: Fan intensity level when vacation mode is active
+  - platform: template
+    name: "Urlaubsmodus Intensität"
+    id: vacation_intensity_number
+    icon: "mdi:fan-speed-1"
+    entity_category: config
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: slider
+    optimistic: true
+    restore_value: true
+    initial_value: 1
+    set_action:
+      - lambda: |-
+          ESP_LOGI("vacation", "Urlaubsmodus Intensität set to: %.0f", x);
+
+
 # ---------------------------------------------------------
 # TEXT SENSORS (Status Display)
 # ---------------------------------------------------------
@@ -266,6 +285,7 @@ select:
   - platform: template
     name: "Lüftermodus"
     id: luefter_modus
+    # --- Keep in sync with operating mode name constants (MODE_NAMES[]) in globals.h
     options:
       - "Smart-Automatik"
       - "Wärmerückgewinnung"
@@ -276,6 +296,26 @@ select:
     set_action:
       - lambda: |-
           set_operating_mode_select(x); // W5: pass std::string directly, not c_str()
+
+  # Vacation Mode: Operating mode to activate when vacation is enabled
+  - platform: template
+    name: "Urlaubsmodus Betriebsmodus"
+    id: vacation_mode_select
+    icon: "mdi:bag-suitcase"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    # --- Keep in sync with operating mode name constants (MODE_NAMES[]) in globals.h
+    options:
+      - "Smart-Automatik"
+      - "Wärmerückgewinnung"
+      - "Durchlüften"
+      - "Stoßlüftung"
+      - "Aus"
+    initial_option: "Stoßlüftung"
+    set_action:
+      - lambda: |-
+          ESP_LOGI("vacation", "Urlaubsmodus Betriebsmodus set to: %s", x.c_str());
 
 button:
   - platform: restart

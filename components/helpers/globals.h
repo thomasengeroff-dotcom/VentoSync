@@ -86,6 +86,27 @@ static constexpr float PID_SYNC_THRESHOLD = 0.05f;
 /** @brief Hardware ACK failure limit before a peer is considered dead. */
 static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10;
 
+// --- Operating Mode Name Constants -------------------------------------
+// Single source of truth for mode name strings.
+// IMPORTANT: Must match `luefter_modus` select options in ui_controls.yaml EXACTLY.
+// Index order: 0=Smart-Automatik, 1=WRG, 2=Durchlüften, 3=Stoßlüftung, 4=Aus
+static constexpr const char *MODE_NAME_AUTO       = "Smart-Automatik";
+static constexpr const char *MODE_NAME_WRG        = "Wärmerückgewinnung";
+static constexpr const char *MODE_NAME_VENT       = "Durchlüften";
+static constexpr const char *MODE_NAME_BOOST      = "Stoßlüftung";
+static constexpr const char *MODE_NAME_OFF        = "Aus";
+
+/// @brief All mode names indexed by mode index (0–4), for array-based lookup.
+static constexpr const char *MODE_NAMES[] = {
+    MODE_NAME_AUTO,   // 0
+    MODE_NAME_WRG,    // 1
+    MODE_NAME_VENT,   // 2
+    MODE_NAME_BOOST,  // 3
+    MODE_NAME_OFF,    // 4
+};
+static_assert(sizeof(MODE_NAMES) / sizeof(MODE_NAMES[0]) == 5,
+              "MODE_NAMES array size must match number of operating modes");
+
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.
 /// Uses linear scan over std::vector (O(n), negligible for typical 2-4 peers).
