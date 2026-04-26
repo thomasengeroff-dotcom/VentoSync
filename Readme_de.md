@@ -1,4 +1,4 @@
-# 🌬️ VentoSync - Advanced ESPHome-based smart HRV for VentoMaxx V-WRG Series
+# 🌬️ VentoSync — Intelligente WRG-Wohnraumlüftungssteuerung auf Basis von ESPHome für VentoMaxx V-WRG Serie (ESP32-C6)
 
 [![Language: EN](https://img.shields.io/badge/Language-EN-red.svg)](Readme.md)
 
@@ -63,6 +63,9 @@ Das Herzstück des Projekts ist eine eigens entwickelte Platine, die exakt in da
 > Wenn du Interesse an einer Platine für deine eigenen Geräte hast, kannst du mich gerne unter **thomas@engeroff.net** kontaktieren. 
 > Bitte beachte, dass ich noch nicht entschieden habe, ob ich die PCB-Produktionsdaten als Open Source zur Verfügung stellen werde.
 
+
+![PCB in Gehäuse mit Antenne](EasyEDA-Pro/PCB%20mounting/PCB-FAN-ANT-in-Gehäuse.jpg)
+
 ---
 
 ## 🔄 Vergleich mit VentoMaxx V-WRG
@@ -105,9 +108,9 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
   - ✅ **BME680 Optimierung**: Umstellung auf Standard-Plattform (ohne BSEC2) spart massiv Kompilierungszeit. IAQ wird nun über ein effizientes Template berechnet.
   - ⚠️ **Hinweis:** Da das SCD41-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ-Index). Der Code erkennt automatisch, ob der SCD41 vorhanden ist.
   - 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
-  - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**.
-  - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
-  - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
+  - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**:
+    - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
+    - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
 - 📊 **Automatische Intensitätsregelung**: Das System kann die Lüfterleistung automatisch bei steigendem CO2-Gehalt oder Luftfeuchtigkeit für optimale Raumluftqualität erhöhen. Hierfür wird eine fortschrittliche PID-Regelung verwendet, welche die Lüfterleistung dynamisch an die gemessenen Werte anpasst. Die Regelung ist so optimiert, dass sie die Lüfterleistung so gering wie möglich hält, um den Energieverbrauch und die Geräuschentwicklung zu minimieren.
 - 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert. Dieser Sensor wird natürlich auch Home Assistant zur Verfügung gestellt und kann für beliebige andere Automatisierungen genutzt werden.
 - 📊 **Echte VentoMaxx V-Kennlinie**: Basierend auf den physikalischen Parametern der Original-Hardware (50% PWM = Stopp-Zone), wurde die Kennlinie jedoch in den niedrigeren Stufen (Stufe 1-6) feiner abgestimmt, um akustisch noch dezenter zu bleiben.
@@ -139,9 +142,9 @@ Das VentoMaxx System mit dieser ESPHome Steuerung arbeitet überragend effizient
 
 Selbst bei ganzjährigem 24/7-Dauerbetrieb auf der *absoluten Maximalstufe (10)* belaufen sich die nominellen Stromkosten (bei 0,30 €/kWh) auf lediglich rund 15 Euro im Jahr. Im meist genutzten Automatik-Modus (Werte pendeln nachts oder bei Abwesenheit auf Stufe 1 bis 3) liegen die realen Betriebskosten bei extrem sparsamen **ca. 7 bis 8,50 Euro pro Jahr** für die gesamte Einheit.
 
-*Besonders bemerkenswert: In diese Messwerte ist der durchgängige Betrieb aller verbauten Komponenten eingeflossen – inklusive der ESP32-Steuerung (WLAN/ESP-NOW), der Klima- und CO2-Sensoren sowie dem kontinuierlich messenden mmWave-Radar-Anwesenheitssensor!*
+> **Hinweis**: Es handelt sich hierbei um keine 100% akkurate Labormessung. Ich habe diese Werte mittels eines Shelly 1PM mini ermittelt.
 
-Anmerkung: Es handelt sich hierbei um keine 100% akkurate Labormessung. Ich habe diese Werte mittels eines Shelly 1PM mini ermittelt. Dieser misst den Stromverbrauch der gesamten Einheit, inklusive der ESP32-Steuerung (WLAN/ESP-NOW), der Klima- und CO2-Sensoren sowie dem kontinuierlich messenden mmWave-Radar-Anwesenheitssensor!
+*Besonders bemerkenswert: In diese Messwerte ist der durchgängige Betrieb aller verbauten Komponenten eingeflossen – inklusive der ESP32-Steuerung (WLAN/ESP-NOW), der Klima- und CO2-Sensoren sowie dem kontinuierlich messenden mmWave-Radar-Anwesenheitssensor!*
 
 ### 🖥️ Bedienung am Lüftungsgerät
 
@@ -155,7 +158,7 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
     Kurzes Drücken --> schaltet das Gerät ein.
     5sec gedrückt halten --> schaltet das Gerät aus.
     10sec gedrückt halten --> schaltet das Gerät aus und startet das System neu (Reboot).
-  - **Modus**: Kurzes Drücken zykliert durch die Programme: **Automatik → WRG → Stoßlüftung → Durchlüften → Aus**.
+  - **Modus**: Kurzes Drücken zykliert durch die Programme: **Automatik → WRG → Durchlüften → Stoßlüftung → Aus**.
   - **Stufe +**: 10 Geschwindigkeitsstufen (zyklisch, angezeigt über 5 LEDs mit halber/voller Helligkeit). Die originale Ventomaxx Steuerung bietet hier nur 5 Stufen. Taste gedrückt halten zykliert durch die Lüftungsstufen.
 - 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-10) und Status.
   - ✨ **Gruppen-Synchronisierung**: Alle Displays in einer Lüftungsgruppe synchronisieren sich in Echtzeit. Ändert Gerät A den Modus oder die Stufe, wachen die LEDs aller Partner-Geräte (Peers) im Raum sofort auf, um den neuen Status für 30 Sekunden anzuzeigen (Wake-up Effekt).
@@ -222,7 +225,11 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 
 - ⚙️ **Echtzeit-Einstellungen-Mirroring**: Änderungen an Parametern (CO2-Grenzwerte, Fan-Levels, Timer) werden mittels ESP-NOW Unicast sofort an alle Partner-Geräte in der Raumgruppe übertragen, um ein einheitliches Regelungsverhalten sicherzustellen (Loop-Prevention inklusive).
 
-Weitere Informationen findest du in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
+- 📡 **Optimierte Signalstärke**: Um maximale Zuverlässigkeit für WLAN und ESP-NOW-Kommunikation zu gewährleisten — selbst bei Installationen weiter entfernt vom Router, hinter Wänden oder anderen Hindernissen — ist eine externe Antenne über einen U.FL-Stecker mit dem ESP32-C6 verbunden und der ESP ist so konfiguriert, dass er die externe Antenne anstelle der internen PCB-Antenne nutzt.
+
+> Weitere Informationen zur ESP-NOW Kommunikation findest du in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
+
+![Antenne PCB im Gehäuse](EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg)
 
 ---
 
@@ -276,7 +283,7 @@ Um zusätzliche Erweiterungen möglich zu machen, habe ich einen zusätzlichen U
 ![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/Screenshot%202026-03-01%20175142.png)
 
 Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt positioniert für die existierende Lüftungsöffnung des Ventomaxx Gehäuses. Im Gegensatz zu vielen Billig-China-SCD41 Boards, sind hier auch beide Kondensatoren ensprechend den Herstellervorgaben montiert, ein Schlitz dient der termischen Trennung des SCD41-Sensors vom sonstigen Board und auch die Kupfer Planes wurden im unteren Bereich ausgespart, um die termische Trennung weiter zu maximieren. Die PINs haben 1,25mm Pitch und sind so positioniert, dass der SCD41 CO2-Sensor perfekt in die Lüftungsöffnung passt. Dieses PCB befindet sich aktuell noch in der Fertigung bei JLCPCB.
-![SCDE41 Prototype](EasyEDA-Pro/PCB%20SCD41%20Prototype%20Images/SCD41-PCB-3D-top_small.png)
+![SCD41 Prototyp](EasyEDA-Pro/PCB%20SCD41%20Prototype%20Images/SCD41-PCB-3D-top_small.png)
 
 ---
 
@@ -294,13 +301,16 @@ Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
-| **Lüfter** | Die original Ventomaxx V-WRG Geräte nutzen den **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (ohne Tacho-Signal) Lüfter. Alternativ kann ein deutlich modernerer und leiserer **AxiRev** (4-Pin PWM) verwendet werden. Dafür müsste man sich aber um die Befestigung per 3D-Druck-Adapter kümmern. *Die technische Anbidnung ist im folgenden Dokument beschrieben: [Anleitung-Fan-Circuit.md](documentation/Anleitung-Fan-Circuit.md)* | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Lüfter** | Original Ventomaxx V-WRG (EBM-PAPST 4412 F/2 GLL) 3-Pin PWM oder AxiRev (4-Pin PWM) | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch Gas Sensor (Fallback für IAQ/Luftqualität) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) für dimmbare LEDs im VentoMaxx Panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
+
+![Lüfter Anschluss](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg) 
+*Lüfter-Anschlussbelegung mit Originalkabel.*
 
 Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [EasyEDA-Pro](EasyEDA-Pro) in der [BOM](EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv) .
 
@@ -310,7 +320,7 @@ Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [
 | :--- | :--- | :--- |
 | **VentoMaxx Panel** | Original Panel (14-Pin FFC). 3 Taster, 9 LEDs (via PCA9685 dimmbar). | Die PIN-Belegung des Original-Panels wurde von mir vollständig durchgemessen und dokumentiert, um die exakte Ansteuerung über das eigene PCB und die Port-Expander (MCP23017/PCA9685) zu ermöglichen. |
 
-[Control-Panel Adapter](images/Ventomax%20V-WRG-1/Control-Panel%20Adapter.jpg)
+![Control-Panel Adapter](images/Ventomax%20V-WRG-1/Control-Panel%20Adapter.jpg)
 
 ---
 
@@ -425,7 +435,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 | Taste | Funktion | Bedienung |
 | :--- | :--- | :--- |
 | **Power (I/O)** | System Ein/Aus | • Kurz drücken: Ein / Aus (Toggle)<br>• Lang (>5s): Aus (Sicherheits-Aus)<br>• Sehr lang (>10s): Geräte-Neustart (Reboot) |
-| **Modus (M)** | Betriebsmodus | • Kurz drücken: Zykliert durch Automatik → WRG → Stoßlüftung → Durchlüften → Aus |
+| **Modus (M)** | Betriebsmodus | • Kurz drücken: Zykliert durch Automatik → WRG → Durchlüften → Stoßlüftung → Aus |
 | **Stufe (+)** | Lüfterstärke | • Kurz drücken: Zykliert durch 10 Geschwindigkeitsstufen (angezeigt über 5 LEDs).<br>• **Gedrückt halten**: Automatisches Auf- und Ab-Durchlaufen der Stufen (1 Stufe pro Sekunde) bis zum Loslassen. |
 
 #### Status-LEDs (Feedback)

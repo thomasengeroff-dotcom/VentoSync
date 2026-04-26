@@ -1,4 +1,4 @@
-# 🌬️ VentoSync - Advanced ESPHome-based smart heat recovery ventilation (HRV) for VentoMaxx V-WRG Series based on custom PCB with ESP32-C6
+# 🌬️ VentoSync — ESPHome Smart HRV Control for VentoMaxx V-WRG (ESP32-C6)
 
 [![Sprache: DE](https://img.shields.io/badge/Sprache-DE-red.svg)](Readme_de.md)
 
@@ -111,8 +111,8 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
   - ✅ **BME680 Optimization**: Switching to the standard platform (without BSEC2) saves massive compilation time. IAQ is now calculated via an efficient template.
   - ⚠️ **Note:** Since the SCD41 PCB is still in production, the **BME680** currently serves as a fallback (IAQ index). The code automatically detects if the SCD41 is present.
   - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**:
-  -- **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
-  -- **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
+    - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
+    - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
 - 📊 **Automatic Intensity Control**: The system can automatically increase fan power as CO2 levels or humidity rise for optimal indoor air quality. Advanced PID control is used for this, which dynamically adjusts the fan power to the measured values. The control is optimized to keep the fan power as low as possible to minimize energy consumption and noise.
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
@@ -141,7 +141,8 @@ The VentoMaxx system with this ESPHome control works outstandingly efficiently. 
 - **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. €15.75 / year)*
 
 Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at €0.30/kWh) amount to only around 15 euros per year. In the most frequently used Smart automatic mode (values fluctuate between level 1 and 3 most of the time), the real operating costs are extremely economical at **approx. 7 to 8.50 euros per year** for the entire unit.
-Note: This is not a 100% accurate laboratory measurement. I determined these values using a Shelly 1PM mini.
+
+> **Note**: This is not a 100% accurate laboratory measurement. I determined these values using a Shelly 1PM mini.
 
 *Particularly noteworthy: These measurements include the continuous operation of all installed components – including the ESP32 control (Wi-Fi/ESP-NOW), the climate and CO2 sensors, as well as the continuously measuring mmWave radar presence sensor!*
 
@@ -227,11 +228,12 @@ The devices communicate via the [ESPHome ESP-NOW component](https://esphome.io/c
 
 - ⚙️ **Real-time Settings Mirroring**: Changes to parameters (CO2 limits, fan levels, timers) are transmitted immediately to all partner devices in the room group via ESP-NOW unicast to ensure uniform control behavior (loop prevention included).
 
-You can find more information in the [official ESPHome documentation](https://esphome.io/components/espnow.html).
-
 - 📡 **Optimized Signal Strength**: To ensure maximum reliability for Wi-Fi and ESP-NOW communication—even when installed further away from the router, behind walls or other obstacles—an external antenna is connected via a U.FL connector to the ESP32-C6 and the esp is configured to use the external antenna instead of the internal PCB antenna.
 
+> You can find more information about ESPNOW communication in the [official ESPHome documentation](https://esphome.io/components/espnow.html).
+
 ![Antenna PCB in Housing](EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg)
+
 ---
 
 ## 🗺️ Roadmap & Future Enhancements
@@ -310,7 +312,7 @@ In addition, I have developed an SCD41 PCB that positions the SCD41 CO2 sensor p
 
 | Component | Description | Documentation |
 | :--- | :--- | :--- |
-| **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. ![Fan Connection](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg) | [Fan Component](https://esphome.io/components/fan/speed.html) |
+| **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. *Wiring shown below.* | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD41** | Sensirion CO2 sensor (Real CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **BMP390** | Bosch high-precision barometric pressure sensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch gas sensor (fallback for IAQ/air quality) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
@@ -318,7 +320,10 @@ In addition, I have developed an SCD41 PCB that positions the SCD41 CO2 sensor p
 | **I/O Expander** | **MCP23017** (I2C) for VentoMaxx panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) for dimmable LEDs in VentoMaxx panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
 
-The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](file:///home/tengeroff/ESPHome-Wohnraumlueftung/EasyEDA-Pro) subfolder in the [BOM](file:///home/tengeroff/ESPHome-Wohnraumlueftung/EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv).
+![Fan Connection](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg) 
+*Fan connector wiring, with original cable.*
+
+The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](EasyEDA-Pro/) subfolder in the [BOM](EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv).
 
 ### 🖱️ User Interface
 
@@ -440,7 +445,7 @@ The panel has 3 buttons and 9 status LEDs.
 | Button | Function | Operation |
 | :--- | :--- | :--- |
 | **Power (I/O)** | System On/Off | • Short press: On / Off (Toggle)<br>• Long (>5s): Off (Safety Off)<br>• Very long (>10s): Device restart (Reboot) |
-| **Mode (M)** | Operating Mode | • Short press: Cycles through Auto → Heat Recovery → Boost Ventilation → Ventilation → Off |
+| **Mode (M)** | Operating Mode | • Short press: Cycles through Auto → Heat Recovery → Ventilation → Boost Ventilation → Off |
 | **Level (+)** | Fan Intensity | • Short press: Cycles through 10 speed levels (indicated via 5 LEDs).<br>• **Hold**: Automatic cycling up and down through levels (1 level per second) until released. |
 
 #### Status LEDs (Feedback)
