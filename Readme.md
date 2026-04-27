@@ -117,6 +117,8 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
 - 📊 **Automatic Intensity Control**: The system can automatically increase fan power as CO2 levels or humidity rise for optimal indoor air quality. Advanced PID control is used for this, which dynamically adjusts the fan power to the measured values. The control is optimized to keep the fan power as low as possible to minimize energy consumption and noise.
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
+- **💨 Advanced Air Quality & Cooling Logic**:
+  - **Enthalpy-Balance / Absolute Humidity comparison**: The system calculates absolute humidity ($g/m^3$) using the Magnus formula and restricts dehumidification if outdoor air is more humid than indoor air. This prevents moisture intake during rain or high summer humidity. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for technical details.
 - 📊 **Optimized VentoMaxx Ventilation Curve**: Based on the physical parameters of the original hardware (50% PWM = stop zone), the curve has been optimized with finer granularity in the lower levels (Levels 1-6) to ensure even more discreet acoustic operation.
 - 🪟 **Window Guard**: Automatic room-wide ventilation pause when windows are open. Includes a per-device **"Ignore Window Guard" switch** to bypass the lock for specific units if needed.
   - ✅ **Smart Pause (5s Delay)**: The guard engages after 5 seconds of continuous "open" state to prevent accidental triggers. All VentoSync units in the room immediately stop their fans to prevent energy waste.
@@ -256,8 +258,8 @@ The following "Advanced Automation" functions are in preparation:
   - Locally and remotely activatable.
 
 - **🏠 Away-From-Home Mode & Absence Logic**:
-  - **Safety Dehumidification**: The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold. (currently not planned to be implemented)
-  - **Short-term Absence Reduction**: Automatically reducing ventilation to a hygienic minimum when the room is empty (detected via radar), saving up to 35% energy. (only possible if sensor can really detect human presence in the whole room - this can be tested in the future)
+  - **Safety Dehumidification**: The system remains "Off" but monitors humidity. If a fixed threshold (e.g., 60%) is exceeded, ventilation starts at level 1 to prevent mold. *(currently not planned to be implemented)*
+  - **Short-term Absence Reduction**: Automatically reducing ventilation to a hygienic minimum when the room is empty (detected via radar), saving up to 35% energy. *(only possible if sensor can really detect human presence in the whole room - this can be tested in the future)*
 
 - **⏲️ Timed Ventilation & Party Mode**:
   - **Targeted extraction**: Manual supply air or exhaust air operation activatable via the dashboard/app with an integrated timer (e.g., after cooking).
@@ -280,8 +282,7 @@ The following "Advanced Automation" functions are in preparation:
   - Proactive AI-powered ventilation control based on historical data and external forecasts (weather, CO2, humidity). See [📄 AI-Powered-Ventilation-Control](documentation/KI-gestützte-Lüftungssteuerung.md) for details.
   - **Person Counting**: Estimating occupancy density via mmWave radar to adjust volume flow (CFM) proportionally.
 
-- **💨 Advanced Air Quality & Cooling Logic**:
-  - **Enthalpy-Balance / Dew Point monitoring**: ✅ **Implemented in Auto mode.** The system calculates absolute humidity ($g/m^3$) using the Magnus formula and restricts dehumidification if outdoor air is better than indoor air to prevent moisture intake. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for technical details.
+
 
 - **🔌 Expansion & Integration Options (via UART / S2I)**:
   - **VOC Sensor Integration**: ✅ **Partly Implemented.** The BME680 provides IAQ/VOC data (pseudo-CO2). Future refinement includes a "Mixed-Air-Quality" demand logic that combines CO2 and VOC values for the control loop.
@@ -734,7 +735,7 @@ Specifically, the following sensor is used:
 At the end of the supply air phase, the heat recovery is calculated:
 
 $$
-	ext{Efficiency} = rac{T_{	ext{Supply}} - T_{	ext{Outside}}}{T_{	ext{Room}} - T_{	ext{Outside}}} 	imes 100\%
+	ext{Efficiency} = \frac{T_{\text{Supply}} - T_{\text{Outside}}}{T_{\text{Room}} - T_{\text{Outside}}} \times 100\%
 $$
 
 **Example calculation:**
@@ -744,8 +745,9 @@ $$
 - Supply temperature: 16°C
 
 $$
-	ext{Efficiency} = rac{16°C - 5°C}{21°C - 5°C} 	imes 100\% = rac{11°C}{16°C} 	imes 100\% = 68.75\%
-$$
+	ext{Efficiency} = \frac{16°C - 5°C}{21°C - 5°C} \times 100\% = \frac{11°C}{16°C} \times 100\% = 68.75\%
+$$,
+0
 
 **Interpretation:**
 
