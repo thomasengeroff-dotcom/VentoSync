@@ -1,10 +1,10 @@
-# Funktionsvergleich: ESPHome-Steuerung vs. VentoMaxx Original
+# Funktionsvergleich: VentoSync vs. VentoMaxx Original
 
-Dieser Vergleich basiert auf der Analyse der VentoMaxx Bedienungsanleitung (`MA-BA_Endmontage_V1_V3-WRG_DE_2502.pdf`) und dem aktuellen Funktionsumfang der ESPHome-Firmware (Stand: März 2026).
+Dieser Vergleich basiert auf der Analyse der VentoMaxx Bedienungsanleitung (`MA-BA_Endmontage_V1_V3-WRG_DE_2502.pdf`) und dem aktuellen Funktionsumfang der VentoSync ESPHome-Firmware (Stand: April 2026).
 
 ## 🏆 Zusammenfassung
 
-Die **ESPHome-Steuerung** bietet **100% der Original-Funktionalität** (inkl. aller Sicherheitsmechanismen wie Tacho-Überwachung und Frostschutz) und erweitert diese massiv um:
+Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erweitert diese massiv um:
 
 - **Smart-Home-Integration** (WiFi 6, Home Assistant Native API, OTA-Updates)
 - **Komfort & Automatik** (Feuchtigkeitsmanagement, Fenstersperre, Silent-Mode, Sanftanlauf)
@@ -12,32 +12,35 @@ Die **ESPHome-Steuerung** bietet **100% der Original-Funktionalität** (inkl. al
 - **Intelligente Regelalgorithmen** (PID-gesteuerte CO2/Feuchte-Regelung, adaptive Zykluszeiten)
 - **Prädiktive Wartung** (Filterwechsel-Alarm basierend auf Betriebsstunden + Kalenderzeit)
 - **Kabelloses Mesh-Netzwerk** (ESP-NOW Discovery für autonomen / routerunabhängigen Gruppenbetrieb)
+- **Kindersicherung** (Sperren der physischen Tasten via HA oder 5s Mode-Hold am Gerät)
+- **Urlaubsmodus** (Zentraler Wechsel auf vorkonfigurierten Modus je Raum bei Abwesenheit mit automatischer Wiederherstellung des vorherigen Modus bei Wiederkehr)
 - **Hardware-Exzellenz** (Custom PCB, Traco-Power Safety, hocheffiziente DC/DC Wandler)
 
 ---
 
 ## ⚙️ Betriebsmodi & Logik
 
-| Feature | VentoMaxx V-WRG (Original) | ESPHome Smart WRG (Dieses Projekt) | Vorteil ESPHome |
+| Feature | VentoMaxx V-WRG (Original) | VentoSync (Dieses Projekt) | Vorteil VentoSync |
 | :--- | :--- | :--- | :--- |
 | **Wärmerückgewinnung (WRG)** | Statischer Zyklus: **70 Sek.** (fix) | **Dynamischer Zyklus**: 50s – 90s (je nach Stufe/Temp) | ✅ **Höhere Effizienz** durch angepasste Zykluszeiten |
-| **Querlüftung (Sommer)** | Nur im Paar-Verbund möglich | ✅ Ja (via App/Panel/Automatik) | ⚖️ Gleichwertig |
+| **Querlüftung (Sommer)** | ✅ Ja | ✅ Ja (via App/Panel/Automatik) | ⚖️ Gleichwertig |
 | **Auto-Sommerbetrieb** | ❌ Nein (manuell umschalten) | ✅ **Automatische Querlüftung** wenn Außentemp. < Innentemp. (NTC + ESP-NOW Gruppendaten) | ✅ **Kein manuelles Umschalten nötig** |
 | **Stoßlüftung** | 15 Min. Intensiv, dann Pause | ✅ Ja (Konfigurierbar: Zeit/Stufe) | ✅ **Flexibler** |
 | **Lüfterregelung** | 5 feste Stufen | **10 Stufen + stufenlose PID-Regelung** (Stufen 1 - 6 sind feiner abgestimmt als die höheren Stufen, um die Lautstärke in den unteren Stufen zu optimieren) | ✅ **Feingranular** |
-| **Automatik (CO2)** | ❌ Nein (nur optionale VOC-Schätzung) | ✅ **SCD41 (echtes CO2)**: Stufenlose PID-Regelung mit Deadband-Hysterese, konfigurierbarem Min/Max-Level | ✅ **Präzise & leise** |
-| **Automatik (Feuchte)** | Schwellwerte fest: 55%, 65%, 75% r.F. | ✅ **PID-Regler** mit konfigurierbarem Grenzwert (40-100%), Outdoor-Feuchte-Vergleich, Deadband-Hysterese (±2%) | ✅ **Anpassbar** + Outdoor-Check |
-| **Anwesenheit** | ❌ Nein | ✅ **mmWave-Radar (HLK-LD2450)**: 4 Profile (Keine Anpassung, Intensiv, Normal, Gering): je Raum kann Lüftungsintensität automatisch verringert oder erhöht werden bei Anwesenheit | ✅ **Bedarfsgerecht** |
-| **Fenstersperre** | ❌ Nein | ✅ **Window Guard**: Lüftung wird nach 5s Delay-Stopp bei offenem Fenster angehalten (raumweit via ESP-NOW) und setzt bei geschlossenen Fenstern automatisch im vorigen Modus fort | ✅ **Energieersparnis** |
+| **Automatik (CO2)** | ❌ Nein (nur optionale VOC-Schätzung) | ✅ **SCD41 (echtes CO2)**: Stufenlose PID-Regelung mit Deadband-Hysterese, konfigurierbarem Min/Max-Level | ✅ **Präzise & leise** mit Präzisionssensor |
+| **Automatik (Feuchte)** | Schwellwerte fest: 55%, 65%, 75% r.F. | ✅ **PID-Regler** mit konfigurierbarem Grenzwert (40-100%), Outdoor-Feuchte-Vergleich, Deadband-Hysterese (±2%) | ✅ **Präzise & leise** mit Präzisionssensor + Outdoor-Check |
+| **Anwesenheit** | ❌ Nein | ✅ **mmWave-Radar (HLK-LD2450)**: 4 Profile (Keine Anpassung, Intensiv, Normal, Gering): je Raum kann Lüftungsintensität automatisch verringert oder erhöht werden bei Anwesenheit | ✅ **Bedarfsgerecht** durch Code Anpassung jeder beliebige Anwesenheitssensor integrierbar |
+| **Fenstersperre** | ❌ Nein | ✅ **Window Guard**: Lüftung wird nach 5s Zeitverzögerung bei offenem Fenster angehalten (raumweit via ESP-NOW) und setzt bei geschlossenen Fenstern automatisch im vorigen Modus fort | ✅ **Energieersparnis & Geräuschreduktion** |
 | **Sanftanlauf** | ✅ fest implementiert | ✅ **Slew-Rate Limiter**: Sanfte Übergänge (~5%/s) bei Drehzahländerungen | ⚖️ Gleichwertig |
-| **Phasen-Kontinuität** | ✅ fest implementiert | ✅ **Intelligente Skalierung**: Nahtlose Fortführung bei Intensitätswechseln | ⚖️ Gleichwertig |
-| **Nachtmodus** | ❌ Nein (manuell ausschalten) | 📋 Geplant: Zeitgesteuerte Drosselung/Dimming & Lichtsensor-Support | ✅ **Komfort** (in Planung) |
+| **Phasen-Kontinuität** | ✅ fest implementiert | ✅ **Intelligente Skalierung**: Nahtlose Fortführung bei Intensitätswechseln | ⚖️ Gleichwertig, aber in VentoSync in Home Assistant konfigurierbar |
+| **Kindersicherung** | ❌ Nein | ✅ **Child Lock**: Tasten via HA sperrbar, lokaler Override durch 5s Halten der Modus-Taste | ✅ **Sicherheit** auch für Mietwohnungen einsetzbar |
+| **Urlaubsmodus** | ❌ Nein | ✅ **Vacation Mode**: Zentraler Energiesparmodus mit Auto-Wiederherstellung | ✅ **Komfort** |
 
 ---
 
 ## 🛡️ Sensorik & Monitoring
 
-| Feature | VentoMaxx V-WRG (Original) | ESPHome Smart WRG (Dieses Projekt) | Vorteil ESPHome |
+| Feature | VentoMaxx V-WRG (Original) | VentoSync (Dieses Projekt) | Vorteil VentoSync |
 | :--- | :--- | :--- | :--- |
 | **CO2-Messung** | ❌ Nein (nur optionales VOC-Modul) | ✅ **SCD41**: Photoacoustic sensing, 400-5000 ppm | ✅ **Echte CO2-Werte** statt Schätzung |
 | **Temperatur** | ❌ Keine Anzeige | ✅ **NTC-Sensoren** (Zuluft/Abluft) + HA Wetterdaten | ✅ **Visualisierung & Automatik** |
@@ -74,7 +77,7 @@ Die **ESPHome-Steuerung** bietet **100% der Original-Funktionalität** (inkl. al
 | **Bedienpanel** | Taster + LEDs | ✅ **Unterstützt Original-Panel** (volle Funktion, 10 Stufen) | ⚖️ **Identische Optik/Haptik** |
 | **LED Feedback** | Statisch / Hell | ✅ **Auto-Dimming**: Sanftes Ausfaden nach 60s, konfigurierbare Helligkeit | ✅ **Schlafzimmertauglich** |
 | **Fernbedienung** | ❌ Nein | **Jedes Smartphone / Tablet / PC** | ✅ **Keine Zusatzkosten** |
-| **Smart Home** | ❌ Nein (proprietär) | ✅ **Native Home Assistant API** | ✅ **Volle Integration** |
+| **Smart Home** | ❌ Nein (proprietär) | ✅ **Native Home Assistant API** | ✅ **Volle Integration** aber auch komplett ohne Home Assistant nutzbar |
 | **Dashboard** | ❌ Nein | ✅ **Lokal (Async Webserver)**: High-End UI mit **Tailwind CSS** | ✅ **Premium UX** |
 | **Daten-Visualisierung**| ❌ Nein | ✅ **Echtzeit-Graphen**: Chart.js für CO2, Temp, Feuchte, RPM | ✅ **Transparenz** |
 | **Gruppensteuerung** | Master/Slave über Kabel | ✅ **ESP-NOW Group Controller**: Alle Geräte als eine Einheit im HA Dashboard | ✅ **Intuitiv + kabellos** |
@@ -89,7 +92,7 @@ Die **ESPHome-Steuerung** bietet **100% der Original-Funktionalität** (inkl. al
 
 Die ESPHome-Lösung ist ein **"Drop-in Replacement"** für die originale VentoMaxx-Steuerung. Sie behält die bewährte Bedienung über das Originalpanel bei, beseitigt aber die Limitierungen des Originals und erweitert den Funktionsumfang um ein Vielfaches:
 
-| Kategorie | VentoMaxx (Original) | ESPHome Smart WRG |
+| Kategorie | VentoMaxx (Original) | VentoSync |
 | :--- | :---: | :---: |
 | Betriebsmodi | 3 | **5+** (inkl. Automatiken) |
 | Sensorik | 0-1 (opt. VOC) | **8+** (CO2, Temp, Feuchte, Druck, Radar, Tacho, Gas, etc.) |
@@ -101,3 +104,9 @@ Die ESPHome-Lösung ist ein **"Drop-in Replacement"** für die originale VentoMa
 | Open Source | ❌ | ✅ GPL v3 Lizenz |
 
 **Empfehlung:** Wer eine **vollständige Smart-Home-Integration** sucht und **keine neuen Kabel** ziehen möchte, erhält mit der ESPHome-Lösung einen massiv erweiterten Funktionsumfang bei gleicher mechanischer Kompatibilität — inklusive Präzisionssensorik, prädiktiver Wartung und intelligenter Automatik.
+
+## ⚖️ Rechtlicher Haftungsausschluss
+
+Dieses Projekt ist eine unabhängige Open-Source-Entwicklung. Es steht **nicht** in Verbindung mit der **VentoMaxx GmbH**, wird nicht von ihr unterstützt und ist nicht mit ihr assoziiert. Die Verwendung des Handelsnamens "VentoMaxx" dient ausschließlich der Identifizierung und der Beschreibung der Kompatibilität.
+
+Obwohl alle Anstrengungen unternommen wurden, um die Sicherheit und Funktionalität dieser Firmware und des entsprechenden PCB-Designs zu gewährleisten, übernimmt der Endnutzer die volle Verantwortung für die Installation, Verkabelung und Nutzung. Modifikationen an Ihrem Lüftungsgerät können zum Erlöschen der Garantie führen und sollten nur von qualifizierten Personen durchgeführt werden.

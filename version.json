@@ -1,5 +1,5 @@
 {
-    "version": "0.8.219",
+    "version": "0.8.226",
     "date": "2026-04-28",
     "description": "feat(ui): implement Kindersicherung (Child Protection Mode) with LED feedback"
 }

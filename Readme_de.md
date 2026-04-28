@@ -135,6 +135,13 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
 - 🌴 **Urlaubsmodus (Vacation Mode)**: Energiesparmodus, der hauptsächlich bei längerer Abwesenheit genutzt wird. Er schaltet automatisch alle Geräte in einem Raum in die Stoßlüftung auf der niedrigsten Intensität (Stufe 1), um einen grundlegenden Luftaustausch bei minimalem Energieverbrauch sicherzustellen. Bei Deaktivierung wird der vorherige Systemzustand nahtlos wiederhergestellt. Dieser kann für alle Geräte gleichzeitig über einen Home Assistant Schalter-Helfer (Toggle Helper) aktiviert werden:
   - > Eine Schritt-für-Schritt-Anleitung zur Erstellung dieses Home Assistant Helfers findest du im **[Home Assistant Urlaubsmodus Setup Guide](documentation/Vacation-Mode-HA-Setup-DE.md)**.
 
+- **Kindersicherung**: Die Kindersicherung sperrt das Gerät, sodass es nicht mehr über die Tasten am Gerät gesteuert werden kann. Dieser Modus ist primär über Home Assistant verfügbar.
+  - 🛠️ **Konfigurierbar über HA-Entitäten** (sichtbar in der Sektion *Konfiguration* des Geräts):
+    - `switch.kindersicherung` — Schalter zum Aktivieren oder Deaktivieren der Kindersicherung.
+    - Wenn die Sperre aktiviert ist und eine Taste am Gerät gedrückt wird, blinken alle LEDs drei Mal auf.
+    - Am Gerät selbst kann die Sperre durch **5-sekündiges Halten der Modus-Taste** aktiviert oder deaktiviert werden. Zur Bestätigung blinken alle LEDs zwei Mal.
+    - Änderungen über Home Assistant sind jederzeit möglich und werden nicht durch die Kindersicherung blockiert.
+
 ### ⚡ Extrem niedriger Stromverbrauch
 
 Das VentoMaxx System mit dieser ESPHome Steuerung arbeitet überragend effizient. Durch die Nutzung eines hochwertigen Traco-Netzteils und der präzisen PWM-Steuerung des ebm-papst Motors liegt die reine Wirkleistung (gemessen an 230V) in einem Bereich, der viele kommerzielle Anlagen deutlich unterbietet:
