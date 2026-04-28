@@ -243,6 +243,10 @@ extern esphome::globals::GlobalsComponent<bool>
     *const intensity_bounce_up; ///< True if we are cycling UP, false if DOWN.
 extern esphome::globals::GlobalsComponent<bool>
     *const thermal_warning_active; ///< True if BMP390 detects >50°C.
+extern esphome::globals::RestoringGlobalsComponent<bool>
+    *const child_lock_active; ///< Child protection mode (Kindersicherung).
+extern esphome::template_::TemplateSwitch
+    *const child_lock_switch; ///< HA switch for child protection mode.
 
 /// @name Scripts
 /// @{
@@ -257,6 +261,10 @@ extern esphome::script::SingleScript<float, int>
 extern esphome::pid::PIDClimate *const pid_co2;       ///< CO2 PID controller.
 extern esphome::pid::PIDClimate *const pid_humidity;  ///< Humidity PID controller.
 extern esphome::sntp::SNTPComponent *const sntp_time; ///< SNTP Time component.
+extern esphome::script::RestartScript<>
+    *const flash_leds_child_lock_3x; ///< 3x LED flash for child lock reject.
+extern esphome::script::RestartScript<>
+    *const flash_leds_child_lock_2x; ///< 2x LED flash for child lock toggle ack.
 /// @}
 
 /// @name Fan hardware
@@ -365,6 +373,12 @@ inline uint32_t last_slew_update_ms = 0;    // Timestamp of last slew step
 // FIXED #9: Changed static→inline for mutable state (C++17, safe for single TU)
 inline std::deque<float> ntc_history[2];
 inline uint32_t last_direction_change_time = 0;
+/// @}
+
+/// @name Child Protection Mode (Kindersicherung) State
+/// @{
+/// Timestamp of last combo trigger (Mode+Level held 5s) to suppress stale on_click events.
+inline uint32_t child_lock_combo_triggered_ms = 0;
 /// @}
 
 // --- FORWARD DECLARATIONS ---

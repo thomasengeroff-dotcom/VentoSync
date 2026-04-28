@@ -80,6 +80,10 @@ binary_sensor:
       then:
         - lambda: |-
             handle_button_mode_click();
+    on_press:
+      - script.execute: child_lock_handler
+    on_release:
+      - script.stop: child_lock_handler
 
   # Button Level (Middle) - Speed Level (MCP23017 GPA2)
   - platform: gpio
@@ -108,3 +112,106 @@ binary_sensor:
     on_release:
       - script.stop: intensity_hold_handler
       - lambda: sync_settings_to_peers();
+
+# ---------------------------------------------------------
+# CHILD LOCK SCRIPTS
+# ---------------------------------------------------------
+script:
+  # --- Combo Handler: hold Mode for 5 seconds to toggle child lock ---
+  # Simpler than Mode+Level: just hold the Mode button alone for 5s.
+  # The on_click handler's 500ms cooldown suppresses the stale mode-change after release.
+  - id: child_lock_handler
+    mode: restart
+    then:
+      - delay: 500ms
+      - if:
+          condition:
+            lambda: "return id(button_mode).state;"
+          then:
+            - delay: 1s
+            - if:
+                condition:
+                  lambda: "return id(button_mode).state;"
+                then:
+                  - delay: 1s
+                  - if:
+                      condition:
+                        lambda: "return id(button_mode).state;"
+                      then:
+                        - delay: 1s
+                        - if:
+                            condition:
+                              lambda: "return id(button_mode).state;"
+                            then:
+                              - delay: 1s
+                              - if:
+                                  condition:
+                                    lambda: "return id(button_mode).state;"
+                                  then:
+                                    # 4.5 seconds of confirmed hold — toggle child lock!
+                                    - lambda: |-
+                                        child_lock_combo_triggered_ms = millis();
+                                        bool new_state = !id(child_lock_active);
+                                        id(child_lock_active) = new_state;
+                                        id(child_lock_switch).publish_state(new_state);
+                                        ESP_LOGI("child_lock", "Child lock %s via Mode-hold (5s)",
+                                                 new_state ? "ENABLED" : "DISABLED");
+                                    - script.execute: flash_leds_child_lock_2x
+
+  # --- LED Flash: 3x for child lock REJECT ---
+  # Called when a button is pressed while child lock is active.
+  # Uses YAML delay (non-blocking) so the PCA9685 I2C writes flush between cycles.
+  - id: flash_leds_child_lock_3x
+    mode: restart
+    then:
+      - repeat:
+          count: 3
+          then:
+            - lambda: |-
+                float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
+                led_guard::turn_on_safe(status_led_power, max_b);
+                led_guard::turn_on_safe(status_led_mode_wrg, max_b);
+                led_guard::turn_on_safe(status_led_mode_vent, max_b);
+                led_guard::turn_on_safe(status_led_l1, max_b);
+                led_guard::turn_on_safe(status_led_l2, max_b);
+                led_guard::turn_on_safe(status_led_l3, max_b);
+                led_guard::turn_on_safe(status_led_l4, max_b);
+                led_guard::turn_on_safe(status_led_l5, max_b);
+            - delay: 150ms
+            - lambda: |-
+                led_guard::turn_off_all_leds();
+            - delay: 200ms
+      - lambda: |-
+          // Restore LED display state (briefly activate UI so mode/level LEDs show)
+          if (ui_active != nullptr) ui_active->value() = true;
+          if (update_leds != nullptr) update_leds->execute();
+          if (ui_timeout_script != nullptr) ui_timeout_script->execute();
+
+  # --- LED Flash: 2x for child lock TOGGLE ACK ---
+  # Called when the 5s Mode-hold combo successfully toggles the child lock.
+  - id: flash_leds_child_lock_2x
+    mode: restart
+    then:
+      - repeat:
+          count: 2
+          then:
+            - lambda: |-
+                float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
+                led_guard::turn_on_safe(status_led_power, max_b);
+                led_guard::turn_on_safe(status_led_mode_wrg, max_b);
+                led_guard::turn_on_safe(status_led_mode_vent, max_b);
+                led_guard::turn_on_safe(status_led_l1, max_b);
+                led_guard::turn_on_safe(status_led_l2, max_b);
+                led_guard::turn_on_safe(status_led_l3, max_b);
+                led_guard::turn_on_safe(status_led_l4, max_b);
+                led_guard::turn_on_safe(status_led_l5, max_b);
+            - delay: 200ms
+            - lambda: |-
+                led_guard::turn_off_all_leds();
+            - delay: 300ms
+      - lambda: |-
+          // Restore LED display state
+          if (ui_active != nullptr) ui_active->value() = true;
+          if (update_leds != nullptr) update_leds->execute();
+          if (ui_timeout_script != nullptr) ui_timeout_script->execute();
+

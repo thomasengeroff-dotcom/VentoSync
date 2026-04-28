@@ -188,6 +188,17 @@ inline void handle_button_mode_click() {
   if (ventilation_ctrl == nullptr || current_mode_index == nullptr || ui_active == nullptr || 
       update_leds == nullptr || ui_timeout_script == nullptr) return;
 
+  // Child Protection Mode: Block physical button input when locked.
+  // Suppress stale on_click events that fire after a combo toggle (500ms cooldown).
+  if (child_lock_active != nullptr && child_lock_active->value()) {
+    if (millis() - child_lock_combo_triggered_ms > 500) {
+      if (flash_leds_child_lock_3x != nullptr) flash_leds_child_lock_3x->execute();
+      ESP_LOGI("button", "Mode button BLOCKED by child lock");
+    }
+    return;
+  }
+  if (millis() - child_lock_combo_triggered_ms < 500) return; // Combo cooldown
+
   // FIXED H-2: Clamp modulo operand to guard against NVS value corruption
   int current = static_cast<int>(current_mode_index->value());
   current = std::clamp(current, 0, 4);
@@ -213,6 +224,13 @@ inline void handle_button_mode_click() {
 inline void handle_button_power_short_click() {
   if (ventilation_ctrl == nullptr || ventilation_enabled == nullptr || current_mode_index == nullptr || 
       fan_speed_update == nullptr || ui_timeout_script == nullptr) return;
+
+  // Child Protection Mode: Block physical button input when locked.
+  if (child_lock_active != nullptr && child_lock_active->value()) {
+    if (flash_leds_child_lock_3x != nullptr) flash_leds_child_lock_3x->execute();
+    ESP_LOGI("button", "Power button BLOCKED by child lock");
+    return;
+  }
 
   if (!ventilation_enabled->value()) {
     ventilation_enabled->value() = true;
@@ -254,6 +272,13 @@ inline void handle_button_power_long_click() {
       ventilation_ctrl == nullptr || 
       fan_pwm_primary == nullptr || ui_timeout_script == nullptr) return;
 
+  // Child Protection Mode: Block physical button input when locked.
+  if (child_lock_active != nullptr && child_lock_active->value()) {
+    if (flash_leds_child_lock_3x != nullptr) flash_leds_child_lock_3x->execute();
+    ESP_LOGI("button", "Power long press BLOCKED by child lock");
+    return;
+  }
+
   if (ventilation_enabled->value()) {
     system_on->value() = false;
     ventilation_enabled->value() = false;
@@ -292,6 +317,16 @@ inline void handle_button_level_click() {
   // MCP23017 GPIOs may float LOW during boot → inverted: true reads as pressed
   if (millis() < 10000) return;
 
+  // Child Protection Mode: Block physical button input when locked.
+  if (child_lock_active != nullptr && child_lock_active->value()) {
+    if (millis() - child_lock_combo_triggered_ms > 500) {
+      if (flash_leds_child_lock_3x != nullptr) flash_leds_child_lock_3x->execute();
+      ESP_LOGI("button", "Level button BLOCKED by child lock");
+    }
+    return;
+  }
+  if (millis() - child_lock_combo_triggered_ms < 500) return; // Combo cooldown
+
   if (!ventilation_enabled->value())
     return; // Ignore if system is off
   int level = fan_intensity_level->value();
@@ -329,6 +364,9 @@ inline void handle_intensity_bounce() {
 
   // MCP23017 GPIOs may float LOW during boot → inverted: true reads as pressed
   if (millis() < 10000) return;
+
+  // Child Protection Mode: Block hold-to-cycle when locked (no flash — click handler flashes).
+  if (child_lock_active != nullptr && child_lock_active->value()) return;
 
   if (!ventilation_enabled->value())
     return;

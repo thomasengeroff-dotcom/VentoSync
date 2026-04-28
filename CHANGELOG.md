@@ -4,6 +4,17 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.216] - 2026-04-28
+### Added
+- **Kindersicherung (Child Protection Mode)**: Implementierung einer Sperrfunktion für die physische Bedienoberfläche zur Vermeidung ungewollter Interaktionen.
+    - **Home Assistant Integration**: Neue Entität `switch.kindersicherung` (Kategorie Konfiguration) zum raumweiten oder gerätespezifischen Sperren der Tasten.
+    - **Physischer Override**: Lokales Deaktivieren/Aktivieren direkt am Gerät durch Halten der **Modus**-Taste für 5 Sekunden möglich.
+    - **Visuelles Feedback**: 
+        - 3-faches Aufblinken aller LEDs bei blockiertem Tastendruck signalisiert aktive Sperre.
+        - 2-faches Aufblinken aller LEDs bestätigt die erfolgreiche Umschaltung via Tastenkombination.
+    - **HA-Priorität**: Änderungen über Home Assistant sind jederzeit möglich und werden nicht durch die Kindersicherung blockiert.
+    - **Persistenz**: Der Status der Sperre bleibt über Neustarts hinweg erhalten (NVS).
+
 ## [0.8.210] - 2026-04-26
 ### Added
 - **Konfigurierbarer Urlaubsmodus**: Einführung neuer Home Assistant Entitäten zur individuellen Konfiguration des Urlaubsmodus.

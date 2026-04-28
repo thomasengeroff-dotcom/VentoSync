@@ -280,6 +280,29 @@ switch:
       - lambda: |-
           id(ventilation_ctrl)->set_ignore_window_guard(false);
 
+  - platform: template
+    name: "Kindersicherung"
+    id: child_lock_switch
+    icon: "mdi:lock-outline"
+    entity_category: config
+    optimistic: false
+    lambda: |-
+      return id(child_lock_active);
+    turn_on_action:
+      - globals.set:
+          id: child_lock_active
+          value: "true"
+      - lambda: |-
+          id(child_lock_switch).publish_state(true);
+          ESP_LOGI("child_lock", "Child lock ENABLED via HA");
+    turn_off_action:
+      - globals.set:
+          id: child_lock_active
+          value: "false"
+      - lambda: |-
+          id(child_lock_switch).publish_state(false);
+          ESP_LOGI("child_lock", "Child lock DISABLED via HA");
+
 select:
   # Ventilation Mode
   - platform: template

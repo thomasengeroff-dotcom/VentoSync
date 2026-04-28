@@ -20,6 +20,8 @@
 # File:        ventosync.yaml
 # Description: ESPHome configuration (FULL VERSION) for the room ventilation system.
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
+#              This configuration is primary for testing devices which include all
+#              sensors (SCD41, BME680, LD2450) and the fan. 
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
 # Modified:    2026-04-21

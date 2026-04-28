@@ -132,11 +132,20 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
 - 🔄 **Plain Text Direction Display**: A sensor entity shows the current air direction at any time ("Supply Air (In)", "Exhaust Air (Out)", or "Standstill"), which significantly simplifies diagnosis and monitoring of synchronization.
 
+### additional Features:
+
 - 🌴 **Vacation Mode**: Energy-saving mode primarily used when absent for longer periods. When activated, it saves the current state and switches all devices in the room to a configurable mode and fan intensity. Deactivating it fully restores the previous system state. The mode can be activated for all devices simultaneously via a Home Assistant Toggle Helper.
   - 🛠️ **Configurable via HA entities** (visible in the device's *Configuration* section):
     - `select.urlaubsmodus_betriebsmodus` — Choose the operating mode when vacation is active (Smart-Automatik / Wärmerückgewinnung / Durchlüften / Stoßlüftung / Aus). Default: `Stoßlüftung`.
     - `number.urlaubsmodus_intensitat` — Set the fan intensity level (1–10) during vacation. Default: `1`.
   > For a step-by-step guide on how to create the required Home Assistant Toggle Helper, please refer to our **[Home Assistant Vacation Mode Setup Guide](documentation/Vacation-Mode-HA-Setup.md)**.
+
+- **Child protection mode**: A simple switch to lock the device, so it cannot be controlled by pressing the buttons on the device. This mode is only available via Home Assistant.
+  - 🛠️ **Configurable via HA entities** (visible in the device's *Configuration* section):
+    - `switch.kindersicherung` — Toggle switch to enable or disable the child protection mode.
+    - If the protection is activated and any button on the device is pressed, all LEDs flash three times.
+    - On the device itself the protection can be activated or deactivated by pressing the Mode and Intensity buttons simultaneously for 5 seconds. To acknowledge this, all LEDs flash two times.
+    - changes via homeassistant are always possible and are not blocked by the child protection mode.  
 
 ### ⚡ Extremely Low Power Consumption
 

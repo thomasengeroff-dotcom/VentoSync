@@ -1,5 +1,5 @@
 {
-    "version": "0.8.209",
-    "date": "2026-04-26",
-    "description": "feat(vacation): implement configurable Vacation Mode and centralize mode constants"
+    "version": "0.8.219",
+    "date": "2026-04-28",
+    "description": "feat(ui): implement Kindersicherung (Child Protection Mode) with LED feedback"
 }
