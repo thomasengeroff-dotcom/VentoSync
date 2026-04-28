@@ -2,6 +2,10 @@
 
 [![Sprache: DE](https://img.shields.io/badge/Sprache-DE-red.svg)](Readme_de.md)
 
+## ⚖️ Disclaimer
+
+> VentoSync is an independent community project and NOT affiliated with Ventomaxx GmbH.
+
 ## 🚀 Summary & Overview
 
 This open-source project offers a professional, decentralized heat recovery ventilation (HRV) control system based on ESPHome. It replaces the control system of the VentoMaxx V-WRG series using a custom developed printed circuit board (PCB), controlling the reversible 12V fan for heat recovery. 
