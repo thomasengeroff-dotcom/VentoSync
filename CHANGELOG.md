@@ -4,6 +4,13 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.231] - 2026-05-03
+### Changed
+- **Härtung der State-Machine**:
+    - **Stoßlüftung Sanftanlauf**: Implementierung von Sanftanlauf (Soft-Start) und Sanftstopp (Soft-Stop) für die Übergänge zwischen Pausen- und Aktivphasen in der Stoßlüftung zur Schonung der Lüftermotoren.
+    - **Sync-Stabilität**: Behebung eines potenziellen Überlaufs in der Zeit-Synchronisierungslogik (`sync_time`) durch Nutzung von 64-Bit-Arithmetik für die Offset-Berechnung.
+    - **Code-Bereinigung**: Entfernung von redundantem Code in der Zyklus-Synchronisierung (`set_cycle_duration`).
+
 ## [0.8.230] - 2026-05-03
 ### Changed
 - **Präzisierung der PID-Regelung**: Die Dokumentation wurde korrigiert, um klarzustellen, dass die PID-Regelung (CO2/Feuchte) die Lüfterstufe in 10 diskreten Schritten ansteuert, statt stufenlos. Betrifft `Readme.md`, `Readme_de.md` und den VentoMaxx-Vergleich.

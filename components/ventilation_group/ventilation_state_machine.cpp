@@ -95,7 +95,11 @@ bool VentilationStateMachine::update(uint32_t now) {
  * @param[in] duration  For MODE_VENTILATION: auto-stop duration in ms (0 = infinite).
  */
 void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint32_t duration) {
-    // FIXED K-3: Removed dead variable 'changed'; simplified early-return
+    // FIXED K-3: Removed dead variable 'changed'; simplified early-return.
+    // NOTE: This is intentional for timed modes (MODE_VENTILATION, MODE_STOSSLUEFTUNG):
+    // re-selecting the same mode with the same duration does NOT restart the timer.
+    // The user must change duration or switch modes to reset. Debouncing for
+    // accidental double-presses is handled at the UI layer.
     if (current_mode == mode && duration == ventilation_duration_ms) return;
 
     current_mode = mode;
@@ -150,11 +154,9 @@ void VentilationStateMachine::set_cycle_duration(uint32_t now, uint32_t ms) {
     int64_t n = now;
     int64_t target_offset = (int64_t)new_pos - n;
     
-    // Normalize target_offset to be within [-new_period, new_period]
+    // FIXED CR-2: Normalize target_offset to be within [-new_period, new_period].
+    // The modulo guarantees |result| < new_period, so no additional bounds check needed.
     target_offset %= (int64_t)new_period;
-    if (target_offset < -(int64_t)new_period) {
-        target_offset += new_period; // Handle negative wrapping
-    }
     
     // FIXED K-1: Clamp before int32_t cast to prevent overflow
     constexpr int64_t MAX_OFFSET = static_cast<int64_t>(INT32_MAX);
@@ -185,9 +187,12 @@ void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
     // FIXED: Increased threshold from 200ms to 500ms to reduce jitter
     // near direction flip boundaries.
     if (std::abs(diff) > 500) {
-        time_offset_ms += diff;
-        // Keep offset within [-period, period] to avoid int32_t overflow after months of syncs
-        time_offset_ms %= static_cast<int32_t>(period);
+        // FIXED CR-1: Widen to int64 before addition to prevent INT32_MAX overflow
+        // after months of one-sided drift accumulation (~4000 syncs at +501ms each).
+        int64_t wide_offset = (int64_t)time_offset_ms + diff;
+        // Keep offset within [-period, period] to avoid unbounded growth
+        wide_offset %= (int64_t)period;
+        time_offset_ms = static_cast<int32_t>(wide_offset);
     }
 }
 
@@ -271,6 +276,29 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
             const uint32_t remaining = half - phase_pos;
             state.ramp_factor = static_cast<float>(remaining)
                               / static_cast<float>(RAMP_DURATION_MS);
+        }
+    }
+
+    // --- Stoßlüftung Burst Ramp (soft-start from pause, soft-stop before pause) ---
+    // FIXED CR-3: The direction-change ramp above handles direction flips within
+    // the burst. This additional ramp smooths the pause↔active transitions to
+    // avoid abrupt mechanical stress on the fan motor after 105 min of standstill.
+    // Uses std::min with the direction ramp to always pick the gentler factor.
+    if (current_mode == MODE_STOSSLUEFTUNG && stoss_active_phase && RAMP_DURATION_MS > 0) {
+        const uint32_t burst_elapsed = now - stoss_cycle_start;
+        if (burst_elapsed < RAMP_DURATION_MS) {
+            // Ramp-up at start of active burst
+            float burst_ramp = static_cast<float>(burst_elapsed)
+                             / static_cast<float>(RAMP_DURATION_MS);
+            state.ramp_factor = std::min(state.ramp_factor, burst_ramp);
+        } else if (STOSS_ACTIVE_MS > RAMP_DURATION_MS &&
+                   burst_elapsed > (STOSS_ACTIVE_MS - RAMP_DURATION_MS) &&
+                   burst_elapsed < STOSS_ACTIVE_MS) {
+            // Ramp-down before entering pause phase
+            const uint32_t remaining = STOSS_ACTIVE_MS - burst_elapsed;
+            float burst_ramp = static_cast<float>(remaining)
+                             / static_cast<float>(RAMP_DURATION_MS);
+            state.ramp_factor = std::min(state.ramp_factor, burst_ramp);
         }
     }
 
