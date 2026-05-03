@@ -199,7 +199,7 @@ inline void update_fan_logic() {
   // 2. Base Speed Calculation with Smooth Slew-Rate (Sanftanlauf)
   const float base_speed = get_current_target_speed();
   
-  // FIXED K-1: Start from 0.0f instead of jumping to base_speed
+  // Start from 0.0f instead of jumping to base_speed
   if (last_slew_update_ms == 0) {
     current_smoothed_speed = 0.0f;
     last_slew_update_ms = now;
@@ -208,7 +208,7 @@ inline void update_fan_logic() {
   uint32_t dt = now - last_slew_update_ms;
   last_slew_update_ms = now;
   
-  // FIXED K-3: Recovery after long pauses (e.g. OTA update)
+  // Recovery after long pauses (e.g. OTA update)
   if (dt > 5000) {
       ESP_LOGW("fan", "Long pause detected (%ums) — resetting slew state", dt);
       current_smoothed_speed = (current_smoothed_speed + base_speed) * 0.5f;
@@ -234,10 +234,10 @@ inline void update_fan_logic() {
   if (ventilation_ctrl != nullptr) {
     const esphome::HardwareState state = ventilation_ctrl->state_machine.get_target_state(now);
     speed *= state.ramp_factor;
-    // FIXED H-3: Read direction consistently from calculated state, not just stale pseudo-state
+    // Read direction consistently from calculated state, not just stale pseudo-state
     direction = state.direction_in ? 1 : 0;
 
-    // FIXED M-3: Simplification of ramping logs
+    // Simplification of ramping logs
     const bool is_actively_ramping = state.ramp_factor > RAMPING_LOWER_BOUND && state.ramp_factor < RAMPING_UPPER_BOUND;
     
     // Rate-limited log during transition phases

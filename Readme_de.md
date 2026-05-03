@@ -81,7 +81,7 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 | :--- | :---: | :---: |
 | Betriebsmodi | 3 | **5+** (inkl. Automatiken) |
 | Sensorik | 0-1 (opt. VOC) | **6** (CO2, Temp, Feuchte, Druck, Radar, Tacho) |
-| Lüfterregelung | 3 feste Stufen | **10 Stufen + stufenlos (PID)** |
+| Lüfterregelung | 3 feste Stufen | **10 Stufen (diskrete PID-Regelung)** |
 | Smart Home | ❌ | ✅ Home Assistant (nativ) |
 | Wartungsalarm | Timer-LED | ✅ Prädiktiv + Push |
 | Synchronisation | Stromleitung | ✅ Kabellos (**ESP-NOW Protocol**) & Echtzeit-Sync |
@@ -583,7 +583,7 @@ Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **ein
 | **10** | 100 % | 5.0 % | 95.0 % | 4200 |
 
 Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen (Stufe 1-6) eine feinere Abstufung ermöglicht, um akustisch noch dezenter zu bleiben, während in den höheren Stufen die Leistung schneller ansteigt.
-> ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl stufenlos zwischen `co2_min_fan_level` und `co2_max_fan_level` geregelt.
+> ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl in **10 Stufen** zwischen `co2_min_fan_level` und `co2_max_fan_level` geregelt.
 > 🔄 **Software-Fan-Ramping:** Bei jedem Richtungswechsel (WRG/Stoßlüftung) führt das System eine **5-sekündige sanfte Abbrems- und Anlauframpe** durch. Dies schont den Motor und minimiert Umschaltgeräusche. Die Intensitäts-LEDs zeigen währenddessen bereits den Zielwert an.
 
 #### Automatische Funktionen

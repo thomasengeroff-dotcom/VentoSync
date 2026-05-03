@@ -345,7 +345,7 @@ public:
     // 1. Update State Machine (returns true on discrete state flip)
     bool dirty = state_machine.update(now);
 
-    // 1.1 Window Guard (Room-wide safety lock with 10s delay)
+    // 1.1 Window Guard (Room-wide safety lock with 5s delay)
     bool sensor_on = (window_sensor_ != nullptr && window_sensor_->state);
     if (sensor_on) {
         if (window_sensor_on_start_ms_ == 0) window_sensor_on_start_ms_ = now;
@@ -354,7 +354,7 @@ public:
             window_guard_active_ = true;
             window_lock_activation_ms_ = now;
             dirty = true;
-            ESP_LOGI("vent", "Window Guard: LOCKED (engaged after 10s delay)");
+            ESP_LOGI("vent", "Window Guard: LOCKED (engaged after 5s delay)");
         }
     } else {
         if (window_guard_active_) {
@@ -395,13 +395,13 @@ public:
       update_hardware(state, dirty);
     }
 
-    // 3. Auto Sync Broadcast (Dashboard Heartbeat every ~60s)
+    // 3. Auto Sync Broadcast (Dashboard Heartbeat)
     // Ensures all peers regularly announce their presence even if they don't
     // flip directions (like in 'Aus' or 'Durchlüften' modes). This prevents the
     // dashboard from dropping peers after the 5-minute timeout.
     // FIX: Stagger broadcasts using device_id to prevent rf collisions if
     // devices boot perfectly synchronously.
-    if (now - last_sync_tx > (60000 + (device_id * 1500))) {
+    if (now - last_sync_tx > (sync_interval_ms + (device_id * 1500))) {
       ESP_LOGI("vent", "Triggering periodic sync broadcast (heartbeat)");
       pending_broadcast = true; // Let YAML trigger the send
       last_sync_tx = now;
@@ -523,6 +523,8 @@ public:
    */
   // FIXED K-1: const-ref parameter avoids unnecessary heap copy (H-1)
   bool on_packet_received(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
+    // FIXED CR-1: Single consistent timestamp for entire method (mirrors loop() pattern)
+    const uint32_t now = millis();
     ESP_LOGI("vent", "on_packet_received() called");
     if (data.size() != sizeof(VentilationPacket)) {
       ESP_LOGW("vent_sync", "Size mismatch! Expected %zu, got %zu",
@@ -566,20 +568,26 @@ public:
     // FIXED H-5: Limit peer list to prevent unbounded growth
     constexpr size_t MAX_PEERS = 10;
 
+    // FIXED CR-1: Helper lambda to populate peer state from packet (DRY)
+    auto populate_peer = [&](PeerState &peer) {
+      std::copy(src_mac, src_mac + 6, peer.mac.begin());
+      peer.last_seen_ms = now;
+      peer.device_id = pkt->device_id;
+      peer.current_mode = pkt->current_mode;
+      peer.fan_intensity = pkt->fan_intensity;
+      peer.phase_state = pkt->phase_state;
+      peer.t_in = pkt->t_in;
+      peer.t_out = pkt->t_out;
+      peer.pid_demand = pkt->pid_demand;
+      peer.fan_rpm = pkt->fan_rpm;
+      peer.board_temp = pkt->board_temp;
+      peer.room_temp = pkt->room_temp;
+    };
+
     bool found_peer = false;
     for (auto &peer : peers) {
       if (std::memcmp(peer.mac.data(), src_mac, 6) == 0) {
-        peer.last_seen_ms = millis();
-        peer.device_id = pkt->device_id;
-        peer.current_mode = pkt->current_mode;
-        peer.fan_intensity = pkt->fan_intensity;
-        peer.phase_state = pkt->phase_state;
-        peer.t_in = pkt->t_in;
-        peer.t_out = pkt->t_out;
-        peer.pid_demand = pkt->pid_demand;
-        peer.fan_rpm = pkt->fan_rpm;
-        peer.board_temp = pkt->board_temp;
-        peer.room_temp = pkt->room_temp;
+        populate_peer(peer);
         found_peer = true;
         break;
       }
@@ -597,18 +605,7 @@ public:
         peers.erase(oldest);
       }
       PeerState new_peer;
-      std::copy(src_mac, src_mac + 6, new_peer.mac.begin());
-      new_peer.device_id = pkt->device_id;
-      new_peer.last_seen_ms = millis();
-      new_peer.current_mode = pkt->current_mode;
-      new_peer.fan_intensity = pkt->fan_intensity;
-      new_peer.phase_state = pkt->phase_state;
-      new_peer.t_in = pkt->t_in;
-      new_peer.t_out = pkt->t_out;
-      new_peer.pid_demand = pkt->pid_demand;
-      new_peer.fan_rpm = pkt->fan_rpm;
-      new_peer.board_temp = pkt->board_temp;
-      new_peer.room_temp = pkt->room_temp;
+      populate_peer(new_peer);
       peers.push_back(new_peer);
     }
 
@@ -641,11 +638,11 @@ public:
     if (should_sync) {
       // 1. Time sync (aligns direction cycle phase) — Master only for MSG_SYNC
       if (pkt->msg_type == MSG_SYNC && pkt->device_id == 1) {
-        state_machine.sync_time(millis(), pkt->cycle_pos_ms);
+        state_machine.sync_time(now, pkt->cycle_pos_ms);
       }
       int32_t time_diff =
           (int32_t)pkt->remaining_duration_ms -
-          (int32_t)state_machine.get_remaining_duration(millis());
+          (int32_t)state_machine.get_remaining_duration(now);
       if (pkt->current_mode != state_machine.current_mode ||
           (mode_index_global_ != nullptr && pkt->current_mode_index != mode_index_global_->value()) ||
           (pkt->current_mode == MODE_VENTILATION &&
@@ -655,7 +652,7 @@ public:
                  pkt->device_id, pkt->msg_type, pkt->current_mode, pkt->current_mode_index);
 
         // Set logical state without triggering an echo broadcast
-        state_machine.set_mode((VentilationMode)pkt->current_mode, millis(),
+        state_machine.set_mode((VentilationMode)pkt->current_mode, now,
                                pkt->remaining_duration_ms);
         update_hardware();
         changed = true;
@@ -675,17 +672,17 @@ public:
     // 5. Temperature sync
     if (!std::isnan(pkt->t_in)) {
       last_peer_t_in = pkt->t_in;
-      last_peer_t_in_time = millis();
+      last_peer_t_in_time = now;
     }
     if (!std::isnan(pkt->t_out)) {
       last_peer_t_out = pkt->t_out;
-      last_peer_t_out_time = millis();
+      last_peer_t_out_time = now;
     }
 
     // 6. PID Demand sync
     if (!std::isnan(pkt->pid_demand)) {
       last_peer_pid_demand = pkt->pid_demand;
-      last_peer_pid_demand_time = millis();
+      last_peer_pid_demand_time = now;
       has_peer_pid_demand = true;
     }
 
@@ -784,6 +781,8 @@ public:
    * @return  std::vector<uint8_t>  The packed binary payload.
    */
   std::vector<uint8_t> build_packet(MessageType type) {
+    // FIXED CR-4: Single consistent timestamp for entire packet build
+    const uint32_t now = millis();
     ESP_LOGI("vent_sync",
              "Building packet type %d from device %d. Clearing pending_broadcast.", type, device_id);
     VentilationPacket pkt;
@@ -797,9 +796,9 @@ public:
     pkt.msg_type = type;
     pkt.current_mode = state_machine.current_mode;
     pkt.current_mode_index = (mode_index_global_ != nullptr) ? (uint8_t)mode_index_global_->value() : 0;
-    pkt.remaining_duration_ms = get_remaining_duration();
+    pkt.remaining_duration_ms = state_machine.get_remaining_duration(now);
     pkt.fan_intensity = current_fan_intensity;
-    pkt.timestamp_ms = millis();
+    pkt.timestamp_ms = now;
     
     // Populate Config with explicit null checks to ensure valid packets
     pkt.automatik_min_fan_level = automatik_min_fan_level_global_ != nullptr ? (uint8_t)automatik_min_fan_level_global_->value() : 1;
@@ -819,7 +818,7 @@ public:
     pkt.vent_timer_min = static_cast<uint16_t>(
         std::min(state_machine.ventilation_duration_ms, MAX_TIMER_MS) / 60000u);
 
-    pkt.cycle_pos_ms = state_machine.get_cycle_pos(millis());
+    pkt.cycle_pos_ms = state_machine.get_cycle_pos(now);
     pkt.phase_state = state_machine.global_phase;
 
     // Fill sensor data from local components if bound

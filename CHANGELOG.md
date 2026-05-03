@@ -4,7 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.8.216] - 2026-04-28
+## [0.8.230] - 2026-05-03
+### Changed
+- **Präzisierung der PID-Regelung**: Die Dokumentation wurde korrigiert, um klarzustellen, dass die PID-Regelung (CO2/Feuchte) die Lüfterstufe in 10 diskreten Schritten ansteuert, statt stufenlos. Betrifft `Readme.md`, `Readme_de.md` und den VentoMaxx-Vergleich.
+- **Härtung der Ventilation Group Komponente**: 
+    - **Window Guard**: Korrektur der Inkonsistenz zwischen Code und Dokumentation. Die Fenstersperre greift nach **5 Sekunden** (wie im Code implementiert), Logs und Kommentare wurden entsprechend angepasst.
+    - **Heartbeat-Intervall**: Das periodische Senden des Status (Heartbeat) berücksichtigt nun korrekt den via UI/YAML konfigurierbaren `sync_interval_ms` Wert, statt hartkodiert auf 60 Sekunden festzuliegen.
+    - **Timing-Konsistenz**: Optimierung der Paketverarbeitung (`on_packet_received`) und Paketerstellung (`build_packet`) durch Nutzung eines einheitlichen Zeitstempels (`now`) pro Funktionsaufruf zur Vermeidung minimaler Zeitdrifts.
+    - **Code-Qualität**: Refactoring der Peer-Verwaltung zur Vermeidung von Code-Duplizierung (DRY) durch Einführung eines zentralen Helpers für die Peer-Status-Aktualisierung.
+
+## [0.8.226] - 2026-04-28
 ### Added
 - **Kindersicherung (Child Protection Mode)**: Implementierung einer Sperrfunktion für die physische Bedienoberfläche zur Vermeidung ungewollter Interaktionen.
     - **Home Assistant Integration**: Neue Entität `switch.kindersicherung` (Kategorie Konfiguration) zum raumweiten oder gerätespezifischen Sperren der Tasten.

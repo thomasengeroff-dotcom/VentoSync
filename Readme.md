@@ -4,7 +4,7 @@
 
 ## ⚖️ Disclaimer
 
-> VentoSync is an independent community project and NOT affiliated with Ventomaxx GmbH.
+> ⚠️ **VentoSync is an independent community project and NOT affiliated with Ventomaxx GmbH.**
 
 ## 🚀 Summary & Overview
 
@@ -83,7 +83,7 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | :--- | :---: | :---: |
 | Operating Modes | 3 | **5+** (incl. automation) |
 | Sensors | 0-1 (opt. VOC) | **6** (CO2, Temp, Humidity, Pressure, Radar, Tachometer) |
-| Fan Control | 3 fixed levels | **10 levels + stepless (PID)** |
+| Fan Control | 3 fixed levels | **10 levels (discrete PID)** |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
 | Synchronization | Power line | ✅ Wireless (**ESP-NOW Protocol**) & Real-time Sync |
@@ -526,7 +526,7 @@ The device cycles through the programs via the **Mode button (M)**. Upon initial
 **Logic in Detail:**
 
 - **Basic Operation:** Heat recovery (`MODE_ECO_RECOVERY`) at minimum fan level (`CO2_min_fan_level`, default: 2). The change intervals (cycle duration) adapt dynamically to the current fan level (gentle 70 seconds at level 1 to fast 50 seconds at level 10) including a synchronized NTC time window.
-- **Adaptive Auto (CO2 Priority):** CO2 always has priority. If the CO2 value rises above the HA limit, a PID controller **exclusively** regulates the fan power **steplessly** and silently up — humidity is ignored during this time. A configurable min/max level (`automatik_min_fan_level`) limits the adjustment window.
+- **Adaptive Auto (CO2 Priority):** CO2 always has priority. If the CO2 value rises above the HA limit, a PID controller **exclusively** regulates the fan power in **discrete steps** and silently up — humidity is ignored during this time. A configurable min/max level (`automatik_min_fan_level`) limits the adjustment window.
 - **💧 Humidity Management:** Only when CO2 is satisfied (below threshold), the humidity PID controller takes over. If the humidity limit is exceeded (default 60%), the separate PID controller (`PID_humidity`) increases the power (mold prevention). Intelligent hysteresis prevents rapid switching between CO2 and humidity control. **Outdoor Check:** Dehumidification only occurs if the outside air is drier than the inside air (`out_hum < in_hum`).
 - **Summer Cooling:** If indoor temperature > 22°C and the outdoor area is cooler, the system automatically switches to `Ventilation`. As soon as it gets warmer outside again, it returns to Heat Recovery.
 - **Presence (Manual Modes):** In Heat Recovery, Ventilation, and Boost Ventilation modes, the fan strength is dynamically adjusted when presence is detected (slider `-5` to `+5`). This allows for demand-based "presence boost" without affecting the automatic control.
@@ -618,7 +618,7 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 
 The RPM range is optimized to allow for finer steps at low levels (Levels 1-6) for even quieter operation, while the power increases more rapidly at higher levels.
 
-> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM never at 50% = stop). In Smart automatic mode (PID), the speed is regulated steplessly between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
+> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM at 50% = stop). In Smart automatic mode (PID), the speed is regulated in discrete steps (Levels 1-10) between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
 > 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery/Boost Ventilation), the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.
 
 #### Automatic Functions

@@ -26,7 +26,7 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 | **Querlüftung (Sommer)** | ✅ Ja | ✅ Ja (via App/Panel/Automatik) | ⚖️ Gleichwertig |
 | **Auto-Sommerbetrieb** | ❌ Nein (manuell umschalten) | ✅ **Automatische Querlüftung** wenn Außentemp. < Innentemp. (NTC + ESP-NOW Gruppendaten) | ✅ **Kein manuelles Umschalten nötig** |
 | **Stoßlüftung** | 15 Min. Intensiv, dann Pause | ✅ Ja (Konfigurierbar: Zeit/Stufe) | ✅ **Flexibler** |
-| **Lüfterregelung** | 5 feste Stufen | **10 Stufen + stufenlose PID-Regelung** (Stufen 1 - 6 sind feiner abgestimmt als die höheren Stufen, um die Lautstärke in den unteren Stufen zu optimieren) | ✅ **Feingranular** |
+| **Lüfterregelung** | 5 feste Stufen | **10 Stufen (diskrete PID-Regelung)** (Stufen 1 - 6 sind feiner abgestimmt als die höheren Stufen, um die Lautstärke in den unteren Stufen zu optimieren) | ✅ **Feingranular** |
 | **Automatik (CO2)** | ❌ Nein (nur optionale VOC-Schätzung) | ✅ **SCD41 (echtes CO2)**: Stufenlose PID-Regelung mit Deadband-Hysterese, konfigurierbarem Min/Max-Level | ✅ **Präzise & leise** mit Präzisionssensor |
 | **Automatik (Feuchte)** | Schwellwerte fest: 55%, 65%, 75% r.F. | ✅ **PID-Regler** mit konfigurierbarem Grenzwert (40-100%), Outdoor-Feuchte-Vergleich, Deadband-Hysterese (±2%) | ✅ **Präzise & leise** mit Präzisionssensor + Outdoor-Check |
 | **Anwesenheit** | ❌ Nein | ✅ **mmWave-Radar (HLK-LD2450)**: 4 Profile (Keine Anpassung, Intensiv, Normal, Gering): je Raum kann Lüftungsintensität automatisch verringert oder erhöht werden bei Anwesenheit | ✅ **Bedarfsgerecht** durch Code Anpassung jeder beliebige Anwesenheitssensor integrierbar |
@@ -96,7 +96,7 @@ Die ESPHome-Lösung ist ein **"Drop-in Replacement"** für die originale VentoMa
 | :--- | :---: | :---: |
 | Betriebsmodi | 3 | **5+** (inkl. Automatiken) |
 | Sensorik | 0-1 (opt. VOC) | **8+** (CO2, Temp, Feuchte, Druck, Radar, Tacho, Gas, etc.) |
-| Lüfterstufen | 3 / 5 | **10 + stufenlos (PID)** |
+| Lüfterstufen | 3 / 5 | **10 (diskrete PID-Regelung)** |
 | Smart Home | ❌ | ✅ Home Assistant (Native) |
 | Wartungsalarm | Timer-LED | ✅ **Prädiktiv + Push-Benachrichtigung** |
 | Kommunikation | Kabel | ✅ **Drahtlos (ESP-NOW)** |
