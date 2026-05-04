@@ -4,6 +4,10 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.234] - 2026-05-04
+### Fixed
+- **Sanftanlauf (Slew-Rate) Intervall**: Das Aufrufintervall für `update_fan_logic()` wurde von 10s auf **1s** korrigiert. Das bisherige 10s-Intervall lag über der 5s-Recovery-Schwelle, wodurch jeder einzelne Tick die "Long pause detected"-Warnung auslöste und die Slew-Rate effektiv auf 1% pro Tick statt der vorgesehenen 10%/Sekunde reduziert wurde.
+
 ## [0.8.231] - 2026-05-03
 ### Changed
 - **Härtung der State-Machine**:

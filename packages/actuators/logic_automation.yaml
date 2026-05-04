@@ -178,8 +178,10 @@ interval:
       - lambda: |-
           evaluate_auto_mode();
 
-  # Fan Speed Update (Presence check for all modes)
-  - interval: 10s
+  # Fan Speed Update (Slew-rate tick + Presence check for all modes)
+  # FIXED CR: Interval must be ≤5s to avoid triggering the long-pause recovery
+  # in update_fan_logic(). 1s matches the slew-rate design of ~10%/second.
+  - interval: 1s
     then:
       - lambda: |-
           fan_speed_update->execute();
