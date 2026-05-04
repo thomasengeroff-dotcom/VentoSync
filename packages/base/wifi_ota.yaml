@@ -1,0 +1,46 @@
+# ==========================================================================
+# VentoSync HRV – WiFi Configuration for CI/OTA Builds
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+# Licensed under GNU GPL v3. See LICENSE for details.
+#
+# File:        wifi_ota.yaml
+# Description: WiFi configuration WITHOUT secrets for CI-built OTA firmware.
+#              The ESP-IDF NVS flash retains WiFi credentials from the
+#              initial local flash. This file is swapped in by the GitHub
+#              Action via sed during CI builds.
+# Author:      Thomas Engeroff
+# Created:     2026-05-04
+# ==========================================================================
+
+# No ssid/password here — the ESP uses NVS-stored credentials from the
+# initial local flash. If no credentials are stored (fresh device), the
+# captive_portal + improv_serial below allow first-time provisioning.
+wifi:
+  id: wifi_component
+  fast_connect: true
+  output_power: 20.0dB
+  reboot_timeout: 5min
+  min_auth_mode: WPA2
+  power_save_mode: NONE
+  ap:
+    ssid: "${device_name} Hotspot"
+    password: "ventosync"
+    ap_timeout: 15s
+
+# Captive portal for WiFi provisioning via browser (when in AP mode)
+captive_portal:
+
+# Serial provisioning via ESPHome dashboard or improv-wifi.com
+improv_serial:
+
+# OTA without password for CI builds
+ota:
+  - platform: esphome
+  - platform: http_request
+
+# API without encryption for CI builds — HA may need to re-add the device
+# after flashing a CI build for the first time.
+api:
+  reboot_timeout: 0s

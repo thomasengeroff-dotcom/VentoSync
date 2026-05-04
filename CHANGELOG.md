@@ -5,6 +5,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [0.8.234] - 2026-05-04
+### Added
+- **Multi-Varianten CI Build**: GitHub Action baut nun alle 4 Firmware-Varianten (`full`, `nosensor`, `radar_only`, `bme680_only`) automatisch als Matrix. Bei GitHub Releases werden OTA-Binaries und `manifest.json` als Assets hochgeladen.
+- **WiFi Provisioning**: `captive_portal` und `improv_serial` hinzugefügt für die Ersteinrichtung neuer Geräte ohne serielle Verbindung.
+- **OTA ohne Secrets**: Neue `wifi_ota.yaml` für CI-Builds — der ESP nutzt NVS-gespeicherte WiFi-Credentials vom initialen Flash, keine Secrets im Repository nötig.
+
 ### Fixed
 - **Sanftanlauf (Slew-Rate) Intervall**: Das Aufrufintervall für `update_fan_logic()` wurde von 10s auf **1s** korrigiert. Das bisherige 10s-Intervall lag über der 5s-Recovery-Schwelle, wodurch jeder einzelne Tick die "Long pause detected"-Warnung auslöste und die Slew-Rate effektiv auf 1% pro Tick statt der vorgesehenen 10%/Sekunde reduziert wurde.
 

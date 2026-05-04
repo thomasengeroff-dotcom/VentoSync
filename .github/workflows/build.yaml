@@ -5,7 +5,12 @@ on:
     branches: ["master"]
   pull_request:
     branches: ["master"]
+  release:
+    types: [created]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   unit-tests:
@@ -13,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Compile Tests
         run: |
@@ -27,26 +32,126 @@ jobs:
         run: ./simple_test
 
   build:
-    name: ESPHome Build
+    name: "Build ${{ matrix.name }}"
     needs: unit-tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - yaml: ventosync.yaml
+            name: ventosync-full
+          - yaml: ventosync_nosensor.yaml
+            name: ventosync-nosensor
+          - yaml: ventosync_radar_only.yaml
+            name: ventosync-radar-only
+          - yaml: ventosync_bme680_only.yaml
+            name: ventosync-bme680-only
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Create dummy secrets.yaml
-        run: cp secrets_example.yaml secrets.yaml
-
-      - name: ESPHome Builder
-        id: esphome-build
-        uses: esphome/build-action@v7.2.0
+        uses: actions/checkout@v4
         with:
-          yaml-file: ventosync.yaml
-          version: "2026.4.0"
+          fetch-depth: 0
 
-      - name: Upload ESPHome Binaries
-        uses: actions/upload-artifact@v7
+      - name: Create dummy secrets for CI compilation
+        run: |
+          cat > secrets.yaml << 'EOF'
+          wifi_ssid: "dummy"
+          wifi_password: "dummydummydummy"
+          otapw: "dummy"
+          appw: "ventosync"
+          webuser: "admin"
+          webpw: "admin"
+          api_encryption_key: "${{ secrets.API_ENCRYPTION_KEY }}"
+          EOF
+
+          # If API_ENCRYPTION_KEY secret is not set, use a dummy value
+          if [ -z "${{ secrets.API_ENCRYPTION_KEY }}" ]; then
+            sed -i 's/api_encryption_key: ""/api_encryption_key: "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="/' secrets.yaml
+          fi
+
+      - name: Prepare OTA build config (swap WiFi, API, OTA to secret-free variants)
+        run: |
+          # The base config (esp32c6_common.yaml) uses !secret references.
+          # For CI builds, we replace the WiFi, API, and OTA sections with
+          # secret-free OTA variants, following the esphome-ecodan-hp pattern.
+
+          # 1. Replace WiFi block: remove ssid/password lines (ESP uses NVS-stored creds)
+          sed -i '/^  networks:/,/^  fast_connect:/{ /^  networks:/d; /ssid: !secret/d; /password: !secret wifi_password/d; /^    -$/d; }' \
+            packages/base/esp32c6_common.yaml
+
+          # 2. Remove OTA password (allow unauthenticated OTA for CI builds)
+          sed -i 's/    password: !secret otapw//' packages/base/esp32c6_common.yaml
+
+          # 3. Remove AP secret password, use fixed value
+          sed -i 's/password: !secret appw/password: "ventosync"/' packages/base/esp32c6_common.yaml
+
+          # 4. Set firmware version prefix for this variant
+          echo "PREFIX=${{ matrix.name }}-${{ github.event.release.tag_name || github.sha }}" >> $GITHUB_ENV
+          echo "MANIFEST=manifest-${{ matrix.name }}" >> $GITHUB_ENV
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          name: firmware-${{ steps.esphome-build.outputs.name }}
-          path: ${{ steps.esphome-build.outputs.name }}
+          python-version: '3.12'
+
+      - name: Install ESPHome and compile firmware
+        run: |
+          pip install wheel esphome
+          esphome compile ${{ matrix.yaml }}
+
+      - name: Locate firmware binary
+        id: firmware
+        run: |
+          # ESPHome builds to .esphome/build/<device-name>/.pioenvs/<device-name>/
+          BUILD_DIR=$(find .esphome/build -name "firmware.ota.bin" -type f | head -1 | xargs dirname)
+          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
+
+          if [ -f "$BUILD_DIR/firmware.ota.bin" ]; then
+            cp "$BUILD_DIR/firmware.ota.bin" "${{ matrix.name }}.ota.bin"
+            echo "ota_bin=${{ matrix.name }}.ota.bin" >> $GITHUB_OUTPUT
+          fi
+
+          if [ -f "$BUILD_DIR/firmware.factory.bin" ]; then
+            cp "$BUILD_DIR/firmware.factory.bin" "${{ matrix.name }}.factory.bin"
+            echo "factory_bin=${{ matrix.name }}.factory.bin" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.name }}
+          path: |
+            ${{ matrix.name }}.ota.bin
+            ${{ matrix.name }}.factory.bin
+          if-no-files-found: warn
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f "${{ matrix.name }}.ota.bin" ]; then
+            gh release upload --clobber ${{ github.event.release.tag_name }} "${{ matrix.name }}.ota.bin"
+          fi
+          if [ -f "${{ matrix.name }}.factory.bin" ]; then
+            gh release upload --clobber ${{ github.event.release.tag_name }} "${{ matrix.name }}.factory.bin"
+          fi
+
+      - name: Generate and upload manifest.json
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f "${{ matrix.name }}.ota.bin" ]; then
+            MD5OTA=$(md5sum "${{ matrix.name }}.ota.bin" | cut -d ' ' -f 1)
+            VERSION="${{ github.event.release.tag_name }}"
+            FILEOTA="${{ matrix.name }}.ota.bin"
+
+            sed "s/FIRMWARE_VERSION/$VERSION/g; \
+                 s/MD5OTA/$MD5OTA/g; \
+                 s/FILEOTA/$FILEOTA/g" json/manifest_template.json > "$MANIFEST.json"
+
+            cat "$MANIFEST.json"
+            gh release upload --clobber ${{ github.event.release.tag_name }} "$MANIFEST.json"
+          fi

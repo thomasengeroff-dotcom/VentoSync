@@ -1,0 +1,14 @@
+{
+  "name": "VentoSync HRV",
+  "version": "FIRMWARE_VERSION",
+  "builds": [
+    {
+      "chipFamily": "ESP32-C6",
+      "ota": {
+        "md5": "MD5OTA",
+        "path": "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest/download/FILEOTA",
+        "release_url": "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest"
+      }
+    }
+  ]
+}

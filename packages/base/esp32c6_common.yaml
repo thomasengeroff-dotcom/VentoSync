@@ -143,6 +143,12 @@ wifi:
     ssid: "${device_name} Hotspot"
     password: !secret appw
 
+# Captive portal for WiFi provisioning via browser (when in AP mode)
+captive_portal:
+
+# Serial provisioning via ESPHome dashboard or improv-wifi.com
+improv_serial:
+
 # ---------------------------------------------------------
 # WEB INTERFACE
 # ---------------------------------------------------------
