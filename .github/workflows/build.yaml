@@ -5,8 +5,6 @@ on:
     branches: ["master"]
   pull_request:
     branches: ["master"]
-  release:
-    types: [created]
   workflow_dispatch:
 
 permissions:
@@ -86,10 +84,6 @@ jobs:
           # 3. Remove AP secret password, use fixed value
           sed -i 's/password: !secret appw/password: "ventosync"/' packages/base/esp32c6_common.yaml
 
-          # 4. Set firmware version prefix for this variant
-          echo "PREFIX=${{ matrix.name }}-${{ github.event.release.tag_name || github.sha }}" >> $GITHUB_ENV
-          echo "MANIFEST=manifest-${{ matrix.name }}" >> $GITHUB_ENV
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -126,32 +120,102 @@ jobs:
             ${{ matrix.name }}.factory.bin
           if-no-files-found: warn
 
-      - name: Upload to GitHub Release
-        if: github.event_name == 'release'
+  # ---------------------------------------------------------------
+  # AUTOMATIC RELEASE
+  # Creates a GitHub Release after all builds succeed on master push.
+  # Attaches all firmware OTA binaries and per-variant manifest.json
+  # files so devices can auto-discover updates.
+  # ---------------------------------------------------------------
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only create releases on master push, not on PRs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Read version from version.json
+        id: version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Release version: v$VERSION"
+
+      - name: Download all firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: firmware-artifacts
+          pattern: firmware-*
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        run: ls -la firmware-artifacts/
+
+      - name: Generate per-variant manifest.json files
+        run: |
+          cd firmware-artifacts
+          for variant in ventosync-full ventosync-nosensor ventosync-radar-only ventosync-bme680-only; do
+            OTA_FILE="${variant}.ota.bin"
+            MANIFEST_FILE="manifest-${variant}.json"
+
+            if [ -f "$OTA_FILE" ]; then
+              MD5OTA=$(md5sum "$OTA_FILE" | cut -d ' ' -f 1)
+              VERSION="${{ steps.version.outputs.version }}"
+
+              sed "s/FIRMWARE_VERSION/$VERSION/g; \
+                   s/MD5OTA/$MD5OTA/g; \
+                   s/FILEOTA/$OTA_FILE/g" ../json/manifest_template.json > "$MANIFEST_FILE"
+
+              echo "✅ Generated $MANIFEST_FILE (MD5: $MD5OTA)"
+              cat "$MANIFEST_FILE"
+            else
+              echo "⚠️ $OTA_FILE not found, skipping manifest for $variant"
+            fi
+          done
+
+      - name: Create GitHub Release and upload assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -f "${{ matrix.name }}.ota.bin" ]; then
-            gh release upload --clobber ${{ github.event.release.tag_name }} "${{ matrix.name }}.ota.bin"
-          fi
-          if [ -f "${{ matrix.name }}.factory.bin" ]; then
-            gh release upload --clobber ${{ github.event.release.tag_name }} "${{ matrix.name }}.factory.bin"
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Check if tag already exists — skip release if so
+          if gh release view "$TAG" &>/dev/null; then
+            echo "⚠️ Release $TAG already exists. Uploading assets to existing release..."
+          else
+            echo "🚀 Creating release $TAG..."
+            gh release create "$TAG" \
+              --title "VentoSync v$VERSION" \
+              --notes "## VentoSync Firmware v$VERSION
+
+          Automatisch erstellter Release mit Firmware für alle Hardware-Varianten.
+
+          ### Verfügbare Varianten
+          | Datei | Beschreibung |
+          |-------|-------------|
+          | \`ventosync-full.ota.bin\` | Alle Sensoren (SCD41 + BME680 + LD2450) |
+          | \`ventosync-nosensor.ota.bin\` | Ohne Sensoren (nur Lüftersteuerung) |
+          | \`ventosync-radar-only.ota.bin\` | Nur LD2450 Radar |
+          | \`ventosync-bme680-only.ota.bin\` | Nur BME680 Sensor |
+
+          ### OTA Update
+          Die Geräte prüfen automatisch auf Updates über ihre konfigurierte \`manifest-<variant>.json\`.
+          " \
+              --latest
           fi
 
-      - name: Generate and upload manifest.json
-        if: github.event_name == 'release'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -f "${{ matrix.name }}.ota.bin" ]; then
-            MD5OTA=$(md5sum "${{ matrix.name }}.ota.bin" | cut -d ' ' -f 1)
-            VERSION="${{ github.event.release.tag_name }}"
-            FILEOTA="${{ matrix.name }}.ota.bin"
+          # Upload all OTA binaries, factory binaries, and manifests
+          cd firmware-artifacts
+          for f in *.ota.bin *.factory.bin manifest-*.json; do
+            if [ -f "$f" ]; then
+              echo "📤 Uploading $f..."
+              gh release upload --clobber "$TAG" "$f"
+            fi
+          done
 
-            sed "s/FIRMWARE_VERSION/$VERSION/g; \
-                 s/MD5OTA/$MD5OTA/g; \
-                 s/FILEOTA/$FILEOTA/g" json/manifest_template.json > "$MANIFEST.json"
-
-            cat "$MANIFEST.json"
-            gh release upload --clobber ${{ github.event.release.tag_name }} "$MANIFEST.json"
-          fi
+          echo "✅ Release $TAG complete!"

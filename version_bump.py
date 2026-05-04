@@ -3,8 +3,11 @@ import os
 import shutil
 import hashlib
 # This script is executed by PlatformIO (SCons) during the build process.
-# It automatically increments the patch version in version.json and
-# injects the version string as a C++ macro.
+# It reads the current version from version.json and injects it as a C++ macro.
+#
+# IMPORTANT: The version is bumped ONCE per build session using a lock file,
+# not on every individual compile. This ensures all firmware variants
+# (full, nosensor, radar_only, bme680_only) share the same version number.
 
 try:
     from SCons.Script import Import
@@ -29,19 +32,47 @@ if not os.path.exists(version_file):
         project_dir = potential_root
         version_file = os.path.join(project_dir, "version.json")
 
-def bump_version():
-    if not os.path.exists(version_file):
-        data = {"version": "0.8.0", "date": "2026-04-04"}
-    else:
-        with open(version_file, "r") as f:
-            try:
-                data = json.load(f)
-            except Exception:
-                data = {"version": "0.8.0", "date": "2026-04-04"}
+# Lock file prevents multiple bumps within the same build session.
+# The lock file stores the version that was already bumped.
+# It is automatically cleaned up when a NEW base version is detected
+# (i.e., when the user manually sets a version in version.json).
+lock_file = os.path.join(project_dir, ".version_bump_lock")
 
-    # Handle the new "version": "x.y.z" format
-    version_str = data.get("version", "0.8.0")
-    parts = version_str.split('.')
+
+def read_version():
+    """Read the current version from version.json."""
+    if not os.path.exists(version_file):
+        return {"version": "0.8.0", "date": "2026-04-04"}
+
+    with open(version_file, "r") as f:
+        try:
+            return json.load(f)
+        except Exception:
+            return {"version": "0.8.0", "date": "2026-04-04"}
+
+
+def bump_version():
+    """Bump the patch version ONCE per build session.
+    
+    Uses a lock file to prevent multiple bumps when building
+    multiple firmware variants (e.g., via upload_all.sh or CI matrix).
+    """
+    data = read_version()
+    current_version = data.get("version", "0.8.0")
+
+    # Check if we already bumped in this session
+    if os.path.exists(lock_file):
+        with open(lock_file, "r") as f:
+            locked_version = f.read().strip()
+        
+        # If the lock file contains a version that is ahead of version.json,
+        # it means we already bumped — just reuse that version.
+        if locked_version == current_version:
+            print(f"\n>>> VERSION ALREADY BUMPED: {current_version} (lock file active) <<<\n")
+            return current_version
+
+    # Perform the actual bump
+    parts = current_version.split('.')
     if len(parts) == 3:
         major, minor, patch = map(int, parts)
         patch += 1
@@ -62,6 +93,10 @@ def bump_version():
     # Save updated version
     with open(version_file, "w") as f:
         json.dump(data, f, indent=4)
+
+    # Write lock file to prevent re-bumping for subsequent variants
+    with open(lock_file, "w") as f:
+        f.write(new_version_str)
     
     # Inject as a C++ macro: -DCUSTOM_PROJECT_VERSION="0.8.31"
     if 'env' in globals():
@@ -71,6 +106,15 @@ def bump_version():
     
     print(f"\n>>> AUTOMATED VERSION BUMP: {new_version_str} <<<\n")
     return new_version_str
+
+
+def inject_version(version_str):
+    """Inject the version as a C++ macro without bumping."""
+    if 'env' in globals():
+        env.Append(CPPDEFINES=[
+            ("CUSTOM_PROJECT_VERSION", f'\\"{version_str}\\"')
+        ])
+
 
 def update_yaml_version(version_str):
     # This function finds the project_version substitution in the common YAML 
@@ -95,8 +139,28 @@ def update_yaml_version(version_str):
         print(f">>> AUTOMATED YAML UPDATE: {yaml_file} set to {version_str}")
 
 if __name__ == "__main__" or 'env' in globals():
-    new_version_str = bump_version()
-    update_yaml_version(new_version_str)
+    data = read_version()
+    current_version = data.get("version", "0.8.0")
+
+    # Check lock file: if already bumped, just inject the existing version
+    if os.path.exists(lock_file):
+        with open(lock_file, "r") as f:
+            locked_version = f.read().strip()
+        
+        if locked_version == current_version:
+            # Already bumped in this session — just inject, don't bump again
+            print(f"\n>>> REUSING VERSION: {current_version} (already bumped) <<<\n")
+            inject_version(current_version)
+            update_yaml_version(current_version)
+        else:
+            # Lock file is stale (user changed version.json manually) — bump fresh
+            new_version_str = bump_version()
+            update_yaml_version(new_version_str)
+    else:
+        # No lock file — first build in this session, bump normally
+        new_version_str = bump_version()
+        update_yaml_version(new_version_str)
+
 
 # --- POST BUILD ACTION ---
 # This runs after the firmware.bin is compiled

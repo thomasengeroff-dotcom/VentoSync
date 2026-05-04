@@ -4,6 +4,11 @@
 # Damit das Skript sofort abbricht, falls ein Upload hart fehlschlägt:
 set -e
 
+# Clean up version bump lock file to ensure a fresh version bump
+# for this build session. The lock file prevents re-bumping across
+# multiple variant builds within the same session.
+rm -f .version_bump_lock
+
 echo ""
 echo "=================================================="
 echo "🚀 Checking yaml configs..."
@@ -48,6 +53,8 @@ echo "device has LD2450 and no SCD41 and no BME680"
 echo "=================================================="
 esphome run ventosync_radar_only.yaml --device 192.168.178.244 --no-logs
 
+# Clean up lock file after successful build session
+rm -f .version_bump_lock
 
 echo ""
 echo "✅ Firmware erfolgreich kompiliert und auf alle Geräte hochgeladen!"
