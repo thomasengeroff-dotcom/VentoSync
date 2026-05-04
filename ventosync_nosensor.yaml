@@ -27,6 +27,7 @@
 
 substitutions:
   hide_climate_sensors: "true"
+  firmware_variant: "ventosync-nosensor"
 
 esphome:
   platformio_options:

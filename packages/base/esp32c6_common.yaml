@@ -29,6 +29,9 @@ substitutions:
   # Do not change manually unless you know what you are doing.
   project_version: "0.8.170"
   hide_climate_sensors: "false"
+  # Firmware variant identifier for OTA manifest selection.
+  # Override in each variant YAML (e.g., ventosync-nosensor, ventosync-radar-only).
+  firmware_variant: "ventosync-full"
 
 globals:
   - id: thermal_warning_active
@@ -118,8 +121,9 @@ http_request:
 update:
   - platform: http_request
     name: "Firmware Update"
-    # The /local/ folder corresponds to the "www" folder in the Home Assistant Samba Share
-    source: "http://192.168.178.45:8123/local/firmware/ventosync/manifest.json"
+    # Uses per-variant manifest from GitHub Releases for OTA updates.
+    # Each variant (full, nosensor, radar-only, bme680-only) has its own manifest.
+    source: "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest/download/manifest-${firmware_variant}.json"
     update_interval: never
 
 # ---------------------------------------------------------
