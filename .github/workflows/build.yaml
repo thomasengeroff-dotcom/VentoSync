@@ -184,9 +184,10 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Check if tag already exists — skip release if so
+          # Check if tag already exists — update existing release
           if gh release view "$TAG" &>/dev/null; then
-            echo "⚠️ Release $TAG already exists. Uploading assets to existing release..."
+            echo "⚠️ Release $TAG already exists. Ensuring it is marked as latest..."
+            gh release edit "$TAG" --latest
           else
             echo "🚀 Creating release $TAG..."
             gh release create "$TAG" \
