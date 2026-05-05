@@ -60,6 +60,14 @@ def bump_version():
     data = read_version()
     current_version = data.get("version", "0.8.0")
 
+    # Disable auto-bump in CI environments (GitHub Actions)
+    # This ensures the firmware version matches the release tag.
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"\n>>> CI ENVIRONMENT DETECTED: Not bumping version, using {current_version} <<<\n")
+        inject_version(current_version)
+        update_yaml_version(current_version)
+        return current_version
+
     # Check if we already bumped in this session
     if os.path.exists(lock_file):
         with open(lock_file, "r") as f:
@@ -119,7 +127,7 @@ def inject_version(version_str):
 def update_yaml_version(version_str):
     # This function finds the project_version substitution in the common YAML 
     # and updates it to match the new version.
-    yaml_file = os.path.join(project_dir, "packages", "esp32c6_common.yaml")
+    yaml_file = os.path.join(project_dir, "packages", "base", "esp32c6_common.yaml")
     if not os.path.exists(yaml_file):
         # Fallback for different project structures
         yaml_file = os.path.join(project_dir, "esp32c6_common.yaml")
