@@ -155,17 +155,17 @@ jobs:
       - name: List downloaded artifacts
         run: ls -la firmware-artifacts/
 
-      - name: Extract Changelog from Git
+      - name: Extract Changelog from CHANGELOG.md
         id: changelog
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            LOG="Erster automatischer Release oder kein vorheriger Tag gefunden."
-          else
-            LOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s")
+          if [ -f "CHANGELOG.md" ]; then
+            # Extrahiere den Text zwischen dem ersten und dem zweiten "## [" Header
+            LOG=$(awk '/^## \[/ {count++; if(count==2) exit} count==1 {if(!/^## \[/) print}' CHANGELOG.md | sed -e '/^[[:space:]]*$/d' -e '1!b' -e '/^[[:space:]]*$/d')
             if [ -z "$LOG" ]; then
-              LOG="Keine neuen Commits seit dem letzten Release."
+              LOG="Keine Details in der CHANGELOG.md gefunden."
             fi
+          else
+            LOG="CHANGELOG.md nicht gefunden."
           fi
           
           # Sicheres Escaping für Multiline-Outputs in GitHub Actions
@@ -173,7 +173,7 @@ jobs:
           echo "changelog<<$EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
-          echo "📝 Changelog generiert:"
+          echo "📝 Changelog aus CHANGELOG.md extrahiert:"
           echo "$LOG"
 
       - name: Generate per-variant manifest.json files

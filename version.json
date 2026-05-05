@@ -1,5 +1,5 @@
 {
-    "version": "0.8.245",
+    "version": "0.8.247",
     "date": "2026-05-05",
-    "description": "OTA update check frequency set to 15 minutes"
+    "description": "Increased OTA update check frequency to 15 minutes"
 }

@@ -4,6 +4,13 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.246] - 2026-05-05
+### Changed
+- **OTA-Update-Optimierung**: Das Abfrage-Intervall der `http_request` Update-Plattform wurde auf **15 Minuten** optimiert. Dies beschleunigt die Benachrichtigung über neue Firmware-Releases in Home Assistant, ohne die Systemlast signifikant zu erhöhen.
+- **Netzwerk-Härtung**: Konsolidierung der Socket-Konfiguration (`CONFIG_LWIP_MAX_SOCKETS: 20`) zur Vermeidung von Fehlern bei parallelen HTTPS-Verbindungen zu GitHub.
+- **Workflow-Automatisierung**: Implementierung eines neuen Release-Workflows, der die Versionspflege, die Changelog-Erstellung und den Git-Push automatisiert und synchronisiert.
+
+
 ## [0.8.234] - 2026-05-04
 ### Added
 - **Multi-Varianten CI Build**: GitHub Action baut nun alle 4 Firmware-Varianten (`full`, `nosensor`, `radar_only`, `bme680_only`) automatisch als Matrix. Bei GitHub Releases werden OTA-Binaries und `manifest.json` als Assets hochgeladen.
