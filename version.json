@@ -1,5 +1,5 @@
 {
-    "version": "0.8.247",
+    "version": "0.8.249",
     "date": "2026-05-05",
-    "description": "Increased OTA update check frequency to 15 minutes"
+    "description": "Fixed OTA update failures by increasing HTTP transmit buffer size."
 }

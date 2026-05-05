@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.248] - 2026-05-05
+### Fixed
+- **OTA-Update-Fehler behoben**: Die `http_request`-Komponente verwendet nun einen deutlich größeren Transmit-Puffer (`buffer_size_tx: 20248`). Dies behebt das Problem, dass OTA-Updates über GitHub-Releases (HTTPS/TLS) aufgrund von Puffer-Überläufen beim Handshake oder Redirect stillschweigend fehlschlugen.
+- **Update-Entität Stabilisierung**: Durch die Speicher-Optimierung wird die Update-Entität in Home Assistant nun zuverlässig aktualisiert, sobald ein neues Release auf GitHub verfügbar ist.
+
 ## [0.8.247] - 2026-05-05
 ### Changed
 - **OTA-Update-Optimierung**: Das Abfrage-Intervall der `http_request` Update-Plattform wurde auf **15 Minuten** optimiert. Dies beschleunigt die Benachrichtigung über neue Firmware-Releases in Home Assistant erheblich.
