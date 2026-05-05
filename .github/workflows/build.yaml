@@ -157,8 +157,6 @@ jobs:
           if [ -f "CHANGELOG.md" ]; then
             # Extrahiere den Text zwischen dem ersten und dem zweiten "## [" Header
             LOG=$(awk '/^## \[/ {count++; if(count==2) exit} count==1 {if(!/^## \[/) print}' CHANGELOG.md | sed -e '/^[[:space:]]*$/d' -e '1!b' -e '/^[[:space:]]*$/d')
-            # Protect backticks for GitHub Actions multi-line output
-            LOG="${LOG//\`/\\`}"
             if [ -z "$LOG" ]; then
               LOG="Keine Details in der CHANGELOG.md gefunden."
             fi
@@ -206,15 +204,9 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Check if tag already exists — update existing release
-          if gh release view "$TAG" &>/dev/null; then
-            echo "⚠️ Release $TAG already exists. Ensuring it is marked as latest..."
-            gh release edit "$TAG" --latest
-          else
-            echo "🚀 Creating release $TAG..."
-            gh release create "$TAG" \
-              --title "VentoSync v$VERSION" \
-              --notes "## VentoSync Firmware v$VERSION
+          # Write release notes to a file to avoid bash escaping issues with backticks
+          cat > release_notes.md << 'EOF'
+          ## VentoSync Firmware v${{ steps.version.outputs.version }}
 
           Automatisch erstellter Release mit Firmware für alle Hardware-Varianten.
 
@@ -224,14 +216,24 @@ jobs:
           ### Verfügbare Varianten
           | Datei | Beschreibung |
           |-------|-------------|
-          | \`ventosync-full.ota.bin\` | Alle Sensoren (SCD41 + BME680 + LD2450) |
-          | \`ventosync-nosensor.ota.bin\` | Ohne Sensoren (nur Lüftersteuerung) |
-          | \`ventosync-radar-only.ota.bin\` | Nur LD2450 Radar |
-          | \`ventosync-bme680-only.ota.bin\` | Nur BME680 Sensor |
+          | `ventosync-full.ota.bin` | Alle Sensoren (SCD41 + BME680 + LD2450) |
+          | `ventosync-nosensor.ota.bin` | Ohne Sensoren (nur Lüftersteuerung) |
+          | `ventosync-radar-only.ota.bin` | Nur LD2450 Radar |
+          | `ventosync-bme680-only.ota.bin` | Nur BME680 Sensor |
 
           ### OTA Update
-          Die Geräte prüfen automatisch auf Updates über ihre konfigurierte \`manifest-<variant>.json\`.
-          " \
+          Die Geräte prüfen automatisch auf Updates über ihre konfigurierte `manifest-<variant>.json`.
+          EOF
+
+          # Check if tag already exists — update existing release
+          if gh release view "$TAG" &>/dev/null; then
+            echo "⚠️ Release $TAG already exists. Ensuring it is marked as latest..."
+            gh release edit "$TAG" --notes-file release_notes.md --latest
+          else
+            echo "🚀 Creating release $TAG..."
+            gh release create "$TAG" \
+              --title "VentoSync v$VERSION" \
+              --notes-file release_notes.md \
               --latest
           fi
 
