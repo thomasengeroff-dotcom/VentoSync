@@ -61,7 +61,7 @@ esp32:
     type: esp-idf # The ESP32-C6 is newer and currently runs more stable with the official ESP-IDF framework than Arduino
 
     sdkconfig_options:
-      CONFIG_LWIP_MAX_SOCKETS: "16"
+      CONFIG_LWIP_MAX_SOCKETS: "20"
       CONFIG_VFS_SUPPORT_IO: "y"
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "15"
       CONFIG_ESP_TASK_WDT_INIT: "y"
@@ -124,7 +124,7 @@ update:
     # Uses per-variant manifest from GitHub Releases for OTA updates.
     # Each variant (full, nosensor, radar-only, bme680-only) has its own manifest.
     source: "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest/download/manifest-${firmware_variant}.json"
-    update_interval: never
+    update_interval: 15min
 
 # ---------------------------------------------------------
 # WIFI CONNECTIVITY

@@ -1,5 +1,5 @@
 {
-    "version": "0.8.241",
+    "version": "0.8.242",
     "date": "2026-05-03",
     "description": "fix(firmware): harden ventilation group sync and refine PID documentation"
 }

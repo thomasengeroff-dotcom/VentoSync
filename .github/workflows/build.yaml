@@ -91,7 +91,7 @@ jobs:
 
       - name: Install ESPHome and compile firmware
         run: |
-          pip install wheel esphome
+          pip install wheel esphome==2026.4.4
           esphome compile ${{ matrix.yaml }}
 
       - name: Locate firmware binary
