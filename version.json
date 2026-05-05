@@ -1,5 +1,5 @@
 {
-    "version": "0.8.242",
-    "date": "2026-05-03",
-    "description": "fix(firmware): harden ventilation group sync and refine PID documentation"
+    "version": "0.8.243",
+    "date": "2026-05-05",
+    "description": "CONFIG_LWIP_MAX_SOCKETS increased to 20"
 }
