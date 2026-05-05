@@ -5,7 +5,7 @@
     {
       "chipFamily": "ESP32-C6",
       "ota": {
-        "md5": "9f586ff1de505fe3dcdf7f6f2c866676",
+        "md5": "c73964bf7b3c1e320107e2bb95f789e3",
         "path": "firmware.bin",
         "summary": "OTA update check frequency set to 15 minutes"
       }
