@@ -193,17 +193,17 @@ jobs:
               # Use Python to safely inject values into the JSON template
               export VERSION MD5OTA OTA_FILE TAG
               python3 -c '
-              import json, sys, os
-              with open("../json/manifest_template.json", "r") as f:
-                  data = json.load(f)
-              data["version"] = os.environ["VERSION"]
-              data["builds"][0]["ota"]["md5"] = os.environ["MD5OTA"]
-              data["builds"][0]["ota"]["path"] = data["builds"][0]["ota"]["path"].replace("FILEOTA", os.environ["OTA_FILE"]).replace("FIRMWARE_TAG", os.environ["TAG"])
-              data["builds"][0]["ota"]["release_url"] = data["builds"][0]["ota"]["release_url"].replace("FIRMWARE_TAG", os.environ["TAG"])
-              data["builds"][0]["ota"]["summary"] = os.environ.get("CHANGELOG", "Update verfügbar")
-              with open(sys.argv[1], "w") as f:
-                  json.dump(data, f, indent=2)
-              ' "$MANIFEST_FILE"
+import json, sys, os
+with open("../json/manifest_template.json", "r") as f:
+    data = json.load(f)
+data["version"] = os.environ["VERSION"]
+data["builds"][0]["ota"]["md5"] = os.environ["MD5OTA"]
+data["builds"][0]["ota"]["path"] = data["builds"][0]["ota"]["path"].replace("FILEOTA", os.environ["OTA_FILE"]).replace("FIRMWARE_TAG", os.environ["TAG"])
+data["builds"][0]["ota"]["release_url"] = data["builds"][0]["ota"]["release_url"].replace("FIRMWARE_TAG", os.environ["TAG"])
+data["builds"][0]["ota"]["summary"] = os.environ.get("CHANGELOG", "Update verfügbar")
+with open(sys.argv[1], "w") as f:
+    json.dump(data, f, indent=2)
+' "$MANIFEST_FILE"
 
               echo "✅ Generated $MANIFEST_FILE (MD5: $MD5OTA)"
               cat "$MANIFEST_FILE"
