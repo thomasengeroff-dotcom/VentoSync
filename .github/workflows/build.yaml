@@ -155,7 +155,30 @@ jobs:
       - name: List downloaded artifacts
         run: ls -la firmware-artifacts/
 
+      - name: Extract Changelog from Git
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOG="Erster automatischer Release oder kein vorheriger Tag gefunden."
+          else
+            LOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s")
+            if [ -z "$LOG" ]; then
+              LOG="Keine neuen Commits seit dem letzten Release."
+            fi
+          fi
+          
+          # Sicheres Escaping für Multiline-Outputs in GitHub Actions
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "changelog<<$EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+          echo "📝 Changelog generiert:"
+          echo "$LOG"
+
       - name: Generate per-variant manifest.json files
+        env:
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
         run: |
           cd firmware-artifacts
           for variant in ventosync-full ventosync-nosensor ventosync-radar-only ventosync-bme680-only; do
@@ -165,10 +188,22 @@ jobs:
             if [ -f "$OTA_FILE" ]; then
               MD5OTA=$(md5sum "$OTA_FILE" | cut -d ' ' -f 1)
               VERSION="${{ steps.version.outputs.version }}"
+              TAG="${{ steps.version.outputs.tag }}"
 
-              sed "s/FIRMWARE_VERSION/$VERSION/g; \
-                   s/MD5OTA/$MD5OTA/g; \
-                   s/FILEOTA/$OTA_FILE/g" ../json/manifest_template.json > "$MANIFEST_FILE"
+              # Use Python to safely inject values into the JSON template
+              export VERSION MD5OTA OTA_FILE TAG
+              python3 -c '
+              import json, sys, os
+              with open("../json/manifest_template.json", "r") as f:
+                  data = json.load(f)
+              data["version"] = os.environ["VERSION"]
+              data["builds"][0]["ota"]["md5"] = os.environ["MD5OTA"]
+              data["builds"][0]["ota"]["path"] = data["builds"][0]["ota"]["path"].replace("FILEOTA", os.environ["OTA_FILE"]).replace("FIRMWARE_TAG", os.environ["TAG"])
+              data["builds"][0]["ota"]["release_url"] = data["builds"][0]["ota"]["release_url"].replace("FIRMWARE_TAG", os.environ["TAG"])
+              data["builds"][0]["ota"]["summary"] = os.environ.get("CHANGELOG", "Update verfügbar")
+              with open(sys.argv[1], "w") as f:
+                  json.dump(data, f, indent=2)
+              ' "$MANIFEST_FILE"
 
               echo "✅ Generated $MANIFEST_FILE (MD5: $MD5OTA)"
               cat "$MANIFEST_FILE"
@@ -195,6 +230,9 @@ jobs:
               --notes "## VentoSync Firmware v$VERSION
 
           Automatisch erstellter Release mit Firmware für alle Hardware-Varianten.
+
+          ### 🔄 Changelog
+          ${{ steps.changelog.outputs.changelog }}
 
           ### Verfügbare Varianten
           | Datei | Beschreibung |

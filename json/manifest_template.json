@@ -6,8 +6,9 @@
       "chipFamily": "ESP32-C6",
       "ota": {
         "md5": "MD5OTA",
-        "path": "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest/download/FILEOTA",
-        "release_url": "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest"
+        "path": "https://github.com/thomasengeroff-dotcom/VentoSync/releases/download/FIRMWARE_TAG/FILEOTA",
+        "release_url": "https://github.com/thomasengeroff-dotcom/VentoSync/releases/tag/FIRMWARE_TAG",
+        "summary": "FIRMWARE_SUMMARY"
       }
     }
   ]
