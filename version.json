@@ -1,5 +1,5 @@
 {
-    "version": "0.8.244",
+    "version": "0.8.245",
     "date": "2026-05-05",
-    "description": "CONFIG_LWIP_MAX_SOCKETS increased to 20"
+    "description": "OTA update check frequency set to 15 minutes"
 }
