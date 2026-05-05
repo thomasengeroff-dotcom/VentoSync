@@ -70,19 +70,15 @@ jobs:
 
       - name: Prepare OTA build config (swap WiFi, API, OTA to secret-free variants)
         run: |
-          # The base config (esp32c6_common.yaml) uses !secret references.
-          # For CI builds, we replace the WiFi, API, and OTA sections with
-          # secret-free OTA variants, following the esphome-ecodan-hp pattern.
-
           # 1. Replace WiFi block: remove ssid/password lines (ESP uses NVS-stored creds)
-          sed -i '/^  networks:/,/^  fast_connect:/{ /^  networks:/d; /ssid: !secret/d; /password: !secret wifi_password/d; /^    -$/d; }' \
-            packages/base/esp32c6_common.yaml
+          # We use a more robust sed pattern to ensure valid YAML remains
+          sed -i '/^  networks:/,/^  fast_connect:/{ /^  networks:/d; /ssid: !secret/d; /password: !secret/d; /^[[:space:]]*-$/d; }' packages/base/esp32c6_common.yaml
 
           # 2. Remove OTA password (allow unauthenticated OTA for CI builds)
-          sed -i 's/    password: !secret otapw//' packages/base/esp32c6_common.yaml
+          sed -i 's/password: !secret otapw//g' packages/base/esp32c6_common.yaml
 
           # 3. Remove AP secret password, use fixed value
-          sed -i 's/password: !secret appw/password: "ventosync"/' packages/base/esp32c6_common.yaml
+          sed -i 's/password: !secret appw/password: "ventosync"/g' packages/base/esp32c6_common.yaml
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -161,6 +157,8 @@ jobs:
           if [ -f "CHANGELOG.md" ]; then
             # Extrahiere den Text zwischen dem ersten und dem zweiten "## [" Header
             LOG=$(awk '/^## \[/ {count++; if(count==2) exit} count==1 {if(!/^## \[/) print}' CHANGELOG.md | sed -e '/^[[:space:]]*$/d' -e '1!b' -e '/^[[:space:]]*$/d')
+            # Protect backticks for GitHub Actions multi-line output
+            LOG="${LOG//\`/\\`}"
             if [ -z "$LOG" ]; then
               LOG="Keine Details in der CHANGELOG.md gefunden."
             fi
