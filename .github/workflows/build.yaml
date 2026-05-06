@@ -72,7 +72,7 @@ jobs:
         run: |
           # 1. Replace WiFi block: remove ssid/password lines (ESP uses NVS-stored creds)
           # We use a more robust sed pattern to ensure valid YAML remains
-          sed -i '/^  networks:/,/^  fast_connect:/{ /^  networks:/d; /ssid: !secret/d; /password: !secret/d; /^[[:space:]]*-$/d; }' packages/base/esp32c6_common.yaml
+          sed -i '/^  networks:/,/^  fast_connect:/{/^  fast_connect:/!d;}' packages/base/esp32c6_common.yaml
 
           # 2. Remove OTA password (allow unauthenticated OTA for CI builds)
           sed -i 's/password: !secret otapw//g' packages/base/esp32c6_common.yaml
