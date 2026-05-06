@@ -4,6 +4,14 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.251] - 2026-05-06
+### Added
+- **OTA Dokumentation**: Ausführlicher Abschnitt in `Readme.md` und `Readme_de.md` zur Ersteinrichtung über das Captive Portal ("VentoSync Hotspot"), inklusive Passwort-Hinweis (`ventosync`) und Screenshots.
+- **WLAN-Stabilität**: Klärung des "Secret-Free" Prinzips in der Dokumentation, um Nutzer bei der Migration von lokalen zu GitHub-Releases zu unterstützen.
+
+### Changed
+- **Update-Intervall**: Das Intervall für die Firmware-Überprüfung (`update_interval`) in `esp32c6_common.yaml` wurde von 10 Minuten auf 30 Minuten erhöht, um unnötigen Netzwerk-Traffic zu reduzieren.
+
 ## [0.8.250] - 2026-05-06
 ### Fixed
 - **WLAN Verbindungsabbruch nach OTA**: Ein Fehler in der CI-Pipeline (`build.yaml`) wurde behoben. Das `sed`-Kommando zum Entfernen lokaler Netzwerkdaten schnitt zu viel ab und machte die YAML-Struktur für `wifi:` ungültig. Dadurch verlor der ESP nach dem OTA-Update seine Netzwerkeinstellungen.

@@ -36,6 +36,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 - [🛠️ Hardware & Bill of Materials (BOM)](#🛠️-hardware--bill-of-materials-bom)
 - [🔌 Pinbelegung & Verkabelung](#🔌-pinbelegung--verkabelung)
 - [🛠️ Installation & Software](#🛠️-installation--software)
+- [📲 OTA Updates & Initiale Einrichtung](#📲-ota-updates--initiale-einrichtung)
 - [🎮 Bedienung & Steuerung](#🎮-bedienung--steuerung)
 - [🧠 Wärmerückgewinnung - So funktioniert's](#🧠-wärmerückgewinnung---so-funktionierts)
 - [🔧 Technische Details & Optimierungen](#🔧-technische-details--optimierungen)
@@ -433,6 +434,27 @@ ota_password: "OTAPasswort"
 
 Die Konfiguration nutzt NTCs mit einem B-Wert von 3435. Falls du andere Sensoren nutzt, passe den `b_constant` Wert im YAML Code an.
 
+
+---
+
+## 📲 OTA Updates & Initiale Einrichtung
+
+Die kompilierten Firmware-Binaries auf GitHub sind "secret-free" und enthalten keine fest einkompilierten WLAN-Zugangsdaten. Wenn du ein OTA-Update mit diesen offiziellen Release-Dateien durchführst, befolge diese Schritte, um die durchgängige WLAN-Verbindung sicherzustellen:
+
+### Initiale Einrichtung (Captive Portal)
+Wenn dein Gerät nach einem OTA-Update von einer lokal kompilierten Firmware auf ein GitHub-Release die WLAN-Verbindung verliert, liegt das daran, dass ESPHome deine lokal fest einkompilierten Zugangsdaten nicht automatisch permanent im Flash-Speicher hinterlegt hat.
+
+So stellst du die Verbindung wieder her (einmaliger Vorgang):
+1. Suche mit deinem Smartphone oder PC nach dem WLAN **"VentoSync Hotspot"**.
+2. Verbinde dich mit dem Passwort: `ventosync`
+3. Es sollte sich automatisch ein Fenster (Captive Portal) öffnen. (Falls nicht, rufe im Browser `192.168.4.1` auf).
+4. Wähle dein Heim-WLAN aus der Liste aus und gib dein Passwort ein.
+
+**Fertig!** ESPHome hat nun deine Zugangsdaten dauerhaft im internen Speicher (NVS) gesichert. **Alle zukünftigen OTA-Updates werden diese Zugangsdaten automatisch nutzen und sich sofort verbinden.**
+
+Beispiel eines OTA Updates in Home Assistant:
+
+![OTA Update in Home Assistant](documentation/screenshots/OTA-Update.png)
 
 ---
 

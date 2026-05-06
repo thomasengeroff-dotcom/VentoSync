@@ -39,6 +39,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 - [🛠️ Hardware & Bill of Materials (BOM)](#🛠️-hardware--bill-of-materials-bom)
 - [🔌 Pin Assignment & Wiring](#🔌-pin-assignment--wiring)
 - [🛠️ Installation & Software](#🛠️-installation--software)
+- [📲 OTA Updates & Initial Provisioning](#📲-ota-updates--initial-provisioning)
 - [🎮 Operation & Control](#🎮-operation--control)
 - [🧠 Heat Recovery - How it works](#🧠-heat-recovery---how-it-works)
 - [🔧 Technical Details & Optimizations](#🔧-technical-details--optimizations)
@@ -446,6 +447,27 @@ ota_password: "OTAPassword"
 ### Calibration of NTCs
 
 The configuration uses NTCs with a B-value of 3435. If you use other sensors, adapt the `b_constant` value in the YAML code.
+
+---
+
+## 📲 OTA Updates & Initial Provisioning
+
+VentoSync firmware binary releases on GitHub are "secret-free" and do not contain any hardcoded Wi-Fi credentials. When performing an OTA update using these official release binaries, follow these steps to ensure continuous connectivity:
+
+### Initial Provisioning (Captive Portal)
+If your device loses its Wi-Fi connection after an OTA update from a locally compiled firmware to a GitHub release, it is because ESPHome did not permanently save your locally hardcoded credentials. 
+
+To restore connectivity:
+1. Search for the Wi-Fi network **"VentoSync Hotspot"** on your smartphone or PC.
+2. Connect to it using the password: `ventosync`
+3. A Captive Portal window should automatically open (if not, browse to `192.168.4.1`).
+4. Select your home Wi-Fi network from the list and enter your password.
+
+**Done!** ESPHome has now permanently saved your credentials to the ESP32's internal non-volatile storage (NVS). **All future OTA updates will automatically use these stored credentials and connect seamlessly.**
+
+Example of Update process in Home Assistant:
+
+![OTA Update in Home Assistant](documentation/screenshots/OTA-Update.png)
 
 ---
 

@@ -1,5 +1,5 @@
 {
-    "version": "0.8.250",
-    "date": "2026-05-05",
-    "description": "Fixed CI sed replacement corrupting WiFi configs and removed SMB copy."
+    "version": "0.8.251",
+    "date": "2026-05-06",
+    "description": "Added OTA provisioning documentation and adjusted update interval."
 }
