@@ -205,23 +205,7 @@ def after_build(source, target, env):
                 
             print(f">>> POST-BUILD: Updated {manifest_path}")
 
-            # Define Samba target - project specific folder
-            project_name = "ventosync"
-            smb_dir = os.path.join(r"\\192.168.178.45\config\www\firmware", project_name)
-            smb_firmware = os.path.join(smb_dir, "firmware.bin")
-            smb_manifest = os.path.join(smb_dir, "manifest.json")
-            
-            # Try to copy files
-            try:
-                if not os.path.exists(smb_dir):
-                    os.makedirs(smb_dir, exist_ok=True)
-                
-                print(f">>> POST-BUILD: Copying files to {smb_dir}...")
-                shutil.copy2(firmware_path, smb_firmware)
-                shutil.copy2(manifest_path, smb_manifest)
-                print(f"\n>>> SUCCESSFULLY DEPLOYED: v{version_str} to Home Assistant ({project_name})! <<<\n")
-            except Exception as smb_err:
-                print(f"\n>>> WARNING: Target directory {smb_dir} not reachable. Copy skipped. Error: {smb_err} <<<\n")
+
         else:
             print(f"\n>>> WARNING: {manifest_path} not found. <<<\n")
             

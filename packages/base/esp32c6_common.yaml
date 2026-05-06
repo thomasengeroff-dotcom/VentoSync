@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.249"
+  project_version: "0.8.250"
   hide_climate_sensors: "false"
   # Firmware variant identifier for OTA manifest selection.
   # Override in each variant YAML (e.g., ventosync-nosensor, ventosync-radar-only).
@@ -125,7 +125,7 @@ update:
     # Uses per-variant manifest from GitHub Releases for OTA updates.
     # Each variant (full, nosensor, radar-only, bme680-only) has its own manifest.
     source: "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest/download/manifest-${firmware_variant}.json"
-    update_interval: 15min
+    update_interval: 10min
 
 # ---------------------------------------------------------
 # WIFI CONNECTIVITY

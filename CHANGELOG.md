@@ -4,7 +4,16 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [0.8.248] - 2026-05-05
+## [0.8.250] - 2026-05-06
+### Fixed
+- **WLAN Verbindungsabbruch nach OTA**: Ein Fehler in der CI-Pipeline (`build.yaml`) wurde behoben. Das `sed`-Kommando zum Entfernen lokaler Netzwerkdaten schnitt zu viel ab und machte die YAML-Struktur für `wifi:` ungültig. Dadurch verlor der ESP nach dem OTA-Update seine Netzwerkeinstellungen.
+- **Workflow Release Notes**: Der "unexpected EOF"-Absturz im GitHub-Actions-Workflow wurde behoben, indem die Changelog-Extraktion nun `release_notes.md` nutzt anstatt den Text als Bash-Variable zu übergeben (Escaping-Probleme mit Backticks gelöst).
+
+### Changed
+- **SMB Deployment entfernt**: Der automatische Netzwerk-Kopiervorgang (`shutil.copy2`) auf Windows-SMB-Pfade (`\\192.168.178.45\...`) wurde aus `version_bump.py` entfernt, da er unter Linux/WSL zu Fehlern führte.
+- **OTA Update-Intervall**: Das OTA-Abfrage-Intervall in der `esp32c6_common.yaml` wurde auf `10min` (statt `15min`) verkürzt.
+
+## [0.8.249] - 2026-05-05
 ### Fixed
 - **OTA-Update-Fehler behoben**: Die `http_request`-Komponente verwendet nun einen deutlich größeren Transmit-Puffer (`buffer_size_tx: 20248`). Dies behebt das Problem, dass OTA-Updates über GitHub-Releases (HTTPS/TLS) aufgrund von Puffer-Überläufen beim Handshake oder Redirect stillschweigend fehlschlugen.
 - **Update-Entität Stabilisierung**: Durch die Speicher-Optimierung wird die Update-Entität in Home Assistant nun zuverlässig aktualisiert, sobald ein neues Release auf GitHub verfügbar ist.

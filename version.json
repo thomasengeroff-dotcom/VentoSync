@@ -1,5 +1,5 @@
 {
-    "version": "0.8.249",
+    "version": "0.8.250",
     "date": "2026-05-05",
-    "description": "Fixed OTA update failures by increasing HTTP transmit buffer size."
+    "description": "Fixed CI sed replacement corrupting WiFi configs and removed SMB copy."
 }
