@@ -446,7 +446,7 @@ inline void run_system_boot_initialization();
 /** @brief Hardware LED self-test. */
 inline void run_led_self_test();
 /** @brief Periodic LED update logic. */
-inline void update_leds_logic();
+inline void update_leds_logic(bool force = false);
 /** @brief Checks for system errors via Master LED. */
 inline void check_master_led_error();
 

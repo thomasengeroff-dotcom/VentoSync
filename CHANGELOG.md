@@ -4,6 +4,12 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.253] - 2026-05-07
+### Changed
+- **NVS Verschleiß-Schutz**: Das Speicherintervall für die Filter-Betriebsstunden wurde von 30 Minuten auf 8 Stunden erhöht. Dies reduziert die Schreibzugriffe auf den Flash-Speicher drastisch (max. 3x pro Tag statt 48x).
+- **LED Self-Test**: Beim Start (Boot) werden die LEDs jetzt explizit auf 100% Helligkeit gezwungen, unabhängig von der Nutzereinstellung. Direkt nach dem 3-sekündigen Test stellt das System automatisch die vom Nutzer konfigurierte Helligkeit wieder her (`update_leds_logic` wurde um einen `force` Parameter erweitert, um den LED-Cache sicher zu überschreiben).
+- **Code Qualität**: Die verbliebenen deutschen Kommentare in `system_lifecycle.h` wurden ins Englische übersetzt, um einen einheitlichen und sauberen Quellcode zu gewährleisten.
+
 ## [0.8.252] - 2026-05-07
 ### Changed
 - **NTC Sensor Fallback**: Verbesserung der `filter_ntc_stable` und Wärmerückgewinnung-Logik. Nicht angeschlossene NTC-Sensoren (die ~87°C melden) werden nun frühzeitig herausgefiltert und als `NaN` (Unknown) deklariert.

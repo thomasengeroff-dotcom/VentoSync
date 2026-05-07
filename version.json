@@ -1,5 +1,5 @@
 {
     "version": "0.8.252",
-    "date": "2026-05-06",
-    "description": "Handle disconnected NTC sensors gracefully and show NaN."
+    "date": "2026-05-07",
+    "description": "Reduce NVS wear-out and fix LED brightness restore after boot self-test."
 }

@@ -203,7 +203,7 @@ inline void check_master_led_error() {
  * @note    When @p ui_active is false, the display enters "Night Mode" where
  *          only the power LED remains dimly lit.
  */
-inline void update_leds_logic() {
+inline void update_leds_logic(bool force) {
   // Always evaluate master LED errors first and independently
   // (It brings its own state-guard inside the function)
   check_master_led_error();
@@ -240,7 +240,7 @@ inline void update_leds_logic() {
       last_auto      = !is_auto;
   }
 
-  bool changed = (is_on != last_system_on) || (is_ui_active != last_ui_active) || 
+  bool changed = force || (is_on != last_system_on) || (is_ui_active != last_ui_active) || 
                  (current_mode != last_mode) || (intensity != last_intensity) || 
                  (std::abs(max_b - last_max_b) > 0.01f) || (is_auto != last_auto);
 

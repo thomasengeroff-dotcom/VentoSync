@@ -44,18 +44,18 @@ constexpr float RAMPING_LOWER_BOUND = 0.01f; // Lower bound for active ramping p
  * @see     VentilationLogic::calculate_fan_pwm()
  */
 inline void set_fan_logic(float speed, int direction) {
-  // Berechnung ist immer sicher (reine Funktion, keine Pointer)
+  // Calculation is always safe (pure function, no pointers)
   const float pwm = VentilationLogic::calculate_fan_pwm(speed, direction);
 
-  // Hardware-Ausgabe nur wenn Komponente vorhanden
+  // Hardware output only if component exists
   if (fan_pwm_primary != nullptr) {
     fan_pwm_primary->set_level(pwm);
   } else {
     ESP_LOGW("fan", "fan_pwm_primary is null — PWM output suppressed");
   }
 
-  // State immer aktualisieren (auch im Simulation/Test-Modus ohne Hardware)
-  // damit calculate_virtual_fan_rpm() korrekte Werte liefert.
+  // Always update state (even in simulation/test mode without hardware)
+  // so that calculate_virtual_fan_rpm() returns correct values.
   last_fan_pwm_level = pwm;
 }
 
@@ -177,7 +177,7 @@ inline float calculate_virtual_fan_rpm(float raw_rpm) {
  * @brief   Main periodic tick for physical fan management.
  *
  * @details Dispatches calculated cycle timings and ramping speeds to hardware.
- *          Implements "Sanftanlauf" (soft-start) via a slew-rate limiter
+ *          Implements "Soft-start" (Sanftanlauf) via a slew-rate limiter
  *          (~10% per second) to reduce mechanical stress on the motor and
  *          minimize audible noise transitions.
  */
@@ -196,7 +196,7 @@ inline void update_fan_logic() {
     }
   }
 
-  // 2. Base Speed Calculation with Smooth Slew-Rate (Sanftanlauf)
+  // 2. Base Speed Calculation with Smooth Slew-Rate (Soft-start)
   const float base_speed = get_current_target_speed();
   
   // Start from 0.0f instead of jumping to base_speed

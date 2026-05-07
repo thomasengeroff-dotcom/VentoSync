@@ -46,13 +46,13 @@ inline void update_filter_analytics() {
 
   if (system_on->value() && ventilation_enabled->value()) {
     const uint32_t elapsed_ms = now_ms - last_update_ms;
-    // FIXED H-1: Akkumuliere in uint32_t um Float-Präzisionsverlust zu vermeiden
+    // FIXED H-1: Accumulate in uint32_t to avoid float precision loss
     static uint32_t filter_ms_accumulator = 0;
     filter_ms_accumulator += elapsed_ms;
 
-    // Accumulate time. We only add to the float and trigger an NVS save every 30 minutes
-    // to prevent NVS Wear-Out (max 48 writes/day).
-    if (filter_ms_accumulator >= 1800000) { // 30 minutes
+    // Accumulate time. We only add to the float and trigger an NVS save every 8 hours
+    // to prevent NVS Wear-Out (max 3 writes/day).
+    if (filter_ms_accumulator >= 28800000) { // 8 hours
       filter_operating_hours->value() += static_cast<float>(filter_ms_accumulator) / 3600000.0f;
       filter_ms_accumulator = 0;
       ESP_LOGD("filter", "Filter operating hours updated and NVS save triggered: %.2f", filter_operating_hours->value());
@@ -84,7 +84,7 @@ inline void cycle_operating_mode(int mode_index) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
 
-  // FIXED K-3: Bounds-Check für mode_index
+  // Bounds check for mode_index
   if (mode_index < 0 || mode_index > 4) {
       ESP_LOGE("mode", "Invalid mode_index %d — defaulting to WRG (1). Possible NVS corruption.", mode_index);
       mode_index = 1;
@@ -108,19 +108,19 @@ inline void cycle_operating_mode(int mode_index) {
     evaluate_auto_mode(true); // Force immediate PID evaluation
     break;
 
-  case 1: // Wärmerückgewinnung (manual)
+  case 1: // Heat Recovery (manual)
     if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     v->set_mode(esphome::MODE_ECO_RECOVERY);
     break;
 
-  case 2: // Durchlüften — timer from vent_timer number component
+  case 2: // Ventilation — timer from vent_timer number component
     if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     if (vent_timer != nullptr) {
-      // FIXED K-1: Clamp vor Cast und Grenzen definiert 
+      // FIXED K-1: Clamp before cast and limits defined 
       constexpr float MAX_VENT_MIN = 1440.0f;
       constexpr float MIN_VENT_MIN = 1.0f;
       
@@ -136,7 +136,7 @@ inline void cycle_operating_mode(int mode_index) {
     }
     break;
 
-  case 3: // Stoßlüftung
+  case 3: // Boost ventilation
     if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
@@ -151,11 +151,11 @@ inline void cycle_operating_mode(int mode_index) {
     
     v->set_mode(esphome::MODE_OFF);
     
-    // FIXED K-2: UI: Visible fan status OFF, keeping ESPHome internal state clean
+    // UI: Visible fan status OFF, keeping ESPHome internal state clean
     if (lueftung_fan != nullptr) {
         auto call = lueftung_fan->make_call();
         call.set_state(false);
-        lueftung_fan->publish_state();  // State synchronisieren
+        lueftung_fan->publish_state();  // Synchronize state
     }
     // Hardware: VarioPro motor controller requires 50% PWM as "stop" signal.
     // Override after call just in case lueftung_fan sent 0.0f via PWM handler.
@@ -195,7 +195,7 @@ inline void sync_config_to_controller() {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
 
-  // FIXED H-2: Expliziter Bereichscheck vor uint8_t Fallback Cast
+  // FIXED H-2: Explicit range check before uint8_t fallback cast
   auto safe_to_uint8 = [](float val, const char* name) -> uint8_t {
       if (val < 0.0f || val > 255.0f) {
           ESP_LOGW("boot", "%s out of uint8 range: %.1f — using 0", name, val);
@@ -308,20 +308,25 @@ inline void run_system_boot_initialization() {
  *          functioning and that all 8 LEDs are wired correctly.
  */
 inline void run_led_self_test() {
-  // FIXED H-4: Kritische LEDs: System kann ohne sie keinen sinnvollen Self-Test machen
+  // FIXED H-4: Critical LEDs: System cannot perform a meaningful self-test without them
   if (status_led_power == nullptr) {
       ESP_LOGW("boot", "Power LED not ready — self-test skipped");
       return;
   }
 
   auto safe_turn_on = [](esphome::light::LightState *led) {
-      if (led != nullptr) led->turn_on().perform();
+      if (led != nullptr) {
+          auto call = led->turn_on();
+          call.set_brightness(1.0f);
+          call.perform();
+      }
   };
 
   // 1. Turn on all mode and status LEDs
   if (status_led_mode_wrg) {
       auto call_wrg = status_led_mode_wrg->turn_on();
       call_wrg.set_effect("None");
+      call_wrg.set_brightness(1.0f);
       call_wrg.perform();
   }
 

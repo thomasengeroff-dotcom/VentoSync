@@ -89,5 +89,6 @@ script:
       - delay: 500ms
       - lambda: run_led_self_test();
       - delay: 3s
+      - lambda: update_leds_logic(true); # Force LEDs to revert to normal brightness
       - script.execute: ui_timeout_script
       - script.execute: fan_speed_update
