@@ -13,8 +13,8 @@ Wenn dieser Workflow aufgerufen wird, führst du als KI-Assistent vollautomatisc
 2. **CHANGELOG.md analysieren (Ressourcenschonend):**
    Nutze das Terminal (`run_command`), um mit `tail -n 80 CHANGELOG.md` ausschließlich die letzten 80 Zeilen der Changelog-Datei zu lesen. **Lies auf keinen Fall die komplette Datei ein**, um Tokens zu sparen. Verstehe anhand des Ausschnitts das gewünschte Format.
 3. **Dateien aktualisieren:**
-   *   **version.json**: Erstelle einen sehr kurzen, prägnanten englischen Satz (ca. 5-12 Wörter). Überschreibe damit den Wert des `"description"`-Feldes in `version.json`.
-   *   **CHANGELOG.md**: Schreibe einen **ausführlichen, detaillierten** Changelog-Eintrag zu deinen analysierten Code-Änderungen (so detailliert wie bisher auch). Füge diesen Eintrag oben im Dokument an der passenden Stelle in der `CHANGELOG.md` ein.
+   *   **version.json**: Erstelle einen sehr kurzen, prägnanten englischen Satz (ca. 5-12 Wörter). Überschreibe damit den Wert des `"description"`-Feldes in `version.json`. **WICHTIG: Erhöhe NICHT den Wert für "version". Der Version-Bump geschieht automatisch beim Build!**
+   *   **CHANGELOG.md**: Schreibe einen **ausführlichen, detaillierten** Changelog-Eintrag zu deinen analysierten Code-Änderungen (so detailliert wie bisher auch). Leite für den Titel des Eintrags (z.B. `## [0.8.252] - YYYY-MM-DD`) die *nächste* Versionsnummer ab, indem du die Patch-Version aus der `version.json` im Kopf um 1 erhöhst. Füge diesen Eintrag oben an der passenden Stelle in der `CHANGELOG.md` ein.
 4. **Kompilierung & Git Push:**
    Generiere eine kurze, passende englische Commit-Nachricht für die Code-Änderungen (z.B. `feat: ...` oder `fix: ...`).
    Starte den Build-Prozess und verknüpfe ihn per `&&` mit dem automatischen Git Push, damit alles nahtlos im Hintergrund durchlaufen kann, falls der Build erfolgreich ist.

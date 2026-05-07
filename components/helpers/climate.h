@@ -61,6 +61,11 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
   const bool is_wrg = (mode == esphome::MODE_ECO_RECOVERY);
   const bool is_intake = hw.direction_in;
 
+  // Abort if NTC sensors are disconnected (usually report ~87°C) or invalid
+  if (std::isnan(t_zuluft) || std::isnan(t_aussen) || t_zuluft > 80.0f || t_aussen > 80.0f) {
+    return NAN;
+  }
+
   // Boot-Guard: Keine Messung in den ersten 60s nach Boot
   static bool boot_complete = false;
   if (!boot_complete) {
@@ -76,8 +81,8 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
   const bool is_stable = had_real_flip && (time_since_flip > stable_time_ms);
 
   if (is_wrg && is_intake && is_stable) {
-    if (std::isnan(t_raum) || std::isnan(t_zuluft) || std::isnan(t_aussen)) {
-      ESP_LOGD("climate", "WRG Efficiency: Sensor data NaN, holding: %.1f%%", current_eff);
+    if (std::isnan(t_raum)) {
+      ESP_LOGD("climate", "WRG Efficiency: Room sensor data NaN, holding: %.1f%%", current_eff);
       return current_eff;
     }
     float eff = VentilationLogic::calculate_heat_recovery_efficiency(
@@ -146,6 +151,11 @@ inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
                                                   float new_value) {
   if (std::isnan(new_value)) {
     return {};
+  }
+
+  // Not connected NTC sensor reads around 87°C. Filter out values > 80°C or < -40°C
+  if (new_value > 80.0f || new_value < -40.0f) {
+    return NAN;
   }
 
   // Bounds-Check für sensor_idx um Out-of-Bounds Zugriffe zu verhindern

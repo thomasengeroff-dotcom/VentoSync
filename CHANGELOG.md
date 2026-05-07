@@ -4,6 +4,11 @@ Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentie
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.8.252] - 2026-05-07
+### Changed
+- **NTC Sensor Fallback**: Verbesserung der `filter_ntc_stable` und Wärmerückgewinnung-Logik. Nicht angeschlossene NTC-Sensoren (die ~87°C melden) werden nun frühzeitig herausgefiltert und als `NaN` (Unknown) deklariert.
+- **WRG-Effizienz Anzeige**: Die Berechnung der Wärmerückgewinnungs-Effizienz wird sofort abgebrochen (und liefert `NaN`), wenn relevante NTC-Sensoren fehlen. Dadurch zeigt das System saubere Sensor-Zustände in Home Assistant, anstatt ungültige Messwerte auszugeben.
+
 ## [0.8.251] - 2026-05-06
 ### Added
 - **OTA Dokumentation**: Ausführlicher Abschnitt in `Readme.md` und `Readme_de.md` zur Ersteinrichtung über das Captive Portal ("VentoSync Hotspot"), inklusive Passwort-Hinweis (`ventosync`) und Screenshots.

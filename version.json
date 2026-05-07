@@ -1,5 +1,5 @@
 {
-    "version": "0.8.251",
+    "version": "0.8.252",
     "date": "2026-05-06",
-    "description": "Added OTA provisioning documentation and adjusted update interval."
+    "description": "Handle disconnected NTC sensors gracefully and show NaN."
 }
