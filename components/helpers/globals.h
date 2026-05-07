@@ -75,16 +75,7 @@ static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS = 21.5f;
 static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
 static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
 
-/** @brief Threshold for stale peer detection. 5 minutes is used to allow for
- * temporary WiFi drops without losing sync. */
-static constexpr uint32_t PEER_TIMEOUT_MS = 300000;
 
-/** @brief Sensitivity for state broadcasts. Demand changes below this are
- * ignored to prevent network jitter. */
-static constexpr float PID_SYNC_THRESHOLD = 0.05f;
-
-/** @brief Hardware ACK failure limit before a peer is considered dead. */
-static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10;
 
 // --- Operating Mode Name Constants -------------------------------------
 // Single source of truth for mode name strings.
@@ -131,7 +122,7 @@ struct IncomingPacket {
 };
 
 /// Maximum number of queued packets before dropping (prevents OOM under flood).
-inline constexpr size_t RX_QUEUE_MAX_DEPTH = 16;
+inline constexpr size_t RX_QUEUE_MAX_DEPTH = 32;
 
 /// Mutex protecting rx_queue. Acquired briefly by WiFi task (push) and main loop (drain).
 inline std::mutex rx_queue_mutex;

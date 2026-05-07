@@ -39,6 +39,27 @@
 #include <vector>
 #include <esp_task_wdt.h>
 
+// --- Constants ---
+/** @brief Threshold for stale peer detection. 15 minutes is used to allow for
+ * temporary WiFi drops without losing sync. */
+static constexpr uint32_t PEER_TIMEOUT_MS = 900000;
+
+/** @brief Hardware ACK failure limit before a peer is considered dead. */
+static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10;
+
+/** @brief Threshold for triggering an automatic status sync request. */
+static constexpr uint32_t STATUS_REQUEST_INTERVAL_MS = 60000;
+
+/** @brief Maximum number of allowed peers in the cache. */
+static constexpr uint8_t MAX_PEER_CACHE_SIZE = 8;
+
+/** @brief Magic header for packet validation. */
+static constexpr uint8_t PACKET_MAGIC = 0x42;
+
+/** @brief Sensitivity for state broadcasts. Demand changes below this are
+ * ignored to prevent network jitter. */
+static constexpr float PID_SYNC_THRESHOLD = 0.05f;
+
 // Forward declaration of the global fan update function (defined in
 // automation_helpers.h)
 void update_fan_logic();
@@ -398,14 +419,17 @@ public:
     // 3. Auto Sync Broadcast (Dashboard Heartbeat)
     // Ensures all peers regularly announce their presence even if they don't
     // flip directions (like in 'Aus' or 'Durchlüften' modes). This prevents the
-    // dashboard from dropping peers after the 5-minute timeout.
-    // FIX: Stagger broadcasts using device_id to prevent rf collisions if
-    // devices boot perfectly synchronously.
-    if (now - last_sync_tx > (sync_interval_ms + (device_id * 1500))) {
+    // dashboard from dropping peers after the 15-minute timeout.
+    // FIXED: Stagger broadcasts using a combination of device_id and random jitter
+    // to prevent RF collisions even if multiple devices have the same ID.
+    static uint32_t jitter = esphome::random_uint32() % 5000;
+    if (now - last_sync_tx > (sync_interval_ms + (device_id * 1500) + jitter)) {
       ESP_LOGI("vent", "Triggering periodic sync broadcast (heartbeat)");
       pending_broadcast = true; // Let YAML trigger the send
       last_sync_tx = now;
+      jitter = esphome::random_uint32() % 5000; // New jitter for next cycle
     }
+
 
     // 4. Fallback Sync Watchdog
     // If a device wakes up and mutes its broadcast to await the Master's state,
@@ -418,10 +442,10 @@ public:
       pending_broadcast = true;
     }
 
-    // 5. Cleanup old peers (5 minutes timeout)
+    // 5. Cleanup old peers (15 minutes timeout)
     auto it = peers.begin();
     while (it != peers.end()) {
-      if (now - it->last_seen_ms > 300000) {
+      if (now - it->last_seen_ms > PEER_TIMEOUT_MS) {
         ESP_LOGD("vent", "Removing stale peer %d due to timeout",
                  it->device_id);
         it = peers.erase(it);

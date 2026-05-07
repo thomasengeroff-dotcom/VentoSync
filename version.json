@@ -1,5 +1,5 @@
 {
-    "version": "0.8.252",
+    "version": "0.8.255",
     "date": "2026-05-07",
-    "description": "Reduce NVS wear-out and fix LED brightness restore after boot self-test."
+    "description": "Improve ESP-NOW stability with increased timeouts and randomized heartbeat staggering."
 }

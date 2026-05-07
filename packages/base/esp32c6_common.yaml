@@ -27,7 +27,7 @@
 substitutions:
   # The project version is automatically updated by version_bump.py during build.
   # Do not change manually unless you know what you are doing.
-  project_version: "0.8.252"
+  project_version: "0.8.255"
   hide_climate_sensors: "false"
   # Firmware variant identifier for OTA manifest selection.
   # Override in each variant YAML (e.g., ventosync-nosensor, ventosync-radar-only).

@@ -1,8 +1,22 @@
 # Changelog
 
-Alle erheblichen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
+All notable changes to this project will be documented in this file.
 
-Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.8.255] - 2026-05-07
+
+### Added
+- **ESP-NOW Staggering**: Added random jitter (up to 5s) to periodic heartbeat broadcasts to prevent RF collisions in multi-device environments.
+
+### Changed
+- **Peer Reliability**: Increased peer stale timeout from 5 to 15 minutes (`PEER_TIMEOUT_MS = 900000`) to improve dashboard persistence during intermittent packet loss.
+- **Queue Optimization**: Doubled ESP-NOW receive queue size (`RX_QUEUE_MAX_DEPTH`) from 16 to 32 packets to handle concurrent bursts from multiple nodes.
+- **Sync Interval**: Reduced default `sync_interval_config` from 180 to 1 minute to ensure high-frequency status updates for the web dashboard.
+
+### Fixed
+- **Dashboard Synchronization**: Improved heartbeat authority logic to ensure peers remain visible even if cycle synchronization is ignored by Slaves.
 
 ## [0.8.253] - 2026-05-07
 ### Changed
