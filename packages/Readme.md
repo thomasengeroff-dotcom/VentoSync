@@ -8,7 +8,8 @@ This directory contains the modularized ESPHome configuration files (packages). 
 | File | Description |
 | :--- | :--- |
 | **`esp32c6_common.yaml`** | Shared base configuration for the ESP32-C6 platform, including common substitutions, versioning, and basic components. |
-| **`device_config.yaml`** | Dynamic device-specific configuration (IDs, Room IDs, Phases). This is usually the target for per-device customizations. |
+| **`device_config.yaml`** | Dynamic device-specific configuration (IDs, Room IDs, Phases). This is the target for per-device customizations. |
+| **`wifi_ota.yaml`** | WiFi and OTA configuration without secrets, optimized for CI/GitHub Actions builds. |
 
 ### 🧠 Actuators & Logic (`actuators/`)
 | File | Description |
@@ -21,9 +22,9 @@ This directory contains the modularized ESPHome configuration files (packages). 
 ### 🔌 Hardware I/O (`io/`)
 | File | Description |
 | :--- | :--- |
-| **`hardware_io.yaml`** | Encapsulates all physical hardware interfaces: I2C buses, port expanders (MCP23017, PCA9685), and basic LED/Pinout setup. |
+| **`hardware_io.yaml`** | Physical hardware interfaces: I2C buses, port expanders (MCP23017, PCA9685), and basic Pinout setup. |
 | **`hardware_fan.yaml`** | Central fan configuration including PWM parameters, RPM calculation fallbacks, and the `fan` entity itself. |
-| **`logic_buttons.yaml`** | Physical button input debouncing, click handlers, and long-press actions. |
+| **`logic_buttons.yaml`** | Physical button input debouncing, click handlers, and long-press overrides (e.g. for Child Protection). |
 
 ### 🌐 Communication (`communication/`)
 | File | Description |
@@ -50,11 +51,12 @@ This directory contains the modularized ESPHome configuration files (packages). 
 | **`sensor_BMP390.yaml`** | Integration for the Bosch BMP390 pressure sensor, including pressure trend analysis. |
 | **`sensor_BME680.yaml`** | Integration for the Bosch BME680 gas sensor (used for IAQ / fallback air quality). |
 | **`sensor_LD2450.yaml`** | Integration for the HLK-LD2450 mmWave Radar sensor (Presence Detection). |
-| **`sensor_NTC.yaml`** | Configuration for the analog NTC probes used to measure supply/exhaust air temperature at the ceramic heat exchanger. |
+| **`sensor_NTC.yaml`** | Configuration for the analog NTC probes used to measure supply/exhaust air temperature. |
+| **`mock_*.yaml`** | Mock sensor definitions (SCD41, BME680, Radar) to allow firmware compilation even when specific hardware is omitted. |
 
-## 🏗️ How it works
+The main configuration file `ventosync.yaml` (in the root directory) uses the `packages:` instruction to merge these modules and the core logic defined in `ventosync_base.yaml`.
 
-The main configuration file `ventosync.yaml` (in the root directory) uses the `packages:` instruction to merge these modules. This allows you to easily swap hardware (e.g., using a different air quality sensor) by simply changing the included package.
+This modular approach is necessary because **ESPHome does not support deactivating hardware components via software at runtime.** In ESPHome, every hardware component (sensors, displays, etc.) declared in the YAML is compiled into the firmware and initialized on boot. If a component is defined but the physical hardware is missing, the firmware would continuously log errors or potentially crash during initialization. By using packages, you ensure that only the drivers for the physically present hardware are compiled into the firmware.
 
 ## 🛠️ Modifying Packages
 

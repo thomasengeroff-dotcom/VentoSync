@@ -42,10 +42,9 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 - [🔧 Technische Details & Optimierungen](#🔧-technische-details--optimierungen)
 - [📁 Projektstruktur](#📁-projektstruktur)
 - [🏗️ Code-Architektur & Wartbarkeit](#🏗️-code-architektur--wartbarkeit)
-- [🚀 Automatisierte Versionierung](#🚀-automatisierte-versionierung)
+- [🚀 Automatisierte Release & Versionierung](#🚀-automatisierte-release--versionierung)
 - [⚠️ Sicherheitshinweise](#⚠️-sicherheitshinweise)
 - [⚖️ Rechtlicher Haftungsausschluss](#⚖️-rechtlicher-haftungsausschluss)
-- [🔍 Troubleshooting](#🔍-troubleshooting)
 - [📜 Lizenz](#📜-lizenz)
 
 ---
@@ -185,17 +184,21 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
 
 ### 🏠 Integration
 
-**Volle Home Assistant Integration**: Native API-Unterstützung für nahtloses Monitoring, Steuerung und Automatisierung über dein Smart Home System. Alle Funktionalitäten des Geräts sind über Home Assistant steuerbar und auslesbar.
+**Vollständige Home Assistant Integration**: Native Unterstützung der **ESPHome Native API** für hochperformantes Echtzeit-Monitoring und Steuerung. Im Gegensatz zum herkömmlichen MQTT nutzt die Native API hochoptimierte Protocol Buffers für minimale Latenz und geringsten Ressourcenverbrauch.
+- **Sofortige Synchronisierung**: Zustandsänderungen werden sofort übertragen, mit bis zu 10-mal kleineren Nachrichtengrößen als bei MQTT.
+- **Zero-Configuration**: Automatische Erkennung in Home Assistant – keine manuelle Einrichtung von Entitäten oder ein MQTT-Broker erforderlich.
+- **Sicherheit auf Enterprise-Niveau**: Verschlüsselte Kommunikation über das Noise-Protokoll mit Pre-Shared Keys.
 
-**Lokales Web-Dashboard (`wrg_dashboard`)**: Ein asynchroner Webserver direkt auf dem ESP32 bietet eine **Premium, responsive UI/UX** basierend auf **Tailwind CSS**.
+**Hybride Integrations-Philosophie**: Während der **Hauptfokus** von VentoSync auf einer tiefen und nahtlosen Integration in **Home Assistant** liegt, bietet das Projekt auch eine leistungsstarke Alternative. Durch das integrierte **lokale Web-Dashboard** kann das System als **voll funktionsfähige Standalone-Lösung** genutzt werden. Dies ermöglicht es Anwendern, den vollen Funktionsumfang – von der automatisierten Lüftung bis zur Sensordiagnose – zu nutzen, ohne jemals eine Home Assistant-Instanz einrichten oder warten zu müssen.
+
+#### WRG Dashboard - Lokales Web-Dashboard
+
+Ein asynchroner Webserver direkt auf dem ESP32 bietet eine **Premium, responsive UI/UX** basierend auf **Tailwind CSS**.
 - **Modernes Design**: High-End Dark-Mode Interface, voll responsiv für Desktop & Mobile.
 - **Echtzeit-Visualisierung**: Integriertes **Chart.js** für flüssige Graphen von CO2, Feuchte, Temp und RPM.
 - **Einfache Konfiguration**: Dedizierte Sektionen für die schnelle Vor-Ort-Konfiguration von Geräte-ID, Floor ID, Room ID und Phase.
 - **Diagnose-Tools**: Live-Überwachung aller Sensordaten als Kacheln mit Tagesverlaufsgraphen.
 - **Autarker Betrieb**: Änderung sämtlicher Anlagen-Einstellungen auch ohne Home Assistant möglich (dennoch empfohlen). Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z.B. `http://esptest.local/ui`) im Webbrowser auf. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
-
-> [!IMPORTANT]
-> **Hybrid-Offline-Betrieb**: Während die gesamte Kernlogik und Datenverarbeitung zu 100 % lokal auf dem ESP32-C6 läuft (auch ohne Internet), lädt das lokale Web-Dashboard aktuell **Tailwind CSS** und **Chart.js** über ein externes CDN (`https://cdn.tailwindcss.com`...). Das bedeutet, dass eine Internetverbindung erforderlich ist, um das Styling und die Graphen des Dashboards korrekt anzuzeigen. Lokale Assets (wie die Webfont) sind zwar vorbereitet, werden aber aktuell nicht genutzt, um den Speicherverbrauch (Flash) minimal zu halten.
 
 #### WRG Dashboard - Lokales Web-Dashboard
 
@@ -215,6 +218,9 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
 
 **📡 ESP-NOW Visualisierung**: Das lokale Web-Dashboard bietet eine Live-Ansicht aller via ESP-NOW verbundenen Geräte. Die Kachel "Verbundene Geräte (ESP-NOW)" visualisiert Node-ID, aktuellen Betriebsmodus, Drehzahl und Luft-Richtung (Phase) aller aktiven Peers in Echtzeit.
 
+> [!IMPORTANT]
+> **Hybrid-Offline-Betrieb**: Während die gesamte Kernlogik und Datenverarbeitung zu 100 % lokal auf dem ESP32-C6 läuft (auch ohne Internet), lädt das lokale Web-Dashboard aktuell **Tailwind CSS** und **Chart.js** über ein externes CDN (`https://cdn.tailwindcss.com`...). Das bedeutet, dass eine Internetverbindung erforderlich ist, um das Styling und die Graphen des Dashboards korrekt anzuzeigen. Lokale Assets (wie die Webfont) sind zwar vorbereitet, werden aber aktuell nicht genutzt, um den Speicherverbrauch (Flash) minimal zu halten.
+
 ## 📡 ESP-NOW: Kabellose Autonomie
 
 Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome.io/components/espnow.html). **ESP-NOW** ist ein von Espressif entwickeltes, verbindungsloses Protokoll, das eine direkte Kommunikation zwischen ESP32-Geräten ohne Umweg über einen WLAN-Router ermöglicht.
@@ -229,7 +235,7 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 - ⚙️ **Effiziente Unicast-Kommunikation**: Nach der initialen Entdeckung erfolgt die eigentliche Datenübertragung (PID-Demand, Status, Sync) mittels gezielter Unicast-Pakete an die bekannten Peers. Dies reduziert das Grundrauschen im 2,4 GHz Band massiv und erhöht die Stabilität.
 - ⚙️ **Globale Konfigurations-Synchronisation**: Änderungen an Einstellungen (z. B. CO2-Grenzwerte, Timer, Automatik-Modi) an einem Gerät via Home Assistant oder Bedienpanel werden in Echtzeit drahtlos an alle anderen synchronisierten Peers gespiegelt.
 
-#### Discovery-Ablauf
+### Discovery-Ablauf
 
 1. **Broadcast**: Ein Gerät sendet beim Start oder Raumwechsel ein `ROOM_DISC` Paket an alle (FF:FF:FF:FF:FF:FF).
 2. **Matching**: Empfänger prüfen, ob Floor- und Room-ID mit den eigenen übereinstimmen.
@@ -241,8 +247,6 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 - ⚙️ **Echtzeit-Einstellungen-Mirroring**: Änderungen an Parametern (CO2-Grenzwerte, Fan-Levels, Timer) werden mittels ESP-NOW Unicast sofort an alle Partner-Geräte in der Raumgruppe übertragen, um ein einheitliches Regelungsverhalten sicherzustellen (Loop-Prevention inklusive).
 
 - 📡 **Optimierte Signalstärke**: Um maximale Zuverlässigkeit für WLAN und ESP-NOW-Kommunikation zu gewährleisten — selbst bei Installationen weiter entfernt vom Router, hinter Wänden oder anderen Hindernissen — ist eine externe Antenne über einen U.FL-Stecker mit dem ESP32-C6 verbunden und der ESP ist so konfiguriert, dass er die externe Antenne anstelle der internen PCB-Antenne nutzt.
-
-> Weitere Informationen zur ESP-NOW Kommunikation findest du in der [offiziellen ESPHome Dokumentation](https://esphome.io/components/espnow.html).
 
 ![Antenne PCB im Gehäuse](EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg)
 
@@ -263,15 +267,9 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
   - Einbeziehung der CO2-Werte zur Steuerung.
   - Lokal und remote aktivierbar.
 
-- **🏠 Außer-Haus-Modus (Safety Dehumidification)**:
-  - Automatisierter Schutzmodus für Abwesenheit (Urlaub).
-  - Das System bleibt "Aus", überwacht aber die Luftfeuchtigkeit. Bei Überschreitung eines fixen Schwellenwerts (z. B. 60 %) startet die Lüftung auf Stufe 1 zur Schimmelprävention.
-
-- **🌡️ Überwachungs-Modus (Sensor-Only)**:
-  - Modus, in dem der Lüfter steht, aber alle Sensoren (CO2, Temp, Radar) und das Web-Dashboard voll aktiv bleiben (ohne Light Sleep), um lückenlose Messdaten in Home Assistant zu gewährleisten.
-
-- **⏲️ Zeitgesteuertes Durchlüften**:
-  - Über das Dashboard/App aktivierbarer manueller Zuluft- oder Abluftbetrieb mit integriertem Timer für gezielte Extraktion (z.B. nach dem Kochen), danach wechel zurück in den gewünschten Modus.
+- **🏠 Außer-Haus-Modus & Abwesenheits-Logik**:
+  - **HA-integrierter Away-Modus**: Ähnlich wie der bestehende „Urlaubsmodus“ kann das System ein „Niemand zu Hause“-Signal von Home Assistant empfangen (z. B. via Geofencing oder Alarmanlagen-Status). Es schaltet dann automatisch auf eine konfigurierbare „Abwesenheits-Stufe“ um oder spiegelt die Einstellungen des Urlaubsmodus wider, um eine minimale hygienische Belüftung bei maximaler Energieeinsparung zu gewährleisten.
+  - **Kurzzeit-Abwesenheitsreduzierung**: Automatische Reduzierung der Lüftung auf ein hygienisches Minimum, wenn der Raum leer ist (erkannt via On-Board-Radar), um gezielt Energie zu sparen.
 
 - **❄️ Frostschutz-Automatik**:
   - Intelligente Erkennung von drohendem Frost am Keramikspeicher bei extremen Außentemperaturen. Automatische Anpassung der Zykluszeiten oder kurzes Deaktivieren der Zuluft zur Regeneration des Speichers. Dafür kann der äußere NTC-Sensor genutzt werden.
@@ -287,17 +285,32 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 
 - **KI-gestützte Lüftungssteuerung**:
   - Proaktive KI-gestützte Lüftungssteuerung basierend auf historischen Daten und externen Prognosen (Wetter, CO2, Feuchte). Siehe [📄 KI-gestützte Lüftungssteuerung](documentation/KI-gestützte-Lüftungssteuerung.md) für Details.
+    - **Personenzählung**: Abschätzung der Belegungsdichte über mmWave-Radar zur proportionalen Anpassung des Volumenstroms. Dies ist nur sinnvoll, wenn der gesamte Raum vom Radarsensor abgedeckt wird.
+
+- **🔌 Erweiterungen & Integrationsoptionen (via UART / S2I)**:
+  - **VOC-Sensor-Integration**: ✅ **Teilweise implementiert.** Der BME680 liefert IAQ/VOC-Daten (Pseudo-CO2). Zukünftige Verfeinerung beinhaltet eine „Mixed-Air-Quality“-Demand-Logik, die CO2- und VOC-Werte für die Steuerung kombiniert.
+  - **Smart Home Gateway (Modbus/KNX)**: Aufbau einer Brücke für professionelle Gebäudeautomationssysteme, um die Lüftung mit Heizungs- oder Fensterzuständen zu koordinieren.
 
 ## 🖱️ Eigene Platine - PCB
 
-Eine dedizierte Platine (PCB), die alle benötigten Komponenten (XIAO, Traco, Transistoren, Anschlüsse für Sensoren) kompakt vereint, wurde bereits von mir entwickelt, durch JLCPCB gefertigt und befindet sich aktuell in der Testphase.
-Besonderen Wert habe ich dabei auf Sicherheit und Qualität gelegt, da die Lüftungen in der Regel 24*7 daherhaft laufen. Auch wenn die Leistung minimal ist, hat die Sicherheit hier höchste Priorität.
-Die Komponenten wurden des weiteren so gewählt, dass eine Laufzeit >10 Jahre bedenkenlos möglich ist.
-Um zusätzliche Erweiterungen möglich zu machen, habe ich einen zusätzlichen UART-PIN-Ansschluss (H4 --> wird bereits für den Radar-Sensor genutzt), einen zusätzlichen I²C-Ansschluss (H3 --> frei) und zusätzliche GPIO-PIN-Anschlüsse (H1 --> frei: 6 GPIOs, 3V3 und GND) vorgesehen.
+Eine eigens entwickelte Platine (PCB) wurde entworfen, um alle Kernkomponenten (XIAO ESP32-C6, Traco Power DC/DC-Wandler, Pegelwandler) in einer kompakten und robusten Einheit zu vereinen. Die Platinen werden von JLCPCB gefertigt und befinden sich aktuell in der finalen Validierungsphase.
+
+**Wichtige Design-Prinzipien:**
+- **Zuverlässigkeit auf Industrieniveau**: Die Komponenten wurden für eine voraussichtliche Lebensdauer von >10 Jahren im 24/7-Dauerbetrieb ausgewählt.
+- **Sicherheit an erster Stelle**: Trotz des geringen Stromverbrauchs folgt das Layout strengen Sicherheitsstandards, um Brandschutz und Spannungsstabilität zu gewährleisten.
+- **Zukunftssichere Erweiterbarkeit**: Die Platine verfügt über dedizierte Erweiterungs-Header für zukünftige Upgrades:
+  - **H4 (UART)**: Hochgeschwindigkeits-Serienverbindung (wird aktuell für das mmWave-Radar genutzt).
+  - **H3 (I²C)**: Für zusätzliche Umgebungssensoren oder OLED-Displays.
+  - **H1 (GPIO)**: 6 freie GPIOs inklusive 3,3V/GND für eigene DIY-Erweiterungen.
 
 ![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/Screenshot%202026-03-01%20175142.png)
 
-Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt positioniert für die existierende Lüftungsöffnung des Ventomaxx Gehäuses. Im Gegensatz zu vielen Billig-China-SCD41 Boards, sind hier auch beide Kondensatoren ensprechend den Herstellervorgaben montiert, ein Schlitz dient der termischen Trennung des SCD41-Sensors vom sonstigen Board und auch die Kupfer Planes wurden im unteren Bereich ausgespart, um die termische Trennung weiter zu maximieren. Die PINs haben 1,25mm Pitch und sind so positioniert, dass der SCD41 CO2-Sensor perfekt in die Lüftungsöffnung passt. Dieses PCB befindet sich aktuell noch in der Fertigung bei JLCPCB.
+### Specialized SCD41 Sensor Board
+Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine speziell für den **Sensirion SCD41** entwickelt. Im Gegensatz zu generischen Breakout-Boards implementiert dieses Design die Referenzspezifikationen des Herstellers zur Entkopplung:
+- **Thermische Entkopplung**: Ein spezieller Frässchlitz und kupferfreie Zonen "entkoppeln" den Sensor thermisch von der Wärmekapazität der Hauptplatine.
+- **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
+- **Perfekte Passform**: Entwickelt mit einem 1,25-mm-Pitch-Anschluss, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
+
 ![SCD41 Prototyp](EasyEDA-Pro/PCB%20SCD41%20Prototype%20Images/SCD41-PCB-3D-top_small.png)
 
 ---
@@ -308,7 +321,7 @@ Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt
 
 | Komponente | Beschreibung |
 | :--- | :--- |
-| **MCU** | [Seeed Studio XIAO ESP32C6](https://esphome.io/components/esp32.html) (RISC-V, WiFi 6, Zigbee/Matter ready) |
+| **MCU** | [Seeed Studio XIAO ESP32C6](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/) (RISC-V, WiFi 6, Zigbee/Matter ready) |
 | **Power** | TRACO POWER TMPS 10-112 (230V AC zu 12V DC, 10W) <br>– **Premium-Wahl:** Zertifiziert nach **EN 60335-1** (Haushaltsgeräte) und **EN 62368-1** (IT/Industrie). Die Wahl fiel auf dieses High-End-Modul von Traco Power (Schweiz), da es durch seine doppelte Isolierung (**Schutzklasse II**) und hohe Isolationsspannung (4kV) maximale Sicherheit bietet. Im Gegensatz zu günstigen Netzteilen erfüllt es die strengen EMV-Anforderungen der **Klasse B** ohne externe Filter und ist für den wartungsfreien Dauerbetrieb (>10 Jahre) in Wohnräumen ausgelegt. |
 | **DC/DC** | Diodes Inc. AP63205 (12V->5V) & AP63203 (12V->3.3V) <br>– **Eigenentwicklung:** Diese zwei professionellen Abwärtswandler (Buck Converter) wurden für eine hocheffiziente Energiewandlung (bis zu 94% Effizienz) direkt auf dem PCB implementiert. Sie gewährleisten eine extrem stabile Spannungsversorgung für MCU und Sensorik bei minimaler Wärmeentwicklung – ein wesentlicher Faktor für die Langzeitstabilität des Systems im Dauerbetrieb. |
 
@@ -329,7 +342,7 @@ Zusätzlich habe ich eine SCD41-PCB entwickelt, die den SCD41 CO2-Sensor perfekt
 
 Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [EasyEDA-Pro](EasyEDA-Pro) in der [BOM](EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv) .
 
-### 🖱️ User Interface
+### 🖱️ Bedienpanel am Gerät
 
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
@@ -341,9 +354,9 @@ Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [
 
 ## 🔌 Pinbelegung & Verkabelung
 
-Das System basiert auf dem [Seeed XIAO ESP32C6](https://esphome.io/components/esp32.html).
+Das System basiert auf dem [Seeed XIAO ESP32C6](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/).
 
-⚠️ **WICHTIG:** Der Lüfter läuft mit 12V, die Logik mit 3.3V oder auch 5V. Entsprechende Spannungsteiler und Schutzbeschaltungen sind vorhanden.
+⚠️ **WICHTIG:** Der Lüfter läuft mit 12V, die Logik mit 3.3V oder auch 5V (radar sensor). Entsprechende Spannungsteiler und Schutzbeschaltungen sind vorhanden.
 
 | XIAO Pin | GPIO | Funktion | Bemerkung |
 | :--- | :--- | :--- | :--- |
@@ -413,27 +426,9 @@ graph TD
 7. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings über das lokale Web-Dashboard konfiguriert werden unter `http://<device-ip>` oder `http://<device-ip>/ui`.
 8. **Spaß haben**: Genieße dein smartes, energieeffizientes Lüftungssystem!
 
-### Voraussetzungen
-
-- Installiertes ESPHome Dashboard (z.B. als Home Assistant Add-on)
-- Grundkenntnisse in YAML
-
-### Konfiguration
-
-1. Kopiere den Inhalt von `ventosync.yaml` in deine ESPHome Instanz.
-2. Erstelle eine `secrets.yaml` mit deinen WLAN-Daten:
-
-```yaml
-wifi_ssid: "DeinWLAN"
-wifi_password: "DeinPasswort"
-ap_password: "FallbackPasswort"
-ota_password: "OTAPasswort"
-```
-
 ### Kalibrierung der NTCs
 
-Die Konfiguration nutzt NTCs mit einem B-Wert von 3435. Falls du andere Sensoren nutzt, passe den `b_constant` Wert im YAML Code an.
-
+Die Konfiguration ist optimiert für den NTC-Thermistor **[ENTC-10K9777-02](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474)** (10kΩ, B-Wert 3435). Falls du andere Sensoren verwendest, müssen die Werte für `b_constant` und `reference_resistance` im YAML-Code entsprechend angepasst werden.
 
 ---
 
@@ -655,16 +650,6 @@ automation:
 
 ---
 
-### 💡 Tipps für optimale Nutzung
-
-#### Wartung & Pflege
-
-- **Filter**: Alle 12 Monate prüfen/wechseln.
-- **Reinigung**: Panel nur mit trockenem Tuch reinigen.
-- **Wärmetauscher**: Einmal jährlich mit Wasser ausspülen (siehe Herstelleranleitung).
-
----
-
 ## 🧠 Wärmerückgewinnung - So funktioniert's
 
 ### Grundprinzip
@@ -804,45 +789,27 @@ Diese Dokumentation enthält:
 
 ```text
 VentoSync/
-├── ventosync.yaml                 # Vollversion (SCD41, BME680, LD2450)
-├── ventosync_bme680_only.yaml     # Variante (Nur BME680)
-├── ventosync_radar_only.yaml      # Variante (Nur LD2450)
-├── ventosync_nosensor.yaml        # Variante (Keine Klima-/Radar-Sensoren)
-├── ventosync_base.yaml            # Gemeinsame Basis-Konfiguration
-├── secrets.yaml                   # WLAN-Daten (Git-ignored)
-├── packages/                      # Geteilte YAML-Module
-│   ├── base/                      # Allgemeine Geräte- und ESP32-C6-Settings
-│   ├── communication/             # ESP-NOW Protokolle
-│   ├── io/                        # Hardware IO, Lüfter und Taster
-│   ├── sensors/                   # Alle Sensoren und deren Mocks
-│   │   ├── mock_bme680.yaml       # Mock für fehlenden BME680
-│   │   ├── mock_radar.yaml        # Mock für fehlendes LD2450
-│   │   ├── mock_scd41.yaml        # Mock für fehlenden SCD41
-│   │   ├── sensor_BME680.yaml     # Bosch BME680 (IAQ & Gas Fallback)
-│   │   ├── sensor_BMP390.yaml     # Bosch BMP390 (Druck, Thermal Guard)
-│   │   ├── sensor_LD2450.yaml     # HLK-LD2450 Radar (Präsenz, Targets)
-│   │   ├── sensor_NTC.yaml        # Analoge NTC-Fühler (Zuluft/Abluft)
-│   │   ├── sensor_SCD41.yaml      # Sensirion SCD41 (CO2, Temp, Hum)
-│   │   └── sensors_climate.yaml   # Klimastatistiken & WRG-Effizienz
-│   ├── actuators/                 # PID-Regler, Automatik & Sicherheitslogik
-│   ├── integration/               # Home Assistant Imports & Exports
-│   └── ui/                        # Web GUI, LEDs, Diagnose
-
-├── components/                    # Lokale Custom C++-Komponenten
-│   ├── automation_helpers.h       # C++ Helper-Funktionen für Lambdas
-│   └── ventilation_group/         # Lüftungssteuerung Logik
-├── experimental/                  # Test- und Entwicklungsgeräte
-│   ├── espslavetest.yaml          # Test-Knoten Konfiguration
-│   ├── integration_test.yaml      # Automatisierte Integrationstests
-│   └── espslaveNTC.yaml           # Experimentelles Setup mit NTC Sensorik
-├── tests/                         # C++ Unit Tests (GTest)
-│   ├── simple_test_runner.cpp     # Test-Logik für alle C++ Komponenten
-│   └── run_tests.bat              # Build & Run Batch-Skript
-├── assets/                        # Statische Dateien
-│   └── materialdesignicons...ttf  # Material Design Webfont
-├── documentation/                 # Tiefergehende Anleitungen
-└── Readme_de.md                   # Diese Datei
-└── Readme.md                      # Englische Version der Readme_de.md
+├── .github/workflows/         # CI/CD (GitHub Actions) für Build & Release
+├── components/                # Eigene C++-Komponenten für ESPHome
+│   ├── ventilation_group/     # Kern-Zustandsmaschine und Koordination
+│   ├── ventilation_logic/     # IAQ-Klassifizierung und Mathematik-Hilfsfunktionen
+│   └── wrg_dashboard/         # Tailwind CSS & Chart.js Web-UI
+├── documentation/             # Detaillierte technische Anleitungen und Datenblätter
+├── EasyEDA-Pro/               # PCB-Designdateien (Schaltpläne, Layout, Stückliste)
+├── ha_integration_example/    # Beispiele für HA-Dashboards & Slave-Knoten
+├── json/                      # Deployment-Manifeste und Templates
+├── packages/                  # Modulare YAML-Konfigurationsblöcke
+│   ├── actuators/             # PID, Automatisierung & Sicherheitslogik
+│   ├── base/                  # ESP32-C6 Kern- & WLAN/OTA-Einstellungen
+│   ├── communication/         # ESP-NOW-Protokolle
+│   ├── integration/           # Datenaustausch mit Home Assistant
+│   ├── io/                    # Lüfter, Taster & Hardware-Pinbelegung
+│   ├── sensors/               # Treiber für SCD41, BME680, NTC, etc.
+│   └── ui/                    # UI-Steuerung & Diagnose
+├── tests/                     # C++ Unit-Tests für die Kernlogik
+├── ventosync.yaml             # Haupt-Einstiegspunkt (Vollversion)
+├── ventosync_base.yaml        # Gemeinsame Logik und globale Variablen
+└── version.json               # Aktuelle Firmware-Version
 ```
 
 ---
@@ -953,13 +920,15 @@ Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewäh
   - ✅ **NTC-Performance**: Optimierung der Filter-Wartezeit (40% des Zyklus) für schnellere Wertlieferung bei gleicher Stabilität.
   - ✅ **Sommer-Kühlung**: Präzisierung der Hysterese-Regelung (+1.5°C Aktivierung / -0.5°C Deaktivierung).
   - ✅ **Modularisierung & Internationalisierung**: Saubere Trennung von C++ Kern und YAML-Zuschnitt (sensor-spezifische Pakete) zur Behebung von Linker-Errors und Verbesserung der Kompilierbarkeit. Umstellung sämtlicher Code-Kommentare auf Englisch zur internationalen Wartbarkeit.
-## 🚀 Automatisierte Versionierung
 
-Um die Software-Wartung zu vereinfachen und sicherzustellen, dass jede Firmware-Änderung nachvollziehbar ist, verwendet das Projekt ein automatisiertes Versionierungssystem:
+## 🚀 Automatisierte Release & Versionierung
 
-- **Automatischer Patch-Bump**: Bei jedem Kompiliervorgang wird die dritte Stelle der Version (z. B. `0.6.0` → `0.6.1`) automatisch durch ein Python-Build-Skript (`version_bump.py`) erhöht.
-- **Transparenz**: Die aktuelle Version wird als C++ Makro in die Firmware injiziert und steht in Home Assistant über den Sensor `sensor.espwrglueftung_projekt_version` zur Verfügung.
-- **Konsistenz**: Die Version wird in einer zentralen `version.json` im Projekt-Root gespeichert, was manuelle Fehler ausschließt.
+Um eine professionelle Software-Wartung und vollständige Nachvollziehbarkeit jeder Änderung sicherzustellen, nutzt das Projekt einen hochgradig automatisierten Release-Workflow:
+
+- **KI-gestützte Changelogs**: Jedem Release geht eine automatisierte Analyse der Code-Änderungen voraus. Ein KI-Assistent generiert detaillierte Einträge für die `CHANGELOG.md` und aktualisiert die Firmware-Beschreibung in `version.json`.
+- **Automatischer Version-Bump**: Die Versionierung folgt einem strengen Muster, bei dem die Patch-Version (z. B. `0.8.251` → `0.8.252`) während des Build-Prozesses automatisch erhöht wird.
+- **Git Integration**: Erfolgreiche Builds werden automatisch committed und in das Repository gepusht, wodurch sichergestellt wird, dass das GitHub-Manifest und die Binär-Releases immer synchron mit dem lokalen Entwicklungsstand sind.
+- **Kontinuierliche Transparenz**: Die aktuelle Version ist als Sensor in Home Assistant verfügbar und wird zur einfachen Überprüfung auf dem lokalen Web-Dashboard angezeigt.
 
 ---
 
@@ -979,13 +948,44 @@ Ein besonderer Dank gilt **[patrickcollins12](https://github.com/patrickcollins1
 
 ## 🛠️ Entwicklungsumgebung - Installation & Software
 
-### 1. ESPHome Installation
+### 1. ESPHome Installation (Linux)
 
-Installiere ESPHome über pip:
+Für eine stabile Entwicklungsumgebung wird dringend empfohlen, ESPHome in einer **virtuellen Python-Umgebung** (`venv`) zu installieren. Dies vermeidet Konflikte mit systemweiten Paketen und ist die einzige offiziell unterstützte manuelle Installationsmethode unter Linux.
 
 ```bash
-# Installiere ESPHome (neueste Version)
-py -3.13 -m pip install --upgrade esphome
+# 1. Virtuelle Umgebung erstellen
+python3 -m venv venv
+
+# 2. Umgebung aktivieren
+source venv/bin/activate
+
+# 3. ESPHome installieren
+pip install --upgrade esphome
+```
+
+*(Hinweis: Denke immer daran, `source venv/bin/activate` auszuführen, bevor du den Befehl `esphome` in einer neuen Terminal-Sitzung verwendest.)*
+
+### 🔄 Umgebung aktualisieren
+
+Um deine Entwicklungsumgebung auf dem neuesten Stand zu halten, verwende die folgenden Befehle:
+
+**ESPHome aktualisieren (innerhalb der venv):**
+```bash
+# Sicherstellen, dass venv aktiv ist
+source venv/bin/activate
+# Auf die neueste Version aktualisieren
+pip install --upgrade esphome
+```
+
+**Vollständiges System- & Python-Update (Linux):**
+```bash
+# Paketliste aktualisieren und alle Systempakete upgraden
+sudo apt update && sudo apt upgrade -y
+```
+
+**pip & setuptools aktualisieren (innerhalb der venv):**
+```bash
+pip install --upgrade pip setuptools
 ```
 
 ### 2. Firmware Kompilieren & Flashen
@@ -997,7 +997,7 @@ VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Har
 - **`ventosync_radar_only.yaml`**: Variante mit Radar (ohne Klima-Sensoren)
 - **`ventosync_nosensor.yaml`**: Basis-Lüftungssteuerung ohne Sensoren
 
-Nutze das Skript `upload_all.sh` für automatisches Kompilieren und Flashen auf deine Geräte:
+Nutze das Skript `upload_all.sh` für automatisches Kompilieren und Flashen lokal auf deine Geräte:
 
 ```bash
 # Kompiliert und flasht alle im Skript definierten Geräte
@@ -1007,40 +1007,18 @@ Nutze das Skript `upload_all.sh` für automatisches Kompilieren und Flashen auf 
 Alternativ manuell für ein einzelnes Gerät per ESPHome CLI:
 
 ```bash
-# 1. Konfiguration prüfen
+# 1. Konfiguration validieren (prüft auf YAML-Fehler)
 esphome config ventosync_nosensor.yaml
 
-# 2. Kompilieren und direkt via OTA flashen (benötigt IP-Adresse)
+# 2. Kompilieren & via OTA flashen (lädt automatisch auf die angegebene IP hoch)
 esphome run ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
+
+# 3. Nur kompilieren (generiert die Binärdatei ohne Upload)
+esphome compile ventosync_nosensor.yaml
+
+# 4. Nur flashen (nützlich, wenn die Binärdatei bereits kompiliert wurde)
+esphome upload ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
 ```
-
-### 3. OTA-Updates
-
-Nach dem ersten Flashen über USB kannst du Updates drahtlos über Home Assistant durchführen:
-
-1. Gehe in Home Assistant zu **Einstellungen → System → Updates**
-2. Klicke auf **Firmware-Updates**
-3. Wähle dein Gerät aus und klicke auf **Installieren**
-
----
-
-## 🔍 Troubleshooting
-
-Häufige Probleme und deren Lösungen:
-
-- **❌ ESP-NOW Sync Fehler (2x Blinken der Master-LED):** 
-  - Sicherstellen, dass alle Geräte in einem Raum die **gleiche `floor_id` und `room_id`** haben.
-  - Entfernung zwischen den Geräten prüfen (ESP-NOW Reichweite beträgt ca. 30-50m durch Wände).
-- **📶 WLAN-Verlust (3x Blinken der Master-LED):**
-  - Zugangsdaten in der `secrets.yaml` prüfen.
-  - Router-Erreichbarkeit prüfen (Lüftung arbeitet autark via ESP-NOW weiter).
-- **🔥 Überhitzung (4x Blinken der Master-LED):**
-  - Die Gehäuse-Innentemperatur liegt zwischen 50-60°C.
-  - Lüfter auf Blockade oder direkte Sonneneinstrahlung prüfen.
-  - Abschaltung erfolgt automatisch ab 60°C.
-- **📊 Sensor zeigt NaN:**
-  - Physische Verbindung der Sensoren (SCD41/BME680) prüfen.
-  - I2C-Bus Initialisierung kontrollieren (Logs).
 
 ## ⚖️ Rechtlicher Haftungsausschluss
 
