@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.257] - 2026-05-08
+
+### Added
+- **Automated Versioning**: Implemented a "Single Source of Truth" system where `esp32c6_common.yaml` dynamically pulls its version from `version.json` via YAML `!include`.
+
+### Changed
+- **Refactored `version_bump.py`**: Simplified the build script by removing manual YAML mutation logic, now relying on ESPHome's native JSON parsing capabilities.
+- **Improved Maintainability**: Reduced the number of manual version update points from three to one (`version.json`).
+
 ## [0.8.256] - 2026-05-08
 
 ### Changed

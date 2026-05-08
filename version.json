@@ -1,5 +1,5 @@
 {
-    "version": "0.8.256",
-    "date": "2026-05-08",
-    "description": "Optimize project structure by moving base configuration to dedicated packages directory."
+    "project_version": "0.8.258",
+    "project_date": "2026-05-08",
+    "project_description": "Automate project versioning by linking version.json directly to ESPHome configuration."
 }
