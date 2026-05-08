@@ -36,7 +36,7 @@ esphome:
       - "-DVENTOSYNC_NO_BME680"
 
 packages:
-  base: !include ventosync_base.yaml
+  base: !include packages/base/ventosync_base.yaml
   mock_scd41: !include packages/sensors/mock_scd41.yaml
   mock_bme680: !include packages/sensors/mock_bme680.yaml
   ld2450: !include packages/sensors/sensor_LD2450.yaml

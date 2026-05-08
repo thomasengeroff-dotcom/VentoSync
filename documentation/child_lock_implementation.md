@@ -8,7 +8,7 @@ The child protection mode locks the physical control panel buttons so the device
 
 | File | Change |
 |:--|:--|
-| [ventosync_base.yaml](file:///home/tengeroff/ESPHome-Wohnraumlueftung/ventosync_base.yaml#L275-L280) | Added `child_lock_active` persistent global (bool, NVS-backed) |
+| [ventosync_base.yaml](file:///home/tengeroff/ESPHome-Wohnraumlueftung/packages/base/ventosync_base.yaml#L275-L280) | Added `child_lock_active` persistent global (bool, NVS-backed) |
 | [globals.h](file:///home/tengeroff/ESPHome-Wohnraumlueftung/components/helpers/globals.h#L245-L248) | Added `extern` declarations for `child_lock_active` and `child_lock_switch` |
 | [globals.h](file:///home/tengeroff/ESPHome-Wohnraumlueftung/components/helpers/globals.h#L372-L376) | Added `child_lock_combo_triggered_ms` inline timestamp for combo cooldown |
 | [globals.h](file:///home/tengeroff/ESPHome-Wohnraumlueftung/components/helpers/globals.h#L438) | Added forward declaration for `flash_all_leds()` |

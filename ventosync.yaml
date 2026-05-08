@@ -28,7 +28,7 @@
 # ==========================================================================
 
 packages:
-  base: !include ventosync_base.yaml
+  base: !include packages/base/ventosync_base.yaml
   scd41: !include packages/sensors/sensor_SCD41.yaml
   bme680: !include packages/sensors/sensor_BME680.yaml
   ld2450: !include packages/sensors/sensor_LD2450.yaml

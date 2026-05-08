@@ -808,7 +808,10 @@ VentoSync/
 │   └── ui/                    # UI-Steuerung & Diagnose
 ├── tests/                     # C++ Unit-Tests für die Kernlogik
 ├── ventosync.yaml             # Haupt-Einstiegspunkt (Vollversion)
-├── ventosync_base.yaml        # Gemeinsame Logik und globale Variablen
+│   ├── base/
+│   │   ├── ventosync_base.yaml    # Gemeinsame Logik und globale Variablen
+│   │   ├── esp32c6_common.yaml    # Basis ESP32-C6 Einstellungen
+│   │   └── ...
 └── version.json               # Aktuelle Firmware-Version
 ```
 
@@ -832,7 +835,7 @@ Die ehemals gewaltige Hauptdatei wurde drastisch verschlankt, um die Lesbarkeit 
 - **`integration/`**: Isoliert alle externen Home Assistant Datenpunkte (`homeassistant.yaml`), um das System autark lauffähig zu halten.
 - **`ui/`**: Enthält Web GUI, Diagnose-Entitäten und Status-LEDs.
 
-Die Hauptdateien (`ventosync.yaml` etc.) fungieren nun lediglich als schlanke "Wrapper", die die `ventosync_base.yaml` importieren und je nach Variante spezifische Sensoren oder Mocks dazuladen.
+Die Hauptdateien (`ventosync.yaml` etc.) fungieren nun lediglich als schlanke "Wrapper", die die `packages/base/ventosync_base.yaml` importieren und je nach Variante spezifische Sensoren oder Mocks dazuladen.
 
 #### **2. `automation_helpers.h` - Zentrale Helper-Bibliothek**
 

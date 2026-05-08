@@ -52,23 +52,23 @@ substitutions:
 # ---------------------------------------------------------
 # Include common settings (WiFi, Logger, API) and device-specific configs
 packages:
-  common: !include packages/base/esp32c6_common.yaml
-  device_config_pkg: !include packages/base/device_config.yaml
-  hardware: !include packages/io/hardware_io.yaml
-  communication: !include packages/communication/esp_now.yaml
-  sensors: !include packages/sensors/sensors_climate.yaml
-  fan_hardware: !include packages/io/hardware_fan.yaml
-  bmp390: !include packages/sensors/sensor_BMP390.yaml
-  ntc: !include packages/sensors/sensor_NTC.yaml
-  ui: !include packages/ui/ui_controls.yaml
-  lights: !include packages/ui/ui_lights.yaml
-  diagnostics: !include packages/ui/ui_diagnostics.yaml
-  logic: !include packages/actuators/logic_automation.yaml
-  buttons: !include packages/io/logic_buttons.yaml
-  pid: !include packages/actuators/logic_pid.yaml
-  maintenance: !include packages/actuators/logic_maintenance.yaml
-  safety: !include packages/actuators/logic_safety.yaml
-  integration: !include packages/integration/homeassistant.yaml
+  common: !include esp32c6_common.yaml
+  device_config_pkg: !include device_config.yaml
+  hardware: !include ../io/hardware_io.yaml
+  communication: !include ../communication/esp_now.yaml
+  sensors: !include ../sensors/sensors_climate.yaml
+  fan_hardware: !include ../io/hardware_fan.yaml
+  bmp390: !include ../sensors/sensor_BMP390.yaml
+  ntc: !include ../sensors/sensor_NTC.yaml
+  ui: !include ../ui/ui_controls.yaml
+  lights: !include ../ui/ui_lights.yaml
+  diagnostics: !include ../ui/ui_diagnostics.yaml
+  logic: !include ../actuators/logic_automation.yaml
+  buttons: !include ../io/logic_buttons.yaml
+  pid: !include ../actuators/logic_pid.yaml
+  maintenance: !include ../actuators/logic_maintenance.yaml
+  safety: !include ../actuators/logic_safety.yaml
+  integration: !include ../integration/homeassistant.yaml
 
 external_components:
   - source:

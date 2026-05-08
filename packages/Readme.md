@@ -54,7 +54,7 @@ This directory contains the modularized ESPHome configuration files (packages). 
 | **`sensor_NTC.yaml`** | Configuration for the analog NTC probes used to measure supply/exhaust air temperature. |
 | **`mock_*.yaml`** | Mock sensor definitions (SCD41, BME680, Radar) to allow firmware compilation even when specific hardware is omitted. |
 
-The main configuration file `ventosync.yaml` (in the root directory) uses the `packages:` instruction to merge these modules and the core logic defined in `ventosync_base.yaml`.
+The main configuration file `ventosync.yaml` (in the root directory) uses the `packages:` instruction to merge these modules and the core logic defined in `packages/base/ventosync_base.yaml`.
 
 This modular approach is necessary because **ESPHome does not support deactivating hardware components via software at runtime.** In ESPHome, every hardware component (sensors, displays, etc.) declared in the YAML is compiled into the firmware and initialized on boot. If a component is defined but the physical hardware is missing, the firmware would continuously log errors or potentially crash during initialization. By using packages, you ensure that only the drivers for the physically present hardware are compiled into the firmware.
 

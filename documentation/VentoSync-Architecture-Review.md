@@ -10,7 +10,7 @@ The VentoSync project exhibits a highly modular, professional-grade ESPHome arch
 
 ### ✅ Modular Configuration (`packages`)
 **Status: Excellent**
-The project masterfully utilizes the ESPHome `packages:` feature (e.g., `ventosync.yaml` calling `ventosync_base.yaml`, which then includes dedicated packages like `packages/io/hardware_fan.yaml`, `packages/sensors/sensor_SCD41.yaml`, etc.). This strictly adheres to ESPHome best practices for large projects, ensuring configurations are reusable, DRY (Don't Repeat Yourself), and maintainable across different hardware variants (Full, BME680-only, Radar-only, NoSensor).
+The project masterfully utilizes the ESPHome `packages:` feature (e.g., `ventosync.yaml` calling `packages/base/ventosync_base.yaml`, which then includes dedicated packages like `packages/io/hardware_fan.yaml`, `packages/sensors/sensor_SCD41.yaml`, etc.).
 
 ### ✅ Custom C++ Integration (`external_components` & `includes`)
 **Status: Excellent**

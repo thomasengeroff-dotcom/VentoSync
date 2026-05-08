@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.256] - 2026-05-08
+
+### Changed
+- **Project Structure Optimization**: Moved `ventosync_base.yaml` to `packages/base/` for a cleaner root directory and improved modularity.
+- **Path Resolution**: Updated all internal `!include` and `external_components` paths to ensure correct resolution from the new nested directory structure.
+
+### Fixed
+- **Pre-compile Script Path**: Corrected root-relative path to `version_bump.py` in `esp32c6_common.yaml` after the move.
+
+### Added
+- **Documentation Parity**: Updated `Readme.md`, `Readme_de.md`, and architectural reviews to reflect the new file locations and ensure consistent documentation.
+
 ## [0.8.255] - 2026-05-07
 
 ### Added
@@ -151,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **C++ Preprocessor Flags**: Einführung von `-DVENTOSYNC_NO_CLIMATE` und `-DVENTOSYNC_NO_RADAR` Build-Flags für saubere, konfliktfreie C++-Deklarationen in `globals.h`.
 
 ### Changed
-- **Base-Konfiguration (`ventosync_base.yaml`)**: Die `ventosync.yaml` wurde vollständig entschlackt. Der gesamte gemeinsame Code (Hardware-Pins, UI, Netzwerk, Lüfter) liegt nun zentral in der Base-Datei. Die Hauptdateien fungieren nur noch als schlanke Wrapper.
+- **Base-Konfiguration (`packages/base/ventosync_base.yaml`)**: Die `ventosync.yaml` wurde vollständig entschlackt. Der gesamte gemeinsame Code (Hardware-Pins, UI, Netzwerk, Lüfter) liegt nun zentral in der Base-Datei. Die Hauptdateien fungieren nur noch als schlanke Wrapper.
 - **Home Assistant Entitäten aufgeräumt**: Fehlende Sensoren (via Mocks) und davon abgeleitete Berechnungen (z.B. "Effektiver CO2 Wert", "WRG Effizienz") werden durch `internal: true` dynamisch vor Home Assistant versteckt. Es gibt keine "Unknown"-Sensoren mehr im Dashboard.
 
 ## [0.8.171] - 2026-04-21
