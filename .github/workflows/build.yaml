@@ -136,7 +136,7 @@ jobs:
       - name: Read version from version.json
         id: version
         run: |
-          VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['version'])")
+          VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['project_version'])")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Release version: v$VERSION"
