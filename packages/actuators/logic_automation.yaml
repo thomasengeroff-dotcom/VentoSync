@@ -71,7 +71,7 @@ script:
           id(pre_vacation_intensity) = id(fan_intensity_level);
 
           // Read configured vacation mode and intensity from HA config entities
-          std::string vacation_mode = id(vacation_mode_select).state;
+          std::string vacation_mode = id(vacation_mode_select).current_option();
           float vacation_intensity = id(vacation_intensity_number).state;
 
           // Fallback to safe defaults if entities are not yet initialized

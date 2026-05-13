@@ -69,6 +69,7 @@ packages:
   maintenance: !include ../actuators/logic_maintenance.yaml
   safety: !include ../actuators/logic_safety.yaml
   integration: !include ../integration/homeassistant.yaml
+  ha_fan: !include ../integration/ha_fan_entity.yaml
 
 external_components:
   - source:
