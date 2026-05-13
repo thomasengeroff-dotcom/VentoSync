@@ -50,10 +50,12 @@ switch:
     turn_on_action:
       - lambda: |-
           id(peer_check_enabled) = true;
+          id(peer_check_switch).publish_state(true);
           sync_settings_to_peers();
           ESP_LOGI("espnow", "Peer check enabled");
     turn_off_action:
       - lambda: |-
           id(peer_check_enabled) = false;
+          id(peer_check_switch).publish_state(false);
           sync_settings_to_peers();
           ESP_LOGI("espnow", "Peer check disabled");

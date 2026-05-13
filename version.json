@@ -1,5 +1,5 @@
 {
-    "project_version": "0.8.258",
-    "project_date": "2026-05-08",
-    "project_description": "Automate project versioning by linking version.json directly to ESPHome configuration."
+    "project_version": "0.8.260",
+    "project_date": "2026-05-13",
+    "project_description": "Fix sluggish UI response by forcing immediate state publishing for template entities."
 }

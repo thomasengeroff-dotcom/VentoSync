@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.259] - 2026-05-13
+
+### Fixed
+- **UI Responsiveness**: Resolved an issue where the "Lüfter Intensität" slider and "ESP-NOW Peerprüfung" switch in Home Assistant would take up to 60 seconds to update or revert to their previous state.
+- Added explicit `publish_state()` calls to the `set_action` and `turn_on/off_action` blocks for template entities configured with `optimistic: false`.
+
 ## [0.8.257] - 2026-05-08
 
 ### Added
