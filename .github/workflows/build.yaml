@@ -222,6 +222,7 @@ jobs:
           | `ventosync-nosensor.ota.bin` | Ohne Sensoren (nur Lüftersteuerung) |
           | `ventosync-radar-only.ota.bin` | Nur LD2450 Radar |
           | `ventosync-bme680-only.ota.bin` | Nur BME680 Sensor |
+          | `ventosync-ntconly.ota.bin` | Nur NTC Sensoren (Wärmerückgewinnung) |
 
           ### OTA Update
           Die Geräte prüfen automatisch auf Updates über ihre konfigurierte `manifest-<variant>.json`.
