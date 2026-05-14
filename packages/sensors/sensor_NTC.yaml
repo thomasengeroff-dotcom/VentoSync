@@ -51,8 +51,9 @@ sensor:
 
   - platform: ntc
     sensor: ntc_innen_resistance
-    name: "WRG Temperatur Zuluft (Innen)"
-    id: temp_zuluft
+    name: "Temp. Abluft (Innen)"
+    id: temp_abluft
+    internal: ${hide_ntc_sensors}
     calibration:
       b_constant: 3976 # Beta coefficient from datasheet
       reference_temperature: 25°C
@@ -60,10 +61,22 @@ sensor:
     accuracy_decimals: 1
     filters:
       - median:
-          window_size: 5
-          send_every: 3
+          window_size: 3
+          send_every: 1
       - lambda: |-
           return filter_ntc_stable(0, x);
+
+  - platform: ntc
+    sensor: ntc_innen_resistance
+    name: "Temp. Abluft (Innen) RAW"
+    id: temp_abluft_raw
+    internal: ${hide_ntc_sensors}
+    calibration:
+      b_constant: 3976 # Beta coefficient from datasheet
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    entity_category: diagnostic
 
   - platform: adc
     id: ntc_innen_source
@@ -83,8 +96,9 @@ sensor:
 
   - platform: ntc
     sensor: ntc_aussen_resistance
-    name: "WRG Temperatur Abluft (Außen)"
-    id: temp_abluft
+    name: "Temp. Zuluft (Außen)"
+    id: temp_zuluft
+    internal: ${hide_ntc_sensors}
     calibration:
       b_constant: 3976 # Beta coefficient from datasheet
       reference_temperature: 25°C
@@ -92,10 +106,22 @@ sensor:
     accuracy_decimals: 1
     filters:
       - median:
-          window_size: 5
-          send_every: 3
+          window_size: 3
+          send_every: 1
       - lambda: |-
           return filter_ntc_stable(1, x);
+
+  - platform: ntc
+    sensor: ntc_aussen_resistance
+    name: "Temp. Zuluft (Außen) RAW"
+    id: temp_zuluft_raw
+    internal: ${hide_ntc_sensors}
+    calibration:
+      b_constant: 3976 # Beta coefficient from datasheet
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    accuracy_decimals: 1
+    entity_category: diagnostic
 
   - platform: adc
     id: ntc_aussen_source

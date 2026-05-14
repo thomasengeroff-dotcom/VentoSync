@@ -284,9 +284,8 @@ extern esphome::binary_sensor::BinarySensor *const radar_presence; ///< Presence
 extern esphome::template_::TemplateSensor
     *const effective_co2; ///< Unified CO2 sensor (SCD41 or BME680 fallback).
 extern esphome::sensor::Sensor *const temperature; ///< Room Temperature (SCD41)
-extern esphome::ntc::NTC *const temp_zuluft; ///< Supply Air Temperature (NTC Inside)
-extern esphome::ntc::NTC
-    *const temp_abluft; ///< Exhaust Air Temperature (NTC Outside)
+extern esphome::ntc::NTC *const temp_zuluft; ///< Outside Air Temperature (NTC Outside)
+extern esphome::ntc::NTC *const temp_abluft; ///< Inside Air Temperature (NTC Inside)
 extern esphome::homeassistant::HomeassistantSensor
     *const outdoor_humidity; ///< Outdoor Humidity (HA)
 extern esphome::homeassistant::HomeassistantBinarySensor

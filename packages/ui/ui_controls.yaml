@@ -235,6 +235,7 @@ text_sensor:
     name: "Lüfter Richtung"
     id: direction_display
     icon: "mdi:directions-fork"
+    update_interval: 1s
     lambda: |-
       static std::string last_state = "";
       std::string current_state = "";

@@ -1,5 +1,5 @@
 {
-    "project_version": "0.8.260",
-    "project_date": "2026-05-13",
-    "project_description": "Fix sluggish UI response by forcing immediate state publishing for template entities."
+    "project_version": "0.9.1",
+    "project_date": "2026-05-14",
+    "project_description": "Fix WRG efficiency calculations, optimize NTC logic, and eliminate UI latencies."
 }

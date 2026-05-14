@@ -5,8 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.259] - 2026-05-13
+## [0.9.1] - 2026-05-14
 
+### Fixed
+- **UI Latenz & Synchronisation**: Behebung drastischer Verzögerungen bei der Aktualisierung von Template-Sensoren im Home Assistant Dashboard (z.B. "Lüfter Richtung" und "WRG Effizienz").
+- **Event-Driven Template Sensors**: Fehlende `update_interval` Angaben führten dazu, dass Template-Sensoren, die auf C++ Variablen (`globals`) basieren, auf den langsamen 60-Sekunden Standard-Polling-Zyklus von ESPHome zurückfielen. Entsprechende Sensoren erzwingen nun via `update_interval: 1s` oder `5s` sofortige HA-Statusupdates.
+- **WRG-Effizienz Schwebung**: Ein statisches 60-Sekunden-Intervall führte dazu, dass die Effizienz-Berechnung fast nie das korrekte 42-Sekunden-Zuluft-Fenster traf. Dies wurde in einen Event-gesteuerten Modus mit 5-Sekunden-Takt (`update_interval: 5s`) umgeschrieben. Die Effizienzkurve wird nun live und hochauflösend gerendert.
+
+### Changed
+- **NTC Sensor Mapping**: Konsequenter Tausch der NTC-Rollen zur physischen Realität: `temp_abluft` repräsentiert die Referenz-Innentemperatur (gemessen während der Abluft-Phase), während `temp_zuluft` die Außentemperatur repräsentiert.
+- **Median-Filter Tuning**: Anpassung der Window-Send-Rate in `sensor_NTC.yaml` (`send_every: 3` -> `1`), um die trägen thermischen Messwerte mit der sehr kurzen 70-Sekunden Richtungsphase zu synchronisieren und das "Verschlucken" von gültigen Fenstern zu beenden.
+- **CO2 Bewertung**: Die Text-Klassifizierung ("Gut", "Schlecht") reagiert nun ohne 60-Sekunden Verzögerung latenzfrei auf Änderungen des darunterliegenden CO2-Wertes.
+
+## [0.8.259] - 2026-05-13
 ### Fixed
 - **UI Responsiveness**: Resolved an issue where the "Lüfter Intensität" slider and "ESP-NOW Peerprüfung" switch in Home Assistant would take up to 60 seconds to update or revert to their previous state.
 - Added explicit `publish_state()` calls to the `set_action` and `turn_on/off_action` blocks for template entities configured with `optimistic: false`.

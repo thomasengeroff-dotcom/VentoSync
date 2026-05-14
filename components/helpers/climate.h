@@ -35,6 +35,11 @@ inline std::string get_co2_classification(float co2_ppm) {
   return VentilationLogic::get_co2_classification(co2_ppm);
 }
 
+// Stabilization parameter constants
+constexpr float NTC_MAX_DEVIATION = 0.3f;
+constexpr uint32_t NTC_MIN_WAIT_MS = 15000;
+constexpr size_t NTC_WINDOW_SIZE = 3;
+
 /**
  * @brief   Calculates the heat recovery efficiency fraction (0.0 – 1.0).
  *
@@ -48,7 +53,7 @@ inline std::string get_co2_classification(float co2_ppm) {
  * @param[in] t_aussen    Outside ambient air temperature.
  * @param[in] current_eff The last calculated efficiency (to hold during flips).
  */
-inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
+inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft_live,
                                                 float t_aussen,
                                                 float current_eff) {
   if (ventilation_ctrl == nullptr)
@@ -59,79 +64,67 @@ inline float calculate_heat_recovery_efficiency(float t_raum, float t_zuluft,
   const auto hw = ventilation_ctrl->state_machine.get_target_state(now);
 
   const bool is_wrg = (mode == esphome::MODE_ECO_RECOVERY);
-  const bool is_intake = hw.direction_in;
+  const bool is_intake = hw.direction_in; // Zuluft-Phase (von außen nach innen)
 
-  // Abort if NTC sensors are disconnected (usually report ~87°C) or invalid
-  if (std::isnan(t_zuluft) || std::isnan(t_aussen) || t_zuluft > 80.0f || t_aussen > 80.0f) {
-    return NAN;
+  // Abort if sensors are disconnected or invalid
+  if (std::isnan(t_zuluft_live) || std::isnan(t_aussen) || std::isnan(t_raum)) {
+    return current_eff;
   }
 
-  // Boot-Guard: Keine Messung in den ersten 60s nach Boot
+  // Boot-Guard: Keine Messung in den ersten 60s
   static bool boot_complete = false;
   if (!boot_complete) {
     if (now < 60000) return current_eff;
     boot_complete = true;
   }
 
-  // Thermal stabilization: Wait at least 30s into the cycle before sampling
-  constexpr uint32_t stable_time_ms = 30000;
   const uint32_t time_since_flip = now - last_direction_change_time;
-  // Sicherstellen dass mindestens EIN echter Richtungswechsel stattgefunden hat
   const bool had_real_flip = (last_direction_change_time > 0);
-  const bool is_stable = had_real_flip && (time_since_flip > stable_time_ms);
 
+  // Dynamische Wartezeit, um die NTC-Anpassungsphase nach dem Richtungswechsel auszulassen (analog filter_ntc_stable)
+  const uint32_t cycle_ms = ventilation_ctrl->state_machine.cycle_duration_ms;
+  uint32_t wait_ms = NTC_MIN_WAIT_MS;
+  if (cycle_ms > 0) {
+      wait_ms = std::clamp(
+          static_cast<uint32_t>(cycle_ms * 0.4f),
+          NTC_MIN_WAIT_MS,
+          cycle_ms > 5000 ? cycle_ms - 5000 : cycle_ms / 2
+      );
+  }
+
+  const bool is_stable = had_real_flip && (time_since_flip > wait_ms);
+
+  // Messung nur während der Zuluft-Phase, NACH der Anpassungsphase
   if (is_wrg && is_intake && is_stable) {
-    if (std::isnan(t_raum)) {
-      ESP_LOGD("climate", "WRG Efficiency: Room sensor data NaN, holding: %.1f%%", current_eff);
-      return current_eff;
-    }
+    // Effizienz berechnen. VentilationLogic gibt 0.0 bis 100.0 zurück.
     float eff = VentilationLogic::calculate_heat_recovery_efficiency(
-        t_raum, t_zuluft, t_aussen);
+        t_raum, t_zuluft_live, t_aussen);
         
-    // NaN abfangen (z.B. wenn T_raum == T_aussen -> Division durch 0)
     if (std::isnan(eff) || std::isinf(eff)) {
-        ESP_LOGW("climate", 
-            "WRG efficiency calculation returned invalid value "
-            "(T_raum=%.1f, T_zuluft=%.1f, T_aussen=%.1f) — holding %.1f%%",
-            t_raum, t_zuluft, t_aussen, current_eff * 100.0f);
         return current_eff;
     }
 
     // Physikalisch sinnvoller Bereich: 0% bis 110%
-    if (eff < 0.0f || eff > 1.1f) {
+    if (eff < 0.0f || eff > 110.0f) {
         ESP_LOGW("climate",
             "WRG efficiency out of plausible range: %.1f%% "
-            "(T_raum=%.1f, T_zuluft=%.1f, T_aussen=%.1f)",
-            eff * 100.0f, t_raum, t_zuluft, t_aussen);
-        return current_eff; // Halte letzten gültigen Wert
+            "(T_raum=%.1f, T_zuluft_live=%.1f, T_aussen=%.1f)",
+            eff, t_raum, t_zuluft_live, t_aussen);
+        return current_eff;
     }
 
-    // Soft-Clamp für Anzeige: Werte zwischen 0% und 100%
-    eff = std::clamp(eff, 0.0f, 1.0f);
+    // Soft-Clamp für Anzeige auf 0-100%
+    eff = std::clamp(eff, 0.0f, 100.0f);
 
-    ESP_LOGD("climate", "WRG Efficiency update: %.1f%% (Room:%.1f Zuluft:%.1f Out:%.1f)", 
-             eff * 100.0f, t_raum, t_zuluft, t_aussen);
+    ESP_LOGD("climate", "WRG Efficiency update: %.1f%% (Room:%.1f Zuluft_Live:%.1f Out:%.1f)", 
+             eff, t_raum, t_zuluft_live, t_aussen);
     return eff;
   }
 
-  // Debugging holding reasons (only in WRG mode to avoid log spam)
-  if (is_wrg) {
-    if (!is_intake) {
-      ESP_LOGD("climate", "WRG Efficiency: Holding during exhaust phase (Abluft)");
-    } else if (!is_stable) {
-      ESP_LOGD("climate", "WRG Efficiency: Waiting for stabilization (%us remaining)", 
-               (stable_time_ms - time_since_flip) / 1000);
-    }
-  }
-
-  // Not in a valid sampling window → hold last known value
   return current_eff;
 }
 
-// Stabilization parameter constants
-constexpr float NTC_MAX_DEVIATION = 0.3f;
-constexpr uint32_t NTC_MIN_WAIT_MS = 15000;
-constexpr size_t NTC_WINDOW_SIZE = 3;
+
 
 /**
  * @brief   NTC Sliding Window Stabilization Filter.
@@ -142,7 +135,7 @@ constexpr size_t NTC_WINDOW_SIZE = 3;
  *          to the ceramic core, which has high thermal inertia and
  *          requires time to "settle" after each direction change.
  *
- * @param[in] sensor_idx  0 for temp_zuluft, 1 for temp_abluft.
+ * @param[in] sensor_idx  0 for temp_abluft (NTC Innen), 1 for temp_zuluft (NTC Außen).
  * @param[in] new_value   The raw value reported by the physical NTC component.
  *
  * @return  The original value if stable, else an empty optional to discard the update.
@@ -165,6 +158,17 @@ inline esphome::optional<float> filter_ntc_stable(int sensor_idx,
 
   if (ventilation_ctrl == nullptr) {
     return new_value;
+  }
+
+  // --- NEU: Richtungs-Sperre (Phase-Lock) ---
+  // NTC 0 (Innen) misst die wahre Innentemperatur nur während der Abluft-Phase (Luft strömt nach außen)
+  // NTC 1 (Außen) misst die wahre Außentemperatur nur während der Zuluft-Phase (Luft strömt nach innen)
+  const auto hw = ventilation_ctrl->state_machine.get_target_state(millis());
+  if (sensor_idx == 0 && hw.direction_in) {
+      return {}; // Zuluft-Phase: Innensensor misst aufgewärmte Luft -> Wert für T_raum halten!
+  }
+  if (sensor_idx == 1 && !hw.direction_in) {
+      return {}; // Abluft-Phase: Außensensor misst abgekühlte Luft -> Wert für T_aussen halten!
   }
 
   const uint32_t cycle_ms = ventilation_ctrl->state_machine.cycle_duration_ms;

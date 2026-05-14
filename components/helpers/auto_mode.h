@@ -138,12 +138,12 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
         local_out = read_sensor(temp_zuluft);
         if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
     } else {
-        local_out = read_sensor(temp_abluft);
-        if (std::isnan(local_in)) local_in = read_sensor(temp_zuluft);
+        local_out = read_sensor(temp_zuluft);
+        if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
     }
   } else if (internal_mode == esphome::MODE_ECO_RECOVERY) {
-    local_out = read_sensor(temp_abluft);
-    if (std::isnan(local_in)) local_in = read_sensor(temp_zuluft);
+    local_out = read_sensor(temp_zuluft);
+    if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
   }
 
   // Update controller state for networking

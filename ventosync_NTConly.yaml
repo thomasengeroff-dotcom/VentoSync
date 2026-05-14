@@ -17,18 +17,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# File:        ventosync_nosensor.yaml
-# Description: ESPHome configuration variant for devices with no climate/radar sensors.
+# File:        ventosync_NTConly.yaml
+# Description: ESPHome configuration variant for devices with ONLY NTC sensors.
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
-# Created:     2026-04-21
-# Modified:    2026-04-21
+# Created:     2026-05-14
+# Modified:    2026-05-14
 # ==========================================================================
 
 substitutions:
   hide_climate_sensors: "true"
-  hide_ntc_sensors: "true"
-  firmware_variant: "ventosync-nosensor"
+  hide_ntc_sensors: "false"
+  firmware_variant: "ventosync-ntconly"
 
 esphome:
   platformio_options:
