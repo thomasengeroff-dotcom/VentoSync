@@ -44,6 +44,8 @@ jobs:
             name: ventosync-radar-only
           - yaml: ventosync_bme680_only.yaml
             name: ventosync-bme680-only
+          - yaml: ventosync_NTConly.yaml
+            name: ventosync-ntconly
 
     steps:
       - name: Checkout Repository
