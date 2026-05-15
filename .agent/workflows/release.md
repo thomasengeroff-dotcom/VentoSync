@@ -20,7 +20,7 @@ Wenn dieser Workflow aufgerufen wird, führst du als KI-Assistent vollautomatisc
    Starte den Build-Prozess und verknüpfe ihn per `&&` mit dem automatischen Git Push, damit alles nahtlos im Hintergrund durchlaufen kann, falls der Build erfolgreich ist.
    // turbo
    Führe den folgenden Befehl im Terminal aus (ersetze `DEINE_MESSAGE` durch deine generierte Nachricht):
-   `esphome run ventosync_nosensor.yaml --device 192.168.178.206 --no-logs && git add . && git commit -m "DEINE_MESSAGE" && git push`
+   `rm -f .version_bump_lock && esphome run ventosync_nosensor.yaml --device 192.168.178.206 --no-logs && git add . && git commit -m "DEINE_MESSAGE" && git push`
    Setze `SafeToAutoRun` auf `true`.
 
 Zeige dem User abschließend kurz die generierte Description, den neuen CHANGELOG-Eintrag sowie die Commit-Nachricht, und melde, dass der Build inkl. anschließendem Push im Hintergrund gestartet wurde.
