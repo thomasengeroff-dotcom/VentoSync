@@ -68,7 +68,7 @@ interval:
             // Estimate volume flow (approx. 4.5 m³/h per fan level, max 45 m³/h)
             float flow_m3h = 0.0f;
             if (id(ventilation_ctrl) != nullptr) {
-              flow_m3h = id(ventilation_ctrl)->state_machine.current_level * 4.5f;
+              flow_m3h = id(ventilation_ctrl)->current_fan_intensity * 4.5f;
             }
             auto result = ventosync::hrv::get_calculator().finalize_cycle(flow_m3h);
             

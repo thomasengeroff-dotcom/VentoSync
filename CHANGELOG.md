@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.8] - 2026-05-15
+
+### Fixed
+- **WRG Effizienz Mapping**: Korrektur der Sensor-Zuweisung in `sensor_hrv_efficiency.yaml`. Die Zuluft-Temperatur (`t_supply`) wird nun korrekt vom ungefilterten Innensensor (`temp_abluft_raw`) bezogen, da der Haupt-Innensensor während der Zuluft-Phase thermisch stabilisiert ("eingefroren") bleibt. Dies behebt den Fehler, bei dem die Effizienz dauerhaft `0.0 %` anzeigte.
+- **Release-Workflow**: Die Sperrdatei `.version_bump_lock` wird nun vor jedem Build automatisch gelöscht, um sicherzustellen, dass die Versionsnummer bei manuellen Release-Aufrufen zuverlässig hochgezählt wird.
+
+### Added
+- **Volumenstrom-Schätzung**: Implementierung einer heuristischen Volumenstrom-Berechnung (ca. 4,5 m³/h pro Lüfterstufe). Dies ermöglicht dem HRV-Integrator die Berechnung der tatsächlich zurückgewonnenen thermischen Energie in **Wattstunden (Wh)**.
+
 ## [0.9.4] - 2026-05-15
 
 ### Added
