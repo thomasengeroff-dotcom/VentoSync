@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.3",
+    "project_version": "0.9.4",
     "project_date": "2026-05-14",
     "project_description": "Refactor HRV efficiency to trapezoidal integration and fix NTC sensor redundancy labels."
 }
