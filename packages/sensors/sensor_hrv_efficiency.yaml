@@ -65,8 +65,12 @@ interval:
           
           if (last_was_supply && !is_supply) {
             // Zuluft-Phase ist gerade beendet → Zyklus finalisieren
-            // We use a default 0.0f volume flow since we don't have a reliable volume flow sensor
-            auto result = ventosync::hrv::get_calculator().finalize_cycle(0.0f);
+            // Estimate volume flow (approx. 4.5 m³/h per fan level, max 45 m³/h)
+            float flow_m3h = 0.0f;
+            if (id(ventilation_ctrl) != nullptr) {
+              flow_m3h = id(ventilation_ctrl)->state_machine.current_level * 4.5f;
+            }
+            auto result = ventosync::hrv::get_calculator().finalize_cycle(flow_m3h);
             
             if (result.valid) {
               id(hrv_efficiency_cycle).publish_state(result.efficiency_pct);
@@ -88,9 +92,9 @@ interval:
           // Nur während der Zuluft-Phase (Luft wird von außen reingeblasen) integrieren
           if (!is_supply) return;
           
-          float t_supply  = id(temp_zuluft).state;     // Luft nach Keramik (was im Raum ankommt)
-          float t_extract = id(temp_abluft).state;     // Raumluft (Referenz)
-          float t_outside = id(temp_zuluft_raw).state; // Außentemperatur (ungefiltert)
+          float t_supply  = id(temp_abluft_raw).state; // Luft nach Keramik (was im Raum ankommt, RAW weil ungefiltert in dieser Phase)
+          float t_extract = id(temp_abluft).state;     // Raumluft (Referenz, gefiltert und gehalten)
+          float t_outside = id(temp_zuluft).state;     // Außentemperatur (Referenz, gefiltert)
           
           ventosync::hrv::get_calculator().add_sample(
             t_supply, t_extract, t_outside,
