@@ -1,0 +1,98 @@
+# ==========================================================================
+# VentoSync HRV – Heat Recovery Efficiency Sensor
+# File: sensor_hrv_efficiency.yaml
+# ==========================================================================
+
+
+sensor:
+  # ---------------------------------------------------------
+  # WRG-Effizienz: Energiebasierte Zykluseffizienz
+  # Updated at end of each Zuluft cycle via finalize_cycle()
+  # ---------------------------------------------------------
+  - platform: template
+    name: "WRG Effizienz (Zyklus)"
+    id: hrv_efficiency_cycle
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:heat-wave"
+    device_class: power_factor
+    state_class: measurement
+    update_interval: never  # Updated programmatically
+
+  # ---------------------------------------------------------
+  # WRG-Effizienz: Live-Schätzung während laufender Phase
+  # ---------------------------------------------------------
+  - platform: template
+    name: "WRG Effizienz"
+    id: heat_recovery_efficiency
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    icon: "mdi:heat-wave"
+    state_class: measurement
+    update_interval: 10s
+    lambda: |-
+      float eta = ventosync::hrv::get_calculator().get_live_efficiency();
+      if (std::isnan(eta)) return {};
+      return eta;
+
+  # ---------------------------------------------------------
+  # Rückgewonnene Energie pro Zyklus
+  # ---------------------------------------------------------
+  - platform: template
+    name: "WRG Energie (Zyklus)"
+    id: hrv_energy_cycle
+    unit_of_measurement: "Wh"
+    accuracy_decimals: 2
+    icon: "mdi:lightning-bolt"
+    state_class: measurement
+    update_interval: never
+
+interval:
+  # ---------------------------------------------------------
+  # Sample-Collector: Speist NTC-Daten in den Integrator
+  # Läuft synchron zum NTC update_interval (5s)
+  # ---------------------------------------------------------
+  - interval: 5s
+    then:
+      - lambda: |-
+          if (id(ventilation_ctrl) == nullptr) return;
+          
+          auto hw = id(ventilation_ctrl)->state_machine.get_target_state(millis());
+          bool is_supply = hw.direction_in;
+          
+          // Phase tracking: Detect transition from Supply -> Exhaust
+          static bool last_was_supply = false;
+          
+          if (last_was_supply && !is_supply) {
+            // Zuluft-Phase ist gerade beendet → Zyklus finalisieren
+            // We use a default 0.0f volume flow since we don't have a reliable volume flow sensor
+            auto result = ventosync::hrv::get_calculator().finalize_cycle(0.0f);
+            
+            if (result.valid) {
+              id(hrv_efficiency_cycle).publish_state(result.efficiency_pct);
+              id(hrv_energy_cycle).publish_state(result.energy_recovered_wh);
+              
+              ESP_LOGI("hrv", "Cycle efficiency: %.1f%% | Duration: %.0fs | Samples: %d",
+                       result.efficiency_pct, result.cycle_duration_s,
+                       ventosync::hrv::get_calculator().get_sample_count());
+            } else {
+              ESP_LOGD("hrv", "Cycle result invalid (samples=%d, duration=%.0fs)",
+                       ventosync::hrv::get_calculator().get_sample_count(), result.cycle_duration_s);
+            }
+          } else if (!last_was_supply && is_supply) {
+            // Abluft -> Zuluft (New cycle starting)
+            ventosync::hrv::get_calculator().reset();
+          }
+          last_was_supply = is_supply;
+          
+          // Nur während der Zuluft-Phase (Luft wird von außen reingeblasen) integrieren
+          if (!is_supply) return;
+          
+          float t_supply  = id(temp_zuluft).state;     // Luft nach Keramik (was im Raum ankommt)
+          float t_extract = id(temp_abluft).state;     // Raumluft (Referenz)
+          float t_outside = id(temp_zuluft_raw).state; // Außentemperatur (ungefiltert)
+          
+          ventosync::hrv::get_calculator().add_sample(
+            t_supply, t_extract, t_outside,
+            millis()
+          );

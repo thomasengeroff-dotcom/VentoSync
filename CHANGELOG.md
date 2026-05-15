@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-05-15
+
+### Added
+- **Energiebasierte WRG-Effizienz**: Die Berechnung der Wärmerückgewinnung nutzt nun eine numerische Trapez-Integration über den gesamten Luftzyklus (gemäß DIN EN 13141-8). Dies löst das Problem mathematisch instabiler "Live"-Werte bei geringen Temperaturdifferenzen in der Übergangszeit und liefert ein echtes physikalisches Abbild der zurückgewonnenen Energie.
+
+### Fixed
+- **NTC Sensor-Dokumentation**: Korrektur der vertauschten Sensor-Beschreibungen in den Readme-Dateien (Indoor/Outdoor Mapping) zur Vermeidung von Missverständnissen bei der Verkabelung.
+- **C++ Namespace Konflikt**: Behebung des Fehlers `ventosync was not declared in this scope` beim Firmware-Build. Die globale Instanziierung des HRV-Rechners über ESPHomes `globals` wurde auf ein natives und threadsicheres C++ Singleton-Pattern (`get_calculator()`) umgestellt.
+
 ## [0.9.1] - 2026-05-14
 
 ### Fixed

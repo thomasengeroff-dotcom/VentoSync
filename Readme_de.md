@@ -701,13 +701,15 @@ Außen → Keramikspeicher → Innenraum (vorgewärmt)
 ### NTC Sensoren (Temperatur-Stabilisierung)
 
 Die NTC Sensoren messen die Temperatur am Keramikspeicher innen und außen (`temp_zuluft` und `temp_abluft`). Da die Lüfterrichtung im Wärmerückgewinnungs-Modus zyklisch (z.B. alle 70 Sekunden) wechselt, benötigen die Sensoren aufgrund ihrer thermischen Masse eine gewisse Zeit, um sich an die neue Lufttemperatur anzupassen. Um die Messung möglichst genau zu machen, werden sehr kleine NTC Sensoren genutzt, mit möglichst geringer Masse und hoher Genauigkeit. Dadurch wird die Anpassung an die wechselnde Temperatur je nach Lüftungsrichtung möglichst schnell und präzise.
-Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden, nutzen beide Sensoren eine **intelligente Temperatur-Stabilisierung**:
+Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden und die wahren thermischen Grenzwerte exakt zu erfassen, nutzen beide Sensoren eine **intelligente, saisonabhängige Temperatur-Stabilisierung**:
 
-- Nach einem Richtungswechsel (Push/Pull) wird die Messwertübertragung für **40% der Zyklusdauer (min. 15s)** pausiert (was ca. 25-30s entspricht).
-- Danach sammelt das System Messwerte in einem **30-Sekunden Sliding-Window**.
-- Erst wenn die Schwankung innerhalb dieses Fensters auf realistische **0,3 °C** oder weniger fällt, gilt der Wert als stabil und wird aktualisiert.
+- Nach einem Richtungswechsel (Push/Pull) wird die Messwertübertragung für **40% der Zyklusdauer (min. 15s)** pausiert.
+- Danach sammelt das System Messwerte in einem **Sliding-Window (Größe 3)**.
+- **Dynamische Min/Max-Auswahl:** Anstelle einer simplen Durchschnittsbildung wählt das System dynamisch den `min` oder `max` Wert aus dem Fenster, um die thermische Trägheit des Gehäuses zu kompensieren.
+  - **Winter/Übergangszeit:** Der Außensensor nimmt den Minimalwert (wahre kalte Außenluft), der Innensensor den Maximalwert (wahre warme Raumluft).
+  - **Sommer-Kühlung:** Wenn die Außenluft heißer ist als die Innenluft, kehrt sich die Logik automatisch um (Außen nimmt Max, Innen nimmt Min), um verfälschte Werte durch das kühlere/wärmere Gehäuse zu vermeiden.
 
-*Hinweis zur Redundanz:* `temp_abluft` liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_zuluft` liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren SCD41 Sensor.
+*Hinweis zur Redundanz:* `temp_zuluft` (Außen-NTC) liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_abluft` (Innen-NTC) liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren SCD41 Sensor.
 
 Konkret wird der folgende Sensor verwendet:
 
@@ -715,29 +717,24 @@ Konkret wird der folgende Sensor verwendet:
 | :--- | :--- | :--- | :--- | :--- |
 | **VARIOHM** | `ENTC-EI-10K9777-02` | [Reichelt Elektronik](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474) | ± 0,2 °C | [PDF](EasyEDA-Pro/components/NTC_ENTC_EI-10K9777-02.pdf) |
 
-### Effizienzberechnung
+### Effizienzberechnung (Energiebasiert)
 
-Am Ende der Zuluft-Phase wird die Wärmerückgewinnung berechnet:
+Die wahre Wärmerückgewinnungseffizienz eines Keramikspeichers über einen vollständigen Zyklus ist energiebasiert, nicht basierend auf punktuellen Temperaturen (gemäß DIN EN 13141-8).
 
-$$
-\text{Effizienz} = \frac{T_{\text{Zuluft}} - T_{\text{Außen}}}{T_{\text{Raum}} - T_{\text{Außen}}} \times 100\%
-$$
-
-**Beispielrechnung:**
-
-- Raumtemperatur: 21°C
-- Außentemperatur: 5°C
-- Zulufttemperatur: 16°C
+Am Ende der Zuluft-Phase berechnet das System die Effizienz mittels **numerischer Trapez-Integration** über die gesamte Phasendauer:
 
 $$
-\text{Effizienz} = \frac{16°C - 5°C}{21°C - 5°C} \times 100\% = \frac{11°C}{16°C} \times 100\% = 68.75\%
+\eta_{WRG} = \frac{\int (\text{T}_{Zuluft} - \text{T}_{Außen}) dt}{\int (\text{T}_{Raum} - \text{T}_{Außen}) dt}
 $$
+
+**Warum das mathematisch überlegen ist:**
+Würde man die Effizienz als simplen Durchschnitt der momentanen Effizienzwerte berechnen, würde der Wert bei sehr kleinen Temperaturunterschieden ($\Delta T$) extrem ungenau und numerisch instabil werden (explodierende Werte) – etwa in der Übergangszeit. Durch die Integration der Temperaturdifferenzen über die Zeit bleibt die Berechnung physikalisch korrekt, stabil und liefert ein echtes Abbild der während des Zyklus zurückgewonnenen Wärmeenergie.
 
 **Interpretation:**
 
 - **> 70%:** Ausgezeichnete Wärmerückgewinnung
 - **50-70%:** Gute Wärmerückgewinnung
-- **< 50%:** Keramik zu kalt oder Zyklus zu kurz
+- **< 50%:** Keramik zu kalt, Zyklus zu kurz oder Temperaturdifferenz zu gering
 
 ### Optimierung der Effizienz
 

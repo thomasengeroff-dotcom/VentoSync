@@ -60,6 +60,7 @@ packages:
   fan_hardware: !include ../io/hardware_fan.yaml
   bmp390: !include ../sensors/sensor_BMP390.yaml
   ntc: !include ../sensors/sensor_NTC.yaml
+  hrv_efficiency: !include ../sensors/sensor_hrv_efficiency.yaml
   ui: !include ../ui/ui_controls.yaml
   lights: !include ../ui/ui_lights.yaml
   diagnostics: !include ../ui/ui_diagnostics.yaml
@@ -81,6 +82,7 @@ esphome:
     - components/helpers/globals.h
     - components/helpers/network_sync.h
     - components/helpers/climate.h
+    - components/helpers/hrv_efficiency.h
     - components/helpers/auto_mode.h
     - components/helpers/fan_control.h
     - components/helpers/system_lifecycle.h

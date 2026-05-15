@@ -1,0 +1,311 @@
+INFO ESPHome 2026.4.5
+INFO Reading configuration ventosync_NTConly.yaml...
+INFO Detected timezone 'Europe/Berlin'
+INFO Detected timezone 'Europe/Berlin'
+INFO Generating C++ source...
+INFO Using user-provided CONFIG_LWIP_MAX_SOCKETS: 20
+INFO Compiling app... Build path: /home/tengeroff/ESPHome-Wohnraumlueftung/.esphome/build/ventosync
+Processing [36m[1mventosync[0m (board: esp32-c6-devkitc-1; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.38-1/platform-espressif32.zip)
+[1m--------------------------------------------------------------------------------[0m
+[0m
+[0m>>> REUSING VERSION: 0.9.3 (already bumped) <<<
+[0m
+[0mHARDWARE: ESP32C6 160MHz, 320KB RAM, 4MB Flash
+[0m - contrib-piohome @ 3.4.4 
+[0m - framework-espidf @ 3.50504.0 (5.5.4) 
+[0m - tool-cmake @ 4.0.3 
+[0m - tool-esp-rom-elfs @ 2024.10.11 
+[0m - tool-esptoolpy @ 5.2.0 
+[0m - tool-ninja @ 1.13.1 
+[0m - tool-riscv32-esp-elf-gdb @ 16.3.0+20250913 
+[0m - tool-scons @ 4.40801.0 (4.8.1) 
+[0m - toolchain-riscv32-esp @ 14.2.0+20260121
+[33mUsing Python 3.12.3 environment at: /home/tengeroff/.platformio/penv/.espidf-5.5.4
+[0mReading CMake configuration...
+[0mDependency Graph
+[0m|-- noise-c @ 0.1.11
+[0m|-- Improv @ 1.2.4
+[0mCompiling .pioenvs/ventosync/src/main.cpp.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv4/ip4_frag.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/dhcp6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/ethip6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/icmp6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/inet6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/ip6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/ip6_addr.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/ip6_frag.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/mld6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/core/ipv6/nd6.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ethernet.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/bridgeif.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/bridgeif_fdb.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/slipif.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/auth.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/ccp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/chap-md5.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/chap-new.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/chap_ms.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/demand.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/eap.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/ecp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/eui64.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/fsm.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/ipcp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/ipv6cp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/lcp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/magic.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/mppe.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/multilink.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/ppp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/pppapi.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/pppcrypt.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/pppoe.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/pppol2tp.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/pppos.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/upap.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/utils.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/vj.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/hooks/tcp_isn_default.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/hooks/lwip_default_hooks.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/debug/lwip_debug.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/sockets_ext.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/freertos/sys_arch.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/if_index.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/acd_dhcp_check.c.o
+[0mCompiling .pioenvs/ventosync/lwip/port/esp32xx/vfs_lwip.c.o
+[0mCompiling .pioenvs/ventosync/lwip/apps/ping/esp_ping.c.o
+[0mCompiling .pioenvs/ventosync/lwip/apps/ping/ping.c.o
+[0mCompiling .pioenvs/ventosync/lwip/apps/ping/ping_sock.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/polarssl/arc4.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/polarssl/des.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/polarssl/md4.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/polarssl/md5.c.o
+[0mCompiling .pioenvs/ventosync/lwip/lwip/src/netif/ppp/polarssl/sha1.c.o
+[0mCompiling .pioenvs/ventosync/lwip/apps/dhcpserver/dhcpserver.c.o
+[0mCompiling .pioenvs/ventosync/mbedtls/esp_crt_bundle/esp_crt_bundle.c.o
+[0mCompiling .pioenvs/ventosync/x509_crt_bundle.S.o
+[0mCompiling .pioenvs/ventosync/newlib/src/init.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/abort.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/assert.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/heap.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/locks.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/poll.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/pthread.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/random.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/getentropy.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/termios.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/stdatomic.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/time.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/sysconf.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/realpath.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/scandir.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/syscalls.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/reent_syscalls.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/port/esp_time_impl.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/port/riscv/memcpy.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/port/riscv/memmove.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/string/memcmp.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/port/riscv/strcpy.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/string/strncpy.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/string/strncmp.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/port/riscv/strcmp.S.o
+[0mCompiling .pioenvs/ventosync/newlib/src/flockfile.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/reent_init.c.o
+[0mCompiling .pioenvs/ventosync/newlib/src/newlib_init.c.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_api.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_cxx_api.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_item_hash_list.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_page.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_pagemanager.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_storage.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_handle_simple.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_handle_locked.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_partition.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_partition_lookup.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_partition_manager.cpp.o
+[0m[33m[01m[Ksrc/main.cpp:683:35:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  683 | alignas(globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                   [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:74:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>)];
+[0m[33m      |                                                                          [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:683:165:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                                                                                                                                                     [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:204:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K)];
+[0m[33m      |                                                                                                                                                                                                            [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:683:165:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                                                                                                                                                     [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:204:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K)];
+[0m[33m      |                                                                                                                                                                                                            [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:683:165:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                                                                                                                                                     [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:204:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K)];
+[0m[33m      |                                                                                                                                                                                                            [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:683:165:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                                                                                                                                                     [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:204:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K)];
+[0m[33m      |                                                                                                                                                                                                            [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:683:139:[m[K [01;31m[Kerror: [m[Kinvalid template-id
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof([01;31m[Kglobals[m[K::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                                                                                                                           [01;31m[K^~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:165:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>)];
+[0m      |                                                                                                                                                                     [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:683:205:[m[K [01;31m[Kerror: [m[Kmissing template arguments before '[01m[K)[m[K' token
+[0m[33m  683 | alignas(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>) static unsigned char globals__hrv_calculator__pstorage[sizeof(globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>[01;31m[K)[m[K];
+[0m[33m      |                                                                                                                                                                                                             [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:684:34:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  684 | static globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *>(globals__hrv_calculator__pstorage);
+[0m      |                                  [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:684:73:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *>(globals__hrv_calculator__pstorage);
+[0m[33m      |                                                                         [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:684:142:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator> *>(globals__hrv_calculator__pstorage);
+[0m      |                                                                                                                                              [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:684:181:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>[m[K *>(globals__hrv_calculator__pstorage);
+[0m[33m      |                                                                                                                                                                                     [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:684:125:[m[K [01;31m[Kerror: [m[K'[01m[K<expression error>[m[K' in namespace '[01m[Kesphome::globals[m[K' does not name a type
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::[01;31m[KGlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>[m[K *>(globals__hrv_calculator__pstorage);
+[0m      |                                                                                                                             [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:684:183:[m[K [01;31m[Kerror: [m[Kexpected '[01m[K>[m[K' before '[01m[K*[m[K' token
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> [01;31m[K*[m[K>(globals__hrv_calculator__pstorage);
+[0m[33m      |                                                                                                                                                                                       [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:684:183:[m[K [01;31m[Kerror: [m[Kexpected '[01m[K([m[K' before '[01m[K*[m[K' token
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> [01;31m[K*[m[K>(globals__hrv_calculator__pstorage);
+[0m[33m      |                                                                                                                                                                                       [01;31m[K^[m[K
+[0m[33m      |                                                                                                                                                                                       [32m[K([m[K
+[0m[33m[01m[Ksrc/main.cpp:684:184:[m[K [01;31m[Kerror: [m[Kexpected primary-expression before '[01m[K>[m[K' token
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *[01;31m[K>[m[K(globals__hrv_calculator__pstorage);
+[0m[33m      |                                                                                                                                                                                        [01;31m[K^[m[K
+[0m[33m[01m[Ksrc/main.cpp:684:186:[m[K [01;31m[Kerror: [m[K'[01m[Kglobals__hrv_calculator__pstorage[m[K' was not declared in this scope
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *>([01;31m[Kglobals__hrv_calculator__pstorage[m[K);
+[0m      |                                                                                                                                                                                          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:684:220:[m[K [01;31m[Kerror: [m[Kexpected '[01m[K)[m[K' before '[01m[K;[m[K' token
+[0m[33m  684 | static globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *const hrv_calculator = reinterpret_cast<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator> *>(globals__hrv_calculator__pstorage)[01;31m[K;[m[K
+[0m[33m      |                                                                                                                                                                                                                            [01;31m[K^[m[K
+[0m[33m      |                                                                                                                                                                                                                            [32m[K)[m[K
+[0m[33m[01m[Ksrc/main.cpp:1080:50:[m[K [01;31m[Kerror: [m[K'[01m[Kventosync[m[K' was not declared in this scope
+[0m[33m 1080 |   (1 * HasLoopOverride<globals::GlobalsComponent<[01;31m[Kventosync[m[K::hrv::HrvEfficiencyCalculator>>::value) + \
+[0m      |                                                  [01;31m[K^~~~~~~~~[m[K
+[33m[01m[Ksrc/main.cpp:1080:89:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m 1080 |   (1 * HasLoopOverride<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator[01;31m[K>>[m[K::value) + \
+[0m[33m      |                                                                                         [01;31m[K^~[m[K
+[0m[33m[01m[Ksrc/main.cpp:1080:93:[m[K [01;31m[Kerror: [m[Ktemplate argument 1 is invalid
+[0m[33m 1080 |   (1 * HasLoopOverride<globals::GlobalsComponent<ventosync::hrv::HrvEfficiencyCalculator>>::[01;31m[Kvalue[m[K) + \
+[0m      |                                                                                             [01;31m[K^~~~~[m[K
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_types.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_platform.cpp.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_bootloader.c.o
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_encrypted_partition.cpp.o
+[33m[01m[Kpackages/base/../ui/ui_controls.yaml:[m[K In function '[01m[Kvoid[01;32m[K setup[m[K()[m[K':
+[0m[33m[01m[Kpackages/base/../ui/ui_controls.yaml:298:19:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kset_component_source_[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_bootloader_aes.c.o
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:[m[K In lambda function:
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:38:35:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kvalue[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:[m[K In lambda function:
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:73:39:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kvalue[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0m[33mIn file included from [01m[Ksrc/esphome/core/gpio.h:8[m[K,
+[0m[33m                 from [01m[Ksrc/esphome/core/hal.h:4[m[K,
+[0m[33m                 from [01m[Ksrc/esphome/core/component.h:9[m[K,
+[0m[33m                 from [01m[Ksrc/esphome/components/sensor/sensor.h:3[m[K,
+[0m[33m                 from [01m[Ksrc/esphome/components/adc/adc_sensor.h:3[m[K,
+[0m[33m                 from [01m[Ksrc/esphome.h:3[m[K,
+[0m[33m                 from [01m[Ksrc/main.cpp:3[m[K:
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:81:36:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kvalue[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0m[33m[01m[Ksrc/esphome/core/log.h:119:99:[m[K [01;36m[Knote: [m[Kin definition of macro '[01m[Kesph_log_i[m[K'
+[0m[33m  119 |   ::esphome::esp_log_printf_(ESPHOME_LOG_LEVEL_INFO, tag, __LINE__, ESPHOME_LOG_FORMAT(format), ##[01;36m[K__VA_ARGS__[m[K)
+[0m      |                                                                                                   [01;36m[K^~~~~~~~~~~[m[K
+[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:79:11:[m[K [01;36m[Knote: [m[Kin expansion of macro '[01m[KESP_LOGI[m[K'
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:84:36:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kvalue[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0m[33m[01m[Ksrc/esphome/core/log.h:106:100:[m[K [01;36m[Knote: [m[Kin definition of macro '[01m[Kesph_log_d[m[K'
+[0m[33m  106 |   ::esphome::esp_log_printf_(ESPHOME_LOG_LEVEL_DEBUG, tag, __LINE__, ESPHOME_LOG_FORMAT(format), ##[01;36m[K__VA_ARGS__[m[K)
+[0m      |                                                                                                    [01;36m[K^~~~~~~~~~~[m[K
+[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:83:11:[m[K [01;36m[Knote: [m[Kin expansion of macro '[01m[KESP_LOGD[m[K'
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:88:25:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kvalue[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0m[33m[01m[Kpackages/base/../sensors/sensor_hrv_efficiency.yaml:99:23:[m[K [01;31m[Kerror: [m[Krequest for member '[01m[Kvalue[m[K' in '[01m[K*(int*)hrv_calculator[m[K', which is of non-class type '[01m[Kint[m[K'
+[0mCompiling .pioenvs/ventosync/nvs_flash/src/nvs_bootloader_xts_aes.c.o
+[0mCompiling .pioenvs/ventosync/nvs_sec_provider/nvs_sec_provider.c.o
+[0mCompiling .pioenvs/ventosync/protobuf-c/protobuf-c/protobuf-c/protobuf-c.c.o
+[0mCompiling .pioenvs/ventosync/pthread/pthread.c.o
+[0mCompiling .pioenvs/ventosync/pthread/pthread_cond_var.c.o
+[0mCompiling .pioenvs/ventosync/pthread/pthread_local_storage.c.o
+[0mCompiling .pioenvs/ventosync/pthread/pthread_rwlock.c.o
+[0mCompiling .pioenvs/ventosync/pthread/pthread_semaphore.c.o
+[0mCompiling .pioenvs/ventosync/riscv/instruction_decode.c.o
+[0m[33mIn file included from [01m[Ksrc/esphome/components/api/api_frame_helper.h:14[m[K,
+[0m[33m                 from [01m[Ksrc/esphome/components/api/api_connection.h:5[m[K,
+[0m[33m                 from [01m[Ksrc/esphome.h:5[m[K:
+[0m[33msrc/esphome/core/application.h: In instantiation of '[01m[Kvoid esphome::Application::[01;32m[Kregister_component_[m[K(T*) [35m[K[with T = int][m[K[m[K':
+[0m[33m[01m[Kpackages/base/../ui/ui_controls.yaml:299:26:[m[K   required from here
+[0m[33m[01m[Ksrc/esphome/core/application.h:617:36:[m[K [01;31m[Kerror: [m[Kcannot convert '[01m[Kint*[m[K' to '[01m[Kesphome::Component*[m[K'
+[0m[33m  617 |     this->register_component_impl_([01;31m[Kcomp[m[K, HasLoopOverride<T>::value);
+[0m[33m      |                                    [01;31m[K^~~~[m[K
+[0m[33m      |                                    [01;31m[K|[m[K
+[0m[33m      |                                    [01;31m[Kint*[m[K
+[0m[33m[01m[Ksrc/esphome/core/application.h:620:44:[m[K [01;36m[Knote: [m[K  initializing argument 1 of '[01m[Kvoid esphome::Application::[01;32m[Kregister_component_impl_[m[K(esphome::Component*, bool)[m[K'
+[0m[33m  620 |   void register_component_impl_([01;36m[KComponent *comp[m[K, bool has_loop);
+[0m      |                                 [01;36m[K~~~~~~~~~~~^~~~[m[K
+[0mCompiling .pioenvs/ventosync/riscv/interrupt.c.o
+[0mCompiling .pioenvs/ventosync/riscv/rv_utils.c.o
+[0mCompiling .pioenvs/ventosync/riscv/vectors.S.o
+[0mCompiling .pioenvs/ventosync/riscv/interrupt_plic.c.o
+[0mCompiling .pioenvs/ventosync/riscv/vectors_intc.S.o
+[0mCompiling .pioenvs/ventosync/rt/FreeRTOS_POSIX_mqueue.c.o
+[0mCompiling .pioenvs/ventosync/rt/FreeRTOS_POSIX_utils.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sdmmc_cmd.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sdmmc_common.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sdmmc_init.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sdmmc_io.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sdmmc_mmc.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sdmmc_sd.c.o
+[0mCompiling .pioenvs/ventosync/sdmmc/sd_pwr_ctrl/sd_pwr_ctrl.c.o
+[0mCompiling .pioenvs/ventosync/soc/lldesc.c.o
+[0mCompiling .pioenvs/ventosync/soc/dport_access_common.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/interrupts.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/gpio_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/uart_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/adc_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/dedic_gpio_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/etm_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/gdma_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/spi_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/ledc_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/pcnt_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/rmt_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/sdm_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/i2s_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/i2c_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/temperature_sensor_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/timer_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/parlio_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/mcpwm_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/mpi_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/twai_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/wdt_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/rtc_io_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/sdio_slave_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/system_retention_periph.c.o
+[0mCompiling .pioenvs/ventosync/soc/esp32c6/power_supply_periph.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/flash_brownout_hook.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_drivers.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_generic.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_issi.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_mxic.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_gd.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_winbond.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_boya.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_mxic_opi.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/spi_flash_chip_th.c.o
+[0mCompiling .pioenvs/ventosync/spi_flash/memspi_host_driver.c.o
+[31m*** [.pioenvs/ventosync/src/main.cpp.o] Error 1
+[0m========================= [[31m[1mFAILED[0m] Took 15.05 seconds =========================[0m

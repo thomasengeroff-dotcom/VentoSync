@@ -60,9 +60,29 @@ sensor:
       reference_resistance: 10kOhm
     accuracy_decimals: 1
     filters:
-      - median:
-          window_size: 3
-          send_every: 1
+      - lambda: |-
+          // 1. Sliding Window (Puffer) für die letzten 3 Messwerte aufbauen.
+          // Das simuliert das Verhalten des ESPHome window_size Parameters.
+          static std::vector<float> window;
+          window.push_back(x);
+          if (window.size() > 3) {
+            window.erase(window.begin());
+          }
+          if (window.size() < 3) return {}; // Warten bis der Puffer gefüllt ist
+          
+          float min_v = *std::min_element(window.begin(), window.end());
+          float max_v = *std::max_element(window.begin(), window.end());
+          
+          // 2. Dynamische Sommer-/Winter-Erkennung für die Abluft-Messung (Innen):
+          // In der Regel sind für den Innensensor die höchsten Werte am akkuratesten (Winter/Übergang),
+          // da das Gehäuse durch die kalte Außenluft abkühlt und den Messwert nach unten verfälscht.
+          // Im Sommer jedoch (wenn die Außentemperatur die Innentemperatur übersteigt),
+          // wärmt das Gehäuse den Sensor auf, sodass hier der niedrigste Wert (Minimum) am korrektesten ist.
+          float t_aussen = id(temp_zuluft).state;
+          if (!std::isnan(t_aussen) && t_aussen > x) {
+            return min_v; // Sommer-Fall: Minimum verwenden
+          }
+          return max_v;   // Winter-Fall: Maximum verwenden
       - lambda: |-
           return filter_ntc_stable(0, x);
 
@@ -105,9 +125,29 @@ sensor:
       reference_resistance: 10kOhm
     accuracy_decimals: 1
     filters:
-      - median:
-          window_size: 3
-          send_every: 1
+      - lambda: |-
+          // 1. Sliding Window (Puffer) für die letzten 3 Messwerte aufbauen.
+          // Das simuliert das Verhalten des ESPHome window_size Parameters.
+          static std::vector<float> window;
+          window.push_back(x);
+          if (window.size() > 3) {
+            window.erase(window.begin());
+          }
+          if (window.size() < 3) return {}; // Warten bis der Puffer gefüllt ist
+          
+          float min_v = *std::min_element(window.begin(), window.end());
+          float max_v = *std::max_element(window.begin(), window.end());
+          
+          // 2. Dynamische Sommer-/Winter-Erkennung für die Zuluft-Messung:
+          // In der Regel sind für den Außensensor die tiefsten Werte am akkuratesten (Winter/Übergang).
+          // Im Sommer jedoch (wenn die Außentemperatur die Innentemperatur übersteigt),
+          // reflektiert der höchste Wert (Maximum) die Realität besser, da das Gerät
+          // nicht kälter als die Raumluft kühlen kann (Wärmerückgewinnung / Bypass).
+          float t_innen = id(temp_abluft).state;
+          if (!std::isnan(t_innen) && x > t_innen) {
+            return max_v; // Sommer-Fall: Maximum verwenden
+          }
+          return min_v;   // Winter-Fall: Minimum verwenden (wie vorher)
       - lambda: |-
           return filter_ntc_stable(1, x);
 

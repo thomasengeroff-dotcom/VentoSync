@@ -731,13 +731,15 @@ Exterior → Ceramic heat exchanger → Interior (pre-heated)
 ### NTC Sensors (Temperature Stabilization)
 
 The NTC sensors measure the temperature at the ceramic heat exchanger inside and outside (`temp_zuluft` and `temp_abluft`). Since the fan direction in heat recovery mode changes cyclically (e.g., every 70 seconds), the sensors require a certain amount of time due to their thermal mass to adapt to the new air temperature. To make the measurement as accurate as possible, very small NTC sensors are used with the lowest possible mass and high accuracy. This makes the adaptation to the changing temperature, depending on the ventilation direction, as fast and precise as possible.
-To avoid incorrect intermediate values in Home Assistant, both sensors use **intelligent temperature stabilization**:
+To avoid incorrect intermediate values in Home Assistant and to accurately capture the true thermal limits, both sensors use **intelligent, season-aware temperature stabilization**:
 
-- After a change of direction (Push/Pull), measurement value transmission is paused for **40% of the cycle duration (min. 15s)** (which corresponds to approx. 25-30s).
-- Then the system collects measured values in a **30-second sliding window**.
-- Only when the fluctuation within this window falls to a realistic **0.3 °C** or less is the value considered stable and updated.
+- After a change of direction (Push/Pull), measurement value transmission is paused for **40% of the cycle duration (min. 15s)**.
+- Then the system collects measured values in a **sliding window (size 3)**.
+- **Dynamic Min/Max Selection:** Instead of simple averaging, the system dynamically selects the `min` or `max` value from the window to compensate for thermal inertia of the housing. 
+  - **Winter/Transition:** The outdoor sensor takes the minimum value (true cold outside air), and the indoor sensor takes the maximum value (true warm room air).
+  - **Summer Cooling:** When the outside air is hotter than the inside air, the logic automatically reverses (outdoor takes max, indoor takes min) to avoid false readings from the cooler/warmer housing.
 
-*Note on redundancy:* `temp_abluft` provides the actual outside temperature when the airflow is directed inward. `temp_zuluft` provides the room temperature when the airflow is directed outward and serves as redundancy for the more precise SCD41 sensor.
+*Note on redundancy:* `temp_zuluft` (Outdoor NTC) provides the actual outside temperature when the airflow is directed inward. `temp_abluft` (Indoor NTC) provides the room temperature when the airflow is directed outward and serves as redundancy for the more precise SCD41 sensor.
 
 Specifically, the following sensor is used:
 
@@ -745,30 +747,24 @@ Specifically, the following sensor is used:
 | :--- | :--- | :--- | :--- | :--- |
 | **VARIOHM** | `ENTC-EI-10K9777-02` | [Reichelt Elektronik](https://www.reichelt.de/de/de/shop/produkt/thermistor_NTC_-40_bis_125_c-350474) | ± 0.2 °C | [PDF](EasyEDA-Pro/components/NTC_ENTC_EI-10K9777-02.pdf) |
 
-### Efficiency Calculation
+### Efficiency Calculation (Energy-Based)
 
-At the end of the supply air phase, the heat recovery is calculated:
+The true heat recovery efficiency of a ceramic regenerator over a complete cycle is energy-based, not based on instantaneous temperatures (according to DIN EN 13141-8). 
 
-$$
-	ext{Efficiency} = \frac{T_{\text{Supply}} - T_{\text{Outside}}}{T_{\text{Room}} - T_{\text{Outside}}} \times 100\%
-$$
-
-**Example calculation:**
-
-- Room temperature: 21°C
-- Outside temperature: 5°C
-- Supply temperature: 16°C
+At the end of the supply air phase, the system calculates the efficiency using **numerical trapezoidal integration** over the entire phase duration:
 
 $$
-	ext{Efficiency} = \frac{16°C - 5°C}{21°C - 5°C} \times 100\% = \frac{11°C}{16°C} \times 100\% = 68.75\%
-$$,
-0
+	\eta_{WRG} = \frac{\int (\text{T}_{Supply} - \text{T}_{Outside}) dt}{\int (\text{T}_{Room} - \text{T}_{Outside}) dt}
+$$
+
+**Why this is mathematically superior:**
+If the efficiency was calculated as a simple average of instantaneous point-in-time efficiencies, it would become highly inaccurate and numerically unstable (exploding values) when the temperature difference ($\Delta T$) is very small (e.g., during the transition seasons). By integrating the temperature deltas over time, the calculation remains physically accurate, stable, and provides a true representation of the thermal energy recovered during the cycle.
 
 **Interpretation:**
 
 - **> 70%:** Excellent heat recovery
 - **50-70%:** Good heat recovery
-- **< 50%:** Ceramic too cold or cycle too short
+- **< 50%:** Ceramic too cold, cycle too short, or temperature difference too small
 
 ### Optimizing Efficiency
 

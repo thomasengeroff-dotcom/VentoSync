@@ -37,7 +37,7 @@ espnow:
   on_broadcast:
     - lambda: |-
         /** @brief Multiplexer for ESP-NOW broadcasts. Handles discovery and group status. */
-        ESP_LOGW("espnow_low", "BROADCAST packet received! Size: %d", size);
+        ESP_LOGD("espnow_low", "BROADCAST packet received! Size: %d", size);
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
@@ -45,14 +45,14 @@ espnow:
   on_receive:
     - lambda: |-
         /** @brief Multiplexer for direct Unicast packets (e.g., status responses). */
-        ESP_LOGW("espnow_low", "RECEIVE packet from registered peer! Size: %d", size);
+        ESP_LOGD("espnow_low", "RECEIVE packet from registered peer! Size: %d", size);
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 
   on_unknown_peer:
     - lambda: |-
         /** @brief Discovery entry point: allows registration of new devices. */
-        ESP_LOGW("espnow_low", "UNKNOWN PEER packet! Size: %d", size);
+        ESP_LOGD("espnow_low", "UNKNOWN PEER packet! Size: %d", size);
         std::vector<uint8_t> packet(data, data + size);
         handle_espnow_receive(packet, info.src_addr);
 

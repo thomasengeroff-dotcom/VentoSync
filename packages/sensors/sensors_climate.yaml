@@ -29,37 +29,7 @@
 
 sensor:
 
-  # ---------------------------------------------------------
-  # HEAT RECOVERY EFFICIENCY CALCULATION
-  # ---------------------------------------------------------
-  # Calculates the efficiency of heat recovery based on temperature difference
-  # Formula: Efficiency = (T_zuluft - T_außen) / (T_raum - T_außen) * 100%
-  - platform: template
-    name: "WRG Effizienz"
-    id: heat_recovery_efficiency
-    internal: ${hide_ntc_sensors}
-    unit_of_measurement: "%"
-    state_class: "measurement"
-    accuracy_decimals: 1
-    icon: "mdi:percent"
-    update_interval: 5s
-    lambda: |-
-      // Raumtemperatur (NTC Innen gefiltert, geloggt während Abluft)
-      float t_in = id(temp_abluft).state;
-      // Außentemperatur (NTC Außen gefiltert, geloggt während Zuluft)
-      float t_out = id(temp_zuluft).state;
-      // Aktuelle Zulufttemperatur nach Keramiktausch (RAW, ungefiltert)
-      float t_live = id(temp_abluft_raw).state;
 
-      // Abort calculation if no valid base temperatures are available
-      if (std::isnan(t_in) || std::isnan(t_out) || std::isnan(t_live)) return NAN;
-
-      return calculate_heat_recovery_efficiency(
-        t_in,                         // T_raum
-        t_live,                       // T_zuluft (live)
-        t_out,                        // T_aussen
-        id(heat_recovery_efficiency).state
-      );
 
   # ---------------------------------------------------------
   # EFFECTIVE CO2 SENSOR (Unified Fallback)
