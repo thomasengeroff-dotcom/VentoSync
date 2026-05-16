@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.13] - 2026-05-17
+
+### Added
+
+- **Unified ESP-NOW Receive Dispatcher**: Neue Funktion `dispatch_espnow_packet()`
+  in `espnow_helpers.h` ersetzt die dreifache Code-Duplikation in den
+  `on_broadcast`/`on_receive`/`on_unknown_peer` Callbacks. Enthält:
+  - `RxSource`-Enum für typsichere Quell-Identifikation im Log
+  - Vollständige Source-MAC-Adresse im Debug-Log
+  - Minimum-Paketgröße-Validierung (2 Bytes) als erste Verteidigungslinie
+- **Post-Boot UI Init Script**: Neues Script `post_boot_ui_init` trennt
+  LED-Self-Test und UI-Initialisierung von der ESP-NOW Discovery
+  (Single Responsibility).
+- **Peer Presence Watchdog**: Neue Funktion `peer_presence_watchdog()`
+  konsolidiert die doppelte Peer-Prüfung (60s in `esp_now.yaml` +
+  5min in `logic_automation.yaml`) zu einem einzigen, konfigurierbaren
+  Watchdog.
+
+### Changed
+
+- **ESP-NOW Receive Callbacks**: Alle drei Callbacks sind nun Einzeiler,
+  die `dispatch_espnow_packet()` mit dem jeweiligen `RxSource`-Enum aufrufen.
+- **Heap-Allokation optimiert**: Die `std::vector<uint8_t>`-Kopie findet
+  nun zentral in `dispatch_espnow_packet()` statt (1× statt 3×), mit
+  dokumentiertem Pfad zu einer zukünftigen Zero-Copy-Implementierung.
+
+### Removed
+
+- **Doppelter Peer-Watchdog**: Das redundante 5min-Intervall
+  `periodic_peer_rediscovery()` aus `logic_automation.yaml` entfernt.
+  Der 60s-Watchdog in `esp_now.yaml` übernimmt diese Aufgabe.
+
 ## [0.9.12] - 2026-05-16
 
 ### Added

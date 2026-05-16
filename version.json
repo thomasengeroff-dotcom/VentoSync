@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.12",
-    "project_date": "2026-05-16",
-    "project_description": "Modularize C++ helpers and implement advanced boot diagnostics & health monitoring."
+    "project_version": "0.9.13",
+    "project_date": "2026-05-17",
+    "project_description": "Implement unified ESP-NOW packet dispatching and peer presence watchdog."
 }

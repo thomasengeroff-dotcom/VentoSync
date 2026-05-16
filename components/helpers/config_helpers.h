@@ -265,3 +265,35 @@ inline void force_discovery_with_diagnostics() {
 
     ESP_LOGI("espnow_diag", "Discovery broadcast sent");
 }
+
+// ---------------------------------------------------------
+// CONFIG SYNC GUARD
+// ---------------------------------------------------------
+
+/**
+ * @brief Ensures the VentilationController has a valid device_id.
+ *
+ * During boot, there's a race condition where the controller may start
+ * its automation loop before Home Assistant has pushed the device
+ * configuration (including the device_id). This guard detects the
+ * uninitialized state (device_id == 0) and forces a config resync.
+ *
+ * @return true if a resync was triggered (caller may want to skip
+ *         further processing this cycle), false if config is valid.
+ *
+ * @note Called every 10s from auto_mode_interval in logic_automation.yaml,
+ *       before evaluate_auto_mode(). The 60s periodic sync_config_to_controller()
+ *       handles ongoing drift; this function handles the boot-time edge case.
+ */
+inline bool guard_config_sync() {
+    auto *v = get_controller();
+
+    if (v->device_id == 0) {
+        ESP_LOGW("config_guard",
+                 "Controller device_id is 0 (uninitialized) — forcing config sync");
+        sync_config_to_controller();
+        return true;
+    }
+
+    return false;
+}

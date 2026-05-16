@@ -21,74 +21,70 @@
 # Description: ESP-NOW communication and peer discovery for device cluster.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-04-21
+# Modified:    2026-05-16
 # ==========================================================================
 
 espnow:
   id: espnow_component
   auto_add_peer: false
-  # FF:FF:FF:FF:FF:FF must be in peers for the C++ send() API to broadcast discovery/status packets.
-  # on_broadcast will still correctly handle incoming packets with the broadcast MAC.
+  # FF:FF:FF:FF:FF:FF must be in peers for the C++ send() API
+  # to broadcast discovery/status packets.
   peers:
     - FF:FF:FF:FF:FF:FF
 
-  # on_receive ONLY triggers for registered peers (defined above).
-  # Since we use broadcasts for the whole group, on_broadcast is REQUIRED.
+  # --- Unified Receive Handlers ---
+  # All three callbacks route through dispatch_espnow_packet() in
+  # espnow_helpers.h – single code path, zero duplication.
+
   on_broadcast:
     - lambda: |-
-        /** @brief Multiplexer for ESP-NOW broadcasts. Handles discovery and group status. */
-        ESP_LOGD("espnow_low", "BROADCAST packet received! Size: %d", size);
-        std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet, info.src_addr);
+        dispatch_espnow_packet(data, size, info.src_addr,
+                               ventosync::espnow::RxSource::BROADCAST);
 
-  # For robustness, we also handle registered peers (e.g. if we add them dynamically)
   on_receive:
     - lambda: |-
-        /** @brief Multiplexer for direct Unicast packets (e.g., status responses). */
-        ESP_LOGD("espnow_low", "RECEIVE packet from registered peer! Size: %d", size);
-        std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet, info.src_addr);
+        dispatch_espnow_packet(data, size, info.src_addr,
+                               ventosync::espnow::RxSource::UNICAST);
 
   on_unknown_peer:
     - lambda: |-
-        /** @brief Discovery entry point: allows registration of new devices. */
-        ESP_LOGD("espnow_low", "UNKNOWN PEER packet! Size: %d", size);
-        std::vector<uint8_t> packet(data, data + size);
-        handle_espnow_receive(packet, info.src_addr);
+        dispatch_espnow_packet(data, size, info.src_addr,
+                               ventosync::espnow::RxSource::UNKNOWN_PEER);
 
 # ---------------------------------------------------------
-# ESP-NOW PEER DISCOVERY & HEALTH
+# ESP-NOW PEER WATCHDOG
 # ---------------------------------------------------------
 interval:
   - interval: 60s
     then:
-      - lambda: |-
-          /**
-           * @brief   Periodic watchdog for peer presence.
-           * @details If no peers are found during normal operation, the device
-           *          re-triggers discovery to recover from network splits.
-           */
-          if (peer_cache.empty()) {
-            ESP_LOGI("espnow_disc", 
-                     "No peers found — retrying discovery...");
-            send_discovery_broadcast();
-          }
+      - lambda: "peer_presence_watchdog();"
 
+# ---------------------------------------------------------
+# SCRIPTS
+# ---------------------------------------------------------
 script:
-  # ESP-NOW Discovery: Load peers from flash and send discovery broadcast
-  # Called from the boot interval once ESP-NOW is fully ready
+  # ESP-NOW Discovery: Load peers from flash, broadcast, request status
   - id: espnow_discovery
     mode: single
     then:
-      - lambda: load_peers_from_runtime_cache(); # W4: renamed from load_peers_from_flash
-      - lambda: send_discovery_broadcast();
+      # Phase 1: Network discovery
+      - lambda: "load_peers_from_runtime_cache();"
+      - lambda: "send_discovery_broadcast();"
       - delay: 2s
-      - lambda: request_peer_status();
+      - lambda: "request_peer_status();"
 
-      # LED Self-Test and UI start (moved from boot to avoid bus contention)
+      # Phase 2: Post-boot UI initialization
+      # Runs here (not in on_boot) to avoid I2C bus contention
+      # with sensor initialization on the shared bus.
       - delay: 500ms
-      - lambda: run_led_self_test();
+      - script.execute: post_boot_ui_init
+
+  # Separated UI init for Single Responsibility
+  - id: post_boot_ui_init
+    mode: single
+    then:
+      - lambda: "run_led_self_test();"
       - delay: 3s
-      - lambda: update_leds_logic(true); # Force LEDs to revert to normal brightness
+      - lambda: "update_leds_logic(true);"
       - script.execute: ui_timeout_script
       - script.execute: fan_speed_update
