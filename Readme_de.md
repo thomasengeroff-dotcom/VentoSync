@@ -730,6 +730,9 @@ $$
 **Warum das mathematisch überlegen ist:**
 Würde man die Effizienz als simplen Durchschnitt der momentanen Effizienzwerte berechnen, würde der Wert bei sehr kleinen Temperaturunterschieden ($\Delta T$) extrem ungenau und numerisch instabil werden (explodierende Werte) – etwa in der Übergangszeit. Durch die Integration der Temperaturdifferenzen über die Zeit bleibt die Berechnung physikalisch korrekt, stabil und liefert ein echtes Abbild der während des Zyklus zurückgewonnenen Wärmeenergie.
 
+**Zurückgewonnene thermische Energie (Wh):**
+Zusätzlich zur prozentualen Effizienz berechnet das System die tatsächlich zurückgewonnene thermische Energie in **Wattstunden (Wh)**. Dies erfolgt durch ein nicht-lineares Mapping der 10 Lüfterstufen auf die realen Volumenströme des Ventomaxx v-wrg-1 (von ca. 17 m³/h auf Stufe 1 bis zu 43 m³/h auf Stufe 10) und der Integration der tatsächlichen Temperaturdifferenz ($T_{Zuluft} - T_{Außen}$) über die Zeit. So lässt sich genau nachvollziehen, wie viel Heizenergie (oder Kühlenergie im Sommer) das System pro Zyklus "eingespart" hat.
+
 **Interpretation:**
 
 - **> 70%:** Ausgezeichnete Wärmerückgewinnung
@@ -889,6 +892,9 @@ Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewäh
   - ✅ **Einheitliche Steuerungsautorität**: Zentralisierung der Intensitätsberechnung (`evaluate_auto_mode`), um Race-Conditions zwischen unabhängigen Update-Intervallen zu eliminieren.
   - ✅ **Smart Group Sync**: Automatische Übertragung von Modi und Konfigurationen an alle Geräte im Raum via ESP-NOW mit integrierter Loop-Prevention.
   - ✅ **Konfigurations-Sicherheit**: Validierung von Min/Max-Lüfterstufen (Swap-Guard) zur Vermeidung von invertierter Skalierung bei Fehlkonfigurationen.
+  - ✅ **NVS-Verschleißschutz**: Schreibzugriffe auf den internen Flash-Speicher werden minimiert, indem nicht-kritische Daten wie die Filter-Betriebsstunden gepuffert und nur alle 8 Stunden (3x pro Tag) festgeschrieben werden.
+  - ✅ **LED-Selbsttest**: Beim Systemstart führt das Gerät einen 3-sekündigen Hardware-Check durch, bei dem alle LEDs auf 100% Helligkeit gezwungen werden, um die visuelle Rückmeldung zu verifizieren.
+  - ✅ **NTC-Fallback**: Bei nicht angeschlossenen oder defekten NTC-Sensoren (Werte um 87°C) deklariert das System den Status automatisch als `NaN` (Unknown). Dies verhindert ungültige Effizienzberechnungen und sorgt für saubere Sensordaten in Home Assistant.
 
 
 

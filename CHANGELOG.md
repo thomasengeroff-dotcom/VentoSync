@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.9] - 2026-05-16
+
+### Fixed
+- **Volumenstrom-Schätzung**: Korrektur der bisherigen linearen Heuristik (4,5 m³/h pro Stufe). Diese wurde durch eine präzise, nicht-lineare Lookup-Tabelle ersetzt, welche die 10 benutzerdefinierten Lüfterstufen auf die realen Herstellerdaten des Ventomaxx v-wrg-1 (17–43 m³/h) abbildet. Dies stellt die physikalische Korrektheit der berechneten Wattstunden (Wh) sicher.
+
+### Added
+- **Technische Dokumentation (v0.9.9)**: Ergänzung der Readme-Dateien um wichtige technische Details: NVS-Flash-Schutz (8h-Speicherintervall), LED-Selbsttest beim Booten und die NTC-Fallback-Logik (NaN bei Sensorausfall).
+
+### Changed
+- **Energie-Integration**: Verfeinerung der HRV-Integrator-Logik. Die Berechnung der zurückgewonnenen thermischen Energie nutzt nun die realen Volumenstromwerte der jeweiligen Lüfterstufe für ein exaktes energetisches Abbild.
+
 ## [0.9.8] - 2026-05-15
 
 ### Fixed

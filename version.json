@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.8",
-    "project_date": "2026-05-14",
-    "project_description": "Fix HRV efficiency sensor mapping and implement volume flow estimation for energy recovery."
+    "project_version": "0.9.9",
+    "project_date": "2026-05-16",
+    "project_description": "Implement precise non-linear volume flow mapping for accurate energy recovery."
 }

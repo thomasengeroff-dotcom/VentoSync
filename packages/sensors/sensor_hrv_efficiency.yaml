@@ -12,6 +12,7 @@ sensor:
   - platform: template
     name: "WRG Effizienz (Zyklus)"
     id: hrv_efficiency_cycle
+    internal: ${hide_ntc_sensors}
     unit_of_measurement: "%"
     accuracy_decimals: 1
     icon: "mdi:heat-wave"
@@ -25,6 +26,7 @@ sensor:
   - platform: template
     name: "WRG Effizienz"
     id: heat_recovery_efficiency
+    internal: ${hide_ntc_sensors}
     unit_of_measurement: "%"
     accuracy_decimals: 1
     icon: "mdi:heat-wave"
@@ -41,6 +43,7 @@ sensor:
   - platform: template
     name: "WRG Energie (Zyklus)"
     id: hrv_energy_cycle
+    internal: ${hide_ntc_sensors}
     unit_of_measurement: "Wh"
     accuracy_decimals: 2
     icon: "mdi:lightning-bolt"
@@ -65,10 +68,24 @@ interval:
           
           if (last_was_supply && !is_supply) {
             // Zuluft-Phase ist gerade beendet → Zyklus finalisieren
-            // Estimate volume flow (approx. 4.5 m³/h per fan level, max 45 m³/h)
+            // Estimate volume flow based on manufacturer data for Ventomaxx v-wrg-1
+            // Mapping 10 custom levels to the 5 original stages (17, 21, 24, 34, 43 m³/h)
             float flow_m3h = 0.0f;
             if (id(ventilation_ctrl) != nullptr) {
-              flow_m3h = id(ventilation_ctrl)->current_fan_intensity * 4.5f;
+              int level = id(ventilation_ctrl)->current_fan_intensity;
+              switch (level) {
+                case 1:  flow_m3h = 17.0f; break;
+                case 2:  flow_m3h = 18.0f; break;
+                case 3:  flow_m3h = 20.0f; break;
+                case 4:  flow_m3h = 21.0f; break;
+                case 5:  flow_m3h = 22.5f; break;
+                case 6:  flow_m3h = 24.0f; break;
+                case 7:  flow_m3h = 29.0f; break;
+                case 8:  flow_m3h = 34.0f; break;
+                case 9:  flow_m3h = 38.5f; break;
+                case 10: flow_m3h = 43.0f; break;
+                default: flow_m3h = 0.0f;  break;
+              }
             }
             auto result = ventosync::hrv::get_calculator().finalize_cycle(flow_m3h);
             

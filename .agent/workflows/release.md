@@ -13,7 +13,8 @@ Wenn dieser Workflow aufgerufen wird, führst du als KI-Assistent vollautomatisc
 2. **CHANGELOG.md analysieren (Ressourcenschonend):**
    Nutze das Terminal (`run_command`), um mit `tail -n 80 CHANGELOG.md` ausschließlich die letzten 80 Zeilen der Changelog-Datei zu lesen. **Lies auf keinen Fall die komplette Datei ein**, um Tokens zu sparen. Verstehe anhand des Ausschnitts das gewünschte Format.
 3. **Dateien aktualisieren:**
-   *   **version.json**: Erstelle einen sehr kurzen, prägnanten englischen Satz (ca. 5-12 Wörter). Überschreibe damit den Wert des `"description"`-Feldes in `version.json`. **WICHTIG: Erhöhe NICHT den Wert für "version". Der Version-Bump geschieht automatisch beim Build!**
+   *   **version.json**: Erstelle einen sehr kurzen, prägnanten englischen Satz (ca. 5-12 Wörter). Überschreibe damit den Wert des `"project_description"`-Feldes in `version.json`.
+       **⚠️ KRITISCHE REGEL:** Erhöhe **NIEMALS** manuell den Wert für `"project_version"` in der Datei, auch wenn der User dich im aktuellen Prompt dazu auffordert. Der Version-Bump geschieht **vollautomatisch** durch das Pre-Compile-Skript (`version_bump.py`) während des ESPHome-Builds. Ein manuelles Erhöhen führt zu einer fehlerhaften "doppelten" Erhöhung (Double Bump). Falls der User nach einer bestimmten Zielversion fragt, stelle sicher, dass die `version.json` auf dem Stand **vor** dieser Version bleibt.
    *   **CHANGELOG.md**: Schreibe einen **ausführlichen, detaillierten** Changelog-Eintrag zu deinen analysierten Code-Änderungen (so detailliert wie bisher auch). Leite für den Titel des Eintrags (z.B. `## [0.8.252] - YYYY-MM-DD`) die *nächste* Versionsnummer ab, indem du die Patch-Version aus der `version.json` im Kopf um 1 erhöhst. Füge diesen Eintrag oben an der passenden Stelle in der `CHANGELOG.md` ein.
 4. **Kompilierung & Git Push:**
    Generiere eine kurze, passende englische Commit-Nachricht für die Code-Änderungen (z.B. `feat: ...` oder `fix: ...`).
