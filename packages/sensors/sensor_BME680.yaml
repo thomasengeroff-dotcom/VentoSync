@@ -50,7 +50,7 @@ globals:
 
 esphome:
   includes:
-    - ../../components/helpers/bme680_iaq_engine.h
+    - include/bme680_iaq_engine.h
   on_boot:
     priority: 200
     then:
