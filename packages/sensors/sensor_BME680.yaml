@@ -30,36 +30,49 @@
 # Modified:    2026-04-21
 # ==========================================================================
 
+# ==========================================================================
+# VentoSync HRV – BME680 IAQ (Engine-backed)
+# ==========================================================================
+
 globals:
-  # Save baseline in flash (survives reboot)
   - id: saved_baseline
     type: float
     restore_value: true
     initial_value: "0.0"
-  # Burn-in counter in memory (minutes) - updated every minute
-  - id: burn_in_counter
-    type: int
-    restore_value: false
-    initial_value: "0"
-  # Saved burn-in counter in flash - updated every 30 mins
   - id: saved_burn_in
     type: int
     restore_value: true
     initial_value: "0"
-  # Last IAQ value for trend calculation
-  - id: last_iaq_value
-    type: float
+  - id: iaq_engine_ptr
+    type: void*
     restore_value: false
-    initial_value: "0.0"
+    initial_value: "nullptr"
+
+esphome:
+  includes:
+    - ../../components/helpers/bme680_iaq_engine.h
+  on_boot:
+    priority: 200
+    then:
+      - lambda: |-
+          static ventosync::BME680IAQEngine engine;
+          // Make accessible globally via a pointer stored in a global
+          id(iaq_engine_ptr) = (void*)&engine;
+          engine.restore(id(saved_baseline), id(saved_burn_in));
+
 
 sensor:
-  # ---------------------------------------------------------
-  # BME680 Hardware Sensor (I2C)
-  # ---------------------------------------------------------
+  # ── Hardware ──────────────────────────────────────────
   - platform: bme680
     i2c_id: bus_a
     address: 0x77
     update_interval: 30s
+    # Optimized heater profile for IAQ in residential environment
+    # Lower temp = less self-heating, less power, longer heater life
+    # 300°C/150ms is the Bosch recommendation for IAQ applications
+    heater:
+      temperature: 300    # °C (default 320) – reduces self-heating
+      duration: 150ms     # Heater on-time (default 150ms) – good balance
     temperature:
       name: "BME680 Temperatur (Rohwert)"
       id: bme680_temperature_raw
@@ -86,11 +99,7 @@ sensor:
             min_value: 0
             max_value: 1000000
 
-  # ---------------------------------------------------------
-  # Temperature with offset correction
-  # BME680 has self-heating from the heating plate (~1.5C)
-  # Adjust offset after comparison with a reference thermometer
-  # ---------------------------------------------------------
+  # ── Temperature (dynamic offset) ─────────────────────
   - platform: template
     name: "BME680 Temperatur"
     id: bme680_temperature
@@ -101,15 +110,14 @@ sensor:
     state_class: "measurement"
     update_interval: 30s
     lambda: |-
-      static const float TEMP_OFFSET = -1.5f;
       float temp = id(bme680_temperature_raw).state;
       if (std::isnan(temp)) return NAN;
-      return temp + TEMP_OFFSET;
+      float offset = (temp > 30.0f) ? -1.0f
+                   : (temp < 10.0f) ? -2.0f
+                   : -2.0f + (temp - 10.0f) / 20.0f;
+      return temp + offset;
 
-  # ---------------------------------------------------------
-  # Relative air pressure (altitude-corrected to sea level)
-  # Adjust location altitude in meters!
-  # ---------------------------------------------------------
+  # ── Relative pressure (sea-level corrected) ──────────
   - platform: template
     name: "BME680 Luftdruck (Relativ)"
     id: bme680_pressure_relative
@@ -120,18 +128,13 @@ sensor:
     state_class: "measurement"
     update_interval: 30s
     lambda: |-
-      // Adjust location altitude in meters above sea level (matching SCD41: 250m)
       static const float ALTITUDE = 250.0f;
       float p = id(bme680_pressure_absolute).state;
       float t = id(bme680_temperature).state;
       if (std::isnan(p) || std::isnan(t)) return NAN;
-      // Barometric formula
-      return p * powf(1.0f - (0.0065f * ALTITUDE / (t + 273.15f + 0.0065f * ALTITUDE)), -5.257f);
+      return p * powf(1.0f - (0.0065f * ALTITUDE / (t + 273.15f + 0.0065f * ALTITUDE)), -5.25588f);
 
-  # ---------------------------------------------------------
-  # Dew point calculation (Magnus formula)
-  # Important for ventilation control
-  # ---------------------------------------------------------
+  # ── Dew point (Magnus) ──────────────────────────────
   - platform: template
     name: "BME680 Taupunkt"
     id: bme680_dewpoint
@@ -142,18 +145,14 @@ sensor:
     state_class: "measurement"
     update_interval: 30s
     lambda: |-
-      static const float A = 17.271f;
-      static const float B = 237.7f;
+      static const float A = 17.271f, B = 237.7f;
       float t = id(bme680_temperature).state;
       float h = id(bme680_humidity).state;
       if (std::isnan(t) || std::isnan(h) || h <= 0.0f) return NAN;
       float alpha = (A * t / (B + t)) + logf(h / 100.0f);
       return (B * alpha) / (A - alpha);
 
-  # ---------------------------------------------------------
-  # Absolute humidity (g/m3)
-  # Useful for indoor/outdoor ventilation comparison
-  # ---------------------------------------------------------
+  # ── Absolute humidity ────────────────────────────────
   - platform: template
     name: "BME680 Absolute Feuchtigkeit"
     id: bme680_abs_humidity
@@ -166,72 +165,42 @@ sensor:
       float t = id(bme680_temperature).state;
       float h = id(bme680_humidity).state;
       if (std::isnan(t) || std::isnan(h)) return NAN;
-      // Tetens formula
       float es = 6.112f * expf(17.67f * t / (t + 243.5f));
-      float ea = es * h / 100.0f;
-      return (ea * 2.1674f) / (t + 273.15f);
+      return (es * h / 100.0f * 2.1674f) / (t + 273.15f);
 
-  # ---------------------------------------------------------
-  # Gas Baseline (self-learning + persistent)
-  # ---------------------------------------------------------
+  # ── IAQ Engine output sensors ────────────────────────
   - platform: template
     name: "BME680 Gas-Basiswert"
     id: gas_baseline
     icon: "mdi:chart-line"
     unit_of_measurement: "Ω"
     accuracy_decimals: 0
-    update_interval: 60s
+    update_interval: 30s
     lambda: |-
-      static float baseline = 0.0f;
-      static bool warmed_up = false;
-      static int sample_count = 0;
-      static int save_counter = 0;
-
-      float gas = id(gas_resistance).state;
-      if (std::isnan(gas) || gas < 1000.0f) return baseline;
-
-      sample_count++;
-
-      // Load saved baseline on first start
-      if (sample_count == 1) {
-        id(burn_in_counter) = id(saved_burn_in);
-        if (baseline == 0.0f && id(saved_baseline) > 1000.0f) {
-          baseline = id(saved_baseline);
-          warmed_up = true;
-          ESP_LOGI("bme680", "Baseline restored: %.0f Ohm, Burn-in: %d min", baseline, id(burn_in_counter));
-        }
+      auto *engine = (ventosync::BME680IAQEngine*)id(iaq_engine_ptr);
+      if (!engine) return NAN;
+      ventosync::IAQResult result;
+      bool should_save = engine->update(
+        id(gas_resistance).state,
+        id(bme680_humidity).state,
+        result
+      );
+      // Propagate results to dependent sensors
+      id(iaq_co2eq).publish_state(result.co2eq_ppm);
+      id(iaq_trend).publish_state(result.trend_ppm_min);
+      id(iaq_level).publish_state(result.level);
+      id(iaq_trend_direction).publish_state(result.trend_dir);
+      id(bme680_status).publish_state(engine->get_status());
+      id(bme680_health).publish_state(!result.healthy);
+      // Persist to flash if engine recommends
+      if (should_save) {
+        id(saved_baseline) = result.baseline_ohm;
+        id(saved_burn_in) = engine->get_burn_in_minutes();
+        ESP_LOGD("bme680", "Flash save: baseline=%.0f burn_in=%d",
+                 result.baseline_ohm, engine->get_burn_in_minutes());
       }
+      return result.baseline_ohm;
 
-      id(burn_in_counter) += 1;
-
-      if (!warmed_up) {
-        if (baseline == 0.0f) {
-          baseline = gas;
-        } else {
-          baseline = 0.95f * baseline + 0.05f * gas;
-        }
-        if (sample_count > 20) warmed_up = true;
-      } else {
-        if (gas > baseline) {
-          baseline = 0.998f * baseline + 0.002f * gas;
-        } else {
-          baseline = 0.9999f * baseline + 0.0001f * gas;
-        }
-      }
-
-      // Save baseline to flash every 30 minutes
-      save_counter++;
-      if (save_counter >= 30) {
-        save_counter = 0;
-        id(saved_baseline) = baseline;
-        id(saved_burn_in) = id(burn_in_counter);
-        ESP_LOGD("bme680", "Baseline saved: %.0f Ohm, Burn-in saved: %d min", baseline, id(saved_burn_in));
-      }
-      return baseline;
-
-  # ---------------------------------------------------------
-  # BME680 IAQ as Pseudo-CO2 (400-5000 ppm)
-  # ---------------------------------------------------------
   - platform: template
     name: "BME680 Luftqualität (CO2eq)"
     id: iaq_co2eq
@@ -240,49 +209,8 @@ sensor:
     accuracy_decimals: 0
     device_class: "carbon_dioxide"
     state_class: "measurement"
-    update_interval: 30s
-    lambda: |-
-      static const float HUM_IDEAL = 40.0f;
-      static const float HUM_WEIGHT = 0.20f;
-      static const float GAS_WEIGHT = 0.80f;
-      static const float PPM_MIN = 400.0f;
-      static const float PPM_MAX = 5000.0f;
-      static const float GAS_DIVISOR = 50.0f;
+    update_interval: never  # Driven by gas_baseline
 
-      float gas_val = id(gas_resistance).state;
-      float hum_val = id(bme680_humidity).state;
-      float base = id(gas_baseline).state;
-
-      if (std::isnan(gas_val) || std::isnan(hum_val) || std::isnan(base) || base < 1000.0f) {
-        return NAN;
-      }
-
-      float log_clean = log10f(base);
-      float log_dirty = log10f(base / GAS_DIVISOR);
-      float log_val = log10f(fmaxf(gas_val, 1.0f));
-
-      float g_score = (log_clean - log_val) / (log_clean - log_dirty);
-      g_score = clamp(g_score, 0.0f, 1.0f);
-
-      float h_score;
-      if (hum_val >= HUM_IDEAL) {
-        h_score = (hum_val - HUM_IDEAL) / (100.0f - HUM_IDEAL);
-      } else {
-        h_score = (HUM_IDEAL - hum_val) / HUM_IDEAL;
-      }
-      h_score = clamp(h_score, 0.0f, 1.0f);
-
-      float combined = GAS_WEIGHT * g_score + HUM_WEIGHT * h_score;
-      float ppm = PPM_MIN + combined * (PPM_MAX - PPM_MIN);
-
-      // Save trend
-      id(last_iaq_value) = ppm;
-      return ppm;
-
-  # ---------------------------------------------------------
-  # IAQ Trend (change per minute)
-  # Positive = worsening, Negative = improving
-  # ---------------------------------------------------------
   - platform: template
     name: "BME680 IAQ Trend"
     id: iaq_trend
@@ -290,88 +218,34 @@ sensor:
     unit_of_measurement: "ppm/min"
     accuracy_decimals: 0
     state_class: "measurement"
-    update_interval: 60s
-    filters:
-      - sliding_window_moving_average:
-          window_size: 5
-          send_every: 1
-    lambda: |-
-      static float previous = 0.0f;
-      float current = id(iaq_co2eq).state;
-      if (std::isnan(current)) return NAN;
-      if (previous == 0.0f) {
-        previous = current;
-        return 0.0f;
-      }
-      float trend = current - previous;
-      previous = current;
-      return trend;
+    update_interval: never  # Driven by gas_baseline
 
 text_sensor:
-  # IAQ Classification
   - platform: template
     name: "BME680 IAQ Bewertung"
     id: iaq_level
     icon: "mdi:air-filter"
-    update_interval: 60s
-    lambda: |-
-      static std::string last_level = "";
-      float val = id(iaq_co2eq).state;
-      std::string current_level = "Unbekannt";
-      
-      if (!std::isnan(val)) {
-        if (val <= 700) current_level = "Ausgezeichnet";
-        else if (val <= 1000) current_level = "Gut";
-        else if (val <= 1500) current_level = "Maessig";
-        else if (val <= 2000) current_level = "Schlecht";
-        else current_level = "Sehr schlecht";
-      }
+    update_interval: never
 
-      if (current_level == last_level) return {};
-      last_level = current_level;
-      return {current_level};
-
-  # Trend as text
   - platform: template
     name: "BME680 IAQ Trendrichtung"
     id: iaq_trend_direction
     icon: "mdi:swap-vertical"
-    update_interval: 60s
-    lambda: |-
-      float trend = id(iaq_trend).state;
-      if (std::isnan(trend)) return std::string("Unbekannt");
-      if (trend < -50) return std::string("Stark verbessernd");
-      if (trend < -10) return std::string("Verbessernd");
-      if (trend <= 10) return std::string("Stabil");
-      if (trend <= 50) return std::string("Verschlechternd");
-      return std::string("Stark verschlechternd");
+    update_interval: never
 
-  # Sensor Status (Burn-in detection)
   - platform: template
     name: "BME680 Sensor-Status"
     id: bme680_status
     icon: "mdi:information"
-    update_interval: 60s
-    lambda: |-
-      int minutes = id(burn_in_counter);
-      float base = id(gas_baseline).state;
-      if (std::isnan(base) || base < 1000.0f) {
-        return std::string("Initialisierung");
-      }
-      if (minutes < 60) {
-        return std::string("Aufwaermphase");
-      }
-      if (minutes < 2880) {
-        char buf[48];
-        int hours = minutes / 60;
-        snprintf(buf, sizeof(buf), "Burn-in (%dh / 48h)", hours);
-        return std::string(buf);
-      }
-      return std::string("Bereit");
+    update_interval: never
 
-# ---------------------------------------------------------
-# Diagnostic Button: Reset Baseline
-# ---------------------------------------------------------
+binary_sensor:
+  - platform: template
+    name: "BME680 Sensor Health"
+    id: bme680_health
+    device_class: problem
+    icon: "mdi:heart-pulse"
+
 button:
   - platform: template
     name: "BME680 Basiswert zurücksetzen"
@@ -380,10 +254,7 @@ button:
     on_press:
       then:
         - lambda: |-
+            auto *engine = (ventosync::BME680IAQEngine*)id(iaq_engine_ptr);
+            if (engine) engine->reset();
             id(saved_baseline) = 0.0f;
-            id(burn_in_counter) = 0;
             id(saved_burn_in) = 0;
-            ESP_LOGW("bme680", "Baseline reset! 48h burn-in required.");
-        - logger.log:
-            level: WARN
-            format: "BME680 baseline has been reset"

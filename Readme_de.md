@@ -110,7 +110,7 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
 
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD41](https://sensirion.com/de/produkte/katalog/SCD41).
   - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm), Integrierte Temperatur- und Feuchtigkeitsmessung (SCD41), Dokumentation: `EasyEDA-Pro/components/SCD41-Sensirion.pdf`
-  - ✅ **BME680 Optimierung**: Umstellung auf Standard-Plattform (ohne BSEC2) spart massiv Kompilierungszeit. IAQ wird nun über ein effizientes Template berechnet.
+  - ✅ **BME680 Advanced IAQ Engine**: Der BME680 nutzt nun eine dedizierte C++ Engine für robustes Baseline-Tracking, dynamische Temperaturkompensation und intelligentes Flash-Wear-Leveling. Dies liefert hochwertige VOC/IAQ-Daten ohne den Overhead der BSEC-Bibliothek.
   - ⚠️ **Hinweis:** Da das SCD41-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ-Index). Der Code erkennt automatisch, ob der SCD41 vorhanden ist.
   - 💨 **Echte CO2-Messung**: Der SCD41 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
   - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**:
@@ -719,6 +719,16 @@ Konkret wird der folgende Sensor verwendet:
 | Hersteller | Artikelnummer | Bezugsquelle | Genauigkeit | Datenblatt |
 | :--- | :--- | :--- | :--- | :--- |
 | **VARIOHM** | `ENTC-EI-10K9777-02` | [Reichelt Elektronik](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474) | ± 0,2 °C | [PDF](EasyEDA-Pro/components/NTC_ENTC_EI-10K9777-02.pdf) |
+
+### Luftqualität & Gassensorik (BME680)
+
+Um präzise Daten zur Raumluftqualität (IAQ) zu liefern, verfügt das System über eine hochoptimierte **BME680 Advanced IAQ Engine**. Da die BSEC2-Bibliothek zu ressourcenintensiv ist, nutzt VentoSync eine eigene, thread-sichere C++ Implementierung:
+
+- **Optimiertes Heater-Profil:** Der Gassensor arbeitet bei **300°C für 150ms** (Bosch-Empfehlung für IAQ). Dies reduziert die Eigenwärme und verlängert die Lebensdauer des Sensors im Vergleich zu Standardeinstellungen.
+- **Dynamische Thermokompensation:** Die Temperaturwerte werden basierend auf der Umgebungstemperatur dynamisch korrigiert (interpolierter Offset zwischen -1,0°C und -2,0°C), um den thermischen Einfluss der Heizplatte auszugleichen.
+- **Intelligentes Flash-Wear-Leveling:** Die Gas-Baseline wird nur dann im Flash-Speicher des ESP32 persistiert, wenn sie sich um mehr als **2%** geändert hat **und** mindestens **1 Stunde** vergangen ist. Dies schont die Lebensdauer des Speichers maximal.
+- **Health-Watchdog:** Eine dedizierte Überwachungslogik erkennt I2C-Kommunikationsfehler oder "eingefrorene" Werte und meldet ein Sensorproblem an Home Assistant nach 10 aufeinanderfolgenden Fehlern.
+- **Change-Detection Trend:** Die IAQ-Trend- und Bewertungs-Sensoren nutzen eine Change-Detection-Logik, um Netzwerkverkehr und Datenbankwachstum in Home Assistant zu minimieren.
 
 ### Effizienzberechnung (Energiebasiert)
 

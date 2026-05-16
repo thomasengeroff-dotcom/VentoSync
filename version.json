@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.10",
+    "project_version": "0.9.11",
     "project_date": "2026-05-16",
-    "project_description": "Refine NTC filtering with phase-lock and robust failsafe timeouts."
+    "project_description": "Migrate BME680 logic to an advanced C++ IAQ engine for superior stability."
 }

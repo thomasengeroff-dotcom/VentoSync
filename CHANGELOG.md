@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.11] - 2026-05-16
+
+### Added
+- **Advanced BME680 IAQ Engine**: Migration der BME680-Logik auf eine dedizierte C++ Engine (`BME680IAQEngine`). Diese bietet präzises Baseline-Tracking, einen Health-Watchdog und intelligentes Flash-Wear-Leveling zur Schonung des Speichers.
+- **Dynamische Thermokompensation**: Einführung eines temperaturabhängigen Offsets für den BME680 zur Kompensation der Eigenwärme basierend auf der Umgebungstemperatur.
+- **Heater-Profil Optimierung**: Umstellung des BME680 Heaters auf 300°C / 150ms gemäß Bosch-Empfehlungen für Wohnraum-IAQ-Anwendungen.
+
+### Changed
+- **Code-Struktur**: Bereinigung der globalen Variablen und Korrektur der Include-Pfade in den Sensor-Paketen.
+- **Dokumentation**: Ausführliche Beschreibung der neuen BME680-Architektur in den Readme-Dateien (DE/EN) hinzugefügt.
+
 ## [0.9.10] - 2026-05-16
 
 ### Added
