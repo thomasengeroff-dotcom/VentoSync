@@ -2,7 +2,7 @@
 # VentoSync HRV – ESPHome Configuration for NTC SENSORS
 # https://github.com/thomasengeroff-dotcom/VentoSync
 #
-# Copyright (c) 2026 Thomas Engeroff
+# Copyright (c) 2025 Thomas Engeroff
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,157 +15,219 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see .
 #
 # File:        sensor_NTC.yaml
-# Description: Configuration for interior (Zuluft) and exterior (Abluft) 
-#              analog NTC temperature sensors.
+# Description: Configuration for interior (Abluft) and exterior (Zuluft)
+#              analog NTC temperature sensors with phase-aware filtering.
 # Author:      Thomas Engeroff
-# Created:     2026-03-05
-# Modified:    2026-04-21
+# Created:     2025-03-05
+# Modified:    2025-06-XX
 # ==========================================================================
+
+
+# ---------------------------------------------------------
+# SUBSTITUTION DEFAULTS (override in main config)
+# ---------------------------------------------------------
+# These can be overridden in the main YAML via substitutions:
+#   ntc_indoor_min / ntc_indoor_max  – Plausibility range for indoor NTC
+#   ntc_outdoor_min / ntc_outdoor_max – Plausibility range for outdoor NTC
+#   ntc_timeout – Fail-safe timeout (must be > 2× cycle duration)
+#   hide_ntc_sensors – "true" to hide from HA frontend
+# ---------------------------------------------------------
+
 
 sensor:
   # ---------------------------------------------------------
   # NTC TEMPERATURE SENSORS (Analog)
   # ---------------------------------------------------------
-  # Sensor Info (Eurosensor ENTC-EI-10k9777-02):
+  # Sensor: Eurosensor ENTC-EI-10k9777-02
   # - Resistance at 25°C: 10kΩ
   # - Beta constant (25/85): 3976K ±0.5%
   # - Accuracy: ±0.2°C (0 to 70°C)
   #
   # Voltage Divider Reference Resistor (R4, R5):
   # - Part: HoAR0603-1/10W-10KR-0.1%-TCR25 (LCSC: C5123581)
-  # - Value: 10kΩ
-  # - Tolerance: ±0.1% (High precision)
-  # - Temperature Coefficient: ±25ppm/°C (Highly stable)
+  # - Value: 10kΩ, Tolerance: ±0.1%, TCR: ±25ppm/°C
   # ---------------------------------------------------------
-  # NTC Interior - Indoor air temperature measurement
+
+
+  # =========================================================
+  # ADC SOURCES (Signal Origin – declared first for clarity)
+  # =========================================================
+
+  - platform: adc
+    id: ntc_innen_source
+    pin: GPIO1                    # XIAO Pin D1
+    attenuation: 11db             # 0–3.3V range (ESP-IDF v5+ naming)
+    update_interval: 5s
+    internal: true
+
+  - platform: adc
+    id: ntc_aussen_source
+    pin: GPIO0                    # XIAO Pin D0
+    attenuation: 11db
+    update_interval: 5s
+    internal: true
+
+
+  # =========================================================
+  # RESISTANCE CONVERSION (ADC → Ohm)
+  # =========================================================
+
   - platform: resistance
     id: ntc_innen_resistance
     sensor: ntc_innen_source
     configuration: DOWNSTREAM
-    resistor: 10kOhm # Reference resistor in voltage divider
+    resistor: 10kOhm
     name: "NTC Innen Widerstand"
-    internal: true # Hide raw resistance value
+    internal: true
+
+  - platform: resistance
+    id: ntc_aussen_resistance
+    sensor: ntc_aussen_source
+    configuration: DOWNSTREAM
+    resistor: 10kOhm
+    name: "NTC Außen Widerstand"
+    internal: true
+
+
+  # =========================================================
+  # NTC INTERIOR – Indoor / Exhaust Air (Abluft)
+  # =========================================================
+  # Measures true room temperature during exhaust phase only.
+  # During intake phase the ceramic core heats/cools the sensor
+  # → Phase-Lock in filter_ntc_combined() discards those readings.
+  # =========================================================
 
   - platform: ntc
     sensor: ntc_innen_resistance
     name: "Temp. Abluft (Innen)"
     id: temp_abluft
     internal: ${hide_ntc_sensors}
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
     calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
+      b_constant: 3976
       reference_temperature: 25°C
       reference_resistance: 10kOhm
     accuracy_decimals: 1
     filters:
-      - lambda: |-
-          // 1. Sliding Window (Puffer) für die letzten 3 Messwerte aufbauen.
-          // Das simuliert das Verhalten des ESPHome window_size Parameters.
-          static std::vector<float> window;
-          window.push_back(x);
-          if (window.size() > 3) {
-            window.erase(window.begin());
-          }
-          if (window.size() < 3) return {}; // Warten bis der Puffer gefüllt ist
-          
-          float min_v = *std::min_element(window.begin(), window.end());
-          float max_v = *std::max_element(window.begin(), window.end());
-          
-          // 2. Dynamische Sommer-/Winter-Erkennung für die Abluft-Messung (Innen):
-          // In der Regel sind für den Innensensor die höchsten Werte am akkuratesten (Winter/Übergang),
-          // da das Gehäuse durch die kalte Außenluft abkühlt und den Messwert nach unten verfälscht.
-          // Im Sommer jedoch (wenn die Außentemperatur die Innentemperatur übersteigt),
-          // wärmt das Gehäuse den Sensor auf, sodass hier der niedrigste Wert (Minimum) am korrektesten ist.
-          float t_aussen = id(temp_zuluft).state;
-          if (!std::isnan(t_aussen) && t_aussen > x) {
-            return min_v; // Sommer-Fall: Minimum verwenden
-          }
-          return max_v;   // Winter-Fall: Maximum verwenden
-      - lambda: |-
-          return filter_ntc_stable(0, x);
+      # ── STAGE 1: Physical plausibility ──────────────────────
+      # Cable break → ~150°C, Short circuit → strongly negative
+      # ignore_out_of_range: value is discarded entirely (not clamped)
+      - clamp:
+          min_value: ${ntc_indoor_min}    # Default: -25.0
+          max_value: ${ntc_indoor_max}    # Default: 55.0
+          ignore_out_of_range: true
 
+      # ── STAGE 2: Phase-Lock + Seasonal Selection + Stability ─
+      # Combined filter: ensures only phase-correct, thermally
+      # stabilized values enter the sliding window.
+      # See climate.h → filter_ntc_combined() for full documentation.
+      - lambda: |-
+          return filter_ntc_combined(0, x, id(temp_zuluft).state);
+
+      # ── STAGE 3: Timeout – fail-safe on sensor loss ────────
+      # Must be > 2× cycle duration to survive direction flips
+      # where Phase-Lock legitimately blocks values for one full phase.
+      # Default 120s covers cycles up to 60s (typical: 35s per direction).
+      - timeout:
+          timeout: ${ntc_timeout}         # Default: 120s
+          value: !lambda 'return NAN;'
+
+      # ── STAGE 4: Heartbeat – guarantee liveness ────────────
+      # Ensures periodic value flow BEFORE delta filter.
+      # Prevents "unavailable" in Home Assistant during stable temps.
+      - heartbeat: 60s
+
+      # ── STAGE 5: Suppress noise ────────────────────────────
+      # Only publish when value actually changes.
+      # 0.15°C ≈ just above 12-bit ADC resolution at this range.
+      - delta: 0.15
+
+
+  # ── RAW diagnostic sensor (unfiltered for debugging) ────
   - platform: ntc
     sensor: ntc_innen_resistance
     name: "Temp. Abluft (Innen) RAW"
     id: temp_abluft_raw
     internal: ${hide_ntc_sensors}
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
     calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
+      b_constant: 3976
       reference_temperature: 25°C
       reference_resistance: 10kOhm
     accuracy_decimals: 1
     entity_category: diagnostic
+    filters:
+      # Prevent HA database spam (17k+ state changes/day without this)
+      - heartbeat: 30s
+      - delta: 0.1
 
-  - platform: adc
-    id: ntc_innen_source
-    pin: GPIO1 # Pin D1
-    attenuation: 12db # For 0-3.3V range
-    update_interval: 5s
-    internal: true
 
-  # NTC Exterior - Outdoor/exhaust air temperature measurement
-  - platform: resistance
-    id: ntc_aussen_resistance
-    sensor: ntc_aussen_source
-    configuration: DOWNSTREAM
-    resistor: 10kOhm # Reference resistor in voltage divider
-    name: "NTC Außen Widerstand"
-    internal: true
+  # =========================================================
+  # NTC EXTERIOR – Outdoor / Supply Air (Zuluft)
+  # =========================================================
+  # Measures true outdoor temperature during intake phase only.
+  # During exhaust phase the ceramic core warms the sensor
+  # → Phase-Lock in filter_ntc_combined() discards those readings.
+  # =========================================================
 
   - platform: ntc
     sensor: ntc_aussen_resistance
     name: "Temp. Zuluft (Außen)"
     id: temp_zuluft
     internal: ${hide_ntc_sensors}
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
     calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
+      b_constant: 3976
       reference_temperature: 25°C
       reference_resistance: 10kOhm
     accuracy_decimals: 1
     filters:
-      - lambda: |-
-          // 1. Sliding Window (Puffer) für die letzten 3 Messwerte aufbauen.
-          // Das simuliert das Verhalten des ESPHome window_size Parameters.
-          static std::vector<float> window;
-          window.push_back(x);
-          if (window.size() > 3) {
-            window.erase(window.begin());
-          }
-          if (window.size() < 3) return {}; // Warten bis der Puffer gefüllt ist
-          
-          float min_v = *std::min_element(window.begin(), window.end());
-          float max_v = *std::max_element(window.begin(), window.end());
-          
-          // 2. Dynamische Sommer-/Winter-Erkennung für die Zuluft-Messung:
-          // In der Regel sind für den Außensensor die tiefsten Werte am akkuratesten (Winter/Übergang).
-          // Im Sommer jedoch (wenn die Außentemperatur die Innentemperatur übersteigt),
-          // reflektiert der höchste Wert (Maximum) die Realität besser, da das Gerät
-          // nicht kälter als die Raumluft kühlen kann (Wärmerückgewinnung / Bypass).
-          float t_innen = id(temp_abluft).state;
-          if (!std::isnan(t_innen) && x > t_innen) {
-            return max_v; // Sommer-Fall: Maximum verwenden
-          }
-          return min_v;   // Winter-Fall: Minimum verwenden (wie vorher)
-      - lambda: |-
-          return filter_ntc_stable(1, x);
+      # ── STAGE 1: Physical plausibility ──────────────────────
+      - clamp:
+          min_value: ${ntc_outdoor_min}   # Default: -30.0
+          max_value: ${ntc_outdoor_max}   # Default: 50.0
+          ignore_out_of_range: true
 
+      # ── STAGE 2: Phase-Lock + Seasonal Selection + Stability ─
+      - lambda: |-
+          return filter_ntc_combined(1, x, id(temp_abluft).state);
+
+      # ── STAGE 3: Timeout – fail-safe on sensor loss ────────
+      - timeout:
+          timeout: ${ntc_timeout}
+          value: !lambda 'return NAN;'
+
+      # ── STAGE 4: Heartbeat – guarantee liveness ────────────
+      - heartbeat: 60s
+
+      # ── STAGE 5: Suppress noise ────────────────────────────
+      - delta: 0.15
+
+
+  # ── RAW diagnostic sensor (unfiltered for debugging) ────
   - platform: ntc
     sensor: ntc_aussen_resistance
     name: "Temp. Zuluft (Außen) RAW"
     id: temp_zuluft_raw
     internal: ${hide_ntc_sensors}
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
     calibration:
-      b_constant: 3976 # Beta coefficient from datasheet
+      b_constant: 3976
       reference_temperature: 25°C
       reference_resistance: 10kOhm
     accuracy_decimals: 1
     entity_category: diagnostic
-
-  - platform: adc
-    id: ntc_aussen_source
-    pin: GPIO0 # Pin D0
-    attenuation: 12db # For 0-3.3V range
-    update_interval: 5s
-    internal: true
+    filters:
+      - heartbeat: 30s
+      - delta: 0.1

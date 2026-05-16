@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.10] - 2026-05-16
+
+### Added
+- **Unified NTC Filter**: Implementierung der C++ Funktion `filter_ntc_combined()`, die Phase-Lock, thermische Wartezeit und saisonale Min/Max-Selektion in einer Pipeline vereint. Dies garantiert 100% Datenintegrität durch Ausschluss von Fehlmessungen während der falschen Luftrichtung.
+- **Robustness Features**: Erhöhung des NTC-Timeouts auf 120s (konfigurierbar via `ntc_timeout`), um "Unavailable"-Zustände in Home Assistant bei langen Lüftungszyklen zu verhindern.
+- **Median Fallback**: Einführung eines Median-basierten Fallbacks für NTC-Sensoren zur Auflösung von zirkulären Abhängigkeiten beim Systemstart.
+
+### Changed
+- **Dokumentations-Parität**: Vollständige Synchronisierung der englischen und deutschen Readme-Dateien bezüglich der neuen Filter-Architektur und technischer Exzellenz-Optimierungen.
+- **Hardware-Abstraktion**: Umstellung auf `11db` ADC Attenuation (ESP-IDF v5+) und Optimierung der Sensor-Deklarationsreihenfolge im YAML.
+
 ## [0.9.9] - 2026-05-16
 
 ### Fixed

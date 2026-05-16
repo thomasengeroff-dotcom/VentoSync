@@ -375,8 +375,18 @@ inline uint32_t child_lock_combo_triggered_ms = 0;
 // --- FORWARD DECLARATIONS ---
 /** @brief Resets thermal stabilization timers after a direction flip. */
 inline void notify_fan_direction_changed();
-/** @brief Filter for NTC stabilization. Returns NaN if not stable. */
-inline esphome::optional<float> filter_ntc_stable(int sensor_idx, float new_value);
+
+/** @brief Combined NTC filter: Phase-Lock + Seasonal Selection + Stability.
+ *  Replaces the previous separate filter_ntc_stable() + YAML seasonal lambda.
+ *  @see climate.h for full documentation. */
+inline esphome::optional<float> filter_ntc_combined(int sensor_idx,
+                                                     float new_value,
+                                                     float ref_temp);
+
+/** @brief Calculates dynamic thermal wait time from cycle duration.
+ *  Shared between filter_ntc_combined() and calculate_heat_recovery_efficiency(). */
+inline uint32_t calc_ntc_wait_ms(uint32_t cycle_ms);
+
 /** @brief Checks if a MAC matches this device. */
 inline bool is_local_mac(const uint8_t *mac);
 /** @brief Registers a new peer in the dynamic discovery list. */

@@ -47,6 +47,16 @@ substitutions:
   # Entity ID of the Home Assistant input_boolean helper for vacation mode.
   vacation_sensor_id: "input_boolean.ventosync_vacation_mode"
 
+  # NTC plausibility ranges (adjust for your climate zone)
+  ntc_indoor_min: "-25.0"
+  ntc_indoor_max: "55.0"
+  ntc_outdoor_min: "-30.0"
+  ntc_outdoor_max: "50.0"
+  # Fail-safe timeout: must be > 2× cycle duration
+  ntc_timeout: "120s"
+  # Set to "true" to hide NTC sensors from HA frontend
+  hide_ntc_sensors: "false"
+
 # ---------------------------------------------------------
 # PACKAGES & INCLUDES
 # ---------------------------------------------------------

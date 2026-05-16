@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.9",
+    "project_version": "0.9.10",
     "project_date": "2026-05-16",
-    "project_description": "Implement precise non-linear volume flow mapping for accurate energy recovery."
+    "project_description": "Refine NTC filtering with phase-lock and robust failsafe timeouts."
 }

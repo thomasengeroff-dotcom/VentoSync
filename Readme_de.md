@@ -701,13 +701,16 @@ Außen → Keramikspeicher → Innenraum (vorgewärmt)
 ### NTC Sensoren (Temperatur-Stabilisierung)
 
 Die NTC Sensoren messen die Temperatur am Keramikspeicher innen und außen (`temp_zuluft` und `temp_abluft`). Da die Lüfterrichtung im Wärmerückgewinnungs-Modus zyklisch (z.B. alle 70 Sekunden) wechselt, benötigen die Sensoren aufgrund ihrer thermischen Masse eine gewisse Zeit, um sich an die neue Lufttemperatur anzupassen. Um die Messung möglichst genau zu machen, werden sehr kleine NTC Sensoren genutzt, mit möglichst geringer Masse und hoher Genauigkeit. Dadurch wird die Anpassung an die wechselnde Temperatur je nach Lüftungsrichtung möglichst schnell und präzise.
-Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden und die wahren thermischen Grenzwerte exakt zu erfassen, nutzen beide Sensoren eine **intelligente, saisonabhängige Temperatur-Stabilisierung**:
+Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden und die wahren thermischen Grenzwerte exakt zu erfassen, nutzen beide Sensoren eine **intelligente, vereinheitlichte und phasengesteuerte Temperatur-Stabilisierung**:
 
-- Nach einem Richtungswechsel (Push/Pull) wird die Messwertübertragung für **40% der Zyklusdauer (min. 15s)** pausiert.
-- Danach sammelt das System Messwerte in einem **Sliding-Window (Größe 3)**.
-- **Dynamische Min/Max-Auswahl:** Anstelle einer simplen Durchschnittsbildung wählt das System dynamisch den `min` oder `max` Wert aus dem Fenster, um die thermische Trägheit des Gehäuses zu kompensieren.
-  - **Winter/Übergangszeit:** Der Außensensor nimmt den Minimalwert (wahre kalte Außenluft), der Innensensor den Maximalwert (wahre warme Raumluft).
-  - **Sommer-Kühlung:** Wenn die Außenluft heißer ist als die Innenluft, kehrt sich die Logik automatisch um (Außen nimmt Max, Innen nimmt Min), um verfälschte Werte durch das kühlere/wärmere Gehäuse zu vermeiden.
+- **Phase-Lock:** Das System verwirft Messwerte während der "falschen" Luftrichtung explizit (z.B. Innensensor während der Zuluft-Phase). Dies verhindert, dass der Puffer mit bereits erwärmter/gekühlter Luft verfälscht wird.
+- **Thermische Wartezeit:** Nach einem Richtungswechsel (Push/Pull) wird die Messwertübertragung für **40% der Zyklusdauer (min. 15s)** pausiert, damit sich der NTC an den neuen Luftstrom anpassen kann.
+- **Kombinierter Filter:** Alle Stufen (Phase-Lock, History-Invalidierung, Stabilitätscheck und saisonale Selektion) sind in einer einzigen, performanten C++ Funktion (`filter_ntc_combined`) vereint.
+- **Dynamische Saison-Selektion:**
+  - **Winter/Übergang:** Der Außensensor nimmt den Minimalwert (wahre kalte Außenluft), der Innensensor den Maximalwert (wahre warme Raumluft).
+  - **Sommer-Kühlung:** Wenn die Außenluft heißer ist als die Innenluft, kehrt sich die Logik automatisch um (Außen nimmt Max, Innen nimmt Min).
+- **Median-Fallback:** Sollte ein Referenzsensor temporär ausfallen, nutzt das System den Median der letzten 3 Werte als sicheren Kompromiss.
+- **120s Failsafe-Timeout:** Ein großzügiger Watchdog hält die Sensoren in Home Assistant "online", auch wenn während langer Lüftungsphasen durch den Phase-Lock zeitweise keine Werte geliefert werden.
 
 *Hinweis zur Redundanz:* `temp_zuluft` (Außen-NTC) liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_abluft` (Innen-NTC) liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren SCD41 Sensor.
 
@@ -894,7 +897,8 @@ Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewäh
   - ✅ **Konfigurations-Sicherheit**: Validierung von Min/Max-Lüfterstufen (Swap-Guard) zur Vermeidung von invertierter Skalierung bei Fehlkonfigurationen.
   - ✅ **NVS-Verschleißschutz**: Schreibzugriffe auf den internen Flash-Speicher werden minimiert, indem nicht-kritische Daten wie die Filter-Betriebsstunden gepuffert und nur alle 8 Stunden (3x pro Tag) festgeschrieben werden.
   - ✅ **LED-Selbsttest**: Beim Systemstart führt das Gerät einen 3-sekündigen Hardware-Check durch, bei dem alle LEDs auf 100% Helligkeit gezwungen werden, um die visuelle Rückmeldung zu verifizieren.
-  - ✅ **NTC-Fallback**: Bei nicht angeschlossenen oder defekten NTC-Sensoren (Werte um 87°C) deklariert das System den Status automatisch als `NaN` (Unknown). Dies verhindert ungültige Effizienzberechnungen und sorgt für saubere Sensordaten in Home Assistant.
+  - ✅ **Kombinierter NTC-Filter**: Ersetzung fragmentierter YAML-Lambdas durch einen zentralen C++ Filter (`filter_ntc_combined`). Dies vereint Phase-Lock, thermische Wartezeit und saisonale Selektion in einer kohärenten Pipeline für 100% Datenintegrität.
+  - ✅ **Robustes Failsafe**: Implementierung konfigurierbarer Plausibilitätsbereiche und eines erweiterten 120s-Timeouts zur Vermeidung von "Unavailable"-Zuständen in Home Assistant während langer Lüftungsphasen.
 
 
 
