@@ -1,0 +1,71 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        globals_network.yaml
+# Description: Global variables for ESP-NOW mesh networking – peer
+#              management, discovery state, and health monitoring counters.
+# Author:      Thomas Engeroff
+# Created:     2026-05-16
+# Modified:    2026-05-16
+# ==========================================================================
+
+globals:
+  # ---------------------------------------------------------
+  # ESP-NOW PEER MANAGEMENT
+  # ---------------------------------------------------------
+
+  # Serialized list of discovered ESP-NOW peer MAC addresses.
+  # Format: Comma-separated MAC strings, e.g. "AA:BB:CC:DD:EE:FF,11:22:33:44:55:66"
+  # Persisted to flash so peers survive reboots without rediscovery.
+  # Cleared when floor_id or room_id changes (topology invalidation).
+  # Max 254 bytes covers ~10 peers (17 chars per MAC + separator).
+  # See: invalidate_peer_cache_and_rediscover() in config_helpers.h
+  - id: espnow_peers
+    type: std::string
+    max_restore_data_length: 254
+    initial_value: '""'
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # PEER CHECK CONFIGURATION
+  # ---------------------------------------------------------
+
+  # Enables/disables the periodic peer connectivity check.
+  # When enabled, the Master LED blinks if no ESP-NOW peers are
+  # reachable within 5 minutes (visual alert for network issues).
+  # Can be disabled via HA for standalone installations where
+  # no peer devices exist (single-device rooms).
+  # See: check_master_led_error() in led_feedback.h
+  - id: peer_check_enabled
+    type: bool
+    initial_value: "true"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # HEALTH MONITORING
+  # ---------------------------------------------------------
+
+  # Persistent counter of watchdog-triggered restarts.
+  # Incremented by check_brain_health() in health_helpers.h
+  # before each forced restart. Exposed as HA diagnostic sensor
+  # for post-mortem analysis. Reset manually via HA service call.
+  - id: watchdog_restarts_count
+    type: int
+    initial_value: '0'
+    restore_value: yes

@@ -1,0 +1,81 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        globals_ui.yaml
+# Description: Global variables for user interface state – LED brightness,
+#              UI activity tracking, child protection lock, and intensity
+#              bounce direction for the physical rotary/button control.
+# Author:      Thomas Engeroff
+# Created:     2026-05-16
+# Modified:    2026-05-16
+# ==========================================================================
+
+globals:
+  # ---------------------------------------------------------
+  # LED BRIGHTNESS
+  # ---------------------------------------------------------
+
+  # Maximum LED brightness for the PCA9685 status LEDs (0.0–1.0).
+  # User-adjustable via HA slider. Affects all status LEDs proportionally.
+  # Default 0.8 provides good visibility without being blinding at night.
+  - id: max_led_brightness
+    type: float
+    initial_value: "0.8"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # UI ACTIVITY STATE
+  # ---------------------------------------------------------
+
+  # Tracks whether the physical control panel is currently in use.
+  # When true, LED feedback is enhanced (brighter, animated).
+  # Auto-resets to false after an inactivity timeout.
+  # Not persisted – always starts inactive after reboot.
+  - id: ui_active
+    type: bool
+    initial_value: "false"
+
+  # ---------------------------------------------------------
+  # INTENSITY BOUNCE DIRECTION
+  # ---------------------------------------------------------
+
+  # Controls the direction of the intensity hold-to-change behavior.
+  # When the user holds the intensity button:
+  #   true  = incrementing (1 → 10)
+  #   false = decrementing (10 → 1)
+  # Reverses direction when hitting min/max boundary.
+  # See: handle_intensity_bounce() in automation_helpers.h
+  # Not persisted – always starts with "up" direction after reboot.
+  - id: intensity_bounce_up
+    type: bool
+    initial_value: "true"
+    restore_value: no
+
+  # ---------------------------------------------------------
+  # CHILD PROTECTION (Kindersicherung)
+  # ---------------------------------------------------------
+
+  # When active, ALL physical button presses are silently ignored.
+  # The device remains fully controllable via Home Assistant.
+  # Use case: Prevent children or unauthorized users from changing
+  # ventilation settings via the wall-mounted control panel.
+  - id: child_lock_active
+    type: bool
+    initial_value: "false"
+    restore_value: true

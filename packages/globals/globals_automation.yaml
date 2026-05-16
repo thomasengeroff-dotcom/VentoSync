@@ -1,0 +1,145 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Custom Component
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        globals_automation.yaml
+# Description: Global variables for the Smart-Automatik mode – CO2 and
+#              humidity thresholds, PID controller outputs, presence
+#              adjustments, summer cooling, and fan level boundaries.
+#              These values are user-configurable via HA and persisted
+#              across reboots.
+# Author:      Thomas Engeroff
+# Created:     2026-05-16
+# Modified:    2026-05-16
+# ==========================================================================
+
+globals:
+  # ---------------------------------------------------------
+  # SMART-AUTOMATIK – ACTIVATION
+  # ---------------------------------------------------------
+
+  # Master switch for the Smart-Automatik algorithm.
+  # When false, the system runs in the manually selected mode only.
+  - id: auto_mode_active
+    type: bool
+    initial_value: "true"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # SMART-AUTOMATIK – FAN LEVEL BOUNDARIES
+  # ---------------------------------------------------------
+
+  # Minimum fan level in Smart-Automatik mode.
+  # Ensures continuous moisture protection per DIN 1946-6 (Feuchteschutz).
+  # Even at minimum, the system maintains a base air exchange rate.
+  - id: automatik_min_fan_level
+    type: int
+    initial_value: "2"
+    restore_value: true
+
+  # Maximum fan level in Smart-Automatik mode.
+  # Caps the automatic ramp-up to prevent excessive noise,
+  # especially important for bedroom installations.
+  - id: automatik_max_fan_level
+    type: int
+    initial_value: "7"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # SMART-AUTOMATIK – SENSOR THRESHOLDS
+  # ---------------------------------------------------------
+
+  # CO2 threshold in ppm – above this value, the system ramps up.
+  # Default 1000 ppm aligns with Pettenkofer limit for good IAQ.
+  # The PID controller uses this as the setpoint.
+  - id: auto_co2_threshold_val
+    type: int
+    initial_value: "1000"
+    restore_value: true
+
+  # Relative humidity threshold in % – above this value, the system ramps up.
+  # Default 60% prevents mold growth (critical threshold: 65% at wall surface).
+  - id: auto_humidity_threshold_val
+    type: int
+    initial_value: "60"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # SMART-AUTOMATIK – PRESENCE ADJUSTMENT
+  # ---------------------------------------------------------
+
+  # Presence-based fan level offset (-5 to +5).
+  # Positive = increase ventilation when presence detected (mmWave radar).
+  # Negative = reduce ventilation when room is empty.
+  # Applied as additive offset to the PID-calculated fan level.
+  - id: auto_presence_val
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # SMART-AUTOMATIK – SUMMER COOLING
+  # ---------------------------------------------------------
+
+  # Indoor temperature threshold for summer cooling mode (°C).
+  # When indoor temp exceeds this AND outdoor temp is lower,
+  # the system switches to cross-ventilation (Durchlüften) to
+  # cool the room with outside air.
+  - id: summer_cooling_threshold
+    type: int
+    initial_value: "22"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # PID CONTROLLER OUTPUTS
+  # ---------------------------------------------------------
+  # These hold the current PID controller output values (0.0–1.0).
+  # Updated by the PID components in logic_pid.yaml, consumed by
+  # evaluate_auto_mode() in auto_mode.h to calculate the target
+  # fan level.
+  # Not persisted – PID state is recalculated from live sensor data.
+
+  # CO2 PID controller output (0.0 = below setpoint, 1.0 = max demand)
+  - id: co2_pid_result
+    type: float
+    initial_value: "0.0"
+
+  # Humidity PID controller output (0.0 = below setpoint, 1.0 = max demand)
+  - id: humidity_pid_result
+    type: float
+    initial_value: "0.0"
+
+  # ---------------------------------------------------------
+  # FILTER MAINTENANCE TRACKING
+  # ---------------------------------------------------------
+
+  # Cumulative operating hours while fan is running.
+  # Incremented every 60s in logic_automation.yaml interval.
+  # Used to calculate filter replacement schedule.
+  - id: filter_operating_hours
+    type: float
+    initial_value: "0.0"
+    restore_value: true
+
+  # Unix timestamp of last filter change.
+  # Set via HA button or maintenance script.
+  # Used to calculate "days since last change" sensor.
+  - id: filter_last_change_ts
+    type: int
+    initial_value: "0"
+    restore_value: true

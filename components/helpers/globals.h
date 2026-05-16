@@ -318,6 +318,17 @@ extern esphome::light::LightState
  */
 extern esphome::VentilationController *const ventilation_ctrl;
 
+/**
+ * @brief Type-safe accessor for the VentilationController instance.
+ * @return Pointer to the VentilationController (never null after boot).
+ *
+ * Adapts to ESPHome's id() return type (reference for external_components).
+ * Single point of change if the access pattern ever changes.
+ */
+inline esphome::VentilationController *get_controller() {
+    return &id(ventilation_ctrl);
+}
+
 // --- ESP-NOW Dynamic Discovery & Persistence -------------------------
 inline std::vector<uint8_t>
 build_and_populate_packet(esphome::MessageType type);

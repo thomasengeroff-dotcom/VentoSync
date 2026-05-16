@@ -44,7 +44,8 @@ class BME680IAQEngine {
     uint32_t save_interval_ms = 3600000; // Minimum 1h between flash writes
   };
 
-  explicit BME680IAQEngine(const Config &cfg = {}) : cfg_(cfg) {}
+  BME680IAQEngine() : cfg_() {}
+  explicit BME680IAQEngine(const Config &cfg) : cfg_(cfg) {}
 
   // ── Restore from flash (call once at boot) ────────────
   void restore(float saved_baseline, int saved_burn_in_minutes) {

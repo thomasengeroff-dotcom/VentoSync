@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.12] - 2026-05-16
+
+### Added
+
+- **Erweiterte Boot-Diagnose**: Einführung von `log_boot_diagnostics()`. Die Funktion loggt beim Systemstart detaillierte Informationen wie den Reset-Grund (ESP-IDF), verfügbaren Heap und den Watchdog-Restart-Counter.
+
+- **System-Health Monitoring**: Implementierung von `check_brain_health()` zur Erkennung von "Brain-Freezes" (stalling main loop). Der Restart-Counter wird nun konsistent vor dem Reboot im Flash persistiert.
+
+- **Automatisierungs-Guard**: Neue Funktion `guard_config_sync()` zur sauberen Kapselung der Boot-Race-Condition-Prüfung zwischen Home Assistant und dem lokalen Controller.
+
+- **Config-Helper-Modul**: Neuer Header `config_helpers.h` mit zentralisierten Funktionen für Gerätekonfiguration:
+  - `update_config_id()` – Unified Handler für Floor/Room/Device-ID-Änderungen mit automatischer Peer-Cache-Invalidierung bei Topologie-Änderungen.
+  - `update_phase_config()` – Typsichere Phasen-Umschaltung (A/B) ohne Magic Strings im Lambda.
+  - `build_config_summary()` – Ausgelagerte Diagnostic-Summary für den HA Text-Sensor.
+  - `get_phase_short()` – Kurzform-Phasen-Identifier für Dashboard-Sensoren.
+  - `force_discovery_with_diagnostics()` – Strukturierte ESP-NOW-Diagnoseausgabe für den manuellen Discovery-Button.
+
+- **Verbessertes Logging**:
+  - `wifi_just_connected()` loggt WiFi Connect/Disconnect Ereignisse nun explizit im Serial-Log.
+  - `process_pending_broadcast()` loggt nun die exakte Anzahl der erreichten Peers bei Status-Updates.
+  - `invalidate_peer_cache_and_rediscover()` loggt Peer-Cache-Resets bei Topologie-Änderungen.
+
+- **System-Boot-Helper-Modul**: Neuer Header `system_boot_helpers.h` mit zentralisierten Boot-Funktionen:
+  - `init_external_antenna()` – XIAO ESP32-C6 RF-Switch-Konfiguration für externe U.FL-Antenne mit benannten GPIO-Konstanten (`PIN_WIFI_ENABLE`, `PIN_WIFI_ANT_SELECT`).
+  - `init_core_system()` – Konsolidierte Core-Initialisierung (Controller-Sync + Window-Guard-Override).
+  - `boot_discovery_broadcast(phase)` – Parametrisierte Discovery-Broadcasts mit Phase-Logging (ersetzt 3× duplizierten Code).
+  - `boot_finish_discovery()` – Abschluss der Discovery-Sequenz mit Peer-Status-Request und Peer-Count-Logging.
+
+### Changed
+
+- **C++ Modularisierung**: Weitere Auslagerung komplexer YAML-Lambdas in spezialisierte Helper-Dateien (`vacation_helpers.h`, `health_helpers.h`, `espnow_helpers.h`, `config_helpers.h`).
+
+- **Namespacing & Clean Code**: Einführung von Namespaces (`ventosync::vacation`, `ventosync::health`, `ventosync::config`) für Konstanten zur Eliminierung von Magic Numbers. Phase-Strings sind nun als `constexpr`-Konstanten (`PHASE_A_LABEL`, `PHASE_B_LABEL`) zentralisiert.
+
+- **Deduplizierung Config-IDs**: Die drei nahezu identischen `set_action`-Lambdas für Floor/Room/Device-ID wurden zu einem einzigen `update_config_id()`-Handler mit `ConfigField`-Enum konsolidiert. Die bewusste Entscheidung, bei Device-ID-Änderungen den Peer-Cache *nicht* zu invalidieren (Intra-Room-Identität vs. Topologie), ist nun explizit im Code dokumentiert.
+
+- **C-Style Casts eliminiert**: Alle `(esphome::VentilationController*)` und `(uint8_t)x` Casts in `device_config.yaml` durch `static_cast<>` in den Helper-Funktionen ersetzt.
+
+- **Struktur-Optimierung**: Einrichtung eines `include/` Symlinks für übersichtlichere YAML-Konfigurationen und Umbenennung von `fan_control.h` in `automation_helpers.h` zur besseren fachlichen Einordnung.
+
+- **Boot-Sequenz vereinfacht**: Die `on_boot`-Blöcke in `ventosync.yaml` sind von ~30 Inline-C++-Zeilen auf 5 Einzeiler-Lambdas reduziert. Hardware-Delays bleiben bewusst in YAML (kooperatives non-blocking Yielding).
+- **GPIO Magic Numbers eliminiert**: Die rohen GPIO-Nummern `3` und `14` für den Antennen-Switch sind durch `constexpr`-Konstanten im Namespace `ventosync::hw` ersetzt und mit Hardware-Dokumentation versehen.
+
+- **Globals modularisiert**: Die monolithische `globals:`-Sektion (25 Einträge) aus
+  `ventosync.yaml` wurde in vier thematische Package-Dateien aufgeteilt:
+  - `globals_ventilation.yaml` – Systemzustand, Betriebsmodus, Lüfterstufe, Vacation-Memory (8 Globals)
+  - `globals_automation.yaml` – Smart-Automatik-Schwellwerte, PID-Ausgänge, Filterwartung (10 Globals)
+  - `globals_ui.yaml` – LED-Helligkeit, UI-State, Kindersicherung, Bounce-Richtung (4 Globals)
+  - `globals_network.yaml` – ESP-NOW Peers, Peer-Check, Watchdog-Counter (3 Globals)
+- **Globals-Migration**: `watchdog_restarts_count` (vorher `logic_automation.yaml`) und
+  `intensity_bounce_up` (vorher `logic_automation.yaml`) in die thematisch passenden
+  Globals-Dateien verschoben. Duplikate in der Quelldatei entfernt.
+
+### Fixed
+
+- **Implizite Peer-Cache-Logik dokumentiert**: Im Original-Code invalidierte `floor_id` und `room_id` den Peer-Cache, `device_id` jedoch nicht – ohne erkennbare Dokumentation dieser Designentscheidung. Das Verhalten ist nun im `update_config_id()`-Handler explizit kommentiert und über den `ConfigField`-Enum-Switch nachvollziehbar.
+
+
 ## [0.9.11] - 2026-05-16
 
 ### Added

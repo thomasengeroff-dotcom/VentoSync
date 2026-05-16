@@ -30,7 +30,6 @@
 /// hardware I/O (fan, direction switch) and ESP-NOW group synchronization.
 
 #include "esphome.h"
-#include "esphome/components/globals/globals_component.h"
 #include "ventilation_state_machine.h"
 #include <algorithm>
 #include <cmath>

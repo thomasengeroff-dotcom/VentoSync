@@ -60,8 +60,14 @@ substitutions:
 # ---------------------------------------------------------
 # PACKAGES & INCLUDES
 # ---------------------------------------------------------
-# Include common settings (WiFi, Logger, API) and device-specific configs
 packages:
+  # --- Global Variables (thematisch aufgeteilt) ---
+  globals_ventilation: !include ../globals/globals_ventilation.yaml
+  globals_automation: !include ../globals/globals_automation.yaml
+  globals_ui: !include ../globals/globals_ui.yaml
+  globals_network: !include ../globals/globals_network.yaml
+
+  # --- Device & Hardware ---
   common: !include esp32c6_common.yaml
   device_config_pkg: !include device_config.yaml
   hardware: !include ../io/hardware_io.yaml
@@ -71,14 +77,20 @@ packages:
   bmp390: !include ../sensors/sensor_BMP390.yaml
   ntc: !include ../sensors/sensor_NTC.yaml
   hrv_efficiency: !include ../sensors/sensor_hrv_efficiency.yaml
+
+  # --- User Interface ---
   ui: !include ../ui/ui_controls.yaml
   lights: !include ../ui/ui_lights.yaml
   diagnostics: !include ../ui/ui_diagnostics.yaml
+
+  # --- Actuators & Logic ---
   logic: !include ../actuators/logic_automation.yaml
   buttons: !include ../io/logic_buttons.yaml
   pid: !include ../actuators/logic_pid.yaml
   maintenance: !include ../actuators/logic_maintenance.yaml
   safety: !include ../actuators/logic_safety.yaml
+
+  # --- Home Assistant Integration ---
   integration: !include ../integration/homeassistant.yaml
   ha_fan: !include ../integration/ha_fan_entity.yaml
 
@@ -89,216 +101,56 @@ external_components:
 
 esphome:
   includes:
-    - components/helpers/globals.h
-    - components/helpers/network_sync.h
-    - components/helpers/climate.h
-    - components/helpers/hrv_efficiency.h
-    - components/helpers/auto_mode.h
-    - components/helpers/fan_control.h
-    - components/helpers/system_lifecycle.h
-    - components/helpers/led_feedback.h
-    - components/helpers/user_input.h
+    - include/globals.h
+    - include/automation_helpers.h
+    - include/config_helpers.h
+    - include/vacation_helpers.h
+    - include/health_helpers.h
+    - include/espnow_helpers.h
+    - include/system_boot_helpers.h
+    - include/network_sync.h
+    - include/climate.h
+    - include/hrv_efficiency.h
+    - include/auto_mode.h
+    - include/system_lifecycle.h
+    - include/led_feedback.h
+    - include/user_input.h
+    - include/bme680_iaq_engine.h
 
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
 
   on_boot:
-    # Enable External Antenna early at boot (Priority 900 starts before WiFi)
+    # ── Priority 900: Hardware RF Switch (before WiFi starts) ──
     - priority: 900
       then:
-      - lambda: |-
-          // GPIO 3 (WIFI_ENABLE) LOW activates the RF switch circuitry
-          gpio_reset_pin((gpio_num_t)3);
-          gpio_set_direction((gpio_num_t)3, GPIO_MODE_OUTPUT);
-          gpio_set_level((gpio_num_t)3, 0);
+        - lambda: "init_external_antenna();"
 
-          // Brief delay for the switch to stabilize
-          vTaskDelay(pdMS_TO_TICKS(100));
+    # ── Priority 600: Boot Diagnostics ──
+    - priority: 600
+      then:
+        - lambda: "log_boot_diagnostics();"
 
-          // GPIO 14 (WIFI_ANT_CONFIG) HIGH selects the U.FL connector
-          gpio_reset_pin((gpio_num_t)14);
-          gpio_set_direction((gpio_num_t)14, GPIO_MODE_OUTPUT);
-          gpio_set_level((gpio_num_t)14, 1); 
-
-          ESP_LOGI("boot", "Hardware RF Switch: External U.FL Antenna activated.");
-
-    # Phase 1: Core initialization (WiFi + NVS ready at priority -10)
+    # ── Priority -10: Core Init + ESP-NOW Discovery ──
     - priority: -10.0
       then:
+        # Phase 1: Core system initialization
         - delay: 1s
-        - lambda: |-
-            run_system_boot_initialization();
-            id(ventilation_ctrl)->set_ignore_window_guard(id(ignore_window_guard_switch).state);
+        - lambda: "init_core_system();"
 
-        # Phase 2: ESP-NOW Discovery (staggered broadcasts)
+        # Phase 2: Staggered ESP-NOW discovery broadcasts
         - delay: 1s
-        - lambda: |-
-            /**
-             * @brief First discovery broadcast to find room peers.
-             */
-            send_discovery_broadcast();
+        - lambda: "boot_discovery_broadcast(1);"
         - delay: 2s
-        - lambda: |-
-            /**
-             * @brief Second discovery broadcast to handle potential RF congestion on boot.
-             */
-            send_discovery_broadcast();
+        - lambda: "boot_discovery_broadcast(2);"
         - delay: 2s
-        - lambda: |-
-            /**
-             * @brief   Final broadcast and explicit status request.
-             * @details Ensures all devices in the room are aware of our presence
-             *          and we adopt the current Master's state immediately.
-             */
-            // Final broadcast + status request
-            send_discovery_broadcast();
+        - lambda: "boot_discovery_broadcast(3);"
         - delay: 1s
-        - lambda: |-
-            request_peer_status();
-            ESP_LOGI("boot", "Phase 2 complete: Discovery finished");
-    
-    # FIX — start with LEDs disabled, enable after PCA9685 init
-    - priority: -100  # After all components initialized
+        - lambda: "boot_finish_discovery();"
+
+    # ── Priority -100: Enable PCA9685 LED driver ──
+    - priority: -100
       then:
         - switch.turn_on: pca9685_oe
-
-# ---------------------------------------------------------
-# GLOBAL VARIABLES (State Memory)
-# ---------------------------------------------------------
-globals:
-  # Main system power state
-  - id: system_on
-    type: bool
-    initial_value: "true"
-
-  # Ventilation enabled state (referenced by button logic)
-  - id: ventilation_enabled
-    type: bool
-    initial_value: "true"
-
-  # Operating mode (0=WRG, 1=Durchlüften, 2=Aus)
-  - id: operating_mode
-    type: int
-    initial_value: "0"
-    restore_value: true
-
-  # Fan intensity level (1-10)
-  - id: fan_intensity_level
-    type: int
-    initial_value: "2" # Start at lower medium intensity
-    restore_value: true
-
-  # Current operating mode index (0=Smart-Automatik, 1=WRG, 2=Durchlüften, 3=Stoßlüftung, 4=Aus)
-  - id: current_mode_index
-    type: int
-    initial_value: "0" # Default: Smart-Automatik
-    restore_value: true
-
-  # Pre-Vacation Memory: Operating mode
-  - id: pre_vacation_mode_index
-    type: int
-    initial_value: "0"
-    restore_value: true
-
-  # Pre-Vacation Memory: Fan intensity
-  - id: pre_vacation_intensity
-    type: int
-    initial_value: "2"
-    restore_value: true
-
-  # ESP-NOW dynamic peer list
-  - id: espnow_peers
-    type: std::string
-    max_restore_data_length: 254
-    initial_value: '""'
-    restore_value: true
-
-  # Smart-Automatik: min fan level (moisture protection / DIN 1946-6 Feuchteschutz)
-  - id: automatik_min_fan_level
-    type: int
-    initial_value: "2"
-    restore_value: true
-
-  # Smart-Automatik: max fan level (noise control)
-  - id: automatik_max_fan_level
-    type: int
-    initial_value: "7"
-    restore_value: true
-
-  # Smart-Automatik Modus Aktivierungsstatus
-  - id: auto_mode_active
-    type: bool
-    initial_value: "true"
-    restore_value: true
-
-  # Smart-Automatik CO2 Grenzwert (Wert in ppm, ab dem hochgeregelt wird)
-  - id: auto_co2_threshold_val
-    type: int
-    initial_value: "1000"
-    restore_value: true
-
-  # Smart-Automatik Feuchte Grenzwert (Wert in %, ab dem hochgeregelt wird)
-  - id: auto_humidity_threshold_val
-    type: int
-    initial_value: "60"
-    restore_value: true
-
-  # Anwesenheits-Lüfter-Anpassung (-5 bis +5)
-  - id: auto_presence_val
-    type: int
-    initial_value: "0"
-    restore_value: true
-
-  # Smart-Automatik Sommerkühlung Innentemperatur-Schwelle (°C)
-  - id: summer_cooling_threshold
-    type: int
-    initial_value: "22"
-    restore_value: true
-
-  # PID Control Outputs (0.0 to 1.0)
-  - id: co2_pid_result
-    type: float
-    initial_value: "0.0"
-
-  - id: humidity_pid_result
-    type: float
-    initial_value: "0.0"
-
-  # Filter Maintenance Tracking
-  - id: filter_operating_hours
-    type: float
-    initial_value: "0.0"
-    restore_value: true
-
-  - id: filter_last_change_ts
-    type: int
-    initial_value: "0"
-    restore_value: true
-
-  # UI state tracking
-  - id: ui_active
-    type: bool
-    initial_value: "false"
-
-  # ESP-NOW peer check (disable to suppress Master LED blinking when no peers are connected)
-  - id: peer_check_enabled
-    type: bool
-    initial_value: "true"
-    restore_value: true
-
-  # Child Protection Mode (Kindersicherung)
-  # When active, all physical button presses are blocked (HA still works).
-  - id: child_lock_active
-    type: bool
-    initial_value: "false"
-    restore_value: true
-
-  # LED Brightness control
-  - id: max_led_brightness
-    type: float
-    initial_value: "0.8"
-    restore_value: true
-
-
 
 # ---------------------------------------------------------
 # VENTILATION COMPONENT (External)

@@ -1,44 +1,19 @@
 # ==========================================================================
-# VentoSync HRV – ESPHome device configuration
-# https://github.com/thomasengeroff-dotcom/VentoSync
-#
-# Copyright (c) 2026 Thomas Engeroff
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-#
-# File:        device_config.yaml
-# Description: Persistent device configuration and runtime IDs.
-# Author:      Thomas Engeroff
-# Created:     2026-03-07
-# Modified:    2026-04-21
+# VentoSync HRV – device_config.yaml (Refactored)
 # ==========================================================================
-# ---------------------------------------------------------
-# DEVICE CONFIGURATION
-# Persistent configuration via Home Assistant
-# ---------------------------------------------------------
 
+# ---------------------------------------------------------
+# SUBSTITUTIONS
+# ---------------------------------------------------------
 substitutions:
-  # Default values - can be changed via Home Assistant
   default_floor_id: "1"
   default_room_id: "1"
   default_device_id: "1"
-  default_phase: "true" # true = Phase A, false = Phase B
+  default_phase: "true"
 
 # ---------------------------------------------------------
 # CONFIGURATION INPUTS (Persistent)
 # ---------------------------------------------------------
-
 number:
   - platform: template
     name: "ID Stockwerk"
@@ -49,18 +24,11 @@ number:
     step: 1
     initial_value: ${default_floor_id}
     optimistic: true
-    restore_value: true # Persist across reboots
+    restore_value: true
     entity_category: config
-    # mode: box (Removed to encourage integer display in HA)
     set_action:
       then:
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_floor_id((uint8_t)x);
-            ESP_LOGI("config", "Floor ID updated to: %d", (uint8_t)x);
-            id(espnow_peers) = ""; // Clear peers on floor change
-            peer_cache.clear();     // Clear binary peer cache
-            send_discovery_broadcast(); // Trigger discovery broadcast
+        - lambda: "update_config_id(ventosync::config::ConfigField::FLOOR_ID, x);"
 
   - platform: template
     name: "ID Raum"
@@ -71,18 +39,11 @@ number:
     step: 1
     initial_value: ${default_room_id}
     optimistic: true
-    restore_value: true # Persist across reboots
+    restore_value: true
     entity_category: config
-    # mode: box
     set_action:
       then:
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_room_id((uint8_t)x);
-            ESP_LOGI("config", "Room ID updated to: %d", (uint8_t)x);
-            id(espnow_peers) = ""; // Clear peers on room change
-            peer_cache.clear();     // Clear binary peer cache
-            send_discovery_broadcast(); // Trigger discovery broadcast
+        - lambda: "update_config_id(ventosync::config::ConfigField::ROOM_ID, x);"
 
   - platform: template
     name: "ID Gerät"
@@ -93,20 +54,15 @@ number:
     step: 1
     initial_value: ${default_device_id}
     optimistic: true
-    restore_value: true # Persist across reboots
+    restore_value: true
     entity_category: config
-    # mode: box
     set_action:
       then:
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            v->set_device_id((uint8_t)x);
-            ESP_LOGI("config", "Device ID updated to: %d", (uint8_t)x);
+        - lambda: "update_config_id(ventosync::config::ConfigField::DEVICE_ID, x);"
 
 # ---------------------------------------------------------
 # PHASE SELECTION
 # ---------------------------------------------------------
-
 select:
   - platform: template
     name: "Geräte-Phase (A|B)"
@@ -117,21 +73,15 @@ select:
       - "Phase B (Startet mit Abluft)"
     initial_option: "Phase A (Startet mit Zuluft)"
     optimistic: true
-    restore_value: true # Persist across reboots
+    restore_value: true
     set_action:
       then:
-        - lambda: |-
-            auto *v = (esphome::VentilationController*)id(ventilation_ctrl);
-            bool is_phase_a = (x == "Phase A (Startet mit Zuluft)");
-            v->set_is_phase_a(is_phase_a);
-            ESP_LOGI("config", "Phase updated to: %s", is_phase_a ? "A" : "B");
+        - lambda: "update_phase_config(x);"
 
 # ---------------------------------------------------------
 # DEVICE INFO SENSORS
 # ---------------------------------------------------------
-
 text_sensor:
-  # Display this device's MAC address for easy peer configuration
   - platform: wifi_info
     mac_address:
       name: "Eigene MAC Adresse"
@@ -140,59 +90,46 @@ text_sensor:
       icon: "mdi:identifier"
       entity_category: diagnostic
 
-  # Configuration Summary
   - platform: template
     name: "Geräte-Konfiguration"
     id: device_config_summary
     icon: "mdi:information"
     entity_category: diagnostic
-    lambda: |-
-      char buffer[128];
-      snprintf(buffer, sizeof(buffer), 
-               "Floor: %d | Room: %d | Device: %d | Phase: %s",
-               (int)id(config_floor_id).state,
-               (int)id(config_room_id).state,
-               (int)id(config_device_id).state,
-               id(config_phase).current_option());
-      return std::string(buffer);
+    lambda: "return build_config_summary();"
     update_interval: 60s
 
   - platform: template
     name: "Dashboard Geräte ID"
     id: dashboard_device_id
     internal: true
-    lambda: return std::to_string((int)id(config_device_id).state);
+    lambda: "return std::to_string((int)id(config_device_id).state);"
     update_interval: 60s
 
   - platform: template
     name: "Dashboard Stockwerk ID"
     id: dashboard_floor_id
     internal: true
-    lambda: return std::to_string((int)id(config_floor_id).state);
+    lambda: "return std::to_string((int)id(config_floor_id).state);"
     update_interval: 60s
 
   - platform: template
     name: "Dashboard Raum ID"
     id: dashboard_room_id
     internal: true
-    lambda: return std::to_string((int)id(config_room_id).state);
+    lambda: "return std::to_string((int)id(config_room_id).state);"
     update_interval: 60s
 
   - platform: template
     name: "Dashboard Phase"
     id: dashboard_phase
     internal: true
-    lambda: |-
-      if (id(config_phase).current_option() == "Phase A (Startet mit Zuluft)") return std::string("A");
-      return std::string("B");
+    lambda: "return get_phase_short();"
     update_interval: 60s
 
 # ---------------------------------------------------------
 # CONFIGURATION BUTTONS
 # ---------------------------------------------------------
-
 button:
-  # Reset to defaultswarn
   - platform: template
     name: "Auf Standardwerte zurücksetzen"
     icon: "mdi:restore"
@@ -215,34 +152,22 @@ button:
 
   - platform: template
     name: "Force ESPNOW Discovery"
+    icon: "mdi:access-point-network"
+    entity_category: diagnostic
     on_press:
-      - lambda: |-
-          ESP_LOGW("TEST", "=== MANUAL DISCOVERY START ===");
-          ESP_LOGW("TEST", "global_esp_now: %s", 
-                   esphome::espnow::global_esp_now ? "OK" : "NULL");
-          ESP_LOGW("TEST", "config_floor_id: %s (state: %.0f)", 
-                   config_floor_id ? "OK" : "NULL",
-                   config_floor_id ? config_floor_id->state : -1);
-          ESP_LOGW("TEST", "config_room_id: %s (state: %.0f)", 
-                   config_room_id ? "OK" : "NULL",
-                   config_room_id ? config_room_id->state : -1);
-          ESP_LOGW("TEST", "peer_cache size: %d", peer_cache.size());
-          send_discovery_broadcast();
-          ESP_LOGW("TEST", "=== MANUAL DISCOVERY SENT ===");
+      then:
+        - lambda: "force_discovery_with_diagnostics();"
 
 # ---------------------------------------------------------
-# CONFIGURATION HELPERS
+# CONFIGURATION SENSORS
 # ---------------------------------------------------------
-
-# Expose configuration values as sensors for automation
 sensor:
   - platform: template
     name: "ID Stockwerk"
     id: current_floor_id
     icon: "mdi:office-building"
     entity_category: diagnostic
-    lambda: |-
-      return id(config_floor_id).state;
+    lambda: "return id(config_floor_id).state;"
     update_interval: 60s
 
   - platform: template
@@ -250,8 +175,7 @@ sensor:
     id: current_room_id
     icon: "mdi:door"
     entity_category: diagnostic
-    lambda: |-
-      return id(config_room_id).state;
+    lambda: "return id(config_room_id).state;"
     update_interval: 60s
 
   - platform: template
@@ -259,34 +183,27 @@ sensor:
     id: current_device_id
     icon: "mdi:numeric"
     entity_category: diagnostic
-    lambda: |-
-      return id(config_device_id).state;
+    lambda: "return id(config_device_id).state;"
     update_interval: 60s
 
-  # Internal temperature sensor for ESP32-C6
   - platform: internal_temperature
     name: "Internal ESP32-C6 Temperature"
     entity_category: diagnostic
 
 # ---------------------------------------------------------
-# SCRIPTS (Complex Logic)
+# SCRIPTS
 # ---------------------------------------------------------
 script:
-  # --- Light Sleep Management ---
-  # Reduces power by turning off WiFi and LEDs
   - id: system_sleep
-    mode: restart  # Note: 'light_sleep' is not a valid execution mode for a script.
+    mode: restart
     then:
-      - lambda: |-
-          ESP_LOGI("sleep", "Entering Light Sleep Mode (WiFi OFF, LEDs OFF)");
+      - lambda: "ESP_LOGI(\"sleep\", \"Entering Light Sleep Mode (WiFi OFF, LEDs OFF)\");"
       - switch.turn_off: pca9685_oe
       - wifi.disable:
 
-  # Restores full operation
   - id: system_wakeup
     mode: restart
     then:
-      - lambda: |-
-          ESP_LOGI("sleep", "Waking up from Light Sleep (WiFi ON, LEDs ON)");
+      - lambda: "ESP_LOGI(\"sleep\", \"Waking up from Light Sleep (WiFi ON, LEDs ON)\");"
       - wifi.enable:
       - switch.turn_on: pca9685_oe

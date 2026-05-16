@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.11",
+    "project_version": "0.9.12",
     "project_date": "2026-05-16",
-    "project_description": "Migrate BME680 logic to an advanced C++ IAQ engine for superior stability."
+    "project_description": "Modularize C++ helpers and implement advanced boot diagnostics & health monitoring."
 }
