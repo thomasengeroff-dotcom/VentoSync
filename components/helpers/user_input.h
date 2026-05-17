@@ -25,6 +25,7 @@
 // ==========================================================================
 #pragma once
 #include "globals.h"
+#include "esphome.h"
 
 // =========================================================
 // SECTION: UI Slider & Number Handlers
@@ -426,3 +427,88 @@ build_and_populate_packet(esphome::MessageType type) {
   return ventilation_ctrl->build_packet(type);
 }
 
+
+
+// ---------------------------------------------------------
+// CHILD LOCK TOGGLE
+// ---------------------------------------------------------
+
+/**
+ * @brief Toggles the child lock state and publishes to HA.
+ *
+ * Called when the 5s Mode-button hold combo is confirmed.
+ * Updates the RestoringGlobalsComponent, publishes to the HA
+ * TemplateSwitch entity, and sets the combo timestamp to suppress
+ * the stale mode-change event that fires on button release.
+ *
+ * @note Uses extern pointer access (globals.h):
+ *       - child_lock_active: RestoringGlobalsComponent<bool>* const
+ *       - child_lock_switch:  TemplateSwitch* const
+ */
+inline void toggle_child_lock() {
+    // Set timestamp to suppress stale mode-click on release
+    child_lock_combo_triggered_ms = millis();
+
+    const bool new_state = !child_lock_active->value();
+    child_lock_active->value() = new_state;
+    child_lock_switch->publish_state(new_state);
+
+    ESP_LOGI("child_lock", "Child lock %s via Mode-hold (5s)",
+             new_state ? "ENABLED" : "DISABLED");
+}
+
+// ---------------------------------------------------------
+// LED FLASH FEEDBACK
+// ---------------------------------------------------------
+
+/**
+ * @brief Turns all status LEDs on at the configured max brightness.
+ *
+ * Used for visual feedback patterns (child lock reject/acknowledge).
+ * Reads max_led_brightness from the GlobalsComponent<float>* pointer;
+ * falls back to 1.0f if the pointer is not yet initialized.
+ *
+ * @note max_led_brightness is declared as:
+ *       extern GlobalsComponent<float>* const max_led_brightness;
+ */
+inline void flash_all_leds_on() {
+    const float max_b = (max_led_brightness != nullptr)
+                            ? max_led_brightness->value()
+                            : 1.0f;
+
+    led_guard::turn_on_safe(status_led_power, max_b);
+    led_guard::turn_on_safe(status_led_mode_wrg, max_b);
+    led_guard::turn_on_safe(status_led_mode_vent, max_b);
+    led_guard::turn_on_safe(status_led_l1, max_b);
+    led_guard::turn_on_safe(status_led_l2, max_b);
+    led_guard::turn_on_safe(status_led_l3, max_b);
+    led_guard::turn_on_safe(status_led_l4, max_b);
+    led_guard::turn_on_safe(status_led_l5, max_b);
+}
+
+/**
+ * @brief Restores the normal LED display state after a flash sequence.
+ *
+ * Briefly activates the UI (so mode/level LEDs show current state),
+ * triggers an LED update via the update_leds script, and starts the
+ * UI timeout timer to auto-dim after 30s of inactivity.
+ *
+ * @note Uses extern pointer access with null-checks because these
+ *       are declared as:
+ *       - ui_active:          GlobalsComponent<bool>* const
+ *       - update_leds:        RestartScript<>* const
+ *       - ui_timeout_script:  RestartScript<>* const
+ *       Null-checks guard against boot-time race conditions where
+ *       the component may not yet be initialized.
+ */
+inline void restore_leds_after_flash() {
+    if (ui_active != nullptr) {
+        ui_active->value() = true;
+    }
+    if (update_leds != nullptr) {
+        update_leds->execute();
+    }
+    if (ui_timeout_script != nullptr) {
+        ui_timeout_script->execute();
+    }
+}

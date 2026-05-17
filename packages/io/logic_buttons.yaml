@@ -18,14 +18,17 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        logic_buttons.yaml
-# Description: Configuration and logic for the physical control panel buttons.
+# Description: Configuration and logic for the physical control panel
+#              buttons (MCP23017 I/O Expander). Handles Power, Mode,
+#              and Intensity buttons with debouncing, click detection,
+#              child lock combo, and LED flash feedback.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-04-21
+# Modified:    2026-05-16
 # ==========================================================================
 
 # ---------------------------------------------------------
-# CONTROL PANEL BUTTONS (Input)
+# CONTROL PANEL BUTTONS (Input via MCP23017 I/O Expander)
 # ---------------------------------------------------------
 binary_sensor:
   # Button Power (right) - On/Off (MCP23017 GPA0)
@@ -39,26 +42,26 @@ binary_sensor:
     name: "Button Power"
     internal: true # not needed in HA
     id: button_power
-    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    # ⚡ SOFTWARE DEBOUNCING ⚡
     filters:
-      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
-      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+      - delayed_on: 25ms  # Ignores bouncing shorter than 25ms
+      - delayed_off: 25ms # Prevents ghost presses on release
     on_click:
+      # Short press: Toggle system on/off
       - min_length: 50ms
         max_length: 4999ms
         then:
-          - lambda: |-
-              handle_button_power_short_click();
+          - lambda: "handle_button_power_short_click();"
+      # Long press (5-10s): Power off with feedback
       - min_length: 5000ms
         max_length: 9999ms
         then:
-          - lambda: |-
-              handle_button_power_long_click();
+          - lambda: "handle_button_power_long_click();"
+      # Very long press (10-60s): Force restart (recovery)
       - min_length: 10000ms
         max_length: 60000ms
         then:
-          - lambda: |-
-              handle_button_power_long_click();
+          - lambda: "handle_button_power_long_click();"
           - button.press: force_restart_button
 
   # Button Mode (left) - Mode Control (MCP23017 GPA1)
@@ -72,14 +75,14 @@ binary_sensor:
     name: "Button Mode"
     internal: true # not needed in HA
     id: button_mode
-    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    # ⚡ SOFTWARE DEBOUNCING ⚡
     filters:
-      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
-      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+      - delayed_on: 25ms
+      - delayed_off: 25ms
     on_click:
       then:
-        - lambda: |-
-            handle_button_mode_click();
+        - lambda: "handle_button_mode_click();"
+    # Child lock combo: hold Mode for 5s
     on_press:
       - script.execute: child_lock_handler
     on_release:
@@ -96,30 +99,32 @@ binary_sensor:
     name: "Button Fan Intensity"
     internal: true # not needed in HA
     id: button_level
-    # ⚡ THIS IS THE SOFTWARE DEBOUNCING ⚡
+    # ⚡ SOFTWARE DEBOUNCING ⚡
     filters:
-      - delayed_on: 25ms # Ignores any bouncing that is shorter than 25ms.
-      - delayed_off: 25ms # Prevents "ghost presses" when releasing the button.
+      - delayed_on: 25ms
+      - delayed_off: 25ms
     on_click:
       # Short press: Cycle through intensity levels 1→10→1
       - min_length: 50ms
-        max_length: 749ms # Slightly shorter than the hold handler delay
+        max_length: 749ms # Shorter than hold handler delay (750ms)
         then:
-          - lambda: |-
-              handle_button_level_click();
+          - lambda: "handle_button_level_click();"
+    # Hold: Continuous intensity ramp (bounce 1↔10)
     on_press:
       - script.execute: intensity_hold_handler
     on_release:
       - script.stop: intensity_hold_handler
-      - lambda: sync_settings_to_peers();
+      - lambda: "sync_settings_to_peers();"
 
 # ---------------------------------------------------------
 # CHILD LOCK SCRIPTS
 # ---------------------------------------------------------
 script:
   # --- Combo Handler: hold Mode for 5 seconds to toggle child lock ---
-  # Simpler than Mode+Level: just hold the Mode button alone for 5s.
-  # The on_click handler's 500ms cooldown suppresses the stale mode-change after release.
+  # Uses nested if-delay-if pattern to verify continuous button hold.
+  # Total hold time: 500ms + 4×1s = 4.5s (fires at ~5s mark).
+  # The child_lock_combo_triggered_ms timestamp suppresses the stale
+  # mode-change event that fires on button release.
   - id: child_lock_handler
     mode: restart
     then:
@@ -148,70 +153,37 @@ script:
                                   condition:
                                     lambda: "return id(button_mode).state;"
                                   then:
-                                    # 4.5 seconds of confirmed hold — toggle child lock!
-                                    - lambda: |-
-                                        child_lock_combo_triggered_ms = millis();
-                                        bool new_state = !id(child_lock_active);
-                                        id(child_lock_active) = new_state;
-                                        id(child_lock_switch).publish_state(new_state);
-                                        ESP_LOGI("child_lock", "Child lock %s via Mode-hold (5s)",
-                                                 new_state ? "ENABLED" : "DISABLED");
+                                    # 4.5s confirmed hold — toggle child lock!
+                                    - lambda: "toggle_child_lock();"
                                     - script.execute: flash_leds_child_lock_2x
 
   # --- LED Flash: 3x for child lock REJECT ---
   # Called when a button is pressed while child lock is active.
-  # Uses YAML delay (non-blocking) so the PCA9685 I2C writes flush between cycles.
+  # Fast triple blink = "access denied" visual feedback.
+  # Uses YAML delay (non-blocking) so PCA9685 I2C writes flush.
   - id: flash_leds_child_lock_3x
     mode: restart
     then:
       - repeat:
           count: 3
           then:
-            - lambda: |-
-                float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
-                led_guard::turn_on_safe(status_led_power, max_b);
-                led_guard::turn_on_safe(status_led_mode_wrg, max_b);
-                led_guard::turn_on_safe(status_led_mode_vent, max_b);
-                led_guard::turn_on_safe(status_led_l1, max_b);
-                led_guard::turn_on_safe(status_led_l2, max_b);
-                led_guard::turn_on_safe(status_led_l3, max_b);
-                led_guard::turn_on_safe(status_led_l4, max_b);
-                led_guard::turn_on_safe(status_led_l5, max_b);
+            - lambda: "flash_all_leds_on();"
             - delay: 150ms
-            - lambda: |-
-                led_guard::turn_off_all_leds();
+            - lambda: "led_guard::turn_off_all_leds();"
             - delay: 200ms
-      - lambda: |-
-          // Restore LED display state (briefly activate UI so mode/level LEDs show)
-          if (ui_active != nullptr) ui_active->value() = true;
-          if (update_leds != nullptr) update_leds->execute();
-          if (ui_timeout_script != nullptr) ui_timeout_script->execute();
+      - lambda: "restore_leds_after_flash();"
 
   # --- LED Flash: 2x for child lock TOGGLE ACK ---
-  # Called when the 5s Mode-hold combo successfully toggles the child lock.
+  # Called when the 5s Mode-hold combo successfully toggles the lock.
+  # Slower double blink = "action confirmed" visual feedback.
   - id: flash_leds_child_lock_2x
     mode: restart
     then:
       - repeat:
           count: 2
           then:
-            - lambda: |-
-                float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
-                led_guard::turn_on_safe(status_led_power, max_b);
-                led_guard::turn_on_safe(status_led_mode_wrg, max_b);
-                led_guard::turn_on_safe(status_led_mode_vent, max_b);
-                led_guard::turn_on_safe(status_led_l1, max_b);
-                led_guard::turn_on_safe(status_led_l2, max_b);
-                led_guard::turn_on_safe(status_led_l3, max_b);
-                led_guard::turn_on_safe(status_led_l4, max_b);
-                led_guard::turn_on_safe(status_led_l5, max_b);
+            - lambda: "flash_all_leds_on();"
             - delay: 200ms
-            - lambda: |-
-                led_guard::turn_off_all_leds();
+            - lambda: "led_guard::turn_off_all_leds();"
             - delay: 300ms
-      - lambda: |-
-          // Restore LED display state
-          if (ui_active != nullptr) ui_active->value() = true;
-          if (update_leds != nullptr) update_leds->execute();
-          if (ui_timeout_script != nullptr) ui_timeout_script->execute();
-
+      - lambda: "restore_leds_after_flash();"

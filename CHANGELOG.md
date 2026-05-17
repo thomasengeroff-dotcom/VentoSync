@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.9.16] - 2026-05-17
+
+### Added
+
+- **Button-Helper-Modul** (`user_input.h`): Neuer Header mit ausgelagerten
+  Funktionen für die physische Bedienfeld-Logik und LED-Feedback:
+  - `toggle_child_lock()` – Kindersicherung umschalten mit Timestamp-
+    Suppression zur Unterdrückung des verspäteten Mode-Click-Events
+    nach Button-Release. Nutzt `RestoringGlobalsComponent*` und
+    `TemplateSwitch*` Pointer-Zugriff (globals.h).
+  - `flash_all_leds_on()` – Deduplizierte Funktion zum Einschalten
+    aller 8 Status-LEDs auf konfigurierter Maximalhelligkeit. Ersetzt
+    2× identischen 8-Zeilen-Block in den Flash-Scripts. Null-Check-
+    Fallback auf 1.0f falls `max_led_brightness` noch nicht initialisiert.
+  - `restore_leds_after_flash()` – Deduplizierte LED-Wiederherstellung
+    nach Flash-Sequenzen. Aktiviert UI-State, triggert `update_leds`-
+    Script und startet `ui_timeout_script`. Alle Zugriffe über extern
+    Pointer mit Null-Checks für Boot-Race-Condition-Sicherheit.
+
+### Changed
+
+- **logic_buttons.yaml**: LED-Flash-Scripts (`flash_leds_child_lock_3x`,
+  `flash_leds_child_lock_2x`) von ~20 duplizierten Inline-C++-Zeilen auf
+  je 3 Einzeiler-Lambdas reduziert. Child-Lock-Toggle-Logik (6 Zeilen
+  Multi-Global-Mutation + Publish + Logging) in `toggle_child_lock()`
+  ausgelagert. Code-Duplikation zwischen beiden Flash-Scripts: 0 Zeilen
+  (vorher ~16 Zeilen identischer Code).
+
+### Fixed
+
+- **Pointer-Konsistenz**: Alle Zugriffe auf `child_lock_active`,
+  `child_lock_switch`, `max_led_brightness`, `ui_active`, `update_leds`
+  und `ui_timeout_script` in `user_input.h` verwenden korrekt die extern
+  Pointer-Syntax (`->value()`, `->execute()`, `->publish_state()`) statt
+  `id()`, da die Funktionen in einem C++-Header laufen, nicht in einem
+  YAML-Lambda-Kontext.
+
+
 ## [0.9.14] - 2026-05-17
 
 ### Added
