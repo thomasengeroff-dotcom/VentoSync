@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.14] - 2026-05-17
+
+### Added
+
+- **HA Fan Helper-Modul**: Neuer Header `ha_fan_helpers.h` mit vollständiger
+  Auslagerung der Fan-Entity-Logik:
+  - `ha_fan_sync_state()` – 65-Zeilen Sync-Engine aus dem Intervall-Lambda extrahiert
+  - `ha_fan_on_speed_set/preset_set/turn_on/turn_off()` – Alle Card-Input-Handler
+  - `ha_fan_guard_active/set_guard/try_release_guard()` – Feedback-Loop-Guard als
+    dedizierte Funktionen (vorher in 5 Lambdas verstreut)
+  - Benannte Konstanten für Guard-Timeouts (`GUARD_PROPAGATION_MS`,
+    `GUARD_STUCK_TIMEOUT_MS`) und Mode-Indizes
+
+### Changed
+
+- **ha_fan_entity.yaml**: Von ~100 Inline-C++-Zeilen auf 5 Einzeiler-Lambdas reduziert.
+  Die gesamte Sync-Engine und Guard-Logik lebt nun testbar in `ha_fan_helpers.h`.
+
 ## [0.9.13] - 2026-05-17
 
 ### Added

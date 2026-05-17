@@ -103,6 +103,7 @@ esphome:
   includes:
     - include/globals.h
     - include/automation_helpers.h
+    - include/ha_fan_helpers.h 
     - include/config_helpers.h
     - include/vacation_helpers.h
     - include/health_helpers.h

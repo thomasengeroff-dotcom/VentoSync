@@ -1,11 +1,11 @@
 {
   "name": "thomasengeroff.ventosync",
-  "version": "0.9.13",
+  "version": "0.9.14",
   "builds": [
     {
       "chipFamily": "ESP32-C6",
       "ota": {
-        "md5": "f4e6cd58ce575711182ac1413361636f",
+        "md5": "16f12dece143c47cc6f55fbaed47bbdc",
         "path": "firmware.bin",
         "summary": "OTA update check frequency set to 15 minutes"
       }

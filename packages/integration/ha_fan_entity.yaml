@@ -42,36 +42,20 @@
 # Modified:    2025-05-11 (Refactored after Code Review)
 # ==========================================================================
 
-
 # ---------------------------------------------------------
 # GLOBALS (Feedback-Loop Guard)
 # ---------------------------------------------------------
 globals:
-  # When true, the sync interval will NOT forward state changes back
-  # to the system. This prevents the feedback loop:
-  # Card → on_speed_set → set_fan_intensity_slider() → intensity changes
-  # → sync reads new intensity → pushes to fan entity → on_speed_set fires
-  # again → infinite loop.
-  #
-  # The guard is set when the sync interval applies changes and released
-  # at the TOP of the NEXT sync cycle (after 200ms propagation window),
-  # NOT immediately after call.perform(). This is critical because
-  # call.perform() is asynchronous – ESPHome processes the state change
-  # in the next loop cycle, which would re-trigger on_speed_set while
-  # the guard is already released.
   - id: ha_fan_syncing
     type: bool
     initial_value: "false"
 
-  # Timestamp (millis) when the guard was last set.
-  # Used for the propagation window (200ms) and stuck-guard timeout (5s).
   - id: ha_fan_guard_set_ms
     type: uint32_t
     initial_value: "0"
 
-
 # ---------------------------------------------------------
-# FAN ENTITY (Template – no output feedback loop)
+# FAN ENTITY
 # ---------------------------------------------------------
 fan:
   - platform: template
@@ -88,193 +72,22 @@ fan:
       - "Durchlüften"
       - "Stoßlüftung"
 
-
-    # ----------------------------------------------------------
-    # CARD → SYSTEM: Speed change from the circular slider
-    # ----------------------------------------------------------
     on_speed_set:
-      - lambda: |-
-          // Guard: Skip if this was triggered by our own sync interval
-          if (id(ha_fan_syncing)) return;
+      - lambda: "ha_fan_on_speed_set(x);"
 
-          // Speed 0 = turn off (handles direct HA service calls
-          // that send percentage: 0 instead of fan.turn_off)
-          if (x <= 0) {
-            set_operating_mode_select(MODE_NAME_OFF);
-            ESP_LOGI("ha_fan", "Speed 0 received → turning off");
-            return;
-          }
-
-          // x = speed value (1-10 for speed_count: 10)
-          int step = std::clamp(x, 1, 10);
-          set_fan_intensity_slider(static_cast<float>(step));
-          ESP_LOGI("ha_fan", "Card set intensity to step %d", step);
-
-
-    # ----------------------------------------------------------
-    # CARD → SYSTEM: Preset mode change (= operating mode)
-    # ----------------------------------------------------------
     on_preset_set:
-      - lambda: |-
-          // Guard: Skip if this was triggered by our own sync interval
-          if (id(ha_fan_syncing)) return;
+      - lambda: "ha_fan_on_preset_set(x.str());"
 
-          // Convert ESPHome StringRef to std::string for helper function
-          std::string mode_str = x.str();
-          set_operating_mode_select(mode_str);
-          ESP_LOGI("ha_fan", "Card set mode: %s", mode_str.c_str());
-
-
-    # ----------------------------------------------------------
-    # CARD → SYSTEM: Turn ON (resume last preset or default)
-    # ----------------------------------------------------------
     on_turn_on:
-      - lambda: |-
-          // Guard: Skip if this was triggered by our own sync interval
-          if (id(ha_fan_syncing)) return;
+      - lambda: "ha_fan_on_turn_on();"
 
-          // Resume the last active preset when turning on.
-          // If no preset was set or last preset was "Aus",
-          // default to Smart-Automatik.
-          std::string target_mode = MODE_NAME_AUTO;
-          if (id(ventosync_hrv_fan).has_preset_mode()) {
-            std::string last = id(ventosync_hrv_fan).get_preset_mode().str();
-            if (last != MODE_NAME_OFF) {
-              target_mode = last;
-            }
-          }
-
-          // Ensure system is enabled
-          if (!id(ventilation_enabled)) {
-            id(ventilation_enabled) = true;
-            id(system_on) = true;
-          }
-
-          set_operating_mode_select(target_mode);
-          ESP_LOGI("ha_fan", "Turned ON → mode: %s", target_mode.c_str());
-
-
-    # ----------------------------------------------------------
-    # CARD → SYSTEM: Turn OFF
-    # ----------------------------------------------------------
     on_turn_off:
-      - lambda: |-
-          // Guard: Skip if this was triggered by our own sync interval
-          if (id(ha_fan_syncing)) return;
-
-          set_operating_mode_select(MODE_NAME_OFF);
-          ESP_LOGI("ha_fan", "Turned OFF");
-
+      - lambda: "ha_fan_on_turn_off();"
 
 # ---------------------------------------------------------
-# STATE SYNC: System → Fan Entity (3s interval, one-way)
+# STATE SYNC: System → Fan Entity (3s interval)
 # ---------------------------------------------------------
-# Reads the actual system state and publishes it to the
-# fan entity so the ventosync-card stays in sync.
-#
-# IMPORTANT: The guard is released HERE (at the top of the
-# next cycle), not immediately after call.perform(). This
-# gives ESPHome's event system time to propagate the state
-# change before we allow on_speed_set/on_preset_set to
-# process user input again.
 interval:
   - interval: 3s
     then:
-      - lambda: |-
-          // =========================================================
-          // PHASE 0: Guard management
-          // =========================================================
-
-          // Release guard from previous sync cycle after propagation
-          if (id(ha_fan_syncing)) {
-            uint32_t elapsed = millis() - id(ha_fan_guard_set_ms);
-
-            // Safety: Force-reset if guard is stuck for >5 seconds
-            // (should never happen, but prevents permanent lockout)
-            if (elapsed > 5000) {
-              ESP_LOGW("ha_fan", "Guard stuck for %ums → forced reset", elapsed);
-              id(ha_fan_syncing) = false;
-            }
-            // Normal: Release after 200ms propagation window
-            else if (elapsed > 200) {
-              id(ha_fan_syncing) = false;
-            }
-            // Still within propagation window – skip this cycle
-            else {
-              return;
-            }
-          }
-
-          // globals always have a value (initial or restored), no need for has_state()
-
-          // =========================================================
-          // PHASE 2: Read current system state
-          // =========================================================
-
-          // Determine system ON/OFF state
-          bool sys_on = id(system_on) && id(ventilation_enabled);
-          int mode_idx = id(current_mode_index);
-
-          // Mode index 4 = "Aus" → system is logically off
-          if (mode_idx == 4) sys_on = false;
-
-          // Read current fan intensity (1-10)
-          int intensity = std::clamp(static_cast<int>(id(fan_intensity_level)), 1, 10);
-
-          // Map mode index → preset name (only for active modes 0-3)
-          // Mode 4 ("Aus") is handled via state: false, no preset needed
-          const char* target_preset = nullptr;
-          if (sys_on && mode_idx >= 0 && mode_idx <= 3) {
-            target_preset = MODE_NAMES[mode_idx];
-          }
-
-          // =========================================================
-          // PHASE 3: Detect changes (skip if nothing changed)
-          // =========================================================
-
-          auto &fan = *id(ventosync_hrv_fan);
-
-          bool state_changed = (fan.state != sys_on);
-          bool speed_changed = (sys_on && fan.speed != intensity);
-
-          bool preset_changed = false;
-          if (sys_on && target_preset != nullptr) {
-            std::string current_preset = "";
-            if (fan.has_preset_mode()) {
-              current_preset = fan.get_preset_mode().str();
-            }
-            preset_changed = (current_preset != target_preset);
-          }
-
-          // Nothing changed → no work to do
-          if (!state_changed && !speed_changed && !preset_changed) return;
-
-          // =========================================================
-          // PHASE 4: Apply changes + set guard
-          // =========================================================
-
-          // Set guard BEFORE call.perform() to block any re-entrant
-          // triggers from on_speed_set / on_preset_set
-          id(ha_fan_syncing) = true;
-          id(ha_fan_guard_set_ms) = millis();
-
-          auto call = fan.make_call();
-          if (sys_on) {
-            call.set_state(true);
-            call.set_speed(intensity);
-            if (target_preset != nullptr) {
-              call.set_preset_mode(target_preset);
-            }
-          } else {
-            call.set_state(false);
-          }
-          call.perform();
-
-          // Guard is NOT released here.
-          // It will be released at the top of the NEXT sync cycle
-          // after the 200ms propagation window has elapsed.
-
-          ESP_LOGD("ha_fan", "Synced → on:%s speed:%d preset:%s",
-                   sys_on ? "yes" : "no",
-                   intensity,
-                   target_preset ? target_preset : "n/a");
+      - lambda: "ha_fan_sync_state();"

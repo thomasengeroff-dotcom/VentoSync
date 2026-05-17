@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.13",
+    "project_version": "0.9.14",
     "project_date": "2026-05-17",
-    "project_description": "Implement unified ESP-NOW packet dispatching and peer presence watchdog."
+    "project_description": "Extract Home Assistant fan integration to dedicated C++ helper."
 }
