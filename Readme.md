@@ -103,8 +103,7 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 
 All devices in a room find each other automatically upon startup or room change via **dynamic ESP-NOW discovery** and subsequently communicate efficiently via unicast.
 
-- 🤖 **Smart automatic**: Fully automatic control for maximum comfort and efficiency. Standard operation in heat recovery (push-pull) with dynamic adjustment to CO2 and humidity, taking weather data into account.
-In summer, cross-ventilation for passive nightly cooling (when it is cooler outside than inside) is automatically activated. This mode is the standard in everyday life to ensure maximum energy efficiency and air quality. In future versions, I will further optimize this mode to further increase comfort and efficiency.
+- 🤖 **Smart automatic**: Fully automatic control for maximum comfort and efficiency. Standard operation in heat recovery (push-pull) with dynamic PID-based adjustment to CO2 and humidity, taking outdoor air conditions into account. In summer, cross-ventilation for passive nightly cooling is automatically activated when it is cooler outside than inside. *→ [Full details and timing examples ↓](#1--smart-automatic-standard--recommended----led_wrg--pulses-slowly)*
 - 🔄 **Efficient Heat Recovery**: Cyclic, bidirectional operation (push-pull) to maximize energy efficiency. This mode ignores CO2, humidity, and radar presence sensors.
 - 💨 **Cross-Ventilation (Summer Mode)**: Mode for permanent exhaust air flow, ideal for passive cooling on summer nights. Flexibly configurable via timer or as continuous operation. This mode ignores CO2, humidity, and radar presence sensors.
 - 🚀 **Boost Ventilation**: Intensive ventilation for quick air exchange. The device ventilates for 15 minutes with the **manually selected intensity** and then pauses for 105 minutes to effectively remove moisture and regenerate the ceramic heat exchanger. The cycle then repeats.
@@ -119,40 +118,11 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
   - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**:
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
     - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
- - 📊 **Smart Automatic Mode — Intelligent Air Quality Control (PID Control)**
 
-  The heart of VentoSync is the **Smart Automatic Mode**. Instead of simply switching the fan on at full power when the CO2 limit is exceeded, VentoSync uses a **PID controller** to regulate the fan speed precisely, gradually, and above all quietly.
 
-  > **What is a PID controller?**
-  > Think of it like a careful driver: if you're barely over the speed limit, you ease off the accelerator just a little. Only if you're far above the limit do you brake harder. And if you've been slightly over the limit for a long time, you apply a bit more pressure to ensure you actually reach the target. VentoSync works exactly the same way with CO2 and humidity — no jerky switching, just smooth, continuously adjusting ventilation.
-
-  The controller has **two active components**:
-
-  - **P (Proportional)**: Reacts *immediately* to how far the CO2 value is above the set threshold. The larger the deviation, the higher the demand — but only proportionally. If you are 100 ppm above the limit, the fan receives a moderate demand. At 500 ppm above, the demand is noticeably higher.
-  - **I (Integral)**: The "memory" of the controller. If a deviation persists *over time* (e.g. because people are continuously breathing in the room and the fan at the current level is not sufficient), this component slowly and steadily increases the demand — until the air quality improves. Once the CO2 drops, the integral value also gradually decreases, so the fan returns gently to its minimum level.
-
-  > [!NOTE]
-  > The controller is deliberately tuned very slowly (I-gain: `0.0000005`). This prevents the fan from reacting aggressively to brief peaks (e.g. someone entering the room for a moment). Only sustained elevated CO2 levels over many minutes lead to a higher fan level.
-
-  **Real-world example** — CO2 threshold set to `800 ppm`, fan range Levels 2–7:
-
-  | Time | CO2 value | What happens |
-  |---|---|---|
-  | 0 min | 820 ppm | 20 ppm above threshold → small proportional demand → **Fan stays at Level 2** (minimum) |
-  | 15 min | 870 ppm | 70 ppm above, integral slowly building up → demand increases slightly → **Fan stays at Level 2** |
-  | 30 min | 920 ppm | 120 ppm above, integral noticeably accumulated → **Fan switches to Level 3** |
-  | 50 min | 960 ppm | CO2 still not decreasing, integral keeps rising → **Fan switches to Level 4** |
-  | 70 min | 900 ppm | Fresh air is working, CO2 falling, integral starts decreasing → **Fan returns to Level 3** |
-  | 90 min | 790 ppm | Below threshold, demand approaches zero → **Fan returns to Level 2** |
-
-  **Key behavior rules:**
-  - The fan changes by **at most ±1 level per 10-second cycle** — no sudden jumps.
-  - The fan never drops below the configured **minimum level** (default: Level 2) and never exceeds the **maximum level** (default: Level 7).
-  - CO2 is the **primary control signal**, but the system always uses the **higher** of CO2 and humidity demand — so neither air quality concern is ever neglected.
-  - If a device has no own sensors, it automatically adopts the highest demand measured by any sensor-equipped device in the same room group (via ESP-NOW).
-  - When switching *into* Smart Automatic mode, all demand values are reset to zero so that the fan **always starts gently from the minimum level** and ramps up slowly — never jumps to a high level immediately.
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
+
 - **💨 Advanced Air Quality & Cooling Logic**:
   - **Enthalpy-Balance / Absolute Humidity Guard**: Unlike conventional systems that compare relative humidity (which is misleading — cold air at 90% rH holds far less water than warm air at 50% rH), VentoSync calculates the **absolute humidity** in g/m³ using the [Magnus formula](https://en.wikipedia.org/wiki/Clausius%E2%80%93Clapeyron_relation). Humidity-driven ventilation is **only activated when outdoor air is actually drier** than indoor air. If outdoor air is more humid, the humidity demand is set to **zero** — the system will not import moisture, even if the humidity PID controller requests more ventilation.
 
@@ -580,11 +550,46 @@ The device cycles through the programs via the **Mode button (M)**. Upon initial
 **Logic in Detail:**
 
 - **Basic Operation:** Heat recovery (`MODE_ECO_RECOVERY`) at minimum fan level (`CO2_min_fan_level`, default: 2). The change intervals (cycle duration) adapt dynamically to the current fan level (gentle 70 seconds at level 1 to fast 50 seconds at level 10) including a synchronized NTC time window.
-- **Adaptive Auto (CO2 Priority):** CO2 always has priority. If the CO2 value rises above the HA limit, a PID controller **exclusively** regulates the fan power in **discrete steps** and silently up — humidity is ignored during this time. A configurable min/max level (`automatik_min_fan_level`) limits the adjustment window.
-- **💧 Humidity Management:** Only when CO2 is satisfied (below threshold), the humidity PID controller takes over. If the humidity limit is exceeded (default 60%), the separate PID controller (`PID_humidity`) increases the power (mold prevention). Intelligent hysteresis prevents rapid switching between CO2 and humidity control. **Outdoor Check:** Dehumidification only occurs if the outside air is drier than the inside air (`out_hum < in_hum`).
-- **Summer Cooling:** If indoor temperature > 22°C and the outdoor area is cooler, the system automatically switches to `Ventilation`. As soon as it gets warmer outside again, it returns to Heat Recovery.
+
+- **🎛️ Intelligent PID Control — CO2 & Humidity:** Instead of simply switching the fan on at full power when limits are exceeded, VentoSync uses a **PID controller** to regulate fan speed precisely, gradually, and above all quietly.
+
+  > **What is a PID controller?**
+  > Think of it like a careful driver: if you're barely over the speed limit, you ease off just a little. Only if you're far above the limit do you brake harder. And if you've been slightly over for a long time, you press a bit more to reach the target. VentoSync works exactly the same way with CO2 and humidity — no jerky switching, just smooth, continuously adjusting ventilation.
+
+  The controller has **two active components**:
+
+  - **P (Proportional)**: Reacts *immediately* to how far the CO2 value is above the threshold. At 100 ppm above: moderate demand. At 500 ppm above: noticeably higher demand.
+  - **I (Integral)**: The "memory" of the controller. If a deviation *persists over time* (e.g. people continuously breathing in the room), this component slowly and steadily increases the demand — until air quality improves. When CO2 drops, the integral gradually decreases and the fan returns gently to minimum.
+
+  > [!NOTE]
+  > The controller is deliberately tuned very slowly (I-gain: `0.0000005`). This prevents aggressive reactions to brief peaks. Only sustained elevated CO2 over many minutes leads to a higher fan level.
+
+  **Real-world example** — CO2 threshold `800 ppm`, fan range Levels 2–7:
+
+  | Time | CO2 value | What happens |
+  |---|---|---|
+  | 0 min | 820 ppm | 20 ppm above → small proportional demand → **Fan stays at Level 2** (minimum) |
+  | 15 min | 870 ppm | 70 ppm above, integral building → **Fan stays at Level 2** |
+  | 30 min | 920 ppm | 120 ppm above, integral accumulated → **Fan switches to Level 3** |
+  | 50 min | 960 ppm | CO2 still rising, integral keeps rising → **Fan switches to Level 4** |
+  | 70 min | 900 ppm | CO2 falling, integral decreasing → **Fan returns to Level 3** |
+  | 90 min | 790 ppm | Below threshold, demand → zero → **Fan returns to Level 2** |
+
+  **Key behavior rules:**
+  - The fan changes by **at most ±1 level per 10-second cycle** — no sudden jumps.
+  - The fan never drops below the configured **minimum level** (default: Level 2) and never exceeds the **maximum level** (default: Level 7).
+  - CO2 is the **primary control signal**, but the system always uses the **higher** of CO2 and humidity demand — so neither air quality concern is ever neglected.
+  - If a device has no own sensors, it automatically adopts the highest demand from any sensor-equipped device in the room group (via ESP-NOW).
+  - When switching *into* Smart Automatic mode, all demand values reset to zero — the fan **always starts gently from the minimum level**, never jumps to a high level immediately.
+
+- **💧 Humidity Management:** The humidity PID controller (`PID_humidity`) runs continuously in parallel with CO2. Dehumidification is activated if the humidity limit is exceeded (default: 60%) **and** the outdoor air is actually drier than the indoor air (absolute humidity check via Magnus formula — not just relative humidity). If outdoor air is more humid (e.g. rainy day), the humidity demand is set to zero. See the [Enthalpy-Balance section ↑](#precision-sensors--monitoring) for worked examples with the comparison table.
+
+- **Summer Cooling:** If indoor temperature > 22°C and the outdoor area is cooler (by at least 1.5°C), the system automatically switches to `Ventilation` (cross-ventilation). Phase-A and Phase-B devices in the room blow in opposite directions simultaneously, creating real cross-ventilation. As soon as it gets warmer outside again (hysteresis), it returns to Heat Recovery.
+
 - **Presence (Manual Modes):** In Heat Recovery, Ventilation, and Boost Ventilation modes, the fan strength is dynamically adjusted when presence is detected (slider `-5` to `+5`). This allows for demand-based "presence boost" without affecting the automatic control.
+
 - **🌱 Energy Saving Mode (Light Sleep):** When the system is switched off (Mode `Off`), the ESP32-C6 switches to a power-saving Light Sleep. In this state, Wi-Fi is deactivated and the LED driver (PCA9685) is completely switched off via a hardware pin. The device remains wakeable at any time via the physical power button. Upon waking up, it automatically synchronizes directly with the current status of the rest of the ventilation group.
+
 - **Group Logic:** PID demand and temperatures are shared every second via ESP-NOW unicast — all discovered devices in the room run synchronously (the fans scale identically to the highest demand in the room).
 
 > **⚙️ Prerequisite for Humidity Management: `sensor.outdoor_humidity` in Home Assistant**

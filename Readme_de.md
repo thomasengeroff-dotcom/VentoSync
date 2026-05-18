@@ -100,8 +100,7 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 
 Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatisch über eine **dynamische ESP-NOW Discovery** und kommunizieren anschließend effizient via Unicast.
 
-- 🤖 **Smart-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer Anpassung an CO2 und Luftfeuchtigkeit unter Einbezug von Wetterdaten.
-Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es außen kühler ist als innen) automatisch aktiviert. Dieser Modus ist der Standard im Alltag, um maximale Energieeffizienz und Luftqualität zu gewährleisten. In zukünftigen Versionen werde ich diesen Modus weiter optimieren, um den Komfort und die Effizienz weiter zu steigern.
+- 🤖 **Smart-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer PID-Regelung für CO2 und Luftfeuchtigkeit unter Einbezug aktueller Außenluftbedingungen. Im Sommer wird Querlüftung zur passiven nächtlichen Kühlung automatisch aktiviert, wenn es außen kühler ist als innen. *→ [Vollständige Details und Zeitbeispiele ↓](#1--smart-automatik-standard--empfohlen----led_wrg--pulsiert-langsam)*
 - 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Dieser Modus lässt die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
 - 💨 **Querlüftung (Sommerbetrieb)**: Modus für permanenten Abluftstrom, ideal zur passiven Kühlung in Sommernächten. Flexibel konfigurierbar via Timer oder als Dauerbetrieb. Dieser Modus lässt die CO2, Feuchte und Radar Anwesenheits Sensorik unberücksichtigt.
 - 🚀 **Stoßlüftung**: Intensivlüftung für schnellen Luftaustausch. Das Gerät lüftet für 15 Minuten mit der **manuell gewählten Intensität** und pausiert anschließend für 105 Minuten, um Feuchtigkeit effektiv abzuführen und den Keramikspeicher zu regenerieren. Danach wiederholt sich der Zyklus.
@@ -116,38 +115,7 @@ Im Sommer wird die Querlüftung zur passiven nächtlichen Kühlung (wenn es auß
   - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD41, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**:
     - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
     - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
- - 📊 **Smart-Automatik – Intelligente Luftqualitätsregelung (PID-Regelung)**
 
-  Das Herzstück von VentoSync ist der **Smart-Automatik-Modus**. Anstatt den Lüfter einfach auf volle Leistung zu schalten, sobald der CO2-Grenzwert überschritten wird, nutzt VentoSync einen **PID-Regler**, um die Lüftergeschwindigkeit präzise, stufenweise und vor allem leise zu regulieren.
-
-  > **Was ist ein PID-Regler?**
-  > Stell dir vor, du fährst Auto: Bist du nur knapp über dem Tempolimit, nimmst du kaum Gas raus. Bist du weit drüber, bremst du stärker. Und wenn du schon längere Zeit knapp drüber bist, drückst du etwas mehr auf die Bremse, damit du das Ziel wirklich erreichst. VentoSync funktioniert mit CO2 und Luftfeuchte genauso — kein abruptes Schalten, sondern sanftes, kontinuierliches Nachregeln.
-
-  Der Regler hat **zwei aktive Anteile**:
-
-  - **P (Proportional)**: Reagiert *sofort* darauf, wie weit der CO2-Wert über dem eingestellten Grenzwert liegt. Je größer die Abweichung, desto höher die Anforderung — aber proportional. Bist du 100 ppm über dem Grenzwert, bekommt der Lüfter eine moderate Anforderung. Bei 500 ppm Abweichung ist sie spürbar höher.
-  - **I (Integral)**: Das „Gedächtnis" des Reglers. Bleibt eine Abweichung *über längere Zeit* bestehen (z. B. weil Personen im Raum kontinuierlich CO2 ausatmen und der Lüfter auf der aktuellen Stufe nicht ausreicht), erhöht dieser Anteil die Anforderung langsam und stetig — solange, bis sich die Luftqualität verbessert. Sinkt der CO2-Wert, baut sich der Integral-Anteil ebenfalls wieder ab, und der Lüfter kehrt sanft auf sein Minimum zurück.
-
-  > [!NOTE]
-  > Der Regler ist bewusst sehr langsam eingestellt (I-Anteil: `0.0000005`). Dadurch reagiert der Lüfter nicht aggressiv auf kurze Spitzen (z. B. wenn jemand kurz den Raum betritt). Erst anhaltend erhöhte CO2-Werte über viele Minuten führen zu einer höheren Lüfterstufe.
-
-  **Praxisbeispiel** — CO2-Grenzwert `800 ppm`, Lüfterbereich Stufe 2–7:
-
-  | Zeit | CO2-Wert | Was passiert |
-  |---|---|---|
-  | 0 min | 820 ppm | 20 ppm über Grenzwert → kleiner proportionaler Bedarf → **Lüfter bleibt auf Stufe 2** (Minimum) |
-  | 15 min | 870 ppm | 70 ppm drüber, Integral baut sich langsam auf → Bedarf steigt leicht → **Lüfter bleibt auf Stufe 2** |
-  | 30 min | 920 ppm | 120 ppm drüber, Integral merklich akkumuliert → **Lüfter schaltet auf Stufe 3** |
-  | 50 min | 960 ppm | CO2 sinkt immer noch nicht, Integral steigt weiter → **Lüfter schaltet auf Stufe 4** |
-  | 70 min | 900 ppm | Frischluft wirkt, CO2 fällt, Integral beginnt abzubauen → **Lüfter kehrt auf Stufe 3 zurück** |
-  | 90 min | 790 ppm | Unter Grenzwert, Bedarf geht gegen null → **Lüfter kehrt auf Stufe 2 zurück** |
-
-  **Die wichtigsten Verhaltensregeln:**
-  - Der Lüfter ändert sich um **maximal ±1 Stufe pro 10-Sekunden-Zyklus** — keine abrupten Sprünge.
-  - Der Lüfter unterschreitet nie die konfigurierte **Mindeststufe** (Standard: Stufe 2) und überschreitet nie die **Maximalstufe** (Standard: Stufe 7).
-  - CO2 ist das **primäre Regelsignal**, aber das System verwendet immer den **höheren** Bedarf aus CO2 und Feuchtigkeit — so wird keines der beiden Luftqualitäts-Kriterien jemals vernachlässigt.
-  - Hat ein Gerät keine eigenen Sensoren, übernimmt es automatisch den höchsten Bedarf, den ein sensorbestücktes Gerät in der gleichen Raumgruppe meldet (via ESP-NOW).
-  - Beim Wechsel *in* den Smart-Automatik-Modus werden alle Bedarfswerte auf null zurückgesetzt, sodass der Lüfter **immer sanft von der Mindeststufe aus hochregelt** — und niemals direkt auf eine hohe Stufe springt.
 - 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert. Dieser Sensor wird natürlich auch Home Assistant zur Verfügung gestellt und kann für beliebige andere Automatisierungen genutzt werden.
 - **💨 Fortgeschrittene Luftqualitäts-Logik**:
   - **Enthalpie-Schutz / Absolute Feuchtigkeits-Sperre**: Anders als herkömmliche Systeme, die nur die relative Luftfeuchtigkeit vergleichen (was irreführend ist — kalte Luft bei 90% rH enthält weit weniger Wasser als warme Luft bei 50% rH), berechnet VentoSync die **absolute Luftfeuchtigkeit** in g/m³ mittels [Magnus-Formel](https://de.wikipedia.org/wiki/Clausius-Clapeyron-Gleichung). Die feuchtigkeitsgesteuerte Lüftung wird **nur aktiviert, wenn die Außenluft tatsächlich trockener** ist als die Innenluft. Ist die Außenluft feuchter, wird der Feuchtigkeits-Bedarf auf **null** gesetzt — das System importiert keine Feuchtigkeit, selbst wenn der Feuchtigkeits-PID-Regler mehr Lüftung anfordert.
@@ -558,11 +526,46 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 **Logik im Detail:**
 
 - **Grundbetrieb:** Wärmerückgewinnung (`MODE_ECO_RECOVERY`) auf Mindestlüfterstufe (`co2_min_fan_level`, Standard: 2). Die Wechselintervalle (Zyklusdauer) passen sich dabei dynamisch der aktuellen Lüfterstufe an (sanfte 70 Sekunden auf Stufe 1 bis schnelle 50 Sekunden auf Stufe 10) inkl. synchronisiertem NTC-Zeitfenster.
-- **Adaptive Automatik (CO2-Priorisierung):** CO2 hat immer Vorrang. Steigt der CO2-Wert über den HA-Grenzwert, regelt ein PID-Regler die Lüfterleistung **exklusiv** und lautlos hoch — die Luftfeuchtigkeit wird während dieser Zeit ignoriert. Ein konfigurierbarer Min-/Max-Level (`automatik_min_fan_level`) begrenzt das Anpassungsfenster.
-- **💧 Feuchtigkeitsmanagement:** Erst wenn der CO2-Bedarf gedeckt ist (Wert unter Grenzwert), übernimmt die Feuchtigkeits-Regelung. Steigt die Luftfeuchtigkeit über das Limit (Standard 60%), erhöht der separate PID-Regler (`pid_humidity`) die Leistung (Schimmelschutz). Eine intelligente Hysterese verhindert ein Hin- und Her-Schalten zwischen CO2- und Feuchtigkeitssteuerung. **Outdoor Check:** Es wird nur entfeuchtet, wenn die Außenluft trockener ist als die Innenluft (`out_hum < in_hum`).
-- **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich wechselt das System automatisch in `Durchlüften`. Sobald es außen wieder wärmer wird, kehrt es zu WRG zurück.
-- **Anwesenheit (Manuelle Modi):** In den Modi WRG, Durchlüften und Stoßlüftung wird die Lüfterstärke bei erkannter Präsenz dynamisch angepasst (Slider `-5` bis `+5`). Dies erlaubt einen bedarfsgerechten "Präsenz-Boost" ohne die Automatik-Regelung zu beeinflussen.
+
+- **🎛️ Intelligente PID-Regelung — CO2 & Feuchtigkeit:** Anstatt den Lüfter einfach auf volle Leistung zu schalten, wenn Grenzwerte überschritten werden, nutzt VentoSync einen **PID-Regler**, um die Lüfterstärke präzise, stufenweise und vor allem leise zu regulieren.
+
+  > **Was ist ein PID-Regler?**
+  > Stell dir vor, du fährst Auto: Bist du nur knapp über dem Tempolimit, nimmst du kaum Gas raus. Bist du weit drüber, bremst du stärker. Und wenn du schon längere Zeit knapp drüber bist, drückst du etwas mehr auf die Bremse. VentoSync funktioniert mit CO2 und Luftfeuchte genauso — kein abruptes Schalten, sondern sanftes, kontinuierliches Nachregeln.
+
+  Der Regler hat **zwei aktive Anteile**:
+
+  - **P (Proportional)**: Reagiert *sofort* auf die Abweichung. Bei 100 ppm über dem Grenzwert: moderate Anforderung. Bei 500 ppm: spürbar höher.
+  - **I (Integral)**: Das „Gedächtnis" des Reglers. Bleibt eine Abweichung *über längere Zeit* bestehen (z. B. weil Personen im Raum atmen), erhöht dieser Anteil die Anforderung langsam und stetig — bis sich die Luftqualität verbessert. Sinkt der CO2-Wert, baut sich der Integral-Anteil wieder ab.
+
+  > [!NOTE]
+  > Der Regler ist bewusst sehr langsam eingestellt (I-Anteil: `0.0000005`). Erst anhaltend erhöhte CO2-Werte über viele Minuten führen zu einer höheren Lüfterstufe.
+
+  **Praxisbeispiel** — CO2-Grenzwert `800 ppm`, Lüfterbereich Stufe 2–7:
+
+  | Zeit | CO2-Wert | Was passiert |
+  |---|---|---|
+  | 0 min | 820 ppm | 20 ppm über Grenzwert → kleiner Bedarf → **Lüfter bleibt auf Stufe 2** (Minimum) |
+  | 15 min | 870 ppm | 70 ppm drüber, Integral baut sich auf → **Lüfter bleibt auf Stufe 2** |
+  | 30 min | 920 ppm | 120 ppm drüber, Integral akkumuliert → **Lüfter schaltet auf Stufe 3** |
+  | 50 min | 960 ppm | CO2 steigt weiter, Integral ebenfalls → **Lüfter schaltet auf Stufe 4** |
+  | 70 min | 900 ppm | CO2 fällt, Integral baut ab → **Lüfter kehrt auf Stufe 3 zurück** |
+  | 90 min | 790 ppm | Unter Grenzwert, Bedarf → null → **Lüfter kehrt auf Stufe 2 zurück** |
+
+  **Die wichtigsten Verhaltensregeln:**
+  - Der Lüfter ändert sich um **maximal ±1 Stufe pro 10-Sekunden-Zyklus** — keine abrupten Sprünge.
+  - Der Lüfter unterschreitet nie die konfigurierte **Mindeststufe** (Standard: Stufe 2) und überschreitet nie die **Maximalstufe** (Standard: Stufe 7).
+  - CO2 ist das **primäre Regelsignal**, aber das System verwendet immer den **höheren** Bedarf aus CO2 und Feuchtigkeit — so wird keines der beiden Luftqualitäts-Kriterien jemals vernachlässigt.
+  - Hat ein Gerät keine eigenen Sensoren, übernimmt es automatisch den höchsten Bedarf aus der Raumgruppe (via ESP-NOW).
+  - Beim Wechsel *in* den Smart-Automatik-Modus werden alle Bedarfswerte auf null zurückgesetzt — der Lüfter **startet immer sanft von der Mindeststufe**, niemals direkt auf einer hohen Stufe.
+
+- **💧 Feuchtigkeitsmanagement:** Der Feuchtigkeits-PID-Regler (`pid_humidity`) läuft kontinuierlich parallel zum CO2-Regler. Entfeuchtung wird aktiviert, wenn das Feuchtigkeitslimit überschritten wird (Standard: 60%) **und** die Außenluft tatsächlich trockener ist als die Innenluft (absolute Feuchtigkeitsprüfung via Magnus-Formel — nicht nur relative Feuchtigkeit). Ist die Außenluft feuchter (z. B. Regentag), wird der Feuchtigkeits-Bedarf auf null gesetzt. Siehe [Enthalpie-Schutz ↑](#präzisions-sensorik--monitoring) für Beispiele mit Vergleichstabelle.
+
+- **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich (mindestens 1,5°C kühler) wechselt das System automatisch in `Durchlüften` (Querlüftung). Phase-A- und Phase-B-Geräte im Raum blasen dabei gleichzeitig in entgegengesetzte Richtungen — echte Querlüftung. Sobald es außen wieder wärmer wird (Hysterese), kehrt das System zu WRG zurück.
+
+- **Anwesenheit (Manuelle Modi):** In den Modi WRG, Durchlüften und Stoßlüftung wird die Lüfterstärke bei erkannter Präsenz dynamisch angepasst (Slider `-5` bis `+5`). Dies erlaubt einen bedarfsgerechten „Präsenz-Boost" ohne die Automatik-Regelung zu beeinflussen.
+
 - **🌱 Energiespar-Modus (Light Sleep):** Wenn das System ausgeschaltet wird (Modus `Aus`), wechselt der ESP32-C6 in einen stromsparenden Light Sleep. Dabei wird das WLAN deaktiviert und der LED-Treiber (PCA9685) via Hardware-Pin komplett abgeschaltet. Das Gerät bleibt über den physischen Power-Button jederzeit weckbar. Beim Aufwecken synchronisiert es sich automatisch direkt mit dem aktuellen Status der restlichen Lüftungsgruppe.
+
 - **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW Unicast geteilt — alle entdeckten Geräte im Raum laufen synchron (die Lüfter skalieren identisch auf den höchsten Bedarf im Raum).
 
 > **⚙️ Voraussetzung für das Feuchte-Management: `sensor.outdoor_humidity` in Home Assistant**
