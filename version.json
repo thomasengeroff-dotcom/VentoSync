@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.16",
-    "project_date": "2026-05-17",
-    "project_description": "Refactor physical control panel buttons and LED flash feedback."
+    "project_version": "0.9.17",
+    "project_date": "2026-05-18",
+    "project_description": "Gentler PID auto mode, peer sync fix, and improved humidity guard logic."
 }

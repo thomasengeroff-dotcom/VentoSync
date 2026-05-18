@@ -36,10 +36,10 @@ climate:
     cool_output: pid_co2_output # Output for fan speed
     internal: true
     control_parameters:
-      # P-part: 0.002 means +20% fan power per 100ppm above target.
-      kp: 0.002
-      # I-part: Extremely low! (~1.8% more power per minute at 100ppm excess)
-      ki: 0.000003
+      # P-part: Optimized for gentler regulation (+10% fan power per 100ppm above target)
+      kp: 0.001
+      # I-part: Extremely low to prevent aggressive integral windup over time
+      ki: 0.0000005
       kd: 0.0
       output_averaging_samples: 5
     deadband_parameters:
@@ -55,10 +55,10 @@ climate:
     cool_output: pid_humidity_output
     internal: true
     control_parameters:
-      # P-part: At 60% setpoint, kp:0.1 means at 65% rH it runs softly at 50%
-      kp: 0.1
-      # I-part: Also reduced significantly (approx. +3% power per minute at 5% residual humidity)
-      ki: 0.0001
+      # P-part: Gentler humidity regulation (+25% fan power per 5% excess rH)
+      kp: 0.05
+      # I-part: Significantly reduced to prevent mold-clearing overshoot noise
+      ki: 0.00001
       kd: 0.0
       output_averaging_samples: 5
     deadband_parameters:

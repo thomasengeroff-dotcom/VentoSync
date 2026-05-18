@@ -119,11 +119,53 @@ In summer, cross-ventilation for passive nightly cooling (when it is cooler outs
   - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD41 but also acts as a **safety guard for the Traco power supply**:
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
     - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
-- 📊 **Automatic Intensity Control**: The system can automatically increase fan power as CO2 levels or humidity rise for optimal indoor air quality. Advanced PID control is used for this, which dynamically adjusts the fan power to the measured values. The control is optimized to keep the fan power as low as possible to minimize energy consumption and noise.
+ - 📊 **Smart Automatic Mode — Intelligent Air Quality Control (PID Control)**
+
+  The heart of VentoSync is the **Smart Automatic Mode**. Instead of simply switching the fan on at full power when the CO2 limit is exceeded, VentoSync uses a **PID controller** to regulate the fan speed precisely, gradually, and above all quietly.
+
+  > **What is a PID controller?**
+  > Think of it like a careful driver: if you're barely over the speed limit, you ease off the accelerator just a little. Only if you're far above the limit do you brake harder. And if you've been slightly over the limit for a long time, you apply a bit more pressure to ensure you actually reach the target. VentoSync works exactly the same way with CO2 and humidity — no jerky switching, just smooth, continuously adjusting ventilation.
+
+  The controller has **two active components**:
+
+  - **P (Proportional)**: Reacts *immediately* to how far the CO2 value is above the set threshold. The larger the deviation, the higher the demand — but only proportionally. If you are 100 ppm above the limit, the fan receives a moderate demand. At 500 ppm above, the demand is noticeably higher.
+  - **I (Integral)**: The "memory" of the controller. If a deviation persists *over time* (e.g. because people are continuously breathing in the room and the fan at the current level is not sufficient), this component slowly and steadily increases the demand — until the air quality improves. Once the CO2 drops, the integral value also gradually decreases, so the fan returns gently to its minimum level.
+
+  > [!NOTE]
+  > The controller is deliberately tuned very slowly (I-gain: `0.0000005`). This prevents the fan from reacting aggressively to brief peaks (e.g. someone entering the room for a moment). Only sustained elevated CO2 levels over many minutes lead to a higher fan level.
+
+  **Real-world example** — CO2 threshold set to `800 ppm`, fan range Levels 2–7:
+
+  | Time | CO2 value | What happens |
+  |---|---|---|
+  | 0 min | 820 ppm | 20 ppm above threshold → small proportional demand → **Fan stays at Level 2** (minimum) |
+  | 15 min | 870 ppm | 70 ppm above, integral slowly building up → demand increases slightly → **Fan stays at Level 2** |
+  | 30 min | 920 ppm | 120 ppm above, integral noticeably accumulated → **Fan switches to Level 3** |
+  | 50 min | 960 ppm | CO2 still not decreasing, integral keeps rising → **Fan switches to Level 4** |
+  | 70 min | 900 ppm | Fresh air is working, CO2 falling, integral starts decreasing → **Fan returns to Level 3** |
+  | 90 min | 790 ppm | Below threshold, demand approaches zero → **Fan returns to Level 2** |
+
+  **Key behavior rules:**
+  - The fan changes by **at most ±1 level per 10-second cycle** — no sudden jumps.
+  - The fan never drops below the configured **minimum level** (default: Level 2) and never exceeds the **maximum level** (default: Level 7).
+  - CO2 is the **primary control signal**, but the system always uses the **higher** of CO2 and humidity demand — so neither air quality concern is ever neglected.
+  - If a device has no own sensors, it automatically adopts the highest demand measured by any sensor-equipped device in the same room group (via ESP-NOW).
+  - When switching *into* Smart Automatic mode, all demand values are reset to zero so that the fan **always starts gently from the minimum level** and ramps up slowly — never jumps to a high level immediately.
 - 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
 Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
 - **💨 Advanced Air Quality & Cooling Logic**:
-  - **Enthalpy-Balance / Absolute Humidity comparison**: The system calculates absolute humidity ($g/m^3$) using the Magnus formula and restricts dehumidification if outdoor air is more humid than indoor air. This prevents moisture intake during rain or high summer humidity. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for technical details.
+  - **Enthalpy-Balance / Absolute Humidity Guard**: Unlike conventional systems that compare relative humidity (which is misleading — cold air at 90% rH holds far less water than warm air at 50% rH), VentoSync calculates the **absolute humidity** in g/m³ using the [Magnus formula](https://en.wikipedia.org/wiki/Clausius%E2%80%93Clapeyron_relation). Humidity-driven ventilation is **only activated when outdoor air is actually drier** than indoor air. If outdoor air is more humid, the humidity demand is set to **zero** — the system will not import moisture, even if the humidity PID controller requests more ventilation.
+
+    | Scenario | Indoor | Outdoor | Absolute Humidity | Result |
+    |---|---|---|---|---|
+    | ☀️ **Normal summer day** | 23°C / 55% rH | 20°C / 45% rH | Indoor: 11.3 g/m³ **>** Outdoor: 7.8 g/m³ | ✅ Ventilation helps → humidity demand active |
+    | 🌧️ **Rainy / muggy day** | 23°C / 55% rH | 18°C / 90% rH | Indoor: 11.3 g/m³ **<** Outdoor: 13.8 g/m³ | 🛑 Outdoor air more humid → humidity demand = 0 |
+    | ❄️ **Winter night** | 21°C / 45% rH | −5°C / 80% rH | Indoor: 8.3 g/m³ **>** Outdoor: 2.6 g/m³ | ✅ Cold air is very dry → ventilation helps |
+
+    > [!TIP]
+    > This feature sets VentoSync apart from most commercial HRV units, which blindly ventilate based on relative humidity alone and can actually **increase** indoor moisture during rainy or muggy weather.
+
+    If both temperature sensors are unavailable, the system falls back to a simple relative humidity comparison as a safety net. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for full technical details.
 - 📊 **Optimized VentoMaxx Ventilation Curve**: Based on the physical parameters of the original hardware (50% PWM = stop zone), the curve has been optimized with finer granularity in the lower levels (Levels 1-6) to ensure even more discreet acoustic operation.
 - 🪟 **Window Guard**: Automatic room-wide ventilation pause when windows are open. Includes a per-device **"Ignore Window Guard" switch** to bypass the lock for specific units if needed.
   - ✅ **Smart Pause (5s Delay)**: The guard engages after 5 seconds of continuous "open" state to prevent accidental triggers. All VentoSync units in the room immediately stop their fans to prevent energy waste.
@@ -1065,6 +1107,28 @@ esphome compile ventosync_nosensor.yaml
 esphome upload ventosync_nosensor.yaml --device <IP-Address> --no-logs
 
 ```
+
+## Keywords
+
+Here are some keywords that can be used for searching for this project:
+- Ventomaxx V-WRG 1 PLUS smart home
+- Ventomaxx V-WRG Home Assistant
+- Ventomaxx decentralized ventilation ESPHome
+- V-WRG Powerline replacement ESP32
+- Retrofitting Ventomaxx V-WRG control
+- VentoMaxx
+- V-WRG
+- HRV
+- Decentralized Heat Recovery Ventilation
+- ESPHome
+- ESP32-C6
+- SCD41
+- BME680
+- LD2450
+- mmWave Radar
+- Presence Detection
+
+---
 
 ## ⚖️ Legal Disclaimer
 

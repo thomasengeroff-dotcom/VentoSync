@@ -282,16 +282,21 @@ inline float calculate_combined_demand(uint32_t now, float eff_in_temp, float ef
     // CO2 is not in control — grab if demand exceeds upper threshold
     if (co2_demand >= CO2_GRAB_THRESHOLD) {
       v->co2_is_controlling = true;
-      // Reset humidity PID integral since it was suppressed during CO2 control
+      // Reset humidity PID integral so it starts fresh — its integral will
+      // accumulate accurately from this point during CO2 control.
       if (pid_humidity != nullptr) pid_humidity->reset_integral_term();
-      ESP_LOGD("auto_mode", "CO2 demand grabbed control (%.3f >= %.3f), humidity PID suppressed (integral reset)", co2_demand, CO2_GRAB_THRESHOLD);
+      ESP_LOGD("auto_mode", "CO2 demand grabbed control (%.3f >= %.3f), humidity PID integral reset", co2_demand, CO2_GRAB_THRESHOLD);
     }
   }
 
   // 4. Select demand based on priority
+  //    CO2 has priority for the hysteresis state machine (grab/release),
+  //    but we always take the HIGHER of both demands to ensure humidity
+  //    is never under-served while CO2 is controlling. Since max() can
+  //    only increase demand, it cannot cause oscillation.
   if (v->co2_is_controlling) {
-    // CO2 is the sole controller
-    local_demand = co2_demand;
+    // CO2 is the primary signal; humidity can boost above it if needed
+    local_demand = has_hum_data ? std::max(co2_demand, hum_demand) : co2_demand;
   } else if (has_hum_data) {
     // CO2 is satisfied, use humidity demand
     local_demand = hum_demand;

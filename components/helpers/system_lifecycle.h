@@ -103,9 +103,25 @@ inline void cycle_operating_mode(int mode_index) {
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     if (auto_mode_active != nullptr) auto_mode_active->value() = true;
     
+    // ── Clean PID state for gentle ramp-up from scratch ──
+    // Step 1: Reset PID controller internal integral accumulators
+    if (pid_co2 != nullptr) pid_co2->reset_integral_term();
+    if (pid_humidity != nullptr) pid_humidity->reset_integral_term();
+    
+    // Step 2: Zero the demand OUTPUT globals. Without this, the stale
+    // high value from the previous PID cycle persists for up to 30s
+    // (until the PID controller recalculates on the next sensor update).
+    // evaluate_auto_mode() reads these globals, so stale values cause
+    // an immediate fan jump even though the integral was just reset.
+    if (co2_pid_result != nullptr) co2_pid_result->value() = 0.0f;
+    if (humidity_pid_result != nullptr) humidity_pid_result->value() = 0.0f;
+    
+    // Step 3: Reset CO2 priority flag so demand logic reassesses cleanly
+    v->co2_is_controlling = false;
+    
     // Proper ESPHome state management interaction
     v->set_mode(esphome::MODE_ECO_RECOVERY);
-    evaluate_auto_mode(true); // Force immediate PID evaluation
+    evaluate_auto_mode(true); // Force immediate PID evaluation — starts at min level
     break;
 
   case 1: // Heat Recovery (manual)

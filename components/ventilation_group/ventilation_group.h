@@ -444,7 +444,7 @@ public:
     // 5. Cleanup old peers (15 minutes timeout)
     auto it = peers.begin();
     while (it != peers.end()) {
-      if (now - it->last_seen_ms > PEER_TIMEOUT_MS) {
+      if (now >= it->last_seen_ms && now - it->last_seen_ms > PEER_TIMEOUT_MS) {
         ESP_LOGD("vent", "Removing stale peer %d due to timeout",
                  it->device_id);
         it = peers.erase(it);

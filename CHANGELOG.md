@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [0.9.17] - 2026-05-18
+
+### Fixed
+
+- **Critical Peer Sync Bug (Unsigned Underflow)**: Fixed a silent but fatal bug in the peer cleanup loop in `ventilation_group.h`. When a packet was received, its `last_seen_ms` was set with a fresh `millis()` call (e.g. `1005 ms`), slightly ahead of the loop's cached `now` timestamp (e.g. `1000 ms`). The unsigned subtraction `now - last_seen_ms` underflowed to ~`4.294.967.291 ms`, causing every freshly-received peer to be **immediately deleted within the same loop iteration**. As a result, no device ever retained its peers in memory, making room-wide ESP-NOW synchronization completely non-functional.
+  - **Fix**: Added `now >= it->last_seen_ms &&` guard before the timeout comparison to prevent underflow. Peers are now correctly retained until the 15-minute `PEER_TIMEOUT_MS` timeout.
+
+- **Humidity Demand Silently Suppressed During CO2 Control**: When CO2 was controlling (i.e., CO2 demand ≥ `0.01`), the humidity demand was completely discarded (`local_demand = co2_demand` only). This meant that if humidity needed Level 6 while CO2 only needed Level 3, the system would under-ventilate for humidity for 30+ minutes until CO2 released control and humidity suddenly took over.
+  - **Fix**: Changed demand selection to `std::max(co2_demand, hum_demand)` when CO2 is controlling. CO2 remains the primary signal for the hysteresis grab/release logic, but humidity can now boost the demand higher if it requires more ventilation. Since `max()` can only increase demand, it cannot cause oscillation.
+
+### Changed
+
+- **PID Parameters Retuned for Gentler Response** (`logic_pid.yaml`):
+  - CO2 PID: `kp` reduced from `0.002` → `0.001` (fan increases by 10% per 100 ppm excess instead of 20%), `ki` reduced from `0.000003` → `0.0000005` (integral buildup ~6× slower — level transitions occur every 20-30 minutes instead of every few minutes). This prevents aggressive fan jumps when entering Auto mode with elevated CO2.
+  - Humidity PID: `kp` reduced from `0.1` → `0.05`, `ki` reduced from `0.0001` → `0.00001`. Humidity-driven ventilation is now much more gradual, preventing unnecessary noise from mold-clearing cycles.
+
+- **Humidity PID Integral Reset Comment Corrected** (`auto_mode.h`): The comment "Reset humidity PID integral since it was suppressed during CO2 control" was factually wrong — the reset happens at the *start* of CO2 control, not the end. Updated to accurately reflect that the integral starts fresh from this point so it accumulates correctly during CO2 control.
+
+### Added
+
+- **Comprehensive README Documentation** (`Readme.md`, `Readme_de.md`):
+  - **Smart Automatic Mode**: Complete beginner-friendly PID explanation with a car-driver analogy, description of P and I components, a real-world 90-minute CO2 timeline table, and key behavior rules (max ±1 level per 10s, min/max limits, gentle mode entry).
+  - **Absolute Humidity Guard**: Expanded the Enthalpy-Balance section from a one-liner into a full explanation with a 3-scenario comparison table (normal summer day ☀️, rainy/muggy day 🌧️, winter night ❄️). Added a TIP note explaining why this sets VentoSync apart from conventional HRV units.
+  - Updated CO2 priority statement to accurately reflect the new `max(co2, humidity)` logic.
+
+
 ## [0.9.16] - 2026-05-17
 
 ### Added
