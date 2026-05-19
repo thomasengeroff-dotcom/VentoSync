@@ -29,9 +29,10 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 - [🚀 Zusammenfassung & Überblick](#🚀-zusammenfassung--überblick)
 - [Motivation](#motivation)
 - [🛠️ Maßgefertigte Leiterplatte (PCB)](#🛠️-maßgefertigte-leiterplatte-pcb)
-- [🔄 Vergleich mit VentoMaxx](#🔄-vergleich-mit-ventomaxx-v-wrg)
+- [🔄 Vergleich mit VentoMaxx V-WRG](#🔄-vergleich-mit-ventomaxx-v-wrg)
 - [✨ Leistungsmerkmale](#✨-leistungsmerkmale)
 - [📡 ESP-NOW: Kabellose Autonomie](#📡-esp-now-kabellose-autonomie)
+- [🗺️ Roadmap & Zukünftige Erweiterungen](#🗺️-roadmap--zukünftige-erweiterungen)
 - [🖱️ Eigene Platine - PCB](#🖱️-eigene-platine---pcb)
 - [🛠️ Hardware & Bill of Materials (BOM)](#🛠️-hardware--bill-of-materials-bom)
 - [🔌 Pinbelegung & Verkabelung](#🔌-pinbelegung--verkabelung)
@@ -44,6 +45,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 - [🏗️ Code-Architektur & Wartbarkeit](#🏗️-code-architektur--wartbarkeit)
 - [🚀 Automatisierte Release & Versionierung](#🚀-automatisierte-release--versionierung)
 - [⚠️ Sicherheitshinweise](#⚠️-sicherheitshinweise)
+- [🛠️ Entwicklungsumgebung - Installation & Software](#🛠️-entwicklungsumgebung---installation--software)
 - [⚖️ Rechtlicher Haftungsausschluss](#⚖️-rechtlicher-haftungsausschluss)
 - [📜 Lizenz](#📜-lizenz)
 
@@ -65,9 +67,8 @@ Das Herzstück des Projekts ist eine eigens entwickelte Platine, die exakt in da
 ![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
 
 > [!TIP]
-> Wenn du Interesse an einer Platine für deine eigenen Geräte hast, kannst du mich gerne unter **thomas@engeroff.net** kontaktieren. 
+> Wenn du Interesse an einer Platine für deine eigenen Geräte hast, kannst du mich gerne unter **<thomas@engeroff.net>** kontaktieren.
 > Bitte beachte, dass ich noch nicht entschieden habe, ob ich die PCB-Produktionsdaten als Open Source zur Verfügung stellen werde.
-
 
 ![PCB in Gehäuse mit Antenne](EasyEDA-Pro/PCB%20mounting/PCB-FAN-ANT-in-Gehäuse.jpg)
 
@@ -116,7 +117,6 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
     - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
     - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
 
-- 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert. Dieser Sensor wird natürlich auch Home Assistant zur Verfügung gestellt und kann für beliebige andere Automatisierungen genutzt werden.
 - **💨 Fortgeschrittene Luftqualitäts-Logik**:
   - **Enthalpie-Schutz / Absolute Feuchtigkeits-Sperre**: Anders als herkömmliche Systeme, die nur die relative Luftfeuchtigkeit vergleichen (was irreführend ist — kalte Luft bei 90% rH enthält weit weniger Wasser als warme Luft bei 50% rH), berechnet VentoSync die **absolute Luftfeuchtigkeit** in g/m³ mittels [Magnus-Formel](https://de.wikipedia.org/wiki/Clausius-Clapeyron-Gleichung). Die feuchtigkeitsgesteuerte Lüftung wird **nur aktiviert, wenn die Außenluft tatsächlich trockener** ist als die Innenluft. Ist die Außenluft feuchter, wird der Feuchtigkeits-Bedarf auf **null** gesetzt — das System importiert keine Feuchtigkeit, selbst wenn der Feuchtigkeits-PID-Regler mehr Lüftung anfordert.
 
@@ -136,11 +136,13 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
   - ✅ **Automatisches Fortsetzen**: Das System behält seinen aktuellen Betriebsmodus (z.B. Automatik oder Manuell) bei und nimmt den Betrieb nahtlos wieder auf, sobald alle Fenster geschlossen sind.
   - ✅ **Visuelles Feedback (35s Limit)**: Ein markantes Pulsieren der Master-LED signalisiert den Zustand "Pause durch Fenster". Zur Vermeidung von Lichtstörungen nachts startet das Pulsieren nach 5 Sekunden und stoppt nach 35 Sekunden, während der Lüfter zum Schutz weiterhin gestoppt bleibt.
   - ✅ **HA Status-Entität**: Eine dedizierte Binär-Sensor-Entität (`binary_sensor.fenstersperre_aktiv`) bietet direkte Sichtbarkeit des Sperrstatus in Home Assistant.
+- 🚶 **Radar-basierte Anwesenheitserkennung (HLK-LD2450)**: Mittels eines mmWave-Radarsensors (integriert über den UART-Pin-Header) wird die Anwesenheit im Raum präzise erfasst. In den manuellen Modi (WRG, Durchlüften, Stoßlüftung) dient der Sensor als **dynamischer Boost/Dämpfer**. Über eine gleitende Bedarfssteuerung (Slider `-5` bis `+5`) kann die aktuell gewählte Lüfterstufe ideal angepasst werden (z.B. `+3` intensiviert die Lüftung im Büro bei Anwesenheit, `-2` senkt sie zur Lärmreduzierung im Schlafzimmer). Im Automatik-Modus wird die Präsenz zugunsten einer stabilen PID-Regelung ignoriert. Dieser Sensor wird natürlich auch Home Assistant zur Verfügung gestellt und kann für beliebige andere Automatisierungen genutzt werden.
 
 #### **🏠 Home Assistant Konfiguration (Tutorial)**
 
 > [!TIP]
 > Eine Schritt-für-Schritt-Anleitung zur Integration mehrerer Fenstersensoren und zur Erstellung der benötigten Raum-Entitäten findest du in unserem **[Home Assistant Fenstersperre (Window Guard) Setup Guide](documentation/Window-Guard-HA-Setup-DE.md)**.
+
 - 📈 **Phasen-Kontinuität**: Durch eine proportionale Skalierung des aktuellen Zyklusfortschritts an die neue Gesamtdauer setzt der Lüfter seinen Betrieb bei Intensitätsänderungen nahtlos fort.
 - 🌊 **Sanftanlauf (Slew-Rate Limiter)**: Änderungen der Lüftergeschwindigkeit werden nun mit einer Rate von ca. 5 % pro Sekunde geglättet. Dies verhindert abrupte elektrische Lastsprünge und sorgt für einen hochwertigeren, leisen akustischen Übergang bei der Anpassung der Lüftungsstufen.
 - **Virtuelle Drehzahlberechnung:** Intelligente virtuelle Drehzahlberechnung (4200 RPM @ 100%) als Fallback für den Standard-Lüfter ohne Tacho-Signal.
@@ -149,7 +151,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
 - 🌴 **Urlaubsmodus (Vacation Mode)**: Energiesparmodus, der hauptsächlich bei längerer Abwesenheit genutzt wird. Er schaltet automatisch alle Geräte in einem Raum in die Stoßlüftung auf der niedrigsten Intensität (Stufe 1), um einen grundlegenden Luftaustausch bei minimalem Energieverbrauch sicherzustellen. Bei Deaktivierung wird der vorherige Systemzustand nahtlos wiederhergestellt. Dieser kann für alle Geräte gleichzeitig über einen Home Assistant Schalter-Helfer (Toggle Helper) aktiviert werden:
   - > Eine Schritt-für-Schritt-Anleitung zur Erstellung dieses Home Assistant Helfers findest du im **[Home Assistant Urlaubsmodus Setup Guide](documentation/Vacation-Mode-HA-Setup-DE.md)**.
 
-- **Kindersicherung**: Die Kindersicherung sperrt das Gerät, sodass es nicht mehr über die Tasten am Gerät gesteuert werden kann. Dieser Modus ist primär über Home Assistant verfügbar.
+- 🔒 **Kindersicherung**: Die Kindersicherung sperrt das Gerät, sodass es nicht mehr über die Tasten am Gerät gesteuert werden kann. Dieser Modus ist primär über Home Assistant verfügbar.
   - 🛠️ **Konfigurierbar über HA-Entitäten** (sichtbar in der Sektion *Konfiguration* des Geräts):
     - `switch.kindersicherung` — Schalter zum Aktivieren oder Deaktivieren der Kindersicherung.
     - Wenn die Sperre aktiviert ist und eine Taste am Gerät gedrückt wird, blinken alle LEDs drei Mal auf.
@@ -184,33 +186,37 @@ Um ein optimales Bedienerlebnis zu gewährleisten, wird das originale Bedienpane
     10sec gedrückt halten --> schaltet das Gerät aus und startet das System neu (Reboot).
   - **Modus**: Kurzes Drücken zykliert durch die Programme: **Automatik → WRG → Durchlüften → Stoßlüftung → Aus**.
   - **Stufe +**: 10 Geschwindigkeitsstufen (zyklisch, angezeigt über 5 LEDs mit halber/voller Helligkeit). Die originale Ventomaxx Steuerung bietet hier nur 5 Stufen. Taste gedrückt halten zykliert durch die Lüftungsstufen.
-- 🔆 **LED Feedback**: Anzeige von Modus, aktueller Lüfterstufe (1-10) und Status.
+- 🔆 **LED-Feedback & Diagnose-Codes**: Anzeige von Modus, aktueller Lüfterstufe (1-10) und Status.
   - ✨ **Gruppen-Synchronisierung**: Alle Displays in einer Lüftungsgruppe synchronisieren sich in Echtzeit. Ändert Gerät A den Modus oder die Stufe, wachen die LEDs aller Partner-Geräte (Peers) im Raum sofort auf, um den neuen Status für 30 Sekunden anzuzeigen (Wake-up Effekt).
-  - **Diagnose-Blinkcodes (Master LED)**: Die mittlere LED (Master) signalisiert Störungen über ein Blink-Muster (Pulse):
-    - **2x Blinken**: Synchronisierungs-Fehler zwischen den Lüftern (Raumgruppe). Die Geräte können sich nicht mehr untereinander abstimmen.
-    - **3x Blinken**: Die Verbindung zum WLAN-Router ist unterbrochen. Die App-Steuerung ist aktuell nicht möglich.
-    - **4x Blinken**: Hitzewarnung (50-60°C). Die Temperatur im Gehäuse des Lüftungsgerätes ist zu warm (z.B. durch direkte Sonneneinstrahlung oder einer Fehlfunktion). Die Anlage läuft noch, sollte aber geprüft werden. Bei über 60°C schaltet das Gerät automatisch ab.
+  - **Diagnose-Blinkcodes (Master LED)**: Die mittlere LED (Master) signalisiert Störungen oder Zustände über ein Blink-Muster (Pulse):
+
+    | Muster | Bedeutung / Störung | Beschreibung / Verhalten |
+    | :--- | :--- | :--- |
+    | **2x Blinken** | Sync-Fehler | Synchronisierungs-Fehler zwischen den Lüftern (Raumgruppe). Keine ESP-NOW-Pakete von Peers empfangen für >3 Minuten. *(Nur aktiv, wenn "Peer-Überwachung" im Dashboard aktiviert ist.)* |
+    | **3x Blinken** | WLAN-Verlust | Die Verbindung zum WLAN-Router ist unterbrochen. Die App-Steuerung ist aktuell nicht möglich. *(Greift erst nach 30s dauerhaftem Verbindungsverlust — kurze Roaming-Drops werden unterdrückt.)* |
+    | **4x Blinken** | Hitzewarnung | Temperatur im Gehäuse ist kritisch (50–60°C). Die Anlage läuft weiter, sollte aber geprüft werden. Automatische Abschaltung erfolgt bei über 60°C. |
+    | **Langsamer Puls** *(1s An, 2s Aus)* | Fenstersperre aktiv | Alle Lüfter im Raum sind gestoppt. Der Puls startet nach 5s und erlischt nach 35s, um Lichtverschmutzung nachts zu vermeiden. |
 - Die detaillierte Beschreibung der Bedienung und Steuerung findest du unter [Bedienung](#-bedienung--steuerung).
 
-### 🏠 Integration
+### 🏠 Home Assistant Integration
 
 **Vollständige Home Assistant Integration**: Native Unterstützung der **ESPHome Native API** für hochperformantes Echtzeit-Monitoring und Steuerung. Im Gegensatz zum herkömmlichen MQTT nutzt die Native API hochoptimierte Protocol Buffers für minimale Latenz und geringsten Ressourcenverbrauch.
+
 - **Sofortige Synchronisierung**: Zustandsänderungen werden sofort übertragen, mit bis zu 10-mal kleineren Nachrichtengrößen als bei MQTT.
 - **Zero-Configuration**: Automatische Erkennung in Home Assistant – keine manuelle Einrichtung von Entitäten oder ein MQTT-Broker erforderlich.
 - **Sicherheit auf Enterprise-Niveau**: Verschlüsselte Kommunikation über das Noise-Protokoll mit Pre-Shared Keys.
 
 **Hybride Integrations-Philosophie**: Während der **Hauptfokus** von VentoSync auf einer tiefen und nahtlosen Integration in **Home Assistant** liegt, bietet das Projekt auch eine leistungsstarke Alternative. Durch das integrierte **lokale Web-Dashboard** kann das System als **voll funktionsfähige Standalone-Lösung** genutzt werden. Dies ermöglicht es Anwendern, den vollen Funktionsumfang – von der automatisierten Lüftung bis zur Sensordiagnose – zu nutzen, ohne jemals eine Home Assistant-Instanz einrichten oder warten zu müssen.
 
-#### WRG Dashboard - Lokales Web-Dashboard
+#### 📊 VentoSync Dashboard - Lokales Web-Dashboard
 
 Ein asynchroner Webserver direkt auf dem ESP32 bietet eine **Premium, responsive UI/UX** basierend auf **Tailwind CSS**.
+
 - **Modernes Design**: High-End Dark-Mode Interface, voll responsiv für Desktop & Mobile.
 - **Echtzeit-Visualisierung**: Integriertes **Chart.js** für flüssige Graphen von CO2, Feuchte, Temp und RPM.
 - **Einfache Konfiguration**: Dedizierte Sektionen für die schnelle Vor-Ort-Konfiguration von Geräte-ID, Floor ID, Room ID und Phase.
 - **Diagnose-Tools**: Live-Überwachung aller Sensordaten als Kacheln mit Tagesverlaufsgraphen.
 - **Autarker Betrieb**: Änderung sämtlicher Anlagen-Einstellungen auch ohne Home Assistant möglich (dennoch empfohlen). Rufe einfach **`http://<deine-IP-Adresse>/ui`** (oder z.B. `http://esptest.local/ui`) im Webbrowser auf. *(Hinweis: Die Root-URL `/` zeigt weiterhin das Standard-ESPHome-UI an)*
-
-#### WRG Dashboard - Lokales Web-Dashboard
 
 ![WRG Dashboard Einstellungen](documentation/screenshots/wrg-dashboard1.png)
 *WRG-Dashboard 1: Lokales Web-Dashboard mit wichtigsten Einstellungen und übersichtlicher Darstellung der wichtigsten Daten*
@@ -218,7 +224,7 @@ Ein asynchroner Webserver direkt auf dem ESP32 bietet eine **Premium, responsive
 ![WRG Dashboard Verbundene Geräte & Echtzeitdaten](documentation/screenshots/wrg-dashboard2.png)
 *WRG-Dashboard 2: Live-Ansicht der verbundenen Geräte und aller Sensordaten im lokalen Web-Dashboard*
 
-#### Standard ESPHome Dashboard
+#### ⚙️ Standard ESPHome Dashboard
 
 ![Standard Dashboard](documentation/screenshots/Control-Dashboard1.png)
 *Standard Dashboard: Lokales Web-Dashboard mit allen Entitäten und live Logs*
@@ -262,7 +268,7 @@ Die Geräte kommunizieren über die [ESPHome ESP-NOW Komponente](https://esphome
 
 ---
 
-### 🗺️ Roadmap & Zukünftige Erweiterungen
+## 🗺️ Roadmap & Zukünftige Erweiterungen
 
 Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 
@@ -306,6 +312,7 @@ Die folgenden weiteren "Advanced Automation"-Funktionen sind in Vorbereitung:
 Eine eigens entwickelte Platine (PCB) wurde entworfen, um alle Kernkomponenten (XIAO ESP32-C6, Traco Power DC/DC-Wandler, Pegelwandler) in einer kompakten und robusten Einheit zu vereinen. Die Platinen werden von JLCPCB gefertigt und befinden sich aktuell in der finalen Validierungsphase.
 
 **Wichtige Design-Prinzipien:**
+
 - **Zuverlässigkeit auf Industrieniveau**: Die Komponenten wurden für eine voraussichtliche Lebensdauer von >10 Jahren im 24/7-Dauerbetrieb ausgewählt.
 - **Sicherheit an erster Stelle**: Trotz des geringen Stromverbrauchs folgt das Layout strengen Sicherheitsstandards, um Brandschutz und Spannungsstabilität zu gewährleisten.
 - **Zukunftssichere Erweiterbarkeit**: Die Platine verfügt über dedizierte Erweiterungs-Header für zukünftige Upgrades:
@@ -316,7 +323,9 @@ Eine eigens entwickelte Platine (PCB) wurde entworfen, um alle Kernkomponenten (
 ![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/Screenshot%202026-03-01%20175142.png)
 
 ### Specialized SCD41 Sensor Board
+
 Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine speziell für den **Sensirion SCD41** entwickelt. Im Gegensatz zu generischen Breakout-Boards implementiert dieses Design die Referenzspezifikationen des Herstellers zur Entkopplung:
+
 - **Thermische Entkopplung**: Ein spezieller Frässchlitz und kupferfreie Zonen "entkoppeln" den Sensor thermisch von der Wärmekapazität der Hauptplatine.
 - **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
 - **Perfekte Passform**: Entwickelt mit einem 1,25-mm-Pitch-Anschluss, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
@@ -347,7 +356,7 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) für dimmbare LEDs im VentoMaxx Panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
 
-![Lüfter Anschluss](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg) 
+![Lüfter Anschluss](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg)
 *Lüfter-Anschlussbelegung mit Originalkabel.*
 
 Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [EasyEDA-Pro](EasyEDA-Pro) in der [BOM](EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv) .
@@ -447,9 +456,11 @@ Die Konfiguration ist optimiert für den NTC-Thermistor **[ENTC-10K9777-02](http
 Die kompilierten Firmware-Binaries auf GitHub sind "secret-free" und enthalten keine fest einkompilierten WLAN-Zugangsdaten. Wenn du ein OTA-Update mit diesen offiziellen Release-Dateien durchführst, befolge diese Schritte, um die durchgängige WLAN-Verbindung sicherzustellen:
 
 ### Initiale Einrichtung (Captive Portal)
+
 Wenn dein Gerät nach einem OTA-Update von einer lokal kompilierten Firmware auf ein GitHub-Release die WLAN-Verbindung verliert, liegt das daran, dass ESPHome deine lokal fest einkompilierten Zugangsdaten nicht automatisch permanent im Flash-Speicher hinterlegt hat.
 
 So stellst du die Verbindung wieder her (einmaliger Vorgang):
+
 1. Suche mit deinem Smartphone oder PC nach dem WLAN **"VentoSync Hotspot"**.
 2. Verbinde dich mit dem Passwort: `ventosync`
 3. Es sollte sich automatisch ein Fenster (Captive Portal) öffnen. (Falls nicht, rufe im Browser `192.168.4.1` auf).
@@ -493,7 +504,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 
 | Modus | `LED_WRG` (links) | `LED_VEN` (rechts) |
 | :--- | :---: | :---: |
-| **Automatik (Standard)** | 🔵 pulsiert | ⚫ |
+| **Automatik (Standard)** | 🟢 (pulsiert langsam) | ⚫ |
 | Wärmerückgewinnung (Eco) | 🟢 | ⚫ |
 | Stoßlüftung | ⚫ | 🟢 |
 | Durchlüften (Sommer) | 🟢 | 🟢 |
@@ -628,7 +639,6 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 #### 📊 Lüftergeschwindigkeit pro Stufe (VentoMaxx V-Kennlinie)
 
 Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **einzelnes PWM-Signal** gesteuert. Die Kennlinie folgt einer V-Form (gemessen via Oszilloskop), wobei 50% PWM den Stillstand markiert:
-
 
 | Stufe | Leistung | PWM Dir A (Abluft) | PWM Dir B (Zuluft) | RPM (ca.) |
 | :---: | :---: | :---: | :---: | :---: |
@@ -831,7 +841,7 @@ Gerät A: Phase B (Abluft) ←→  Gerät B: Phase A (Zuluft)
 
 Detaillierte technische Informationen zu Sensor-Optimierungen, ESPHome YAML Syntax, I²C-Konfiguration und weiteren technischen Aspekten findest du in der separaten Dokumentation:
 
-📄 **[Technical-Details.md](documentation/Technical-Details.md)**
+📄 **[Technical-Details.md](EasyEDA-Pro/documentation/Technical-Details.md)**
 
 Diese Dokumentation enthält:
 
@@ -887,7 +897,7 @@ Die ehemals gewaltige Hauptdatei wurde drastisch verschlankt, um die Lesbarkeit 
 
 - **`base/`**: Enthält die grundlegende ESP32-C6 Gerätekonfiguration.
 - **`io/`**: Kapselt die physische Hardware. Beinhaltet I2C-Busse, Port-Expander, Basis-Pinbelegungen und die zentrale Lüfterkonfiguration.
-- **`sensors/`**: Beinhaltet die gesamte Mess-Peripherie (SCD41, BME680, Radar, NTCs). 
+- **`sensors/`**: Beinhaltet die gesamte Mess-Peripherie (SCD41, BME680, Radar, NTCs).
   - 🧩 **Sensor-Mocks**: Fehlt ein Sensor (z.B. SCD41), springen automatisch Mocks (`mock_scd41.yaml`) ein. Diese verhindern Compile-Fehler, unterdrücken Log-Spamming und blenden nicht vorhandene Sensoren dank `internal: true` nahtlos aus Home Assistant aus.
 - **`actuators/`**: Das "Gehirn" der Anlage. Hier sitzen hochperformante Automatisierungen, PID-Klimaregler und die sicherheitskritische thermische Abschaltung (`logic_safety.yaml`).
 - **`integration/`**: Isoliert alle externen Home Assistant Datenpunkte (`homeassistant.yaml`), um das System autark lauffähig zu halten.
@@ -935,6 +945,7 @@ binary_sensor:
       - lambda: handle_button_mode_click();
 
 ```
+
 #### **3. 🚀 Performance & Technische Exzellenz**
 
 Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewährleisten, implementiert die Firmware mehrere High-End C++ und Architektur-Optimierungen:
@@ -954,8 +965,6 @@ Um eine 24/7-Zuverlässigkeit und Premium-Performance auf dem ESP32-C6 zu gewäh
   - ✅ **LED-Selbsttest**: Beim Systemstart führt das Gerät einen 3-sekündigen Hardware-Check durch, bei dem alle LEDs auf 100% Helligkeit gezwungen werden, um die visuelle Rückmeldung zu verifizieren.
   - ✅ **Kombinierter NTC-Filter**: Ersetzung fragmentierter YAML-Lambdas durch einen zentralen C++ Filter (`filter_ntc_combined`). Dies vereint Phase-Lock, thermische Wartezeit und saisonale Selektion in einer kohärenten Pipeline für 100% Datenintegrität.
   - ✅ **Robustes Failsafe**: Implementierung konfigurierbarer Plausibilitätsbereiche und eines erweiterten 120s-Timeouts zur Vermeidung von "Unavailable"-Zuständen in Home Assistant während langer Lüftungsphasen.
-
-
 
 - **Vollständiger Boot-Flow nach allen Fixes**:
 
@@ -997,7 +1006,6 @@ Um eine professionelle Software-Wartung und vollständige Nachvollziehbarkeit je
 
 ---
 
-
 ### 🙏 Danksagungen / Credits
 
 Ein besonderer Dank gilt **[patrickcollins12](https://github.com/patrickcollins12)** für sein hervorragendes Projekt **[ESPHome Fan Controller](https://github.com/patrickcollins12/esphome-fan-controller)**. Seine Implementierung und Erläuterungen zur Nutzung des [ESPHome PID Climate](https://esphome.io/components/climate/pid/) Moduls für geräuschlose (lautlose) stufenlose PWM-Lüftersteuerungen dienten als maßgebliche Inspiration und Grundlage für die CO2- und Feuchtigkeitsautomatik in diesem Projekt.
@@ -1035,6 +1043,7 @@ pip install --upgrade esphome
 Um deine Entwicklungsumgebung auf dem neuesten Stand zu halten, verwende die folgenden Befehle:
 
 **ESPHome aktualisieren (innerhalb der venv):**
+
 ```bash
 # Sicherstellen, dass venv aktiv ist
 source venv/bin/activate
@@ -1043,12 +1052,14 @@ pip install --upgrade esphome
 ```
 
 **Vollständiges System- & Python-Update (Linux):**
+
 ```bash
 # Paketliste aktualisieren und alle Systempakete upgraden
 sudo apt update && sudo apt upgrade -y
 ```
 
 **pip & setuptools aktualisieren (innerhalb der venv):**
+
 ```bash
 pip install --upgrade pip setuptools
 ```
@@ -1088,6 +1099,7 @@ esphome upload ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
 ## Suchbegriffe
 
 Hier sind einige Suchbegriffe, die für die Suche nach diesem Projekt verwendet werden können:
+
 - Ventomaxx V-WRG 1 PLUS Smart Home
 - Ventomaxx V-WRG Home Assistant
 - Ventomaxx dezentrale Lüftung ESPHome

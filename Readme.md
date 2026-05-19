@@ -8,8 +8,8 @@
 
 ## 🚀 Summary & Overview
 
-This open-source project offers a professional, decentralized heat recovery ventilation (HRV) control system based on ESPHome. It replaces the control system of the VentoMaxx V-WRG series using a custom developed printed circuit board (PCB), controlling the reversible 12V fan for heat recovery. 
-It optionally monitors air quality (CO2, humidity, and temperature) using a high-quality Sensirion SCD41 sensor, calculates effective heat recovery and uses the **original VentoMaxx control panel** for seamless integration and intuitive operation. 
+This open-source project offers a professional, decentralized heat recovery ventilation (HRV) control system based on ESPHome. It replaces the control system of the VentoMaxx V-WRG series using a custom developed printed circuit board (PCB), controlling the reversible 12V fan for heat recovery.
+It optionally monitors air quality (CO2, humidity, and temperature) using a high-quality Sensirion SCD41 sensor, calculates effective heat recovery and uses the **original VentoMaxx control panel** for seamless integration and intuitive operation.
 Furthermore, a mmWave radar sensor for presence detection can be optionally integrated, which can be mounted invisibly behind the cover of the ventilation unit.
 Communication between individual ventilation units takes place via the stable ESP-NOW protocol, so no Wi-Fi or central control unit is required (the power line communication used by VentoMaxx is not used).
 
@@ -31,7 +31,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 - [🚀 Summary & Overview](#🚀-summary--overview)
 - [Motivation](#motivation)
 - [🛠️ Custom made PCB](#🛠️-custom-made-pcb)
-- [🔄 Comparison with VentoMaxx](#🔄-comparison-with-ventomaxx-v-wrg)
+- [🔄 Comparison with VentoMaxx V-WRG](#🔄-comparison-with-ventomaxx-v-wrg)
 - [✨ Features](#✨-features)
 - [📡 ESP-NOW: Wireless Autonomy](#📡-esp-now-wireless-autonomy)
 - [🗺️ Roadmap & Future Enhancements](#🗺️-roadmap--future-enhancements)
@@ -45,10 +45,10 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 - [🔧 Technical Details & Optimizations](#🔧-technical-details--optimizations)
 - [📁 Project Structure](#📁-project-structure)
 - [🏗️ Code Architecture & Maintainability](#🏗️-code-architecture--maintainability)
-- [🚀 Automated Versioning](#🚀-automated-versioning)
+- [🚀 Automated Release & Versioning](#🚀-automated-release--versioning)
 - [⚠️ Safety Instructions](#⚠️-safety-instructions)
+- [🛠️ Development Environment - Installation & Software](#🛠️-development-environment---installation--software)
 - [⚖️ Legal Disclaimer](#⚖️-legal-disclaimer)
-- [🔍 Troubleshooting](#🔍-troubleshooting)
 - [📜 License](#📜-license)
 
 ---
@@ -69,7 +69,7 @@ The heart of the project is a custom developed circuit board that fits perfectly
 ![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
 
 > [!TIP]
-> If you are interested in obtaining a PCB for your own devices, please feel free to contact me at **thomas@engeroff.net**. 
+> If you are interested in obtaining a PCB for your own devices, please feel free to contact me at **<thomas@engeroff.net>**.
 > Please note that I have not yet decided whether the PCB production files will be made open source.
 
 ![PCB in Housing with Antenna](EasyEDA-Pro/PCB%20mounting/PCB-FAN-ANT-in-Gehäuse.jpg)
@@ -82,9 +82,9 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 
 | | VentoMaxx (Original) | ESPHome Smart WRG |
 | :--- | :---: | :---: |
-| Operating Modes | 3 | **5+** (incl. automation) |
+| Operating Modes | 3 | **5+** (incl. smart automation) |
 | Sensors | 0-1 (opt. VOC) | **6** (CO2, Temp, Humidity, Pressure, Radar, Tachometer) |
-| Fan Control | 3 fixed levels | **10 levels (discrete PID)** |
+| Fan Control | 5 fixed levels | **10 levels (discrete PID)** |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
 | Synchronization | Power line | ✅ Wireless (**ESP-NOW Protocol**) & Real-time Sync |
@@ -119,10 +119,6 @@ All devices in a room find each other automatically upon startup or room change 
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
     - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
 
-
-- 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
-Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
-
 - **💨 Advanced Air Quality & Cooling Logic**:
   - **Enthalpy-Balance / Absolute Humidity Guard**: Unlike conventional systems that compare relative humidity (which is misleading — cold air at 90% rH holds far less water than warm air at 50% rH), VentoSync calculates the **absolute humidity** in g/m³ using the [Magnus formula](https://en.wikipedia.org/wiki/Clausius%E2%80%93Clapeyron_relation). Humidity-driven ventilation is **only activated when outdoor air is actually drier** than indoor air. If outdoor air is more humid, the humidity demand is set to **zero** — the system will not import moisture, even if the humidity PID controller requests more ventilation.
 
@@ -136,6 +132,7 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
     > This feature sets VentoSync apart from most commercial HRV units, which blindly ventilate based on relative humidity alone and can actually **increase** indoor moisture during rainy or muggy weather.
 
     If both temperature sensors are unavailable, the system falls back to a simple relative humidity comparison as a safety net. See [📄 Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md) for full technical details.
+
 - 📊 **Optimized VentoMaxx Ventilation Curve**: Based on the physical parameters of the original hardware (50% PWM = stop zone), the curve has been optimized with finer granularity in the lower levels (Levels 1-6) to ensure even more discreet acoustic operation.
 - 🪟 **Window Guard**: Automatic room-wide ventilation pause when windows are open. Includes a per-device **"Ignore Window Guard" switch** to bypass the lock for specific units if needed.
   - ✅ **Smart Pause (5s Delay)**: The guard engages after 5 seconds of continuous "open" state to prevent accidental triggers. All VentoSync units in the room immediately stop their fans to prevent energy waste.
@@ -148,8 +145,10 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
 - 🌊 **Slew-Rate Speed Transitions**: Fan speed changes are smoothed at a rate of ~5% per second. This prevents harsh electrical surges and provides a more premium, quiet acoustic transition when adjusting ventilation levels.
 - **Virtual Speed Calculation:** Intelligent virtual speed calculation (4200 RPM @ 100%) as a fallback for the standard fan without a tachometer signal.
 - 🔄 **Plain Text Direction Display**: A sensor entity shows the current air direction at any time ("Supply Air (In)", "Exhaust Air (Out)", or "Standstill"), which significantly simplifies diagnosis and monitoring of synchronization.
+- 🚶 **Radar-based Presence Detection (HLK-LD2450)**: Presence in the room is precisely detected using a mmWave radar sensor (integrated via the UART pin header). In manual modes (Heat Recovery, Ventilation, Boost Ventilation), the sensor serves as a **manual boost/override**. Via a sliding demand control (slider `-5` to `+5`), the currently selected fan level can be ideally adjusted (e.g., `+3` intensifies ventilation in the office when someone is present, `-2` lowers it to reduce noise in the bedroom). In auto mode, presence is ignored in favor of stable PID control.
+Of course, this sensor is exposed to Home Assistant and can be used for any other automations in Home Assistant.
 
-### additional Features:
+### Additional Features
 
 - 🌴 **Vacation Mode**: Energy-saving mode primarily used when absent for longer periods. When activated, it saves the current state and switches all devices in the room to a configurable mode and fan intensity. Deactivating it fully restores the previous system state. The mode can be activated for all devices simultaneously via a Home Assistant Toggle Helper.
   - 🛠️ **Configurable via HA entities** (visible in the device's *Configuration* section):
@@ -157,12 +156,12 @@ Of course, this sensor is exposed to Home Assistant and can be used for any othe
     - `number.urlaubsmodus_intensitat` — Set the fan intensity level (1–10) during vacation. Default: `1`.
   > For a step-by-step guide on how to create the required Home Assistant Toggle Helper, please refer to our **[Home Assistant Vacation Mode Setup Guide](documentation/Vacation-Mode-HA-Setup.md)**.
 
-- **Child protection mode**: A simple switch to lock the device, so it cannot be controlled by pressing the buttons on the device. This mode is only available via Home Assistant.
+- 🔒 **Child protection mode**: A simple switch to lock the device, so it cannot be controlled by pressing the buttons on the device. This mode is only available via Home Assistant.
   - 🛠️ **Configurable via HA entities** (visible in the device's *Configuration* section):
     - `switch.kindersicherung` — Toggle switch to enable or disable the child protection mode.
     - If the protection is activated and any button on the device is pressed, all LEDs flash three times.
     - On the device itself the protection can be activated or deactivated by pressing the Mode and Intensity buttons simultaneously for 5 seconds. To acknowledge this, all LEDs flash two times.
-    - changes via homeassistant are always possible and are not blocked by the child protection mode.  
+    - Changes via Home Assistant are always possible and are not blocked by the child protection mode.  
 
 ### ⚡ Extremely Low Power Consumption
 
@@ -192,27 +191,32 @@ To ensure an optimal user experience, the original control panel of the VentoMax
     Hold for 10sec --> turns the device off and restarts the system (reboot).
   - **Mode**: Short press cycles through programs: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off**.
   - **Level +**: 10 speed levels (cyclic, indicated by 5 LEDs with half/full brightness). The original Ventomaxx control only offers 5 levels. Holding the button cycles through the ventilation levels.
-- 🔆 **LED Feedback & LES Error codes**: Indication of mode, current fan level (1-10), and status.
+- 🔆 **LED Feedback & Diagnostic Codes**: Indication of mode, current fan level (1-10), and status.
   - ✨ **Group Synchronization**: All displays in a ventilation group synchronize in real-time. If device A changes the mode or level, the LEDs of all partner devices (peers) in the room wake up immediately to display the new status for 30 seconds (wake-up effect).
-  - **Diagnostic Blink Codes (Master LED)**: The center LED (Master) signals malfunctions via a blink pattern (pulse):
-    - **2x Blinks**: Synchronization error between fans (room group). No ESP-NOW packets received from peers for >3 minutes. *(Only active when the "Peer monitoring" switch is enabled in the dashboard.)*
-    - **3x Blinks**: The connection to the Wi-Fi router is interrupted. App control is currently not possible. *(Triggers only after 30 seconds of continuous connection loss — brief roaming drops are suppressed.)*
-    - **4x Blinks**: Heat warning (50-60°C). The temperature inside the ventilation unit housing is too warm (e.g., due to direct sunlight or a malfunction). The system is still running but should be checked. The device switches off automatically at over 60°C.
-    - **Slow Pulse (1s On, 2s Off)**: Window Guard active. All fans in the room are stopped. *(Starts after 5s, automatically deactivated after 35s to avoid light pollution.)*
+  - **Diagnostic Blink Codes (Master LED)**: The center LED (Master) signals malfunctions or system states via a blink pattern (pulse):
+
+    | Pattern | Meaning / Error | Description / Behavior |
+    | :--- | :--- | :--- |
+    | **2x Blinks** | Sync Error | Synchronization error between fans (room group). No ESP-NOW packets received from peers for >3 minutes. *(Only active when "Peer monitoring" switch is enabled.)* |
+    | **3x Blinks** | Wi-Fi Loss | Connection to the Wi-Fi router is interrupted. App control is currently not possible. *(Triggers after 30s continuous loss to suppress roaming drops.)* |
+    | **4x Blinks** | Heat Warning | Temperature inside the housing is critical (50–60°C). The system remains active but should be checked. The device automatically shuts down above 60°C. |
+    | **Slow Pulse** *(1s On, 2s Off)* | Window Guard | Window Guard active. All fans in the room are stopped. *(Starts after 5s, stops after 35s to avoid light pollution.)* |
 - You can find the detailed description of operation and control under [Operation](#-operation--control).
 
-### 🏠 Integration
+### 🏠 Home Assistant Integration
 
 **Full Home Assistant Integration**: Native **ESPHome Native API** support for high-performance, real-time monitoring and control. Unlike traditional MQTT, the Native API uses highly optimized protocol buffers for minimal latency and footprint.
+
 - **Instant Synchronization**: State changes are pushed instantly with up to 10x smaller message sizes than MQTT.
 - **Zero-Configuration**: Automatic discovery in Home Assistant—no manual entity setup or MQTT broker required.
 - **Enterprise-Grade Security**: Encrypted communication via Noise protocol using pre-shared keys.
 
 **Hybrid Integration Philosophy**: While the **primary focus** of VentoSync is a deep and seamless integration into **Home Assistant**, the project also offers a powerful alternative. Through the built-in **Local Web Dashboard**, the system can be used as a **fully functional standalone solution**. This allows users to enjoy the complete range of features—from automated ventilation to sensor diagnostics—without ever needing to set up or maintain a Home Assistant instance.
 
-#### WRG Dashboard - Local Web Dashboard
+### 📊 VentoSync Dashboard - Local Web Dashboard
 
 An asynchronous web server running directly on the ESP32 provides a **premium, responsive UI/UX** using **Tailwind CSS**.
+
 - **Modern Design**: High-end dark mode interface, fully responsive for desktop & mobile.
 - **Real-time Visualization**: Integrated **Chart.js** for smooth, real-time graphs of CO2, humidity, temperature, and fan RPM.
 - **Easy Configuration**: Dedicated sections for quick on-site setup of Device ID, Floor ID, Room ID, and Phase.
@@ -303,7 +307,7 @@ The following "Advanced Automation" functions are in preparation:
   - Continuous monitoring of the fan speed via tachometer signal for constant volume flow and error detection (only for 4-PIN PWM fans).
 
 - **AI-Powered Ventilation Control**:
-  - Proactive AI-powered ventilation control based on historical data and external forecasts (weather, CO2, humidity). See [📄 AI-Powered-Ventilation-Control](documentation/KI-gestützte-Lüftungssteuerung.md) for details.
+  - Proactive AI-powered ventilation control based on historical data and external forecasts (weather, CO2, humidity). See [📄 AI-Powered-Ventilation-Control](documentation/AI-Powered-Ventilation-Control_en.md) for details.
   - **Person Counting**: Estimating occupancy density via mmWave radar to adjust volume flow (CFM) proportionally. This only makes sense if the entire room is covered by the radar sensor.
 
 - **🔌 Expansion & Integration Options (via UART / S2I)**:
@@ -315,6 +319,7 @@ The following "Advanced Automation" functions are in preparation:
 A custom-engineered PCB has been developed to integrate all core components (XIAO ESP32-C6, Traco Power DC/DC converters, logic-level shifters) into a compact, robust unit. The boards are manufactured by JLCPCB and are currently in the final validation phase.
 
 **Key Design Principles:**
+
 - **Industrial-Grade Reliability**: Components were selected for a projected service life of >10 years under 24/7 continuous operation.
 - **Safety First**: Despite the low power consumption, the layout follows strict safety standards to ensure fire safety and voltage stability.
 - **Future-Proof Expansion**: The board includes dedicated expansion headers for future upgrades:
@@ -325,7 +330,9 @@ A custom-engineered PCB has been developed to integrate all core components (XIA
 ![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/Screenshot%202026-03-01%20175142.png)
 
 ### Specialized SCD41 Sensor Board
+
 To achieve the highest possible accuracy, I developed a secondary PCB specifically for the **Sensirion SCD41**. Unlike generic breakout boards, this design implements the manufacturer's reference specifications for decoupling:
+
 - **Thermal Isolation**: A specialized milling slot and copper-free zones "thermally decouple" the sensor from the PCB's heat mass.
 - **Precision Filtering**: Proper decoupling capacitors are placed in immediate proximity to the sensor.
 - **Perfect Fit**: Designed with a 1.25mm pitch connector to align perfectly with the VentoMaxx housing's ventilation intake.
@@ -356,12 +363,12 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 | **I/O Expander** | **MCP23017** (I2C) for VentoMaxx panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) for dimmable LEDs in VentoMaxx panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
 
-![Fan Connection](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg) 
+![Fan Connection](EasyEDA-Pro/PCB%20mounting/PCB-Anschluss-FAN2.jpg)
 *Fan connector wiring, with original cable.*
 
 The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](EasyEDA-Pro/) subfolder in the [BOM](EasyEDA-Pro/BOM_ESPHome%20VentoSync%20PWM_PCB_ESPHome-WRG_ESP32_PWM_2026-03-01.csv).
 
-### 🖱️ On-device control panel
+### 🖱️ On-Device Control Panel
 
 | Component | Description | Documentation |
 | :--- | :--- | :--- |
@@ -432,7 +439,7 @@ graph TD
 
 1. **Prepare Firmware**: Compile the firmware with your own Wi-Fi settings (using `secrets.yaml`).
 2. **Initial Flash**: Flash the ESP32-C6 (XIAO) initially via USB with the VentoSync firmware using the ESPHome dashboard.
-3. **Hardware Installation**: 
+3. **Hardware Installation**:
    > [!CAUTION]
    > **DANGER TO LIFE:** The installation of the PCB and ESP into the VentoMaxx ventilation unit involves working with **230V mains voltage**. This step **MUST only be performed by a qualified electrician**.
    Mount the PCB and ESP into the ventilation unit housing according to the wiring diagram as a drop-in replacement.
@@ -445,7 +452,6 @@ graph TD
 7. **Alternative - Web Dashboard**: If you don't use Home Assistant, you can configure all settings via the local web dashboard at `http://<device-ip>` and `http://<device-ip>/ui`.
 8. **Enjoy**: Sit back and enjoy your smart HRV system!
 
-
 ### Calibration of NTCs
 
 The configuration is optimized for the **[ENTC-10K9777-02](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474)** NTC thermistor (10kΩ, B-value 3435). If you use other sensors, you must adapt the `b_constant` and `reference_resistance` values in the YAML code accordingly.
@@ -457,9 +463,11 @@ The configuration is optimized for the **[ENTC-10K9777-02](https://www.reichelt.
 VentoSync firmware binary releases on GitHub are "secret-free" and do not contain any hardcoded Wi-Fi credentials. When performing an OTA update using these official release binaries, follow these steps to ensure continuous connectivity:
 
 ### Initial Provisioning (Captive Portal)
-If your device loses its Wi-Fi connection after an OTA update from a locally compiled firmware to a GitHub release, it is because ESPHome did not permanently save your locally hardcoded credentials. 
+
+If your device loses its Wi-Fi connection after an OTA update from a locally compiled firmware to a GitHub release, it is because ESPHome did not permanently save your locally hardcoded credentials.
 
 To restore connectivity:
+
 1. Search for the Wi-Fi network **"VentoSync Hotspot"** on your smartphone or PC.
 2. Connect to it using the password: `ventosync`
 3. A Captive Portal window should automatically open (if not, browse to `192.168.4.1`).
@@ -503,7 +511,7 @@ The panel has 3 buttons and 9 status LEDs.
 
 | Mode | `LED_WRG` (left) | `LED_VEN` (right) |
 | :--- | :---: | :---: |
-| **Auto (Default)** | 🔵 pulses | ⚫ |
+| **Auto (Default)** | 🟢 (pulses slowly) | ⚫ |
 | Heat Recovery (Eco) | 🟢 | ⚫ |
 | Boost Ventilation | ⚫ | 🟢 |
 | Ventilation (Summer) | 🟢 | 🟢 |
@@ -535,7 +543,7 @@ The device cycles through the programs via the **Mode button (M)**. Upon initial
 
 ---
 
-#### 1. 🤖 Smart automatic *(Standard / Recommended)* — `LED_WRG` 🟢 (pulses slowly)
+#### 1. 🤖 Smart Automatic *(Standard / Recommended)* — `LED_WRG` 🟢 (pulses slowly)
 
 **This mode is the standard upon powering on** and handles all control tasks fully automatically. The ventilation system regulates itself independently based on environmental data and requires no manual intervention after initial HA configuration ("Set and forget").
 
@@ -809,12 +817,12 @@ To provide precise Indoor Air Quality (IAQ) data, the system features a highly o
 
 ### Efficiency Calculation (Energy-Based)
 
-The true heat recovery efficiency of a ceramic regenerator over a complete cycle is energy-based, not based on instantaneous temperatures (according to DIN EN 13141-8). 
+The true heat recovery efficiency of a ceramic regenerator over a complete cycle is energy-based, not based on instantaneous temperatures (according to DIN EN 13141-8).
 
 At the end of the supply air phase, the system calculates the efficiency using **numerical trapezoidal integration** over the entire phase duration:
 
 $$
-	\eta_{WRG} = \frac{\int (\text{T}_{Supply} - \text{T}_{Outside}) dt}{\int (\text{T}_{Room} - \text{T}_{Outside}) dt}
+ \eta_{WRG} = \frac{\int (\text{T}_{Supply} - \text{T}_{Outside}) dt}{\int (\text{T}_{Room} - \text{T}_{Outside}) dt}
 $$
 
 **Why this is mathematically superior:**
@@ -863,7 +871,7 @@ Device A: Phase B (Exhaust) ←→  Device B: Phase A (Supply)
 
 Detailed technical information about sensor optimizations, ESPHome YAML syntax, I²C configuration, and other technical aspects can be found in the separate documentation:
 
-📄 **[Technical-Details.md](documentation/Technical-Details.md)** / **[Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md)**
+📄 **[Technical-Details-Optimizations_en.md](EasyEDA-Pro/documentation/Technical-Details-Optimizations_en.md)** / **[Automatic-Mode-Logic.md](documentation/Automatic-Mode-Logic.md)**
 
 This documentation contains:
 
@@ -968,6 +976,7 @@ binary_sensor:
       - lambda: handle_button_mode_click();
 
 ```
+
 #### **3. 🚀 Performance & Technical Excellence**
 
 To ensure 24/7 reliability and premium performance on the ESP32-C6, the firmware implements several high-end C++ and architectural optimizations:
@@ -1024,7 +1033,6 @@ To ensure professional software maintenance and full traceability of every chang
 
 ---
 
-
 ### 🙏 Acknowledgements / Credits
 
 A special thank you goes to **[patrickcollins12](https://github.com/patrickcollins12)** for his excellent project **[ESPHome Fan Controller](https://github.com/patrickcollins12/esphome-fan-controller)**. His implementation and explanations for using the [ESPHome PID Climate](https://esphome.io/components/climate/PID/) module for quiet, stepless PWM fan controls served as significant inspiration and basis for the CO2 and humidity automation in this project.
@@ -1062,6 +1070,7 @@ pip install --upgrade esphome
 To keep your development environment up to date, use the following commands:
 
 **Update ESPHome (inside venv):**
+
 ```bash
 # Ensure venv is active
 source venv/bin/activate
@@ -1070,12 +1079,14 @@ pip install --upgrade esphome
 ```
 
 **Full System & Python Update (Linux):**
+
 ```bash
 # Update package list and upgrade all system packages
 sudo apt update && sudo apt upgrade -y
 ```
 
 **Update pip & setuptools (inside venv):**
+
 ```bash
 pip install --upgrade pip setuptools
 ```
@@ -1116,6 +1127,7 @@ esphome upload ventosync_nosensor.yaml --device <IP-Address> --no-logs
 ## Keywords
 
 Here are some keywords that can be used for searching for this project:
+
 - Ventomaxx V-WRG 1 PLUS smart home
 - Ventomaxx V-WRG Home Assistant
 - Ventomaxx decentralized ventilation ESPHome
