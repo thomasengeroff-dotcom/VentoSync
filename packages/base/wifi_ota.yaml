@@ -43,4 +43,8 @@ ota:
 # API without encryption for CI builds — HA may need to re-add the device
 # after flashing a CI build for the first time.
 api:
+  max_connections: 8
   reboot_timeout: 0s
+
+safe_mode:
+

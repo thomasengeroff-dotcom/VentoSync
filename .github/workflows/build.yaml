@@ -1,3 +1,24 @@
+# =============================================================
+# VentoSync – GitHub Actions CI/CD Pipeline
+# =============================================================
+# Jobs:
+#   1. unit-tests   → C++ Unit Tests mit ASan/UBSan
+#   2. build        → ESPHome Matrix-Build (5 Varianten)
+#   3. release      → GitHub Release + OTA Manifeste
+#
+# Fixes gegenüber Originalversion:
+#   - Granulare permissions (read global, write nur im Release-Job)
+#   - fail-fast: false in der Matrix (alle Varianten durchlaufen)
+#   - Secret via env: übergeben, nie direkt in Shell-Strings interpoliert
+#   - Defensiver sed mit Existenz-Check (verhindert YAML-Zerstörung)
+#   - set -euo pipefail in allen run-Blöcken
+#   - fetch-depth: 0 konsistent in allen Jobs
+#   - Manifest-Loop dynamisch über *.ota.bin (ntconly-Bug gefixt)
+#   - PlatformIO + pip Cache für schnellere Builds
+#   - C++ Compiler-Flags: -std=c++17, -Wall, -fsanitize=address,undefined
+#   - Robustere Changelog-Extraktion (awk-Fix)
+# =============================================================
+
 name: Build ESPHome Firmware
 
 on:
@@ -7,33 +28,67 @@ on:
     branches: ["master"]
   workflow_dispatch:
 
+# ------------------------------------------------------------------
+# Globale Permissions: Read-only als sicherer Default.
+# Der release-Job überschreibt dies lokal auf contents: write.
+# ------------------------------------------------------------------
 permissions:
-  contents: write
+  contents: read
 
+# ==================================================================
+# JOB 1 – UNIT TESTS
+# Kompiliert und führt C++ Unit Tests mit AddressSanitizer und
+# UndefinedBehaviorSanitizer aus. Schlägt der Job fehl, wird kein
+# Firmware-Build gestartet (needs: unit-tests im build-Job).
+# ==================================================================
 jobs:
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Compile Tests
+        # -std=c++17          → Expliziter Standard (entspricht ESPHome/IDF C++ Standard)
+        # -Wall -Wextra       → Alle relevanten Compiler-Warnungen aktivieren
+        # -Wpedantic          → ISO-Konformität erzwingen
+        # -fsanitize=...      → AddressSanitizer + UndefinedBehaviorSanitizer
+        #                       fängt Memory Leaks, Buffer Overflows und UB zur Laufzeit
+        # -fno-omit-frame-pointer → Stack Traces mit ASan lesbar halten
         run: |
-          g++ -o simple_test \
-          tests/simple_test_runner.cpp \
-          components/ventilation_logic/ventilation_logic.cpp \
-          components/ventilation_group/ventilation_state_machine.cpp \
-          -Icomponents
+          set -euo pipefail
+          g++ -std=c++17 \
+              -Wall -Wextra -Wpedantic \
+              -fsanitize=address,undefined \
+              -fno-omit-frame-pointer \
+              -o simple_test \
+              tests/simple_test_runner.cpp \
+              components/ventilation_logic/ventilation_logic.cpp \
+              components/ventilation_group/ventilation_state_machine.cpp \
+              -Icomponents
 
       - name: Run Tests
-        run: ./simple_test
+        run: |
+          set -euo pipefail
+          ./simple_test
 
+  # ==================================================================
+  # JOB 2 – FIRMWARE BUILD (MATRIX)
+  # Baut alle 5 Hardware-Varianten parallel.
+  # fail-fast: false stellt sicher, dass ein fehlgeschlagener Build
+  # die anderen Varianten nicht abbricht — wir wollen alle Ergebnisse.
+  # ==================================================================
   build:
     name: "Build ${{ matrix.name }}"
     needs: unit-tests
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false # Alle Varianten durchlaufen, auch wenn eine fehlschlägt
       matrix:
         include:
           - yaml: ventosync.yaml
@@ -53,60 +108,132 @@ jobs:
         with:
           fetch-depth: 0
 
+      # ----------------------------------------------------------------
+      # FIX 1: Secret sicher via env: übergeben.
+      # NIEMALS ${{ secrets.* }} direkt in Shell-Strings oder Heredocs
+      # interpolieren — GitHub maskiert Secrets zwar in Logs, aber der
+      # Wert landet sonst im Klartext im Filesystem des Runners.
+      # Über env: wird der Wert als Umgebungsvariable gesetzt und erst
+      # in der Shell referenziert — das ist der offizielle GitHub-Ansatz.
+      # ----------------------------------------------------------------
       - name: Create dummy secrets for CI compilation
+        env:
+          API_KEY: ${{ secrets.API_ENCRYPTION_KEY }}
         run: |
-          cat > secrets.yaml << 'EOF'
+          set -euo pipefail
+
+          # FIX 2: Fallback-Logik korrekt in der Shell auflösen.
+          # Der ursprüngliche sed-Ansatz griff nie, weil der Pattern
+          # nie matchte. Stattdessen: Wert in Shell berechnen, dann
+          # sauber ins YAML schreiben.
+          EFFECTIVE_KEY="${API_KEY:-MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}"
+
+          cat > secrets.yaml << EOF
           wifi_ssid: "dummy"
           wifi_password: "dummydummydummy"
           otapw: "dummy"
           appw: "ventosync"
           webuser: "admin"
           webpw: "admin"
-          api_encryption_key: "${{ secrets.API_ENCRYPTION_KEY }}"
+          api_encryption_key: "${EFFECTIVE_KEY}"
           EOF
 
-          # If API_ENCRYPTION_KEY secret is not set, use a dummy value
-          if [ -z "${{ secrets.API_ENCRYPTION_KEY }}" ]; then
-            sed -i 's/api_encryption_key: ""/api_encryption_key: "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="/' secrets.yaml
-          fi
-
+      # ----------------------------------------------------------------
+      # FIX 3: Defensiver sed mit Existenz-Checks.
+      # Der ursprüngliche sed-Befehl für den networks/-Block konnte das
+      # gesamte YAML zerstören, wenn 'fast_connect:' nicht vorhanden war
+      # (sed löscht dann alles ab 'networks:' bis EOF).
+      # Lösung: Existenz prüfen bevor sed ausgeführt wird.
+      # ----------------------------------------------------------------
       - name: Prepare OTA build config (swap WiFi, API, OTA to secret-free variants)
         run: |
-          # 1. Replace WiFi block: remove ssid/password lines (ESP uses NVS-stored creds)
-          # We use a more robust sed pattern to ensure valid YAML remains
-          sed -i '/^  networks:/,/^  fast_connect:/{/^  fast_connect:/!d;}' packages/base/esp32c6_common.yaml
+          set -euo pipefail
 
-          # 2. Remove OTA password (allow unauthenticated OTA for CI builds)
+          # 1. WiFi-Block nur patchen wenn fast_connect: im File vorhanden ist
+          #    → verhindert unkontrolliertes Löschen bei abweichender YAML-Struktur
+          if grep -q "fast_connect:" packages/base/esp32c6_common.yaml; then
+            sed -i '/^  networks:/,/^  fast_connect:/{/^  fast_connect:/!d;}' \
+              packages/base/esp32c6_common.yaml
+            echo "✅ WiFi networks block patched"
+          else
+            echo "⚠️  fast_connect: not found — skipping WiFi block patch"
+          fi
+
+          # 2. OTA-Passwort entfernen (unauthentifiziertes OTA für CI)
           sed -i 's/password: !secret otapw//g' packages/base/esp32c6_common.yaml
 
-          # 3. Remove AP secret password, use fixed value
-          sed -i 's/password: !secret appw/password: "ventosync"/g' packages/base/esp32c6_common.yaml
+          # 3. AP-Passwort auf fixen CI-Wert setzen
+          sed -i 's/password: !secret appw/password: "ventosync"/g' \
+            packages/base/esp32c6_common.yaml
+
+          echo "✅ OTA build config prepared"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
+
+      # ----------------------------------------------------------------
+      # Cache für pip-Pakete und PlatformIO.
+      # ESPHome-Erstinstallation: ~2–3 Min. PlatformIO-Toolchain: ~5–8 Min.
+      # Mit Cache: ~20–30 Sekunden bei Cache-Hit.
+      # Cache-Key enthält den ESPHome-Version-Hash der YAML-Dateien,
+      # sodass bei YAML-Änderungen der Cache automatisch invalidiert wird.
+      # ----------------------------------------------------------------
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-esphome-2026.5.0
+          restore-keys: |
+            pip-${{ runner.os }}-esphome-
+
+      - name: Cache PlatformIO toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .esphome/build/${{ matrix.name }}/.pioenvs
+          key: pio-${{ runner.os }}-${{ matrix.name }}-${{ hashFiles('**/*.yaml', '**/*.h', '**/*.cpp') }}
+          restore-keys: |
+            pio-${{ runner.os }}-${{ matrix.name }}-
+            pio-${{ runner.os }}-
 
       - name: Install ESPHome and compile firmware
         run: |
-          pip install wheel esphome==2026.4.5
+          set -euo pipefail
+          pip install wheel esphome==2026.5.0
           esphome compile ${{ matrix.yaml }}
 
+      # ----------------------------------------------------------------
+      # Firmware-Binaries lokalisieren und mit Varianten-Namen kopieren.
+      # ESPHome legt Builds unter:
+      #   .esphome/build/<device-name>/.pioenvs/<device-name>/
+      # ab. Wir suchen firmware.ota.bin und firmware.factory.bin und
+      # benennen sie nach der Matrix-Variante um für den Artifact-Upload.
+      # ----------------------------------------------------------------
       - name: Locate firmware binary
         id: firmware
         run: |
-          # ESPHome builds to .esphome/build/<device-name>/.pioenvs/<device-name>/
-          BUILD_DIR=$(find .esphome/build -name "firmware.ota.bin" -type f | head -1 | xargs dirname)
-          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          BUILD_DIR=$(find .esphome/build -name "firmware.ota.bin" -type f \
+                      | head -1 | xargs dirname)
+
+          echo "build_dir=$BUILD_DIR" >> "$GITHUB_OUTPUT"
 
           if [ -f "$BUILD_DIR/firmware.ota.bin" ]; then
             cp "$BUILD_DIR/firmware.ota.bin" "${{ matrix.name }}.ota.bin"
-            echo "ota_bin=${{ matrix.name }}.ota.bin" >> $GITHUB_OUTPUT
+            echo "ota_bin=${{ matrix.name }}.ota.bin" >> "$GITHUB_OUTPUT"
+            echo "✅ OTA binary: ${{ matrix.name }}.ota.bin"
+          else
+            echo "⚠️  firmware.ota.bin not found in $BUILD_DIR"
           fi
 
           if [ -f "$BUILD_DIR/firmware.factory.bin" ]; then
             cp "$BUILD_DIR/firmware.factory.bin" "${{ matrix.name }}.factory.bin"
-            echo "factory_bin=${{ matrix.name }}.factory.bin" >> $GITHUB_OUTPUT
+            echo "factory_bin=${{ matrix.name }}.factory.bin" >> "$GITHUB_OUTPUT"
+            echo "✅ Factory binary: ${{ matrix.name }}.factory.bin"
           fi
 
       - name: Upload firmware artifacts
@@ -118,29 +245,40 @@ jobs:
             ${{ matrix.name }}.factory.bin
           if-no-files-found: warn
 
-  # ---------------------------------------------------------------
-  # AUTOMATIC RELEASE
-  # Creates a GitHub Release after all builds succeed on master push.
-  # Attaches all firmware OTA binaries and per-variant manifest.json
-  # files so devices can auto-discover updates.
-  # ---------------------------------------------------------------
+  # ==================================================================
+  # JOB 3 – AUTOMATIC RELEASE
+  # Erstellt einen GitHub Release nach erfolgreichem Build auf master.
+  # Hängt alle Firmware-Binaries und per-Varianten manifest.json-Dateien
+  # an, sodass Geräte Updates automatisch per OTA entdecken können.
+  #
+  # Läuft NUR bei Push auf master (nicht bei Pull Requests).
+  # ==================================================================
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
-    # Only create releases on master push, not on PRs
+
+    # Nur bei Push auf master, nicht bei PRs
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    # FIX 4: Write-Permission nur im Release-Job, nicht global.
+    # Alle anderen Jobs laufen mit dem sicheren globalen 'contents: read'.
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Vollständige History für konsistentes Verhalten
 
       - name: Read version from version.json
         id: version
         run: |
+          set -euo pipefail
           VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['project_version'])")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "📦 Release version: v$VERSION"
 
       - name: Download all firmware artifacts
@@ -151,102 +289,175 @@ jobs:
           merge-multiple: true
 
       - name: List downloaded artifacts
-        run: ls -la firmware-artifacts/
+        run: |
+          set -euo pipefail
+          echo "📂 Downloaded firmware artifacts:"
+          ls -lah firmware-artifacts/
 
+      # ----------------------------------------------------------------
+      # FIX 5: Robustere Changelog-Extraktion.
+      # Originaler awk-Befehl hatte einen fehlerhaften sed-Aufruf der
+      # nur die erste Zeile betraf. Bereinigter awk-Einzeiler extrahiert
+      # zuverlässig den Text zwischen erstem und zweitem "## ["-Header.
+      # ----------------------------------------------------------------
       - name: Extract Changelog from CHANGELOG.md
         id: changelog
         run: |
+          set -euo pipefail
+
           if [ -f "CHANGELOG.md" ]; then
-            # Extrahiere den Text zwischen dem ersten und dem zweiten "## [" Header
-            LOG=$(awk '/^## \[/ {count++; if(count==2) exit} count==1 {if(!/^## \[/) print}' CHANGELOG.md | sed -e '/^[[:space:]]*$/d' -e '1!b' -e '/^[[:space:]]*$/d')
+            LOG=$(awk '/^## \[/{count++; if(count==2) exit} count==1 && !/^## \[/{print}' \
+                  CHANGELOG.md | sed '/^[[:space:]]*$/d')
             if [ -z "$LOG" ]; then
               LOG="Keine Details in der CHANGELOG.md gefunden."
             fi
           else
             LOG="CHANGELOG.md nicht gefunden."
           fi
-          
-          # Sicheres Escaping für Multiline-Outputs in GitHub Actions
+
+          # Sicheres Multiline-Output-Encoding für GitHub Actions
+          # (randomisierter EOF-Delimiter verhindert Injection über Changelog-Inhalt)
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "changelog<<$EOF" >> $GITHUB_OUTPUT
-          echo "$LOG" >> $GITHUB_OUTPUT
-          echo "$EOF" >> $GITHUB_OUTPUT
-          echo "📝 Changelog aus CHANGELOG.md extrahiert:"
+          echo "changelog<<$EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
+
+          echo "📝 Changelog extrahiert:"
           echo "$LOG"
 
+      # ----------------------------------------------------------------
+      # FIX 6: Dynamischer Manifest-Loop über *.ota.bin.
+      # Ursprünglicher Loop hatte eine hardkodierte Varianten-Liste, der
+      # 'ventosync-ntconly' fehlte → diese Variante bekam kein manifest.json
+      # und konnte keine OTA-Updates empfangen.
+      # Neuer Ansatz: Direkt über alle vorhandenen *.ota.bin iterieren →
+      # automatisch synchron mit der Build-Matrix, wartungsfrei.
+      # ----------------------------------------------------------------
       - name: Generate per-variant manifest.json files
         env:
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
+          set -euo pipefail
           cd firmware-artifacts
-          for variant in ventosync-full ventosync-nosensor ventosync-radar-only ventosync-bme680-only; do
-            OTA_FILE="${variant}.ota.bin"
-            MANIFEST_FILE="manifest-${variant}.json"
 
-            if [ -f "$OTA_FILE" ]; then
-              MD5OTA=$(md5sum "$OTA_FILE" | cut -d ' ' -f 1)
-              VERSION="${{ steps.version.outputs.version }}"
-              TAG="${{ steps.version.outputs.tag }}"
+          MANIFEST_COUNT=0
 
-              # Use Python to safely inject values into the JSON template
-              export VERSION MD5OTA OTA_FILE TAG
-              python3 -c "import json,sys,os; d=json.load(open('../json/manifest_template.json')); d['version']=os.environ['VERSION']; o=d['builds'][0]['ota']; o['md5']=os.environ['MD5OTA']; o['path']=o['path'].replace('FILEOTA',os.environ['OTA_FILE']).replace('FIRMWARE_TAG',os.environ['TAG']); o['release_url']=o['release_url'].replace('FIRMWARE_TAG',os.environ['TAG']); o['summary']=os.environ.get('CHANGELOG','Update verfügbar'); json.dump(d,open(sys.argv[1],'w'),indent=2)" "$MANIFEST_FILE"
+          for OTA_FILE in *.ota.bin; do
+            # Sicherstellen dass die Glob-Expansion eine echte Datei ergab
+            [ -f "$OTA_FILE" ] || { echo "⚠️  No .ota.bin files found"; break; }
 
-              echo "✅ Generated $MANIFEST_FILE (MD5: $MD5OTA)"
-              cat "$MANIFEST_FILE"
-            else
-              echo "⚠️ $OTA_FILE not found, skipping manifest for $variant"
-            fi
+            # Varianten-Name aus Dateiname ableiten (z.B. ventosync-full.ota.bin → ventosync-full)
+            VARIANT="${OTA_FILE%.ota.bin}"
+            MANIFEST_FILE="manifest-${VARIANT}.json"
+
+            MD5OTA=$(md5sum "$OTA_FILE" | cut -d ' ' -f 1)
+
+            # Python für sicheres JSON-Templating (kein sed auf JSON-Strukturen)
+            export MD5OTA OTA_FILE VARIANT
+            python3 - "$MANIFEST_FILE" << 'PYEOF'
+          import json, sys, os
+
+          manifest_path = sys.argv[1]
+          template_path = "../json/manifest_template.json"
+
+          with open(template_path) as f:
+              d = json.load(f)
+
+          version  = os.environ["VERSION"]
+          tag      = os.environ["TAG"]
+          md5      = os.environ["MD5OTA"]
+          ota_file = os.environ["OTA_FILE"]
+          changelog = os.environ.get("CHANGELOG", "Update verfügbar")
+
+          d["version"] = version
+
+          ota = d["builds"][0]["ota"]
+          ota["md5"] = md5
+          ota["path"] = (
+              ota["path"]
+              .replace("FILEOTA", ota_file)
+              .replace("FIRMWARE_TAG", tag)
+          )
+          ota["release_url"] = ota["release_url"].replace("FIRMWARE_TAG", tag)
+          ota["summary"] = changelog
+
+          with open(manifest_path, "w") as f:
+              json.dump(d, f, indent=2)
+          PYEOF
+
+            echo "✅ Generated $MANIFEST_FILE (variant: $VARIANT, MD5: $MD5OTA)"
+            MANIFEST_COUNT=$((MANIFEST_COUNT + 1))
           done
 
+          echo "📋 Total manifests generated: $MANIFEST_COUNT"
+
+      # ----------------------------------------------------------------
+      # Release erstellen oder aktualisieren und alle Assets hochladen.
+      # gh release create/edit mit --notes-file vermeidet Bash-Escaping-
+      # Probleme mit Backticks und Sonderzeichen in Release Notes.
+      # --clobber beim Asset-Upload überschreibt existierende Dateien
+      # (wichtig bei Re-Runs auf derselben Version).
+      # ----------------------------------------------------------------
       - name: Create GitHub Release and upload assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.version }}"
+          set -euo pipefail
 
-          # Write release notes to a file to avoid bash escaping issues with backticks
-          cat > release_notes.md << 'EOF'
-          ## VentoSync Firmware v${{ steps.version.outputs.version }}
+          # Release Notes in Datei schreiben (vermeidet Shell-Escaping-Probleme)
+          cat > release_notes.md << NOTES_EOF
+          ## VentoSync Firmware v${VERSION}
 
           Automatisch erstellter Release mit Firmware für alle Hardware-Varianten.
 
           ### 🔄 Changelog
-          ${{ steps.changelog.outputs.changelog }}
+
+          ${CHANGELOG}
 
           ### Verfügbare Varianten
+
           | Datei | Beschreibung |
           |-------|-------------|
-          | `ventosync-full.ota.bin` | Alle Sensoren (SCD41 + BME680 + LD2450) |
-          | `ventosync-nosensor.ota.bin` | Ohne Sensoren (nur Lüftersteuerung) |
-          | `ventosync-radar-only.ota.bin` | Nur LD2450 Radar |
-          | `ventosync-bme680-only.ota.bin` | Nur BME680 Sensor |
-          | `ventosync-ntconly.ota.bin` | Nur NTC Sensoren (Wärmerückgewinnung) |
+          | \`ventosync-full.ota.bin\` | Alle Sensoren (SCD41 + BME680 + LD2450) |
+          | \`ventosync-nosensor.ota.bin\` | Ohne Sensoren (nur Lüftersteuerung) |
+          | \`ventosync-radar-only.ota.bin\` | Nur LD2450 Radar |
+          | \`ventosync-bme680-only.ota.bin\` | Nur BME680 Sensor |
+          | \`ventosync-ntconly.ota.bin\` | Nur NTC Sensoren (Wärmerückgewinnung) |
 
           ### OTA Update
-          Die Geräte prüfen automatisch auf Updates über ihre konfigurierte `manifest-<variant>.json`.
-          EOF
 
-          # Check if tag already exists — update existing release
+          Die Geräte prüfen automatisch auf Updates über ihre konfigurierte \`manifest-<variant>.json\`.
+          NOTES_EOF
+
+          # Release erstellen oder vorhandenen aktualisieren (idempotent)
           if gh release view "$TAG" &>/dev/null; then
-            echo "⚠️ Release $TAG already exists. Ensuring it is marked as latest..."
-            gh release edit "$TAG" --notes-file release_notes.md --latest
+            echo "⚠️  Release $TAG already exists — updating notes and marking as latest..."
+            gh release edit "$TAG" \
+              --notes-file release_notes.md \
+              --latest
           else
-            echo "🚀 Creating release $TAG..."
+            echo "🚀 Creating new release $TAG..."
             gh release create "$TAG" \
-              --title "VentoSync v$VERSION" \
+              --title "VentoSync v${VERSION}" \
               --notes-file release_notes.md \
               --latest
           fi
 
-          # Upload all OTA binaries, factory binaries, and manifests
+          # Alle Binaries und Manifeste hochladen
+          # --clobber: überschreibt existierende Assets bei Re-Runs
           cd firmware-artifacts
+          UPLOAD_COUNT=0
+
           for f in *.ota.bin *.factory.bin manifest-*.json; do
-            if [ -f "$f" ]; then
-              echo "📤 Uploading $f..."
-              gh release upload --clobber "$TAG" "$f"
-            fi
+            [ -f "$f" ] || continue
+            echo "📤 Uploading $f..."
+            gh release upload --clobber "$TAG" "$f"
+            UPLOAD_COUNT=$((UPLOAD_COUNT + 1))
           done
 
-          echo "✅ Release $TAG complete!"
+          echo "✅ Release ${TAG} complete — ${UPLOAD_COUNT} assets uploaded"

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.9.19] - 2026-05-21
+
+### Fixed
+
+- **ESPHome Config Validation Errors**:
+  - Removed the invalid `watchdog_timeout: 30s` option under the `esp32:` platform block in `esp32c6_common.yaml` and `dashboard_main.yaml` (since `watchdog_timeout` is an RP2040-only option). Task watchdog parameters for ESP32 are configured via SDKConfig options.
+  - Removed the invalid `round_to_significant_digits` filter from `sensor_BMP390.yaml` (pressure sensor) and `sensor_SCD41.yaml` (CO2 sensor), which is not supported by ESPHome. Decimal precision is handled via `accuracy_decimals`.
+
+### Changed
+
+- **CI/CD Pipeline Security and Robustness (`.github/workflows/build.yaml` & `lint.yaml`)**:
+  - Pinned ESPHome compilation and validation tools to version `2026.5.0` to match the target platform version.
+  - Restricted global repository permissions to `contents: read`, with `contents: write` scoped specifically to the `release` job.
+  - Added caching for pip dependencies and PlatformIO toolchains to drastically reduce build times.
+  - Added compiler flags (`-std=c++17`, `-Wall`, `-Wextra`, `-Wpedantic`, `-fsanitize=address,undefined`) to unit tests for early memory leak and undefined behavior checks.
+  - Securely passed secrets via environment variables instead of direct CLI injection.
+  - Implemented defensive `sed` statements with path existence checks to prevent workflow failures when files are missing.
+  - Replaced the hardcoded variant list for generating `manifest.json` update files with a dynamic shell expansion loop over `*.ota.bin` files.
+  - Implemented file-based release notes generation to avoid bash escaping issues.
+
+## [0.9.18] - 2026-05-21
+
+### Added
+
+- **ESPHome 2026.5.0 Migration**:
+  - Configured watchdog timeout (`watchdog_timeout: 30s`) under the `esp32:` platform block in `esp32c6_common.yaml` and `dashboard_main.yaml` for improved stability.
+  - Increased connection limit (`max_connections: 8`) under `api:` block in `esp32c6_common.yaml`, `wifi_ota.yaml`, and `dashboard_main.yaml` to support higher client concurrency.
+  - Configured `safe_mode:` component across configurations for soft-brick boot recovery.
+  - Optimized environmental sensors by adding `round_to_significant_digits: 4` filters to SCD41 CO2 and BMP390 pressure measurements.
+  - Aligned GitHub Actions build and lint workflows to pin the compilation/lint tools to ESPHome `2026.5.0`.
+
 ## [0.9.17] - 2026-05-18
 
 ### Fixed

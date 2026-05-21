@@ -102,6 +102,7 @@ deep_sleep:
 # ---------------------------------------------------------
 # Native API for direct integration with Home Assistant (faster/better than MQTT)
 api:
+  max_connections: 8
   encryption:
     key: !secret api_encryption_key
 
@@ -272,3 +273,5 @@ text_sensor:
       #else
         return {"0.0.0-dev"};
       #endif
+
+safe_mode:

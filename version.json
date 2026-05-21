@@ -1,5 +1,5 @@
 {
-    "project_version": "0.9.17",
-    "project_date": "2026-05-18",
-    "project_description": "Gentler PID auto mode, peer sync fix, and improved humidity guard logic."
+    "project_version": "0.9.19",
+    "project_date": "2026-05-21",
+    "project_description": "Cleaned up invalid ESPHome config options and enhanced CI/CD pipeline reliability."
 }
