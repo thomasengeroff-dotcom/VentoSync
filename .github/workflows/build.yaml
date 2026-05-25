@@ -181,7 +181,7 @@ jobs:
       # sodass bei YAML-Änderungen der Cache automatisch invalidiert wird.
       # ----------------------------------------------------------------
       - name: Cache pip packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-esphome-2026.5.0
@@ -189,7 +189,7 @@ jobs:
             pip-${{ runner.os }}-esphome-
 
       - name: Cache PlatformIO toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.platformio
