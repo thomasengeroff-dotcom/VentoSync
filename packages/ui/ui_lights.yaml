@@ -102,7 +102,6 @@ light:
           name: "Window Lock"
           colors:
             - state: true
-              brightness: 100%
               duration: 1000ms
             - state: false
               duration: 2000ms
