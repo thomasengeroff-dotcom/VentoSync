@@ -95,7 +95,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 8; // Bumped: added room CO2 + Smart Climate Control config
+static constexpr uint8_t PROTOCOL_VERSION = 9; // Bumped: added room humidity (air quality per device)
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
 /// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
@@ -124,6 +124,7 @@ struct __attribute__((packed)) VentilationPacket {
   float board_temp;          ///< Sender's board temperature (BMP390).
   float room_temp;           ///< Sender's room temperature (SCD41/BME680).
   float room_co2;            ///< Sender's effective CO2 in ppm (or NAN) — shared for Smart Climate Control.
+  float room_humidity;       ///< Sender's room relative humidity in % (or NAN) — shared for the dashboard.
 
   // Control & Settings Synced States
   uint8_t fan_intensity; ///< Current 1-10 level
@@ -148,6 +149,9 @@ struct __attribute__((packed)) VentilationPacket {
   float max_led_brightness; ///< Shared LED brightness limit (0.1–1.0)
 };
 
+static_assert(sizeof(VentilationPacket) <= 250,
+    "VentilationPacket must fit into a single ESP-NOW payload (250 bytes)");
+
 /// @brief Represents the latest known state of a peer device in the same room.
 struct PeerState {
   uint32_t last_seen_ms;
@@ -163,6 +167,7 @@ struct PeerState {
   float board_temp;
   float room_temp;
   float room_co2;
+  float room_humidity;
 };
 
 // ---------------------------------------------------------
@@ -270,6 +275,8 @@ public:
   sensor::Sensor *scd41_temp_sensor_{nullptr}; ///< Local room temp (SCD41).
   sensor::Sensor *bme680_temp_sensor_{nullptr}; ///< Fallback room temp (BME680).
   sensor::Sensor *co2_sensor_{nullptr};         ///< Effective CO2 (SCD41 / BME680 eCO2 fallback).
+  sensor::Sensor *scd41_humidity_sensor_{nullptr};  ///< Primary room humidity (SCD41).
+  sensor::Sensor *bme680_humidity_sensor_{nullptr}; ///< Fallback room humidity (BME680).
   esphome::globals::RestoringGlobalsComponent<int> *mode_index_global_{nullptr}; ///< Global UI mode index.
   esphome::globals::RestoringGlobalsComponent<int> *automatik_min_fan_level_global_{nullptr}; 
   esphome::globals::RestoringGlobalsComponent<int> *automatik_max_fan_level_global_{nullptr};
@@ -301,6 +308,10 @@ public:
   void set_max_led_brightness_global(esphome::globals::RestoringGlobalsComponent<float> *g) { max_led_brightness_global_ = g; }
   /** @brief Sets the effective CO2 sensor shared with peers. */
   void set_co2_sensor(sensor::Sensor *s) { co2_sensor_ = s; }
+  /** @brief Sets the primary room humidity sensor (SCD41) shared with peers. */
+  void set_scd41_humidity_sensor(sensor::Sensor *s) { scd41_humidity_sensor_ = s; }
+  /** @brief Sets the fallback room humidity sensor (BME680) shared with peers. */
+  void set_bme680_humidity_sensor(sensor::Sensor *s) { bme680_humidity_sensor_ = s; }
   /** @brief Sets the global Smart Climate Control CO2 setpoint reference. */
   void set_hvac_co2_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_co2_threshold_global_ = g; }
   /** @brief Sets the global Smart Climate Control emergency CO2 reference. */
@@ -614,6 +625,7 @@ public:
       peer.board_temp = pkt->board_temp;
       peer.room_temp = pkt->room_temp;
       peer.room_co2 = pkt->room_co2;
+      peer.room_humidity = pkt->room_humidity;
     };
 
     bool found_peer = false;
@@ -880,6 +892,15 @@ public:
 
     // Effective CO2 (NaN when no sensor or stale) — shared for Smart Climate Control
     pkt.room_co2 = (co2_sensor_ && co2_sensor_->has_state()) ? co2_sensor_->state : static_cast<float>(NAN);
+
+    // Room Humidity Logic: SCD41 (Primary) -> BME680 (Fallback), mirrors room_temp
+    float r_hum = static_cast<float>(NAN);
+    if (scd41_humidity_sensor_ && scd41_humidity_sensor_->has_state()) {
+        r_hum = scd41_humidity_sensor_->state;
+    } else if (bme680_humidity_sensor_ && bme680_humidity_sensor_->has_state()) {
+        r_hum = bme680_humidity_sensor_->state;
+    }
+    pkt.room_humidity = r_hum;
     
     // Sync PID demand and NTC values
     pkt.pid_demand = local_pid_demand;

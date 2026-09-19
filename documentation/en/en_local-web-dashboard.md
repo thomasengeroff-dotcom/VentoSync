@@ -54,6 +54,11 @@ The dashboard dynamically scans and lists all active ESP-NOW ventilation units i
 * **Operating Mode** (Auto, Eco Recovery, Boost, Ventilation, Off)
 * **Fan Speed Level** (1–10)
 * **Current Airflow Direction / Phase** (Supply In / Exhaust Out / Standstill)
+* **Telemetry** (fan RPM, board temperature, PID demand)
+* **Air quality per device** (CO2 in ppm, rating, temperature, relative humidity)
+
+> [!NOTE]
+> The air quality values are shared over ESP-NOW (protocol v9), so each card shows the readings of **that** device's own sensor — whether it is an SCD43 or the BME680 eCO2 fallback. A device without a climate sensor shows `--`; the rating uses the same classification as the local "Luftqualität" tile, so both always agree.
 
 ---
 

@@ -11,7 +11,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 - Platform: ESP32-C6 (RISC-V), ESPHome `2026.8.0`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
 - Sensors: SCD41 (CO2), BME680 (IAQ fallback), BMP390 (pressure), 2× NTC thermistors, HLK-LD2450 (mmWave radar)
-- Communication: ESP-NOW (v8) for multi-device sync (no Wi-Fi router required between units), ESPHome Native API to Home Assistant
+- Communication: ESP-NOW (v9) for multi-device sync (no Wi-Fi router required between units), ESPHome Native API to Home Assistant
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names, UI labels, and user-facing strings remain in **German**.
 - License: GPL v3
 - Current version: see `version.json` (single source of truth, auto-bumped by `version_bump.py`)
@@ -128,7 +128,7 @@ Mismatch causes silent mode-switch failures (see CHANGELOG 0.8.169).
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol Version:** `v8` (magic header byte `0x42`, version byte `0x08` in `VentilationPacket`; v8 added `room_co2` and the room-wide Smart Climate Control thresholds)
+- **Protocol Version:** `v9` (magic header byte `0x42`, version byte `0x09` in `VentilationPacket`; v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity` for the per-device air quality on the dashboard)
 - **Discovery:** Broadcast `ROOM_DISC` packet on boot → matching Floor + Room ID → unicast pairing
 - **Dynamic Peer Cache:** LRU cache capped at 10 peers in `VentilationController` to prevent heap fragmentation
 - **Master/Slave Authority:** Device with ID=1 acts as Master; Slaves mirror target mode and discrete intensity
@@ -160,7 +160,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v8 mesh communication, packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v9 mesh communication, packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock

@@ -216,6 +216,25 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         });
     }
 
+    // Value formatting helpers for the device cards
+    function fmtNum(v, digits, unit) {
+        return (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(digits) + unit : "--";
+    }
+    function fmtTxt(v) {
+        return (v !== undefined && v !== null && v !== "") ? sanitizeHTML(String(v)) : "--";
+    }
+    // Air quality block shown on every device card. Values come from the local
+    // sensors or, for peers, from the ESP-NOW packet (SCD43 or BME680 eCO2).
+    function airQualityBlock(co2, rating, temp, hum) {
+        return `<div class="text-[10px] uppercase tracking-wider text-gray-500 mt-3 mb-1">Luftqualität</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded">
+                <div class="flex justify-between"><span>CO2:</span> <strong class="text-gray-400">${fmtNum(co2, 0, " ppm")}</strong></div>
+                <div class="flex justify-between"><span>Bewertung:</span> <strong class="text-gray-400">${fmtTxt(rating)}</strong></div>
+                <div class="flex justify-between"><span>Temperatur:</span> <strong class="text-gray-400">${fmtNum(temp, 1, " °C")}</strong></div>
+                <div class="flex justify-between"><span>Feuchte:</span> <strong class="text-gray-400">${fmtNum(hum, 1, " %")}</strong></div>
+            </div>`;
+    }
+
     // Chart Setup
     const maxHistoryPoints = 150; // approx 5 minutes at 2s interval
     const chartData = {
@@ -393,7 +412,6 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         
         const localRPM = (data.fan_rpm !== null && data.fan_rpm !== undefined && !isNaN(data.fan_rpm)) ? Number(data.fan_rpm).toFixed(0) : "--";
         const localBoardT = (data.temperature !== null && data.temperature !== undefined && !isNaN(data.temperature)) ? Number(data.temperature).toFixed(1) + " °C" : "--";
-        const localRoomT = (data.room_temp !== null && data.room_temp !== undefined && !isNaN(data.room_temp)) ? Number(data.room_temp).toFixed(1) + " °C" : "--";
         const localPID = (data.pid_demand !== null && data.pid_demand !== undefined && !isNaN(data.pid_demand)) ? (Math.round(data.pid_demand * 100) + "%") : "--";
         const localMode = data.luefter_modus === 'Wärmerückgewinnung' ? 'WRG' : (data.luefter_modus || '--');
 
@@ -409,9 +427,9 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
                 <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${localRPM}</strong></div>
                 <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${localBoardT}</strong></div>
-                <div class="flex justify-between"><span>Raum-temp:</span> <strong class="text-gray-400">${localRoomT}</strong></div>
                 <div class="flex justify-between"><span>PID:</span> <strong class="text-gray-400">${localPID}</strong></div>
             </div>
+            ${airQualityBlock(data.room_co2, data.room_co2_bewertung, data.room_temperature, data.room_humidity)}
         </div>`;
 
         if (data.peers && data.peers.length > 0) {
@@ -422,7 +440,6 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             
             const rpm = (peer.rpm !== undefined && peer.rpm !== null && !isNaN(peer.rpm)) ? Number(peer.rpm).toFixed(0) : "--";
             const boardT = (peer.board_t !== undefined && peer.board_t !== null && !isNaN(peer.board_t)) ? Number(peer.board_t).toFixed(1) + " °C" : "--";
-            const roomT = (peer.room_t !== undefined && peer.room_t !== null && !isNaN(peer.room_t)) ? Number(peer.room_t).toFixed(1) + " °C" : "--";
             const pid = (peer.pid_demand !== undefined && peer.pid_demand !== null && !isNaN(peer.pid_demand)) ? (Math.round(peer.pid_demand * 100) + "%") : "--";
             
             html += `<div class="bg-gray-800/80 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
@@ -437,9 +454,9 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
                     <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${rpm}</strong></div>
                     <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${boardT}</strong></div>
-                    <div class="flex justify-between"><span>Raum-temp:</span> <strong class="text-gray-400">${roomT}</strong></div>
                     <div class="flex justify-between"><span>PID:</span> <strong class="text-accent/80">${pid}</strong></div>
                 </div>
+                ${airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity)}
             </div>`;
           });
         }
