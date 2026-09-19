@@ -49,6 +49,10 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 - **Grundbetrieb:** Kontinuierliche Wärmerückgewinnung (`MODE_ECO_RECOVERY`) auf der konfigurierten Mindest-Lüfterstufe (`automatik_min_luefterstufe`, Standard: Stufe 2). Die Reversierintervalle passen sich dynamisch an die Lüfterdrehzahl an (70s bei Stufe 1 bis 50s bei Stufe 10).
 - **🎛️ Intelligente PID-Regelung (CO2 & Feuchte):** Anstelle abrupter Schwellwertschaltungen verwendet VentoSync einen doppelten PID-Regelkreis:
+
+  > **Was ist ein PID-Regler?**
+  > Stell dir vor, du fährst Auto: Bist du nur knapp über dem Tempolimit, nimmst du kaum Gas raus. Bist du weit drüber, bremst du stärker. Und wenn du schon längere Zeit knapp drüber bist, drückst du etwas mehr auf die Bremse. VentoSync funktioniert mit CO2 und Luftfeuchte genauso — kein abruptes Schalten, sondern sanftes, kontinuierliches Nachregeln.
+
   - **P (Proportional):** Reagiert sofort auf Abweichungen oberhalb des Schwellwerts.
   - **I (Integral):** Summiert langanhaltende Abweichungen langsam auf (z.B. mehrere Personen im Raum) und steigert die Lüfterstufe sanft über die Zeit.
   - **Sanftes Tuning:** Der I-Gain ist extrem träge abgestimmt (`0.0000005`), um kurzzeitige Spitzen (z.B. Öffnen einer Mineralwasserflasche) zu ignorieren.
@@ -71,6 +75,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 3. **Signal-Arbitrierung:** Das System wählt das **Maximum** aus CO2- und Feuchtebedarf, damit kein Luftqualitätsparameter vernachlässigt wird.
 4. **Sanfter Einstieg:** Beim Umschalten *in* die Smart-Automatik werden die PID-Integrale zurückgesetzt, damit das Gerät stets mit der Minimalstufe startet und nur bei tatsächlichem Bedarf hochregelt.
 5. **Absolutfeuchte-Schutz:** Eine Entfeuchtung erhöht die Drehzahl nur, wenn die Außenluft absolut trockener ist als die Innenluft (Magnus-Formel). Ist die Außenluft feuchter (z.B. bei Regen), wird der Feuchtebedarf auf 0 gesetzt.
+6. **Gruppen-Fallback:** Hat ein Gerät keine eigenen Sensoren (Varianten `nosensor`, `radar_only`, `NTConly`), übernimmt es automatisch den höchsten Bedarf aus der Raumgruppe via ESP-NOW.
 
 > [!TIP]
 > Für die vollständigen technischen Hintergründe und die C++ Implementierung siehe **[📄 smart-automatic-logic.md](de_smart-automatic-logic.md)** und **[📄 humidity-management.md](de_humidity-management.md)**.

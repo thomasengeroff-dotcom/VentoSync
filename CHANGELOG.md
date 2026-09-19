@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Smart Climate Control scope**: the three threshold sliders have been room-wide since 0.10.14; both READMEs now state this and that only the enable switch is per device.
   - Added the missing `ventosync_NTConly.yaml` variant to the configuration sections, added the missing vacation-mode entities to `Readme_de.md`, clarified the fan/timer entity descriptions, noted that the level 10 energy figure is calculated at the upper 6.0 W bound, and refreshed the stale version-bump example.
 
+### Changed
+
+- **`Readme_de.md` restructured to match `Readme.md`** — the German README duplicated the content of `de_operating-modes.md` and `de_control-panel-operation.md` inline, so the same facts had to be maintained twice. The detailed per-mode sections and the button/LED tables are now condensed to the same overview table plus guide link that the English README uses. Both READMEs now have an identical heading structure (47 headings, same levels).
+  - This removed two errors that existed only in the inline duplicate: a cycle time of "Stufe 5: 50 Sek." (the formula in `ventilation_logic.cpp` yields ~60 s, as the guide states) and a reference to the non-existent global `co2_min_fan_level`.
+  - Content that existed only in the README was preserved in the guides first: the "what is a PID controller" car analogy and a new behavior rule documenting the ESP-NOW group fallback for devices without their own sensors — both added to `de_operating-modes.md` and `en_operating-modes.md` to keep them in parity.
+
 
 ## [0.10.15] - 2026-09-04
 
