@@ -233,7 +233,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v8 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v9 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -499,7 +499,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
   - `number.klima_koordination_max_lufterstufe` — Fan level cap while the AC is active, 1–5 (default: `3`)
   - `number.klima_koordination_co2_notfallgrenze` — CO2 emergency override, 1200–2000 ppm (default: `1500`)
   - `text_sensor.klima_koordination_status` — Current coordinator state (diagnostic)
-  > The three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v8), so they only have to be set once per room. Only the enable switch is per device.
+  > The three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v9), so they only have to be set once per room. Only the enable switch is per device.
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)

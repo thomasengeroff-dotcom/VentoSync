@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.19] - 2026-09-19
+
+### Added
+
+- **Per-device air quality on the local web dashboard** (`components/wrg_dashboard/`, `components/ventilation_group/`, `packages/base/ventosync_base.yaml`):
+  - Every card in the "Verbundene Geräte (ESP-NOW)" tile — including the local device — now shows a **Luftqualität** block with CO2 (ppm), rating, temperature and relative humidity, mirroring the standalone "Luftqualität" tile.
+  - The values come from whichever climate sensor the device actually has: SCD43, or the BME680 eCO2 / humidity fallback. A device without a climate sensor shows `--`.
+  - The CO2 rating is computed with `VentilationLogic::get_co2_classification()`, the same function that feeds the local tile, so peer cards and the local tile can never disagree.
+  - Room temperature moved from the technical block into the new air quality block, so it is no longer shown twice per card.
+
+### Changed
+
+- **ESP-NOW protocol v8 → v9** (`components/ventilation_group/ventilation_group.h`, `components/ventilation_group/__init__.py`):
+  - `VentilationPacket` gains `room_humidity` (float, SCD41 → BME680 fallback, mirroring the existing `room_temp` chain); `room_co2` and `room_temp` were already shared since v8. Packet size is 73 bytes, well inside the 250-byte ESP-NOW payload limit, and a new `static_assert` now guards that bound.
+  - New `ventilation_group` config keys `scd41_humidity_sensor` and `bme680_humidity_sensor`, wired in `ventosync_base.yaml`.
+  - **All devices of a room must be flashed together**, as with every protocol bump — nodes reject packets carrying a different protocol version.
+
+### Documentation
+
+- Updated `documentation/*/…local-web-dashboard.md` with the new air quality fields, and the protocol version references in `CLAUDE.md`, both READMEs, both ESP-NOW guides, both Smart Climate Control guides and the component/package READMEs.
+
+
 ## [0.10.18] - 2026-09-19
 
 ### Fixed
