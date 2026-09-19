@@ -22,11 +22,11 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 | # | Modus | Panel-LEDs (`WRG` / `VEN`) | Lüfterverhalten | Zykluszeit | HA-Entität / Auswahl |
 | :-: | :--- | :---: | :--- | :--- | :--- |
-| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Dynamischer PID (Stufen 1–10) basierend auf CO2 & Feuchte | 50s – 70s dynamisch | `select.modus_lueftungsanlage` → `Smart-Automatik` |
-| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Konstante manuelle Stufe (1–10) mit Pendellüftung / Wärmetausch | 50s – 70s dynamisch | `select.modus_lueftungsanlage` → `Wärmerückgewinnung` |
-| **3** | **💨 Stoßlüftung** | ⚫ / 🟢 | Intensive Lüftung (15 min Betrieb, 105 min Pause) | Dauerhaft (15 min) | `button.stosslueftung_starten` / `Stoßlüftung` |
-| **4** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter Luftstrom ohne Richtungswechsel (Phase A rein, Phase B raus) | Dauerhaft / Timer | `select.modus_lueftungsanlage` → `Durchlüften` |
-| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Sensoren & Web-UI bleiben voll aktiv | — | `select.modus_lueftungsanlage` → `Aus` |
+| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Dynamischer PID (Stufen 1–10) basierend auf CO2 & Feuchte | 50s – 70s dynamisch | `select.luefter_modus` → `Smart-Automatik` |
+| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Konstante manuelle Stufe (1–10) mit Pendellüftung / Wärmetausch | 50s – 70s dynamisch | `select.luefter_modus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter Luftstrom ohne Richtungswechsel (Phase A rein, Phase B raus) | Dauerhaft / Timer | `select.luefter_modus` → `Durchlüften` |
+| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | Intensive Lüftung (15 min Betrieb, 105 min Pause) | Dauerhaft (15 min) | `select.luefter_modus` → `Stoßlüftung` |
+| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Sensoren & Web-UI bleiben voll aktiv | — | `select.luefter_modus` → `Aus` |
 
 ---
 
@@ -79,7 +79,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ### 2. ❄️ Wärmerückgewinnung (Eco Recovery) — `LED_WRG` 🟢 (dauerhaft an)
 
-- **HA-Entität:** `select.modus_lueftungsanlage` → `Wärmerückgewinnung`
+- **HA-Entität:** `select.luefter_modus` → `Wärmerückgewinnung`
 - **Funktion:** Manueller Wärmerückgewinnungsbetrieb ohne automatische PID-Skalierung. Die Drehrichtung wechselt periodisch und gewinnt bis zu 85% der Wärmeenergie zurück.
 - **Zykluszeiten:** Passen sich dynamisch an die gewählte Lüfterstufe an:
   - Stufe 1: **70 Sekunden**
@@ -90,9 +90,18 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ---
 
-### 3. 💨 Stoßlüftung — `LED_VEN` 🟢 (dauerhaft an)
+### 3. 🌬️ Durchlüften (Sommerbetrieb) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (dauerhaft an)
 
-- **HA-Entität:** `button.stosslueftung_starten` / `select.modus_lueftungsanlage` → `Stoßlüftung`
+- **HA-Entität:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` (Timer, 0 = unbegrenzt)
+- **Funktion:** Konstanter unidirektionaler Luftstrom ohne Richtungswechsel.
+- **Betrieb:** Phase-A-Geräte ziehen kontinuierlich Außenluft ein, während Phase-B-Geräte Innenluft ausblasen. Dadurch entsteht ein Querlüftungseffekt zur passiven Nachtkühlung.
+- **Automatischer Trigger:** Im Smart-Automatik Modus schaltet das System in Sommernächten automatisch auf Durchlüften, wenn die Raumtemperatur über 22°C liegt und die Außenluft um mindestens 1.5°C kühler ist.
+
+---
+
+### 4. 💨 Stoßlüftung — `LED_VEN` 🟢 (dauerhaft an)
+
+- **HA-Entität:** `select.luefter_modus` → `Stoßlüftung`
 - **Funktion:** Intensive Intervalllüftung für schnellen Luftaustausch (z.B. nach dem Kochen oder Duschen).
 - **2-Stunden-Ablauf:**
   - **15 Minuten:** Lüftung mit hoher Intensität auf der konfigurierten Boost-Stufe.
@@ -102,18 +111,9 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ---
 
-### 4. 🌬️ Durchlüften (Sommerbetrieb) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (dauerhaft an)
-
-- **HA-Entität:** `select.modus_lueftungsanlage` → `Durchlüften` + `number.lueftungsdauer` (Timer, 0 = unbegrenzt)
-- **Funktion:** Konstanter unidirektionaler Luftstrom ohne Richtungswechsel.
-- **Betrieb:** Phase-A-Geräte ziehen kontinuierlich Außenluft ein, während Phase-B-Geräte Innenluft ausblasen. Dadurch entsteht ein Querlüftungseffekt zur passiven Nachtkühlung.
-- **Automatischer Trigger:** Im Smart-Automatik Modus schaltet das System in Sommernächten automatisch auf Durchlüften, wenn die Raumtemperatur über 22°C liegt und die Außenluft um mindestens 1.5°C kühler ist.
-
----
-
 ### 5. ⭕ Aus (Monitoring-Modus) — beide LEDs ⚫
 
-- **HA-Entität:** `select.modus_lueftungsanlage` → `Aus`
+- **HA-Entität:** `select.luefter_modus` → `Aus`
 - **Funktion:** Lüftermotor und PWM-Ansteuerung sind komplett abgeschaltet (0 RPM).
 - **Aktive Sensoren:** Umweltsensoren (SCD43 CO2/Temp/Feuchte, BMP390, BME680, Radar-Präsenz) sowie das lokale Web-Dashboard bleiben für lückenlose Messwerterfassung in Home Assistant aktiv.
 - **Ultra-Low-Power Light Sleep:** Langes Drücken der physischen Power-Taste für **> 5s** versetzt das Gerät in den Deep-Light-Sleep (deaktiviert WLAN, LEDs und Radar; Leistungsaufnahme < 0.1W). Ein kurzer Tastendruck weckt das Gerät sofort wieder auf und verbindet es erneut mit dem Netzwerk.

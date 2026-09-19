@@ -37,43 +37,43 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 
 ## 📑 Inhaltsverzeichnis
 
-- [⚖️ Disclaimer](#⚖️-disclaimer)
-- [🚀 Zusammenfassung & Überblick](#🚀-zusammenfassung--überblick)
+- [⚖️ Disclaimer](#️-disclaimer)
+- [🚀 Zusammenfassung & Überblick](#-zusammenfassung--überblick)
   - [Motivation](#motivation)
-  - [🛠️ Maßgefertigte Leiterplatte (PCB)](#🛠️-maßgefertigte-leiterplatte-pcb)
-  - [🔄 Vergleich mit VentoMaxx V-WRG](#🔄-vergleich-mit-ventomaxx-v-wrg)
-- [✨ Leistungsmerkmale](#✨-leistungsmerkmale)
-  - [⚙️ Intelligente Betriebsmodi](#⚙️-intelligente-betriebsmodi)
-  - [🛡️ Präzisions-Sensorik & Monitoring](#🛡️-präzisions-sensorik--monitoring)
-  - [⚡ Extrem niedriger Stromverbrauch](#⚡-extrem-niedriger-stromverbrauch)
+  - [🛠️ Maßgefertigte Leiterplatte (PCB)](#️-maßgefertigte-leiterplatte-pcb)
+  - [🔄 Vergleich mit VentoMaxx V-WRG](#-vergleich-mit-ventomaxx-v-wrg)
+- [✨ Leistungsmerkmale](#-leistungsmerkmale)
+  - [⚙️ Intelligente Betriebsmodi](#️-intelligente-betriebsmodi)
+  - [🛡️ Präzisions-Sensorik & Monitoring](#️-präzisions-sensorik--monitoring)
+  - [⚡ Extrem niedriger Stromverbrauch](#-extrem-niedriger-stromverbrauch)
   - [🖥️ Native Bedienung am Gerät](#️-native-bedienung-am-gerät)
-  - [🏠 Home Assistant Integration](#🏠-home-assistant-integration)
-  - [📊 VentoSync Dashboard - Lokales Web-Dashboard](#📊-ventosync-dashboard---lokales-web-dashboard)
-- [📡 ESP-NOW: Kabellose Autonomie](#📡-esp-now-kabellose-autonomie)
-- [🗺️ Roadmap & Zukünftige Erweiterungen](#🗺️-roadmap--zukünftige-erweiterungen)
+  - [🏠 Home Assistant Integration](#-home-assistant-integration)
+  - [📊 VentoSync Dashboard - Lokales Web-Dashboard](#-ventosync-dashboard---lokales-web-dashboard)
+- [📡 ESP-NOW: Kabellose Autonomie](#-esp-now-kabellose-autonomie)
+- [🗺️ Roadmap & Zukünftige Erweiterungen](#️-roadmap--zukünftige-erweiterungen)
 - [🎛️ Eigene Platine - PCB](#️-eigene-platine---pcb)
   - [Passgenaues SCD43 Sensor Board](#passgenaues-scd43-sensor-board)
   - [🌿 Modulares Sensor-Ökosystem: SGP41 & SHT4x](#-modulares-sensor-ökosystem-die-passende-messgröße-pro-raum)
-- [🛠️ Einrichtung & Installation](#🛠️-einrichtung--installation)
+- [🛠️ Einrichtung & Installation](#️-einrichtung--installation)
   - [🧰 PCB-Montage & Lüfter-Verdrahtung](#-pcb-montage--lüfter-verdrahtung)
   - [💻 Entwicklungsumgebung (Linux `venv` & ESPHome-CLI)](#-entwicklungsumgebung-linux-venv--esphome-cli)
   - [⚙️ Konfiguration & Kompilierung](#️-konfiguration--kompilierung)
   - [⚡ Erstmaliges Flashen & Inbetriebnahme](#-erstmaliges-flashen--inbetriebnahme)
   - [🔄 OTA-Updates & Home Assistant Integration](#-ota-updates--home-assistant-integration)
   - [🌡️ Kalibrierung der NTC-Sensoren](#️-kalibrierung-der-ntc-sensoren)
-- [🎮 Bedienung & Steuerung](#🎮-bedienung--steuerung)
-  - [🖐️ Bedienpanel (VentoMaxx Style)](#🖐️-bedienpanel-ventomaxx-style)
-  - [🔄 Detaillierte Betriebsmodi (Programme)](#🔄-detaillierte-betriebsmodi-programme)
-  - [📱 Steuerung über Home Assistant](#📱-steuerung-über-home-assistant)
-- [🧠 Wärmerückgewinnung - So funktioniert's](#🧠-wärmerückgewinnung---so-funktionierts)
-- [🔧 Technische Details & Optimierungen](#🔧-technische-details--optimierungen)
-- [📁 Projektstruktur](#📁-projektstruktur)
-- [🏗️ Code-Architektur & Wartbarkeit](#🏗️-code-architektur--wartbarkeit)
-- [🚀 Automatisierte Release & Versionierung](#🚀-automatisierte-release--versionierung)
+- [🎮 Bedienung & Steuerung](#-bedienung--steuerung)
+  - [🖐️ Bedienpanel (VentoMaxx Style)](#️-bedienpanel-ventomaxx-style)
+  - [🔄 Detaillierte Betriebsmodi (Programme)](#-detaillierte-betriebsmodi-programme)
+  - [📱 Steuerung über Home Assistant](#-steuerung-über-home-assistant)
+- [🧠 Wärmerückgewinnung - So funktioniert's](#-wärmerückgewinnung---so-funktionierts)
+- [🔧 Technische Details & Optimierungen](#-technische-details--optimierungen)
+- [📁 Projektstruktur](#-projektstruktur)
+- [🏗️ Code-Architektur & Wartbarkeit](#️-code-architektur--wartbarkeit)
+- [🚀 Automatisierte Release & Versionierung](#-automatisierte-release--versionierung)
 - [🙏 Danksagungen / Credits](#-danksagungen--credits)
-- [⚠️ Sicherheitshinweise](#⚠️-sicherheitshinweise)
-- [⚖️ Rechtlicher Haftungsausschluss](#⚖️-rechtlicher-haftungsausschluss)
-- [📜 Lizenz](#📜-lizenz)
+- [⚠️ Sicherheitshinweise](#️-sicherheitshinweise)
+- [⚖️ Rechtlicher Haftungsausschluss](#️-rechtlicher-haftungsausschluss)
+- [📜 Lizenz](#-lizenz)
 
 ---
 
@@ -195,7 +195,7 @@ Das originale Bedienpanel des VentoMaxx V-WRG-1 (9 LEDs, 3 Taster) bleibt vollst
 
 ![Bedienung am Lüftungsgerät](images/Ventomax%20V-WRG-1/PXL_20260128_232625674.jpg)
 
-> 👉 *Für eine schnelle Tastenübersicht siehe [Bedienpanel am Gerät](#🖐️-bedienpanel-ventomaxx-style) weiter unten oder die ausführliche [📄 Bedienungsanleitung Lüftungsgerät](documentation/de/de_control-panel-operation.md).*
+> 👉 *Für eine schnelle Tastenübersicht siehe [Bedienpanel am Gerät](#️-bedienpanel-ventomaxx-style) weiter unten oder die ausführliche [📄 Bedienungsanleitung Lüftungsgerät](documentation/de/de_control-panel-operation.md).*
 
 ### 🏠 Home Assistant Integration
 
@@ -231,7 +231,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v4, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v8, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -381,6 +381,7 @@ VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Har
 - **`ventosync_bme680_only.yaml`**: Variante mit BME680 (ohne SCD43/LD2450)
 - **`ventosync_radar_only.yaml`**: Variante mit Radar (ohne Klima-Sensoren)
 - **`ventosync_nosensor.yaml`**: Basis-Lüftungssteuerung ohne Sensoren
+- **`ventosync_NTConly.yaml`**: Basis-Lüftungssteuerung nur mit NTC-Temperatursensoren
 
 Nutze das Skript `upload_all.sh` für automatisches Kompilieren und Flashen lokal auf deine Geräte:
 
@@ -462,7 +463,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 
 | LED | Anzahl | Position | Verhalten |
 | :--- | :---: | :--- | :--- |
-| **Power** | 🟢 1x | LED Panel | Leuchtet hell im Betrieb. Dimmt nach 60s @ `ui_active_timeout` (Standard: 60s) auf 20% Helligkeit ab (statt ganz auszugehen). |
+| **Power** | 🟢 1x | LED Panel | Leuchtet hell im Betrieb. Dimmt nach 30s Inaktivität auf 20% Helligkeit ab (statt ganz auszugehen). |
 | **Master** | 🟢 1x | LED Panel | Leuchtet bei aktivem UI (Normalbetrieb). Signalisiert Störungen durch Blink-Muster: **2x**: Raum-Synchronisierung fehlgeschlagen | **3x**: WLAN-Verlust | **4x**: Hitze-Warnung (50-60°C). Bei über 60°C schaltet das Gerät automatisch ab. |
 | **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert** im Smart-Automatik Modus. Dauerhaft an bei WRG oder Durchlüften. |
 | **Modus R** (`LED_VEN`) | 🟢 1x | Rechts | Dauerhaft an bei Stoßlüftung oder Durchlüften. |
@@ -478,7 +479,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
 | Durchlüften (Sommer) | 🟢 | 🟢 |
 | Aus / System OFF | ⚫ | ⚫ |
 
-> 💡 **60 Sekunden Auto-Dimming:** Alle Status-LEDs (Modus, Intensität, Master) erlöschen 60 Sekunden (konfigurierbar) nach dem letzten Tastendruck sanft. Die **Power-LED** bleibt dabei auf 20% gedimmt an. Bei jedem Tastendruck werden alle LEDs wieder aktiviert. Ausnahme: Die **Master-LED signalisiert Fehlerzustände weiter**, auch nach dem Timeout.
+> 💡 **30 Sekunden Auto-Dimming:** Alle Status-LEDs (Modus, Intensität, Master) erlöschen 30 Sekunden nach dem letzten Tastendruck sanft. Die **Power-LED** bleibt dabei auf 20% gedimmt an. Bei jedem Tastendruck werden alle LEDs wieder aktiviert. Ausnahme: Die **Master-LED signalisiert Fehlerzustände weiter**, auch nach dem Timeout.
 
 ---
 
@@ -537,7 +538,7 @@ Das Panel verfügt über 3 Taster und 9 Status-LEDs.
   - Hat ein Gerät keine eigenen Sensoren, übernimmt es automatisch den höchsten Bedarf aus der Raumgruppe (via ESP-NOW).
   - Beim Wechsel *in* den Smart-Automatik-Modus werden alle Bedarfswerte auf null zurückgesetzt — der Lüfter **startet immer sanft von der Mindeststufe**, niemals direkt auf einer hohen Stufe.
 
-- **💧 Feuchtigkeitsmanagement:** Der Feuchtigkeits-PID-Regler (`pid_humidity`) läuft kontinuierlich parallel zum CO2-Regler. Entfeuchtung wird aktiviert, wenn das Feuchtigkeitslimit überschritten wird (Standard: 60%) **und** die Außenluft tatsächlich trockener ist als die Innenluft (absolute Feuchtigkeitsprüfung via Magnus-Formel — nicht nur relative Feuchtigkeit). Ist die Außenluft feuchter (z. B. Regentag), wird der Feuchtigkeits-Bedarf auf null gesetzt. Siehe [Enthalpie-Schutz ↑](#präzisions-sensorik--monitoring) für Beispiele mit Vergleichstabelle.
+- **💧 Feuchtigkeitsmanagement:** Der Feuchtigkeits-PID-Regler (`pid_humidity`) läuft kontinuierlich parallel zum CO2-Regler. Entfeuchtung wird aktiviert, wenn das Feuchtigkeitslimit überschritten wird (Standard: 60%) **und** die Außenluft tatsächlich trockener ist als die Innenluft (absolute Feuchtigkeitsprüfung via Magnus-Formel — nicht nur relative Feuchtigkeit). Ist die Außenluft feuchter (z. B. Regentag), wird der Feuchtigkeits-Bedarf auf null gesetzt. Siehe [Enthalpie-Schutz ↑](#️-präzisions-sensorik--monitoring) für Beispiele mit Vergleichstabelle.
 
 - **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich (mindestens 1,5°C kühler) wechselt das System automatisch in `Durchlüften` (Querlüftung). Phase-A- und Phase-B-Geräte im Raum blasen dabei gleichzeitig in entgegengesetzte Richtungen — echte Querlüftung. Sobald es außen wieder wärmer wird (Hysterese), kehrt das System zu WRG zurück.
 
@@ -566,19 +567,19 @@ Details siehe [Feuchte-Management-HA-Sensor.md](documentation/de/de_humidity-man
 
 ---
 
-#### 3. 💨 Stoßlüftung — `LED_VEN` 🟢
+#### 3. 🌬️ Querlüftung / Durchlüften (Sommer) — `LED_WRG` 🟢 + `LED_VEN` 🟢
+
+- **HA Entität:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` ("Durchlüften Dauer (min)", 0 = Endlos)
+- **Funktion:** Konstanter Luftstrom ohne Richtungswechsel. Hälfte der Gruppe saugt an, andere Hälfte bläst ab → kühler Luftzug durch den Wohnraum.
+- **Hinweis:** Im Automatik-Modus wird die Querlüftung **automatisch** bei hoher Innentemperatur aktiviert.
+
+---
+
+#### 4. 💨 Stoßlüftung — `LED_VEN` 🟢
 
 - **HA Entität:** `select.luefter_modus` → `Stoßlüftung`
 - **Funktion:** Intensivlüftung für schnellen Luftaustausch (z. B. nach dem Duschen oder Kochen).
 - **Ablauf:** 15 Minuten intensiv lüften, 105 Minuten Pause, dann erneuter 15-Minuten-Zyklus (2 Std. Rhythmus). Wechselnde Startrichtung schützt den Keramikspeicher.
-
----
-
-#### 4. 🌬️ Querlüftung / Durchlüften (Sommer) — `LED_WRG` 🟢 + `LED_VEN` 🟢
-
-- **HA Entität:** `select.luefter_modus` → `Durchlüften` + `number.lueftungsdauer` (Timer, 0 = Endlos)
-- **Funktion:** Konstanter Luftstrom ohne Richtungswechsel. Hälfte der Gruppe saugt an, andere Hälfte bläst ab → kühler Luftzug durch den Wohnraum.
-- **Hinweis:** Im Automatik-Modus wird die Querlüftung **automatisch** bei hoher Innentemperatur aktiviert.
 
 ---
 
@@ -595,17 +596,21 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 
 #### Verfügbare Steuerungen
 
-- **Lüfter**: Slider 0-10% bis 100% (entspricht intern den 10 Stufen des Bedienpanels)
-- **Modus**: Auswahl (Smart-Automatik / Eco Recovery / Ventilation / Off)
-- **Timer**: Konfiguration für "Durchlüften" (Standard: 30 Min)
-- **LED-Helligkeit**: `number.max_led_brightness` (0-100%, Standard: 80%) zur Begrenzung der maximalen Panel-Helligkeit.
-- **CO2-Grenzwert**: `number.auto_co2_threshold` (Im Automatik-Modus immer aktiv)
+- **Lüfter**: `fan.ventosync_hrv` — 10-Stufen-Slider (10 % … 100 %, 0 % = aus), entspricht den 10 Stufen des Bedienpanels
+- **Modus**: `select.luefter_modus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (dieselben Werte stehen als Presets an der Fan-Entität bereit)
+- **Timer**: `number.vent_timer` — Dauer für `Durchlüften` / `Stoßlüftung` in Minuten (0–120, Standard: 30; 0 = Dauerbetrieb)
+- **LED-Helligkeit**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
+- **CO2-Grenzwert**: `number.auto_co2_threshold` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
 - **Klima-Koordination** *(Konfiguration)*:
-  - `switch.klima_koordination` — HVAC-Koordination für dieses Gerät aktivieren (Standard: aus)
+  - `switch.klima_koordination` — HVAC-Koordination aktivieren, **pro Gerät** (Standard: aus)
   - `number.klima_koordination_co2_grenzwert` — Gelockerter CO2-Sollwert bei aktiver Klimaanlage, 800–1500 ppm (Standard: `1200`)
   - `number.klima_koordination_max_lufterstufe` — Lüfter-Obergrenze bei aktiver Klimaanlage, 1–5 (Standard: `3`)
   - `number.klima_koordination_co2_notfallgrenze` — CO2-Notfallgrenze, 1200–2000 ppm (Standard: `1500`)
   - `text_sensor.klima_koordination_status` — Aktueller Koordinator-Zustand (Diagnose)
+  > Die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v8) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Nur der Aktivierungsschalter gilt pro Gerät.
+- **Urlaubsmodus** *(Konfiguration)*:
+  - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
+  - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
 👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/de/de_home-assistant-entities.md)**.
@@ -618,14 +623,14 @@ Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **ein
 | :---: | :---: | :---: | :---: | :---: |
 | **OFF** | 0 % | 50.0 % | 50.0 % | 0 |
 | **1** | 10 % | 30.0 % | 70.0 % | 420 |
-| **2** | 16 % | 27.2 % | 72.8 % | 672 |
-| **3** | 23 % | 24.4 % | 75.6 % | 966 |
-| **4** | 31 % | 21.7 % | 78.3 % | 1302 |
-| **5** | 40 % | 18.9 % | 81.1 % | 1680 |
-| **6** | 50 % | 16.1 % | 83.9 % | 2100 |
-| **7** | 61 % | 13.3 % | 86.7 % | 2562 |
-| **8** | 73 % | 10.6 % | 89.4 % | 3066 |
-| **9** | 86 % | 7.8 % | 92.2 % | 3612 |
+| **2** | 16 % | 28.3 % | 71.7 % | 672 |
+| **3** | 23 % | 26.4 % | 73.6 % | 966 |
+| **4** | 31 % | 24.2 % | 75.8 % | 1302 |
+| **5** | 40 % | 21.7 % | 78.3 % | 1680 |
+| **6** | 50 % | 18.9 % | 81.1 % | 2100 |
+| **7** | 61 % | 15.8 % | 84.2 % | 2562 |
+| **8** | 73 % | 12.5 % | 87.5 % | 3066 |
+| **9** | 86 % | 8.9 % | 91.1 % | 3612 |
 | **10** | 100 % | 5.0 % | 95.0 % | 4200 |
 
 Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen (Stufe 1-6) eine feinere Abstufung ermöglicht, um akustisch noch dezenter zu bleiben, während in den höheren Stufen die Leistung schneller ansteigt.

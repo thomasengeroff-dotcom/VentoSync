@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.18] - 2026-09-19
+
+### Fixed
+
+- **Documentation review of `Readme.md` / `Readme_de.md`** — corrected factual errors found by verifying every claim against the firmware:
+  - **Broken table-of-contents anchors**: 24 of 39 internal links in `Readme.md` and 27 of 40 in `Readme_de.md` did not resolve on GitHub. The files mixed two anchor conventions; GitHub strips the emoji but keeps the variation selector. All internal links regenerated from the rendered headings and verified against GitHub's own renderer.
+  - **Fan PWM table**: the PWM columns for levels 2–9 were derived from a linear level→speed mapping, while the firmware uses the quadratic curve in `ventilation_logic.cpp` (`0.005x² + 0.055x + 0.10`). Recomputed from the actual formula (e.g. level 5: 18.9 % → **21.7 %** direction A). The performance and RPM columns were already correct.
+  - **Operating mode numbering**: modes 3 and 4 were listed in the wrong order (Boost before Cross-Ventilation), contradicting the documented button sequence and the mode indices in `globals.h` / `user_input.h` (2 = `Durchlüften`, 3 = `Stoßlüftung`). Corrected in both READMEs and in `documentation/*/…operating-modes.md` (overview table and detailed sections).
+  - **Non-existent Home Assistant entities**: `number.max_led_brightness` → `number.led_max_brightness_config` (range 5–100 %, not 0–100 %), `number.auto_CO2_threshold` → `number.auto_co2_threshold` (400–2000 ppm), `number.lueftungsdauer` → `number.vent_timer`, `select.modus_lueftungsanlage` → `select.luefter_modus`. Mode values corrected from invented English strings to the actual German select options.
+  - **LED auto-dimming**: documented as 60 s and configurable via `ui_active_timeout`; the firmware uses a hardcoded 30 s (`ui_timeout_script` in `packages/ui/ui_controls.yaml`) and has no such parameter. Corrected in both READMEs and both control-panel guides.
+  - **ESP-NOW protocol version**: `Readme.md`, `Readme_de.md` and both ESP-NOW guides still referenced protocol v4 (current: v8).
+  - **PWM direction labels in `CLAUDE.md`** were swapped relative to `ventilation_logic.cpp` (< 50 % = exhaust, > 50 % = supply); the level 5 values were corrected there as well.
+  - **Smart Climate Control scope**: the three threshold sliders have been room-wide since 0.10.14; both READMEs now state this and that only the enable switch is per device.
+  - Added the missing `ventosync_NTConly.yaml` variant to the configuration sections, added the missing vacation-mode entities to `Readme_de.md`, clarified the fan/timer entity descriptions, noted that the level 10 energy figure is calculated at the upper 6.0 W bound, and refreshed the stale version-bump example.
+
+
 ## [0.10.15] - 2026-09-04
 
 ### Fixed
