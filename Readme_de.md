@@ -63,7 +63,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
   - [🌡️ Kalibrierung der NTC-Sensoren](#️-kalibrierung-der-ntc-sensoren)
 - [🎮 Bedienung & Steuerung](#-bedienung--steuerung)
   - [🖐️ Bedienpanel (VentoMaxx Style)](#️-bedienpanel-ventomaxx-style)
-  - [🔄 Detaillierte Betriebsmodi (Programme)](#-detaillierte-betriebsmodi-programme)
+  - [🔄 Betriebsmodi (Programme)](#-betriebsmodi-programme)
   - [📱 Steuerung über Home Assistant](#-steuerung-über-home-assistant)
 - [🧠 Wärmerückgewinnung - So funktioniert's](#-wärmerückgewinnung---so-funktionierts)
 - [🔧 Technische Details & Optimierungen](#-technische-details--optimierungen)
@@ -181,7 +181,7 @@ Das VentoMaxx System mit dieser ESPHome Steuerung arbeitet überragend effizient
 
 - **Stufe 1 (Grundlüftung):** ~2,7 - 2,9 Watt *(ca. 7,36 € / Jahr)*
 - **Stufe 5 (Erhöhte Last):** ~3,2 - 3,7 Watt *(ca. 9,10 € / Jahr)*
-- **Stufe 10 (Maximalleistung):** ~5,0 - 6,0 Watt *(ca. 15,75 € / Jahr)*
+- **Stufe 10 (Maximalleistung):** ~5,0 - 6,0 Watt *(ca. 15,75 € / Jahr, gerechnet mit dem oberen Wert von 6,0 W)*
 
 Selbst bei ganzjährigem 24/7-Dauerbetrieb auf der *absoluten Maximalstufe (10)* belaufen sich die nominellen Stromkosten (bei 0,30 €/kWh) auf lediglich rund 15 Euro im Jahr. Im meist genutzten Automatik-Modus (Werte pendeln nachts oder bei Abwesenheit auf Stufe 1 bis 3) liegen die realen Betriebskosten bei extrem sparsamen **ca. 7 bis 8,50 Euro pro Jahr** für die gesamte Einheit.
 
@@ -449,144 +449,34 @@ Die Steuerung erfolgt intuitiv über das integrierte Bedienpanel oder vollautoma
 
 ### 🖐️ Bedienpanel (VentoMaxx Style)
 
-Das Panel verfügt über 3 Taster und 9 Status-LEDs.
+Das Gerät verfügt über ein 3-Tasten-Bedienpanel mit 9 Status-LEDs (dimmbar, mit Auto-Dimming nach 30 Sekunden Inaktivität und Diagnose-Blinkcodes).
 
-#### Tastenbelegung
+- **Power (I/O)**: Kurzer Druck schaltet die Lüftung EIN/AUS; langer Druck (>5s) aktiviert den Light Sleep; sehr langer Druck (>10s) startet das Gerät neu.
+- **Modus (M)**: Zykliert durch `Automatik` → `Wärmerückgewinnung` → `Durchlüften` → `Stoßlüftung` → `Aus`.
+- **Stufe (+)**: Zykliert durch 10 Lüfterstufen (kurzer Druck) oder läuft die Stufen fortlaufend durch (gedrückt halten).
+- **Feedback**: 5 Intensitäts-LEDs (Balkenanzeige mit 50%/100%-Helligkeitsstufen), 2 Modus-LEDs (`LED_WRG` / `LED_VEN`), Power-LED und Master-Diagnose-LED.
 
-| Taste | Funktion | Bedienung |
-| :--- | :--- | :--- |
-| **Power (I/O)** | System Ein/Aus | • Kurz drücken: Schaltet Lüftung EIN/AUS (AUS: stoppt Lüfter, bleibt online im Monitoring-Modus; EIN: stellt Modus wieder her & beendet Light-Sleep)<br>• Lang (>5s): Versetzt das Gerät in den Light-Sleep-Modus (Lüfter/LEDs/WLAN aus)<br>• Sehr lang (>10s): Versetzt das Gerät in den Light-Sleep-Modus und startet den ESP32 neu (Reboot) |
-| **Modus (M)** | Betriebsmodus | • Kurz drücken: Zykliert durch Automatik → WRG → Durchlüften → Stoßlüftung → Aus |
-| **Stufe (+)** | Lüfterstärke | • Kurz drücken: Zykliert durch 10 Geschwindigkeitsstufen (angezeigt über 5 LEDs).<br>• **Gedrückt halten**: Automatisches Auf- und Ab-Durchlaufen der Stufen (1 Stufe pro Sekunde) bis zum Loslassen. |
-
-#### Status-LEDs (Feedback)
-
-| LED | Anzahl | Position | Verhalten |
-| :--- | :---: | :--- | :--- |
-| **Power** | 🟢 1x | LED Panel | Leuchtet hell im Betrieb. Dimmt nach 30s Inaktivität auf 20% Helligkeit ab (statt ganz auszugehen). |
-| **Master** | 🟢 1x | LED Panel | Leuchtet bei aktivem UI (Normalbetrieb). Signalisiert Störungen durch Blink-Muster: **2x**: Raum-Synchronisierung fehlgeschlagen | **3x**: WLAN-Verlust | **4x**: Hitze-Warnung (50-60°C). Bei über 60°C schaltet das Gerät automatisch ab. |
-| **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert** im Smart-Automatik Modus. Dauerhaft an bei WRG oder Durchlüften. |
-| **Modus R** (`LED_VEN`) | 🟢 1x | Rechts | Dauerhaft an bei Stoßlüftung oder Durchlüften. |
-| **Intensität** | 🟢 5x | LED Panel | Zeigt aktuelle Lüfterstufe 1–10 (halbe/volle Helligkeit für 10 Stufen über 5 LEDs). Nur bei aktivem UI sichtbar. |
-
-**Modus-LED Zuordnung (bei aktivem UI):**
-
-| Modus | `LED_WRG` (links) | `LED_VEN` (rechts) |
-| :--- | :---: | :---: |
-| **Automatik (Standard)** | 🟢 (pulsiert langsam) | ⚫ |
-| Wärmerückgewinnung (Eco) | 🟢 | ⚫ |
-| Stoßlüftung | ⚫ | 🟢 |
-| Durchlüften (Sommer) | 🟢 | 🟢 |
-| Aus / System OFF | ⚫ | ⚫ |
-
-> 💡 **30 Sekunden Auto-Dimming:** Alle Status-LEDs (Modus, Intensität, Master) erlöschen 30 Sekunden nach dem letzten Tastendruck sanft. Die **Power-LED** bleibt dabei auf 20% gedimmt an. Bei jedem Tastendruck werden alle LEDs wieder aktiviert. Ausnahme: Die **Master-LED signalisiert Fehlerzustände weiter**, auch nach dem Timeout.
+> 📖 **Vollständige Bedienungsanleitung:**  
+> Alle Details zu Tastenfunktionen, der 10-stufigen LED-Balkenlogik, den Diagnose-Blinkmustern (Master-LED) und dem Gruppen-Wake-Up findest du in der **[📄 Bedienungsanleitung Lüftungsgerät](documentation/de/de_control-panel-operation.md)**.
 
 ---
 
-### 🔄 Detaillierte Betriebsmodi (Programme)
+### 🔄 Betriebsmodi (Programme)
 
-Über die **Modus-Taste (M)** zykliert das Gerät durch die Programme. Beim **Einschalten** ist **Modus 1 (Smart-Automatik)** aktiv.
+Die Lüftungsanlage unterstützt 5 Betriebsmodi, die über die physische **Modus-Taste (M)** am Gerät, die lokale Weboberfläche oder Home Assistant gewählt werden können.
 
-> 💡 **Tipp:** Die Reihenfolge beim Tastendruck ist: **Automatik → WRG → Durchlüften → Stoßlüftung → Aus → Automatik...**
+> **Tastenreihenfolge:** **Automatik → Wärmerückgewinnung → Durchlüften → Stoßlüftung → Aus → Automatik...** *(Beim Einschalten ist **Modus 1 (Smart-Automatik)** aktiv).*
 
----
+| # | Modus | Panel-LEDs (`WRG` / `VEN`) | Betrieb & Kernfunktion | HA-Entität / Auswahl |
+| :-: | :--- | :---: | :--- | :--- |
+| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Vollautonome PID-Regelung auf Basis von CO2, Feuchte und Außenluftbedingungen | `select.luefter_modus` → `Smart-Automatik` |
+| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Manueller Push-Pull-Betrieb (50s–70s Zyklus) mit bis zu 85% Wärmerückgewinnung | `select.luefter_modus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter unidirektionaler Luftzug (Phase A rein, Phase B raus) zur passiven Nachtkühlung | `select.luefter_modus` → `Durchlüften` |
+| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | 15 min Intensivlüftung, danach 105 min Regenerationspause des Keramikkerns | `select.luefter_modus` → `Stoßlüftung` |
+| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Klimasensoren & Web-UI bleiben für die Datenaufzeichnung online | `select.luefter_modus` → `Aus` |
 
-#### 1. 🤖 Smart-Automatik *(Standard / Empfohlen)* — `LED_WRG` 🟢 (pulsiert langsam)
-
-**Dieser Modus ist der Standard beim Einschalten** und übernimmt vollautomatisch alle Steuerungsaufgaben. Die Lüftungsanlage regelt sich eigenständig basierend auf Umgebungsdaten und erfordert nach initialer HA-Konfiguration keinerlei manuelle Eingriffe ("Set and Forget").
-
-**Aktive Smart-Features:**
-
-| Feature | Sensor(en) | Schwellenwert |
-| :--- | :--- | :--- |
-| ✅ **CO2-Regelung (PID)** | SCD43 (`sensor.scd41_co2`) | `number.auto_co2_threshold` |
-| ✅ **Feuchte-Management (PID)** | SCD43 (`sensor.scd41_humidity`) + HA `outdoor_humidity` | Über Außenfeuchte |
-| ✅ **Sommer-Kühlfunktion** | NTC-Sensoren + ESP-NOW Gruppentemperatur | 22°C Innentemperatur |
-
-**Logik im Detail:**
-
-- **Grundbetrieb:** Wärmerückgewinnung (`MODE_ECO_RECOVERY`) auf Mindestlüfterstufe (`co2_min_fan_level`, Standard: 2). Die Wechselintervalle (Zyklusdauer) passen sich dabei dynamisch der aktuellen Lüfterstufe an (sanfte 70 Sekunden auf Stufe 1 bis schnelle 50 Sekunden auf Stufe 10) inkl. synchronisiertem NTC-Zeitfenster.
-
-- **🎛️ Intelligente PID-Regelung — CO2 & Feuchtigkeit:** Anstatt den Lüfter einfach auf volle Leistung zu schalten, wenn Grenzwerte überschritten werden, nutzt VentoSync einen **PID-Regler**, um die Lüfterstärke präzise, stufenweise und vor allem leise zu regulieren.
-
-  > **Was ist ein PID-Regler?**
-  > Stell dir vor, du fährst Auto: Bist du nur knapp über dem Tempolimit, nimmst du kaum Gas raus. Bist du weit drüber, bremst du stärker. Und wenn du schon längere Zeit knapp drüber bist, drückst du etwas mehr auf die Bremse. VentoSync funktioniert mit CO2 und Luftfeuchte genauso — kein abruptes Schalten, sondern sanftes, kontinuierliches Nachregeln.
-
-  Der Regler hat **zwei aktive Anteile**:
-
-  - **P (Proportional)**: Reagiert *sofort* auf die Abweichung. Bei 100 ppm über dem Grenzwert: moderate Anforderung. Bei 500 ppm: spürbar höher.
-  - **I (Integral)**: Das „Gedächtnis" des Reglers. Bleibt eine Abweichung *über längere Zeit* bestehen (z. B. weil Personen im Raum atmen), erhöht dieser Anteil die Anforderung langsam und stetig — bis sich die Luftqualität verbessert. Sinkt der CO2-Wert, baut sich der Integral-Anteil wieder ab.
-
-  > [!NOTE]
-  > Der Regler ist bewusst sehr langsam eingestellt (I-Anteil: `0.0000005`). Erst anhaltend erhöhte CO2-Werte über viele Minuten führen zu einer höheren Lüfterstufe.
-
-  **Praxisbeispiel** — CO2-Grenzwert `800 ppm`, Lüfterbereich Stufe 2–7:
-
-  | Zeit | CO2-Wert | Was passiert |
-  | --- | --- | --- |
-  | 0 min | 820 ppm | 20 ppm über Grenzwert → kleiner Bedarf → **Lüfter bleibt auf Stufe 2** (Minimum) |
-  | 15 min | 870 ppm | 70 ppm drüber, Integral baut sich auf → **Lüfter bleibt auf Stufe 2** |
-  | 30 min | 920 ppm | 120 ppm drüber, Integral akkumuliert → **Lüfter schaltet auf Stufe 3** |
-  | 50 min | 960 ppm | CO2 steigt weiter, Integral ebenfalls → **Lüfter schaltet auf Stufe 4** |
-  | 70 min | 900 ppm | CO2 fällt, Integral baut ab → **Lüfter kehrt auf Stufe 3 zurück** |
-  | 90 min | 790 ppm | Unter Grenzwert, Bedarf → null → **Lüfter kehrt auf Stufe 2 zurück** |
-
-  **Die wichtigsten Verhaltensregeln:**
-  - Der Lüfter ändert sich um **maximal ±1 Stufe pro 10-Sekunden-Zyklus** — keine abrupten Sprünge.
-  - Der Lüfter unterschreitet nie die konfigurierte **Mindeststufe** (Standard: Stufe 2) und überschreitet nie die **Maximalstufe** (Standard: Stufe 7).
-  - CO2 ist das **primäre Regelsignal**, aber das System verwendet immer den **höheren** Bedarf aus CO2 und Feuchtigkeit — so wird keines der beiden Luftqualitäts-Kriterien jemals vernachlässigt.
-  - Hat ein Gerät keine eigenen Sensoren, übernimmt es automatisch den höchsten Bedarf aus der Raumgruppe (via ESP-NOW).
-  - Beim Wechsel *in* den Smart-Automatik-Modus werden alle Bedarfswerte auf null zurückgesetzt — der Lüfter **startet immer sanft von der Mindeststufe**, niemals direkt auf einer hohen Stufe.
-
-- **💧 Feuchtigkeitsmanagement:** Der Feuchtigkeits-PID-Regler (`pid_humidity`) läuft kontinuierlich parallel zum CO2-Regler. Entfeuchtung wird aktiviert, wenn das Feuchtigkeitslimit überschritten wird (Standard: 60%) **und** die Außenluft tatsächlich trockener ist als die Innenluft (absolute Feuchtigkeitsprüfung via Magnus-Formel — nicht nur relative Feuchtigkeit). Ist die Außenluft feuchter (z. B. Regentag), wird der Feuchtigkeits-Bedarf auf null gesetzt. Siehe [Enthalpie-Schutz ↑](#️-präzisions-sensorik--monitoring) für Beispiele mit Vergleichstabelle.
-
-- **Sommer-Kühlung:** Bei Innentemperatur > 22°C und kühlerem Außenbereich (mindestens 1,5°C kühler) wechselt das System automatisch in `Durchlüften` (Querlüftung). Phase-A- und Phase-B-Geräte im Raum blasen dabei gleichzeitig in entgegengesetzte Richtungen — echte Querlüftung. Sobald es außen wieder wärmer wird (Hysterese), kehrt das System zu WRG zurück.
-
-- **Anwesenheit (Manuelle Modi):** In den Modi WRG, Durchlüften und Stoßlüftung wird die Lüfterstärke bei erkannter Präsenz dynamisch angepasst (Slider `-5` bis `+5`). Dies erlaubt einen bedarfsgerechten „Präsenz-Boost" ohne die Automatik-Regelung zu beeinflussen.
-
-- **🌱 Energiespar-Modus (Light Sleep):** Aktivierbar durch langen Druck auf den Power-Button (>5s). Im Light Sleep werden Lüfter und WLAN deaktiviert und der LED-Treiber (PCA9685) komplett stromlos geschaltet. Ein einfacher Druck auf den Power-Button weckt das Gerät sofort wieder auf und synchronisiert es mit der Gruppe.
-
-- **Gruppenlogik:** PID-Demand und Temperaturen werden sekündlich via ESP-NOW Unicast geteilt — alle entdeckten Geräte im Raum laufen synchron (die Lüfter skalieren identisch auf den höchsten Bedarf im Raum).
-
-> **⚙️ Voraussetzung für das Feuchte-Management: `sensor.outdoor_humidity` in Home Assistant**
->
-> Der ESPHome-Code erwartet die Entity-ID `sensor.outdoor_humidity` (in `sensors_climate.yaml`). Es gibt zwei Wege:
-> **Option A (Wetterdienst):** Erstelle einen Template-Sensor basierend auf deiner Wetter-Integration (z.B. OpenWeatherMap).
-> **Option B (Lokaler Sensor):** Erstelle einen Template-Sensor (Alias) oder passe die Entity-ID in der YAML an.
-> *Ohne diesen Sensor funktioniert die Entfeuchtung trotzdem, der Outdoor-Check wird dann einfach übersprungen.*
-Details siehe [Feuchte-Management-HA-Sensor.md](documentation/de/de_humidity-management.md)
-
----
-
-#### 2. ❄️ Wärmerückgewinnung (Eco Recovery) — `LED_WRG` 🟢
-
-- **HA Entität:** `select.luefter_modus` → `Wärmerückgewinnung`
-- **Funktion:** Manueller WRG-Betrieb ohne die Smart-Automatik-Features. Die Luftrichtung wechselt zyklisch, Wärmeverlust wird um bis zu 85% reduziert.
-- **Zykluszeiten:** Passen sich der Lüfterstufe an: Stufe 1: **70 Sek.**, Stufe 2: **65 Sek.**, … Stufe 5: **50 Sek.**
-- **Synchronisation:** Phase A bläst hinein, Phase B hinaus — Geräte im Gegentakt, Haus druckneutral.
-
----
-
-#### 3. 🌬️ Querlüftung / Durchlüften (Sommer) — `LED_WRG` 🟢 + `LED_VEN` 🟢
-
-- **HA Entität:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` ("Durchlüften Dauer (min)", 0 = Endlos)
-- **Funktion:** Konstanter Luftstrom ohne Richtungswechsel. Hälfte der Gruppe saugt an, andere Hälfte bläst ab → kühler Luftzug durch den Wohnraum.
-- **Hinweis:** Im Automatik-Modus wird die Querlüftung **automatisch** bei hoher Innentemperatur aktiviert.
-
----
-
-#### 4. 💨 Stoßlüftung — `LED_VEN` 🟢
-
-- **HA Entität:** `select.luefter_modus` → `Stoßlüftung`
-- **Funktion:** Intensivlüftung für schnellen Luftaustausch (z. B. nach dem Duschen oder Kochen).
-- **Ablauf:** 15 Minuten intensiv lüften, 105 Minuten Pause, dann erneuter 15-Minuten-Zyklus (2 Std. Rhythmus). Wechselnde Startrichtung schützt den Keramikspeicher.
-
----
-
-#### 5. ⭕ Aus (Monitoring-Modus) — beide LEDs ⚫
-
-- **HA Entität:** `select.luefter_modus` → `Aus`
-- **Funktion:** Lüfter und PWM-Ausgänge werden gestoppt (0 RPM). Alle Umweltsensoren (CO2, Temp, Radar) und das Web-Dashboard bleiben für unterbrechungsfreies Logging in Home Assistant aktiv. *(Hinweis: Für den stromsparenden Light-Sleep mit abgeschaltetem WLAN die Power-Taste >5s gedrückt halten).*
+> 📖 **Ausführlicher Betriebsmodi-Guide:**  
+> Alle technischen Details zur PID-Regellogik, Praxisbeispiele mit Zeitverlauf, enthalpiebasierte Entfeuchtung, Sommerkühlungs-Hysterese und der Light-Sleep-Energiesparmodus stehen im **[📄 Betriebsmodi & Programmlogik](documentation/de/de_operating-modes.md)**.
 
 ---
 

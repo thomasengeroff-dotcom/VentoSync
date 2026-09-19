@@ -50,6 +50,10 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 - **Basic Operation:** Continuous heat recovery (`MODE_ECO_RECOVERY`) at the configured minimum fan level (`automatik_min_luefterstufe`, default: Level 2). Change intervals adapt dynamically to fan speed (70s at Level 1 to 50s at Level 10).
 - **🎛️ Intelligent PID Control (CO2 & Humidity):** Instead of noisy binary switching, VentoSync uses a dual-loop PID controller:
+
+  > **What is a PID controller?**
+  > Think of driving a car: if you are barely over the speed limit you ease off the accelerator only slightly; if you are far over it you brake harder; and if you have been slightly over it for a while you apply a little more brake. VentoSync treats CO2 and humidity the same way — no abrupt switching, just gentle, continuous correction.
+
   - **P (Proportional):** Reacts instantly to deviations above the threshold.
   - **I (Integral):** Slowly accumulates persistent deviations (e.g., several people in a room) and gently increases fan levels over time.
   - **Gentle Tuning:** The I-gain is tuned extremely slowly (`0.0000005`) to ignore short-term spikes (e.g. opening a bottle of carbonated water).
@@ -72,6 +76,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 3. **Signal Arbitration:** The system takes the **maximum** of CO2 demand and Humidity demand, ensuring neither parameter is neglected.
 4. **Smooth Mode Entry:** Switching *into* Smart Automatic resets PID integrals to zero so the fan always starts at the minimum level and ramps up only if needed.
 5. **Absolute Humidity Guard:** Dehumidification only increases fan speeds if outdoor absolute humidity is actually lower than indoor air (using the Magnus formula). If outdoor air is more humid (e.g. raining), humidity ventilation demand is set to 0.
+6. **Group Fallback:** A device without its own sensors (the `nosensor`, `radar_only` and `NTConly` variants) automatically adopts the highest demand of the room group via ESP-NOW.
 
 > [!TIP]
 > For the complete technical background and C++ logic implementation, see **[📄 smart-automatic-logic.md](en_smart-automatic-logic.md)** and **[📄 humidity-management.md](en_humidity-management.md)**.
