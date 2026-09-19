@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.17",
-    "project_date": "2026-09-18",
-    "project_description": "Fix: Changed window guard LED strobe effect - the LED will simply blink by turning off and on, but it will inherit the current, user-configured base brightness rather than switching to maximum brightness."
+    "project_version": "0.10.19",
+    "project_date": "2026-09-19",
+    "project_description": "Per-device air quality (CO2, rating, temperature, humidity) on the local web dashboard, shared across the room group via ESP-NOW protocol v9"
 }
