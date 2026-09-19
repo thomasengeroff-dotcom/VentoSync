@@ -211,13 +211,13 @@ Complex YAML lambda logic is extracted into focused header files:
 
 ## Fan PWM Curve (VentoMaxx V-Curve)
 
-50% PWM = standstill. Direction A (Intake): 50% → 5% (increasing speed). Direction B (Exhaust): 50% → 95%.
+50% PWM = standstill. Direction A (Exhaust / Abluft): 50% → 5% (increasing speed). Direction B (Supply / Zuluft): 50% → 95%.
 
 | Level | PWM Dir A | PWM Dir B | RPM (approx.) |
 |-------|-----------|-----------|---------------|
 | OFF   | 50.0%     | 50.0%     | 0             |
 | 1     | 30.0%     | 70.0%     | 420           |
-| 5     | 18.9%     | 81.1%     | 1680          |
+| 5     | 21.7%     | 78.3%     | 1680          |
 | 10    | 5.0%      | 95.0%     | 4200          |
 
 Slew-rate limiter: ~5% per second, 1-second call interval.

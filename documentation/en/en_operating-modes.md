@@ -23,11 +23,11 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 | # | Mode | Panel LEDs (`WRG` / `VEN`) | Fan Behavior | Cycle Time | HA Entity / Selection |
 | :-: | :--- | :---: | :--- | :--- | :--- |
-| **1** | **🤖 Smart Automatic** *(Standard)* | 🟢 *(pulses)* / ⚫ | Dynamic PID (Levels 1–10) based on CO2 & Humidity | 50s – 70s dynamic | `select.modus_lueftungsanlage` → `Smart automatic` |
-| **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Constant manual level (1–10) with push-pull heat exchange | 50s – 70s dynamic | `select.modus_lueftungsanlage` → `Eco Recovery` |
-| **3** | **💨 Boost Ventilation** | ⚫ / 🟢 | Intensive ventilation (15 min run, 105 min pause) | Continuous (15 min) | `button.stosslueftung_starten` / `Boost Ventilation` |
-| **4** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Constant airflow without direction change (Phase A in, Phase B out) | Continuous / Timer | `select.modus_lueftungsanlage` → `Ventilation` |
-| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all sensors & web UI remain fully active | — | `select.modus_lueftungsanlage` → `Off` |
+| **1** | **🤖 Smart Automatic** *(Standard)* | 🟢 *(pulses)* / ⚫ | Dynamic PID (Levels 1–10) based on CO2 & Humidity | 50s – 70s dynamic | `select.luefter_modus` → `Smart-Automatik` |
+| **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Constant manual level (1–10) with push-pull heat exchange | 50s – 70s dynamic | `select.luefter_modus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Constant airflow without direction change (Phase A in, Phase B out) | Continuous / Timer | `select.luefter_modus` → `Durchlüften` |
+| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | Intensive ventilation (15 min run, 105 min pause) | Continuous (15 min) | `select.luefter_modus` → `Stoßlüftung` |
+| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all sensors & web UI remain fully active | — | `select.luefter_modus` → `Aus` |
 
 ---
 
@@ -80,7 +80,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ### 2. ❄️ Heat Recovery (Eco Recovery) — `LED_WRG` 🟢 (solid)
 
-- **HA Entity:** `select.modus_lueftungsanlage` → `Eco Recovery`
+- **HA Entity:** `select.luefter_modus` → `Wärmerückgewinnung`
 - **Function:** Manual heat recovery operation without automatic PID scaling. The air direction changes periodically, recovering up to 85% of thermal energy.
 - **Cycle Times:** Dynamically match the selected fan level:
   - Level 1: **70 seconds**
@@ -91,9 +91,18 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ---
 
-### 3. 💨 Boost Ventilation — `LED_VEN` 🟢 (solid)
+### 3. 🌬️ Cross-Ventilation / Ventilation (Summer Mode) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (solid)
 
-- **HA Entity:** `button.stosslueftung_starten` / `select.modus_lueftungsanlage` → `Boost Ventilation`
+- **HA Entity:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` (Timer, 0 = continuous)
+- **Function:** Unidirectional constant airflow without periodic direction reversal.
+- **Operation:** Phase-A units continuously pull outside air in, while Phase-B units continuously blow inside air out, creating an effective cross-draft through the living area for passive night cooling.
+- **Automatic Trigger:** In Smart Automatic mode, cross-ventilation activates automatically during summer nights when indoor temperature exceeds 22°C and outdoor temperature is lower by at least 1.5°C.
+
+---
+
+### 4. 💨 Boost Ventilation — `LED_VEN` 🟢 (solid)
+
+- **HA Entity:** `select.luefter_modus` → `Stoßlüftung`
 - **Function:** Intensive burst ventilation for rapid air renewal (e.g., after cooking or showering).
 - **2-Hour Sequence:**
   - **15 minutes:** High-intensity ventilation at the configured boost level.
@@ -103,18 +112,9 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ---
 
-### 4. 🌬️ Cross-Ventilation / Ventilation (Summer Mode) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (solid)
-
-- **HA Entity:** `select.modus_lueftungsanlage` → `Ventilation` + `number.lueftungsdauer` (Timer, 0 = continuous)
-- **Function:** Unidirectional constant airflow without periodic direction reversal.
-- **Operation:** Phase-A units continuously pull outside air in, while Phase-B units continuously blow inside air out, creating an effective cross-draft through the living area for passive night cooling.
-- **Automatic Trigger:** In Smart Automatic mode, cross-ventilation activates automatically during summer nights when indoor temperature exceeds 22°C and outdoor temperature is lower by at least 1.5°C.
-
----
-
 ### 5. ⭕ Off (Monitoring Mode) — both LEDs ⚫
 
-- **HA Entity:** `select.modus_lueftungsanlage` → `Off`
+- **HA Entity:** `select.luefter_modus` → `Aus`
 - **Function:** The fan motor and PWM drive are completely shut down (0 RPM).
 - **Active Sensors:** Environmental sensors (SCD43 CO2/temp/humidity, BMP390, BME680, Radar presence) and the local web dashboard remain active for uninterrupted data collection in Home Assistant.
 - **Ultra-Low-Power Light Sleep:** Long-pressing the physical Power button for **> 5s** enters deep light sleep (disables Wi-Fi, LEDs, and radar; power consumption < 0.1W). A single short press immediately wakes the unit and reconnects to the network.
