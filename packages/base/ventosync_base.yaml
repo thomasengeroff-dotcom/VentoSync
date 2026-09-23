@@ -189,6 +189,8 @@ ventilation_group:
   auto_presence_global: auto_presence_val
   max_led_brightness_global: max_led_brightness
   co2_sensor: effective_co2
+  scd41_humidity_sensor: scd41_humidity
+  bme680_humidity_sensor: bme680_humidity
   hvac_co2_threshold_global: hvac_co2_threshold_val
   hvac_emergency_co2_global: hvac_emergency_co2_val
   hvac_max_fan_level_global: hvac_max_fan_level_val

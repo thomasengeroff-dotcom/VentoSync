@@ -27,6 +27,7 @@
 #include "wrg_dashboard.h"
 #include "dashboard_html.h"
 #include "esphome/components/ventilation_group/ventilation_group.h"
+#include "esphome/components/ventilation_logic/ventilation_logic.h"
 #include "esphome/core/log.h"
 #include <ArduinoJson.h>
 #include <unordered_set>
@@ -258,6 +259,14 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
           p["board_t"] = peer.board_temp;
         if (!std::isnan(peer.room_temp))
           p["room_t"] = peer.room_temp;
+        // Air quality shared over ESP-NOW (SCD43 or BME680, whichever the peer has).
+        // The rating uses the same classification as the local card so both agree.
+        if (!std::isnan(peer.room_co2) && peer.room_co2 > 0.0f) {
+          p["co2"] = peer.room_co2;
+          p["co2_rating"] = VentilationLogic::get_co2_classification(peer.room_co2);
+        }
+        if (!std::isnan(peer.room_humidity))
+          p["humidity"] = peer.room_humidity;
       }
     }
   }

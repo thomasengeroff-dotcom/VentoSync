@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.18] - 2026-09-23
+## [0.10.20] - 2026-09-23
 
 ### Fixed
 
@@ -14,6 +14,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced the blind adoption of peer PID demand (`last_peer_pid_demand`) with an explicit "room-wide maximum CO2" calculation (`get_room_max_co2()`). Each device now independently calculates its own PID demand based on the highest actual CO2 value measured anywhere in the room.
   - This eliminates the feedback loop and ensures the system always reacts to the true current air quality.
   - The HVAC coordinator now also leverages this unified `get_room_max_co2()` function for robust room-wide CO2 evaluation.
+
+## [0.10.19] - 2026-09-19
+
+### Added
+
+- **Per-device air quality on the local web dashboard** (`components/wrg_dashboard/`, `components/ventilation_group/`, `packages/base/ventosync_base.yaml`):
+  - Every card in the "Verbundene Geräte (ESP-NOW)" tile — including the local device — now shows a **Luftqualität** block with CO2 (ppm), rating, temperature and relative humidity, mirroring the standalone "Luftqualität" tile.
+  - The values come from whichever climate sensor the device actually has: SCD43, or the BME680 eCO2 / humidity fallback. A device without a climate sensor shows `--`.
+  - The CO2 rating is computed with `VentilationLogic::get_co2_classification()`, the same function that feeds the local tile, so peer cards and the local tile can never disagree.
+  - Room temperature moved from the technical block into the new air quality block, so it is no longer shown twice per card.
+
+### Changed
+
+- **ESP-NOW protocol v8 → v9** (`components/ventilation_group/ventilation_group.h`, `components/ventilation_group/__init__.py`):
+  - `VentilationPacket` gains `room_humidity` (float, SCD41 → BME680 fallback, mirroring the existing `room_temp` chain); `room_co2` and `room_temp` were already shared since v8. Packet size is 73 bytes, well inside the 250-byte ESP-NOW payload limit, and a new `static_assert` now guards that bound.
+  - New `ventilation_group` config keys `scd41_humidity_sensor` and `bme680_humidity_sensor`, wired in `ventosync_base.yaml`.
+  - **All devices of a room must be flashed together**, as with every protocol bump — nodes reject packets carrying a different protocol version.
+
+### Documentation
+
+- Updated `documentation/*/…local-web-dashboard.md` with the new air quality fields, and the protocol version references in `CLAUDE.md`, both READMEs, both ESP-NOW guides, both Smart Climate Control guides and the component/package READMEs.
+
+## [0.10.18] - 2026-09-19
+
+### Fixed
+
+- **Documentation review of `Readme.md` / `Readme_de.md`** — corrected factual errors found by verifying every claim against the firmware:
+  - **Broken table-of-contents anchors**: 24 of 39 internal links in `Readme.md` and 27 of 40 in `Readme_de.md` did not resolve on GitHub. The files mixed two anchor conventions; GitHub strips the emoji but keeps the variation selector. All internal links regenerated from the rendered headings and verified against GitHub's own renderer.
+  - **Fan PWM table**: the PWM columns for levels 2–9 were derived from a linear level→speed mapping, while the firmware uses the quadratic curve in `ventilation_logic.cpp` (`0.005x² + 0.055x + 0.10`). Recomputed from the actual formula (e.g. level 5: 18.9 % → **21.7 %** direction A). The performance and RPM columns were already correct.
+  - **Operating mode numbering**: modes 3 and 4 were listed in the wrong order (Boost before Cross-Ventilation), contradicting the documented button sequence and the mode indices in `globals.h` / `user_input.h` (2 = `Durchlüften`, 3 = `Stoßlüftung`). Corrected in both READMEs and in `documentation/*/…operating-modes.md` (overview table and detailed sections).
+  - **Non-existent Home Assistant entities**: `number.max_led_brightness` → `number.led_max_brightness_config` (range 5–100 %, not 0–100 %), `number.auto_CO2_threshold` → `number.auto_co2_threshold` (400–2000 ppm), `number.lueftungsdauer` → `number.vent_timer`, `select.modus_lueftungsanlage` → `select.luefter_modus`. Mode values corrected from invented English strings to the actual German select options.
+  - **LED auto-dimming**: documented as 60 s and configurable via `ui_active_timeout`; the firmware uses a hardcoded 30 s (`ui_timeout_script` in `packages/ui/ui_controls.yaml`) and has no such parameter. Corrected in both READMEs and both control-panel guides.
+  - **ESP-NOW protocol version**: `Readme.md`, `Readme_de.md` and both ESP-NOW guides still referenced protocol v4 (current: v8).
+  - **PWM direction labels in `CLAUDE.md`** were swapped relative to `ventilation_logic.cpp` (< 50 % = exhaust, > 50 % = supply); the level 5 values were corrected there as well.
+  - **Smart Climate Control scope**: the three threshold sliders have been room-wide since 0.10.14; both READMEs now state this and that only the enable switch is per device.
+  - Added the missing `ventosync_NTConly.yaml` variant to the configuration sections, added the missing vacation-mode entities to `Readme_de.md`, clarified the fan/timer entity descriptions, noted that the level 10 energy figure is calculated at the upper 6.0 W bound, and refreshed the stale version-bump example.
+
+### Changed
+
+- **`Readme_de.md` restructured to match `Readme.md`** — the German README duplicated the content of `de_operating-modes.md` and `de_control-panel-operation.md` inline, so the same facts had to be maintained twice. The detailed per-mode sections and the button/LED tables are now condensed to the same overview table plus guide link that the English README uses. Both READMEs now have an identical heading structure (47 headings, same levels).
+  - This removed two errors that existed only in the inline duplicate: a cycle time of "Stufe 5: 50 Sek." (the formula in `ventilation_logic.cpp` yields ~60 s, as the guide states) and a reference to the non-existent global `co2_min_fan_level`.
+  - Content that existed only in the README was preserved in the guides first: the "what is a PID controller" car analogy and a new behavior rule documenting the ESP-NOW group fallback for devices without their own sensors — both added to `de_operating-modes.md` and `en_operating-modes.md` to keep them in parity.
 
 ## [0.10.15] - 2026-09-04
 
@@ -39,7 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated `documentation/*/…smart-climate-control.md` (room-wide thresholds, shared CO2, protocol v8 multi-device section), `documentation/*/…home-assistant-entities.md`, `CLAUDE.md` and the component/package READMEs (protocol v8).
 
-
 ## [0.10.13] - 2026-09-02
 
 ### Added
@@ -57,7 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rewrote `documentation/en/en_smart-climate-control.md` and `documentation/de/de_smart-climate-control.md` to reflect the implemented behavior. Concept corrections found during review: the `climate` entity `state` (hvac_mode) must be mapped instead of the cycling `hvac_action` (would oscillate); mixed hvac_mode/hvac_action values in the original mapping fixed; `select.ventilation_mode` corrected to `select.luefter_modus`; the invented 1100 ppm "ramping" hysteresis replaced by the real PID + level-hysteresis behavior; the "humidity PID disabled" rule is unsafe while the AC runs in heating mode and was replaced by the mold guard; emergency now documented as also lifting the humidity suppression while keeping heat recovery enforced; HA setup example with template binary sensor added.
 - Updated `Readme.md`, `Readme_de.md`, `documentation/*/…home-assistant-entities.md`, `documentation/*/…smart-automatic-logic.md`, `documentation/*/…roadmap-and-future-enhancements.md` (marked as implemented), `tests/README.md` and `CLAUDE.md`.
-
 
 ## [0.10.12] - 2026-08-30
 
@@ -78,7 +118,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Home Assistant Entity Documentation Harmonization** (`Readme.md`, `Readme_de.md`):
   - Aligned operating mode table entries with ESPHome `ui_controls.yaml` definitions (`select.luefter_modus` with exact German state options).
 
-
 ## [0.10.11] - 2026-08-29
 
 ### Documentation
@@ -91,7 +130,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated all internal markdown references in `Readme.md`, `Readme_de.md`, `CHANGELOG.md`, `CLAUDE.md`, and subpage links.
   - Verified 446 markdown links across the repository with 0 broken references.
 
-
 ## [0.10.10] - 2026-08-29
 
 ### Documentation
@@ -103,7 +141,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated Mermaid flow diagram with hysteresis hold-state branch (`0.005 to 0.01`) and connection to Master evaluation.
   - Clarified PID demand conflict resolution as "Priority with Boost" (`max(CO2, Humidity)`) rather than exclusive suppression.
   - Added technical note regarding $K_d = 0.0$ tuning for CO2 regulation to prevent noise amplification from SCD41 sensors.
-
 
 ## [0.10.9] - 2026-08-27
 

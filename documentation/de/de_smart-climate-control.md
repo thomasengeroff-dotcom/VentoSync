@@ -217,9 +217,9 @@ Für einen einfachen `input_boolean`-Helfer oder eine Schaltsteckdose, die ein m
 
 ---
 
-## Räume mit mehreren Geräten (ESP-NOW, Protokoll v8)
+## Räume mit mehreren Geräten (ESP-NOW, Protokoll v9)
 
-Das `VentilationPacket` trägt seit Protokoll **v8** vier zusätzliche Felder (`room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level`). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren (gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump). Vier Mechanismen halten eine Raumgruppe konsistent:
+Das `VentilationPacket` trägt seit Protokoll **v8** vier zusätzliche Felder (`room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level`). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren — gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump (aktuelles Protokoll: v9, das `room_humidity` ergänzt hat). Vier Mechanismen halten eine Raumgruppe konsistent:
 
 1. **Geteilter CO2-Wert:** Jedes Gerät sendet seinen effektiven CO2-Wert; Geräte ohne Sensor werten den Koordinator mit dem Raumwert aus (siehe [Fehlender CO2-Messwert](#3-fehlender-co2-messwert-raumweit)).
 2. **Raumweite Grenzwerte:** Die drei Slider werden über den bestehenden Config-Sync-Pfad (`handle_config_sync()`) abgeglichen: Eine Änderung an einem Gerät geht als `MSG_STATE` an alle Peers, der `MSG_SYNC`-Heartbeat des Masters setzt die Werte auf Slaves erneut.

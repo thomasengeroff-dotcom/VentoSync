@@ -54,6 +54,11 @@ Das Web-Dashboard scannt und visualisiert alle aktiven Lüftungsgeräte im selbe
 * **Aktueller Betriebsmodus** (Automatik, WRG, Stoßlüftung, Durchlüften, Aus)
 * **Lüfterstufe** (1–10)
 * **Aktuelle Luftrichtung / Phase** (Zuluft / Abluft / Stillstand)
+* **Telemetrie** (Lüfter-RPM, Board-Temperatur, PID-Bedarf)
+* **Luftqualität je Gerät** (CO2 in ppm, Bewertung, Temperatur, relative Luftfeuchtigkeit)
+
+> [!NOTE]
+> Die Luftqualitätswerte werden per ESP-NOW (Protokoll v9) geteilt. Jede Karte zeigt also die Messwerte des **jeweiligen** Geräts — egal ob SCD43 oder der BME680-eCO2-Fallback. Geräte ohne Klimasensor zeigen `--`; die Bewertung nutzt dieselbe Klassifizierung wie die lokale Kachel „Luftqualität", sodass beide immer übereinstimmen.
 
 ---
 

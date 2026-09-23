@@ -63,7 +63,7 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protocol Architecture & Packet Validation (v4)
+## 🔒 Protocol Architecture & Packet Validation (v9)
 
 * **Magic Header Validation**: Every packet begins with a fixed magic byte (`0x42`) to immediately discard foreign or malformed 2.4 GHz packets.
 * **Firmware Version Guard**: Strict version validation ensures that packets from incompatible firmware builds are rejected cleanly.

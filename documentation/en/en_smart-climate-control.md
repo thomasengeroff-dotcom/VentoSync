@@ -217,9 +217,9 @@ For a simple `input_boolean` helper or a smart plug that powers a portable AC, p
 
 ---
 
-## Multi-Device Rooms (ESP-NOW, Protocol v8)
+## Multi-Device Rooms (ESP-NOW, Protocol v9)
 
-The `VentilationPacket` carries four additional fields since protocol **v8** (`room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level`). All devices of a room must run the same firmware version (simultaneous OTA rollout, as with every protocol bump). Four mechanisms keep a room group consistent:
+The `VentilationPacket` carries four additional fields since protocol **v8** (`room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level`). All devices of a room must run the same firmware version — a simultaneous OTA rollout, as with every protocol bump (the current protocol is v9, which added `room_humidity`). Four mechanisms keep a room group consistent:
 
 1. **Shared CO2:** Every device broadcasts its effective CO2; devices without a sensor evaluate the coordinator with the room's reading (see [Missing CO2 Reading](#3-missing-co2-reading-room-wide)).
 2. **Room-wide thresholds:** The three sliders are synchronized through the existing config-sync path (`handle_config_sync()`): a change on any device is sent as `MSG_STATE` to all peers, and the Master's `MSG_SYNC` heartbeat re-asserts the values on slaves.

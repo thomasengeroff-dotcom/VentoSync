@@ -39,43 +39,43 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 
 ## 📑 Table of Contents
 
-- [⚖️ Disclaimer](#⚖️-disclaimer)
-- [🚀 Summary & Overview](#🚀-summary--overview)
+- [⚖️ Disclaimer](#️-disclaimer)
+- [🚀 Summary & Overview](#-summary--overview)
   - [Motivation](#motivation)
-  - [🛠️ Custom made PCB](#🛠️-custom-made-pcb)
-  - [🔄 Comparison with VentoMaxx V-WRG](#🔄-comparison-with-ventomaxx-v-wrg)
-- [✨ Features](#✨-features)
-  - [⚙️ Intelligent Operating Modes](#⚙️-intelligent-operating-modes)
-  - [🛡️ Precision Sensors & Monitoring](#🛡️-precision-sensors--monitoring)
-  - [⚡ Extremely Low Power Consumption](#⚡-extremely-low-power-consumption)
+  - [🛠️ Custom made PCB](#️-custom-made-pcb)
+  - [🔄 Comparison with VentoMaxx V-WRG](#-comparison-with-ventomaxx-v-wrg)
+- [✨ Features](#-features)
+  - [⚙️ Intelligent Operating Modes](#️-intelligent-operating-modes)
+  - [🛡️ Precision Sensors & Monitoring](#️-precision-sensors--monitoring)
+  - [⚡ Extremely Low Power Consumption](#-extremely-low-power-consumption)
   - [🖥️ Native On-Device Control](#️-native-on-device-control)
-  - [🏠 Home Assistant Integration](#🏠-home-assistant-integration)
-  - [📊 VentoSync Dashboard - Local Web Dashboard](#📊-ventosync-dashboard---local-web-dashboard)
-- [📡 ESP-NOW: Wireless Autonomy](#📡-esp-now-wireless-autonomy)
-- [🗺️ Roadmap & Future Enhancements](#🗺️-roadmap--future-enhancements)
+  - [🏠 Home Assistant Integration](#-home-assistant-integration)
+  - [📊 VentoSync Dashboard - Local Web Dashboard](#-ventosync-dashboard---local-web-dashboard)
+- [📡 ESP-NOW: Wireless Autonomy](#-esp-now-wireless-autonomy)
+- [🗺️ Roadmap & Future Enhancements](#️-roadmap--future-enhancements)
 - [🎛️ Custom Circuit Board - PCB](#️-custom-circuit-board---pcb)
   - [Specialized SCD43 Sensor Board](#specialized-scd43-sensor-board)
   - [🌿 Modular Sensor Ecosystem: SGP41 & SHT4x](#-modular-sensor-ecosystem-the-right-metric-for-every-room)
-- [🛠️ Setup & Installation](#🛠️-setup--installation)
+- [🛠️ Setup & Installation](#️-setup--installation)
   - [🧰 PCB Mounting & Fan Wiring](#-pcb-mounting--fan-wiring)
   - [💻 Development Environment (Linux `venv` & ESPHome CLI)](#-development-environment-linux-venv--esphome-cli)
   - [⚙️ Configuration & Compilation](#️-configuration--compilation)
   - [⚡ Initial Flashing & Provisioning](#-initial-flashing--provisioning)
   - [🔄 OTA Updates & Home Assistant Integration](#-ota-updates--home-assistant-integration)
   - [🌡️ Calibration of NTC Sensors](#️-calibration-of-ntc-sensors)
-- [🎮 Operation & Control](#🎮-operation--control)
+- [🎮 Operation & Control](#-operation--control)
   - [🖥️ On-Device Control Panel (VentoMaxx Style)](#️-on-device-control-panel-ventomaxx-style)
-  - [🔄 Operating Modes (Programs)](#🔄-operating-modes-programs)
-  - [📱 Control via Home Assistant](#📱-control-via-home-assistant)
-- [🧠 Heat Recovery - How it works](#🧠-heat-recovery---how-it-works)
-- [🔧 Technical Details & Optimizations](#🔧-technical-details--optimizations)
-- [📁 Project Structure](#📁-project-structure)
-- [🏗️ Code Architecture & Maintainability](#🏗️-code-architecture--maintainability)
-- [🚀 Automated Release & Versioning](#🚀-automated-release--versioning)
+  - [🔄 Operating Modes (Programs)](#-operating-modes-programs)
+  - [📱 Control via Home Assistant](#-control-via-home-assistant)
+- [🧠 Heat Recovery - How it works](#-heat-recovery---how-it-works)
+- [🔧 Technical Details & Optimizations](#-technical-details--optimizations)
+- [📁 Project Structure](#-project-structure)
+- [🏗️ Code Architecture & Maintainability](#️-code-architecture--maintainability)
+- [🚀 Automated Release & Versioning](#-automated-release--versioning)
 - [🙏 Acknowledgements / Credits](#-acknowledgements--credits)
-- [⚠️ Safety Instructions](#⚠️-safety-instructions)
-- [⚖️ Legal Disclaimer](#⚖️-legal-disclaimer)
-- [📜 License](#📜-license)
+- [⚠️ Safety Instructions](#️-safety-instructions)
+- [⚖️ Legal Disclaimer](#️-legal-disclaimer)
+- [📜 License](#-license)
 
 ---
 
@@ -183,7 +183,7 @@ The VentoMaxx system with this ESPHome control works outstandingly efficiently. 
 
 - **Level 1 (Base Ventilation):** ~2.7 - 2.9 Watts *(approx. €7.36 / year)*
 - **Level 5 (Increased Load):** ~3.2 - 3.7 Watts *(approx. €9.10 / year)*
-- **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. €15.75 / year)*
+- **Level 10 (Maximum Power):** ~5.0 - 6.0 Watts *(approx. €15.75 / year, calculated at the upper 6.0 W bound)*
 
 Even with 24/7 continuous operation at the *absolute maximum level (10)*, the nominal electricity costs (at €0.30/kWh) amount to only around 15 euros per year. In the most frequently used Smart automatic mode (values fluctuate between level 1 and 3 most of the time), the real operating costs are extremely economical at **approx. 7 to 8.50 euros per year** for the entire unit.
 
@@ -233,7 +233,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v4 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v9 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -383,6 +383,7 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 - **`ventosync_bme680_only.yaml`**: Fallback/Test version (BME680, no SCD43, no LD2450)
 - **`ventosync_radar_only.yaml`**: Devices with mmWave presence detection but no climate sensors
 - **`ventosync_nosensor.yaml`**: Basic ventilation control without environmental sensors
+- **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
 
 Use the provided `upload_all.sh` script to automatically compile and upload the correct variant to all your devices locally:
 
@@ -450,7 +451,7 @@ The system is controlled intuitively via the integrated control panel or fully a
 
 ### 🖥️ On-Device Control Panel (VentoMaxx Style)
 
-The unit features an intuitive 3-button control panel with 9 status LEDs (dimmable, with auto-dimming after 60 seconds of inactivity and diagnostic blink codes).
+The unit features an intuitive 3-button control panel with 9 status LEDs (dimmable, with auto-dimming after 30 seconds of inactivity and diagnostic blink codes).
 
 - **Power (I/O)**: Short press toggles ventilation ON/OFF; long press (>5s) enters Light Sleep; very long press (>10s) triggers reboot.
 - **Mode (M)**: Cycles through `Auto` → `Heat Recovery` → `Ventilation` → `Boost Ventilation` → `Off`.
@@ -472,8 +473,8 @@ The ventilation system supports 5 operating modes, which can be selected via the
 | :-: | :--- | :---: | :--- | :--- |
 | **1** | **🤖 Smart Automatic** *(Default)* | 🟢 *(pulses)* / ⚫ | Fully autonomous PID control based on CO2, humidity, and outdoor air conditions | `select.luefter_modus` → `Smart-Automatik` |
 | **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Manual push-pull heat recovery (50s–70s cycle) with up to 85% heat preservation | `select.luefter_modus` → `Wärmerückgewinnung` |
-| **3** | **💨 Boost Ventilation** | ⚫ / 🟢 | Intensive 15 min rapid air renewal followed by a 105 min core regeneration pause | `select.luefter_modus` → `Stoßlüftung` |
-| **4** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Continuous unidirectional draft (Phase A in, Phase B out) for passive night cooling | `select.luefter_modus` → `Durchlüften` |
+| **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Continuous unidirectional draft (Phase A in, Phase B out) for passive night cooling | `select.luefter_modus` → `Durchlüften` |
+| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | Intensive 15 min rapid air renewal followed by a 105 min core regeneration pause | `select.luefter_modus` → `Stoßlüftung` |
 | **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all climate sensors & web UI remain online for data logging | `select.luefter_modus` → `Aus` |
 
 > 📖 **Comprehensive Operating Modes Guide:**  
@@ -487,17 +488,18 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 
 #### Available Controls
 
-- **Fan**: Slider 0-10% to 100% (internally corresponds to the 10 levels of the control panel)
-- **Mode**: Selection (Smart automatic / Eco Recovery / Boost Ventilation / Ventilation / Off)
-- **Timer**: Configuration for "Ventilation" (default: 30 min)
-- **LED Brightness**: `number.max_led_brightness` (0-100%, default: 80%) to limit the maximum panel brightness.
-- **CO2 Limit**: `number.auto_CO2_threshold` (always active in Automatik mode)
+- **Fan**: `fan.ventosync_hrv` — 10-step slider (10 % … 100 %, 0 % = off) matching the 10 levels of the control panel
+- **Mode**: `select.luefter_modus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (the same values are available as presets on the fan entity)
+- **Timer**: `number.vent_timer` — duration for `Durchlüften` / `Stoßlüftung` in minutes (0–120, default: 30; 0 = continuous)
+- **LED Brightness**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, default: 80 %) to limit the maximum panel brightness.
+- **CO2 Limit**: `number.auto_co2_threshold` (400–2000 ppm, default: 1000; always active in Smart-Automatik mode)
 - **Smart Climate Control** *(Configuration)*:
-  - `switch.klima_koordination` — Enable HVAC coordination for this device (default: off)
+  - `switch.klima_koordination` — Enable HVAC coordination, **per device** (default: off)
   - `number.klima_koordination_co2_grenzwert` — Relaxed CO2 target while the AC is active, 800–1500 ppm (default: `1200`)
   - `number.klima_koordination_max_lufterstufe` — Fan level cap while the AC is active, 1–5 (default: `3`)
   - `number.klima_koordination_co2_notfallgrenze` — CO2 emergency override, 1200–2000 ppm (default: `1500`)
   - `text_sensor.klima_koordination_status` — Current coordinator state (diagnostic)
+  > The three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v9), so they only have to be set once per room. Only the enable switch is per device.
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)
@@ -518,14 +520,14 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 | :---: | :---: | :---: | :---: | :---: |
 | **OFF** | 0 % | 50.0 % | 50.0 % | 0 |
 | **1** | 10 % | 30.0 % | 70.0 % | 420 |
-| **2** | 16 % | 27.2 % | 72.8 % | 672 |
-| **3** | 23 % | 24.4 % | 75.6 % | 966 |
-| **4** | 31 % | 21.7 % | 78.3 % | 1302 |
-| **5** | 40 % | 18.9 % | 81.1 % | 1680 |
-| **6** | 50 % | 16.1 % | 83.9 % | 2100 |
-| **7** | 61 % | 13.3 % | 86.7 % | 2562 |
-| **8** | 73 % | 10.6 % | 89.4 % | 3066 |
-| **9** | 86 % | 7.8 % | 92.2 % | 3612 |
+| **2** | 16 % | 28.3 % | 71.7 % | 672 |
+| **3** | 23 % | 26.4 % | 73.6 % | 966 |
+| **4** | 31 % | 24.2 % | 75.8 % | 1302 |
+| **5** | 40 % | 21.7 % | 78.3 % | 1680 |
+| **6** | 50 % | 18.9 % | 81.1 % | 2100 |
+| **7** | 61 % | 15.8 % | 84.2 % | 2562 |
+| **8** | 73 % | 12.5 % | 87.5 % | 3066 |
+| **9** | 86 % | 8.9 % | 91.1 % | 3612 |
 | **10** | 100 % | 5.0 % | 95.0 % | 4200 |
 
 The RPM range is optimized to allow for finer steps at low levels (Levels 1-6) for even quieter operation, while the power increases more rapidly at higher levels.
@@ -634,7 +636,7 @@ To guarantee 24/7 reliability, long-term maintainability, and clean code quality
 To ensure reliable maintenance and full traceability of every change, the project utilizes an automated release workflow:
 
 - **AI-Driven Changelogs**: Every release is preceded by an automated analysis of code changes. An AI assistant generates detailed entries for the `CHANGELOG.md` and updates the firmware description in `version.json`.
-- **Automatic Version Bump**: The versioning follows a strict pattern where the patch version (e.g., `0.8.251` → `0.8.252`) is automatically incremented during the build process.
+- **Automatic Version Bump**: The versioning follows a strict pattern where the patch version (e.g., `0.10.14` → `0.10.15`) is automatically incremented during the build process.
 - **Git Integration**: Successful builds are automatically committed and pushed to the repository, ensuring the GitHub manifest and binary releases are always in sync with the local development state.
 - **Continuous Transparency**: The current version is available as a sensor in Home Assistant and displayed on the local web dashboard for easy verification.
 
