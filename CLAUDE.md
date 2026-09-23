@@ -30,8 +30,9 @@ and replaces the proprietary VentoMaxx control unit entirely.
 2. **YAML still validates** for the affected variants (`esphome config <variant>.yaml`) when YAML changed.
 3. **Behaviour / entity / configuration changed →** update `CHANGELOG.md`, both READMEs (`Readme.md`,
    `Readme_de.md`) and the matching guides in `documentation/en/` **and** `documentation/de/`.
-4. **Change should reach the devices →** bump `version.json` to the version of the new CHANGELOG entry
-   (see [Versioning & Release](#versioning--release)). Without a bump no new release is published.
+4. **Every PR into `master` →** bump `version.json` once per PR to the version of the new top CHANGELOG
+   entry, or label the PR `no-release` (docs / tooling only). Enforced by the *Version Guard* check
+   (see [Versioning & Release](#versioning--release)).
 5. **`VentilationPacket` changed →** follow the [ESP-NOW rules](#esp-now-protocol--cluster-synchronization)
    (protocol version bump, size assert, update this file).
 6. **Never commit** build artifacts, backups or local files (see [Files to Never Commit](#files-to-never-commit)).
@@ -291,11 +292,15 @@ Triggered on push and pull request to `master`:
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
   - *Build* matrix (6 variants): `ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`,
     `nosensor-mqtt` (generated), ESPHome pinned to `2026.8.0`, secret-free OTA configs.
-  - *Create Release* (push to `master` only): tag `v<version.json>`, `.ota.bin`, `.factory.bin`,
-    `manifest-<variant>.json`; release notes = first section of `CHANGELOG.md`.
+  - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
+    `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
+    of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).
 - **`lint.yaml`**: `esphome config` validation of the YAML (dummy secrets).
 - **`codeql.yaml`**: CodeQL analysis of the C/C++ code.
 - **`security.yaml`**: TruffleHog secret scanner.
+- **`version-guard.yaml`** (PRs only): runs `.github/scripts/check_version.py` — `version.json` must be
+  greater than on `master`, match the top `CHANGELOG.md` entry, and its tag must not exist yet.
+  Label `no-release` skips the check. Run locally: `python3 .github/scripts/check_version.py`.
 
 Devices use NVS-stored Wi-Fi credentials; secrets are stripped from release binaries.
 
@@ -304,11 +309,19 @@ Devices use NVS-stored Wi-Fi credentials; secrets are stripped from release bina
 ## Versioning & Release
 
 - `version.json` is the single source of truth: it is included into the firmware
-  (`packages/base/esp32c6_common.yaml`) and defines the release tag.
-- **CI never bumps the version.** A release is created on every push to `master` with the version from
-  `version.json`. If that tag already exists, the devices do not see an update.
-- Therefore every change that should reach the devices must bump `version.json` **in the commit/PR**
-  (convention: separate commit `chore: bump version to x.y.z`), matching the new top entry in `CHANGELOG.md`.
+  (`packages/base/esp32c6_common.yaml`) and defines the release tag `v<version>`.
+- **One version bump per PR, not per commit.** Every merge into `master` publishes a release; CI never bumps
+  the version itself.
+- **Release PR** (firmware / behaviour change): bump `version.json` (convention: separate commit
+  `chore: bump version to x.y.z`) and add the matching top entry `## [x.y.z] - YYYY-MM-DD` to `CHANGELOG.md`.
+- **Non-release PR** (docs, CI, tooling only): label `no-release`, leave `version.json` and the CHANGELOG
+  version headings untouched. After the merge the release job finds the existing tag and skips.
+- Enforcement: *Version Guard* (PR check, should be **required** in the branch protection of `master` —
+  direct pushes to `master` bypass it) and the release job's existing-tag skip.
+- Rebuilding an existing release on purpose: *Actions → Build ESPHome Firmware → Run workflow* with
+  `force_release: true`.
+- Parallel PRs claiming the same version: the second one fails the guard after the first is merged
+  (tag exists) → bump again.
 - `version_bump.py` only bumps during **local** builds (`esphome compile`, `upload_all.sh`), guarded by
   `.version_bump_lock`. Do not commit those local bumps.
 

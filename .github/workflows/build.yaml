@@ -3,8 +3,11 @@
 # =============================================================
 # Jobs:
 #   1. unit-tests   → C++ Unit Tests mit ASan/UBSan
-#   2. build        → ESPHome Matrix-Build (5 Varianten)
+#   2. build        → ESPHome Matrix-Build (6 Varianten)
 #   3. release      → GitHub Release + OTA Manifeste
+#                     (übersprungen, wenn der Tag v<version.json> schon
+#                     existiert; Überschreiben nur per workflow_dispatch
+#                     mit force_release: true)
 #
 # Fixes gegenüber Originalversion:
 #   - Granulare permissions (read global, write nur im Release-Job)
@@ -27,6 +30,11 @@ on:
   pull_request:
     branches: ["master"]
   workflow_dispatch:
+    inputs:
+      force_release:
+        description: "Existierendes Release v<version.json> neu bauen und überschreiben"
+        type: boolean
+        default: false
 
 # ------------------------------------------------------------------
 # Globale Permissions: Read-only als sicherer Default.
@@ -274,15 +282,25 @@ jobs:
   # Hängt alle Firmware-Binaries und per-Varianten manifest.json-Dateien
   # an, sodass Geräte Updates automatisch per OTA entdecken können.
   #
-  # Läuft NUR bei Push auf master (nicht bei Pull Requests).
+  # Läuft NUR bei Push auf master (nicht bei Pull Requests) oder per
+  # workflow_dispatch mit force_release: true.
+  #
+  # Release-Schutz: Existiert der Tag v<version.json> bereits (Merge ohne
+  # Versions-Bump, z. B. PR mit Label "no-release"), wird der Job
+  # übersprungen statt die Binaries des bestehenden Releases still zu
+  # überschreiben — die Geräte würden ohnehin kein Update erkennen.
+  # Der Version-Guard (version-guard.yaml) erzwingt den Bump im PR.
   # ==================================================================
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
 
-    # Nur bei Push auf master, nicht bei PRs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # Nur bei Push auf master (nicht bei PRs) oder manuell erzwungen
+    if: >-
+      github.ref == 'refs/heads/master' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.force_release))
 
     # FIX 4: Write-Permission nur im Release-Job, nicht global.
     # Alle anderen Jobs laufen mit dem sicheren globalen 'contents: read'.
@@ -304,7 +322,31 @@ jobs:
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "📦 Release version: v$VERSION"
 
+      # ----------------------------------------------------------------
+      # Release-Schutz: bestehenden Tag nie still überschreiben.
+      # ----------------------------------------------------------------
+      - name: Check for existing release tag
+        id: guard
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_release }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null; then
+            if [ "$FORCE" = "true" ]; then
+              echo "::warning::Tag ${TAG} exists — force_release: true, the release will be overwritten."
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "::notice::Tag ${TAG} already exists — no new release (version.json not bumped). Skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "🆕 Tag ${TAG} is new — creating release."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download all firmware artifacts
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/download-artifact@v8
         with:
           path: firmware-artifacts
@@ -312,6 +354,7 @@ jobs:
           merge-multiple: true
 
       - name: List downloaded artifacts
+        if: steps.guard.outputs.skip != 'true'
         run: |
           set -euo pipefail
           echo "📂 Downloaded firmware artifacts:"
@@ -324,6 +367,7 @@ jobs:
       # zuverlässig den Text zwischen erstem und zweitem "## ["-Header.
       # ----------------------------------------------------------------
       - name: Extract Changelog from CHANGELOG.md
+        if: steps.guard.outputs.skip != 'true'
         id: changelog
         run: |
           set -euo pipefail
@@ -357,6 +401,7 @@ jobs:
       # automatisch synchron mit der Build-Matrix, wartungsfrei.
       # ----------------------------------------------------------------
       - name: Generate per-variant manifest.json files
+        if: steps.guard.outputs.skip != 'true'
         env:
           CHANGELOG: ${{ steps.changelog.outputs.changelog }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -424,6 +469,7 @@ jobs:
       # (wichtig bei Re-Runs auf derselben Version).
       # ----------------------------------------------------------------
       - name: Create GitHub Release and upload assets
+        if: steps.guard.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
