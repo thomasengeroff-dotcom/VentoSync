@@ -28,3 +28,4 @@ print_size
 test_runner
 .code-workspace
 CLAUDE.mdZone.Identifier
+*.bak

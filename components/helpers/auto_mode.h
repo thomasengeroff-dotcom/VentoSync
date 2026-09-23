@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-02
+// Modified:    2026-09-23
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -225,37 +225,22 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
 /**
  * @brief   Determines the highest CO2 value in the room from all sources.
  *
- * @details Scans the local effective CO2 sensor and all peer CO2 readings
- *          (shared over ESP-NOW in the room_co2 packet field) to find the
- *          room-wide maximum. This ensures that the worst air quality
- *          anywhere in the room drives the ventilation demand, even if the
- *          local device has no CO2 sensor or measures a lower value.
+ * @details Combines the local effective CO2 sensor with the CO2 readings
+ *          every peer shares over ESP-NOW (`room_co2`, always the sender's
+ *          OWN sensor — never re-broadcast). Peer values older than
+ *          `ventosync::room::PEER_DATA_MAX_AGE_MS` (5 min) are ignored.
+ *          Used by the Smart Climate Control coordinator so the worst air
+ *          quality anywhere in the room decides about throttling/emergency.
  *
  * @param[in] now  Current millis() timestamp for peer staleness checks.
  *
  * @return  Highest CO2 in ppm, or NAN if no source is available.
  */
 inline float get_room_max_co2(uint32_t now) {
-  float max_co2 = NAN;
-
-  // 1. Local effective CO2 sensor (SCD41 primary, BME680 eCO2 fallback)
-  if (effective_co2 != nullptr && !std::isnan(effective_co2->state) && effective_co2->state > 0.0f) {
-    max_co2 = effective_co2->state;
-  }
-
-  // 2. Scan all peers for higher CO2 values
+  const float local = (effective_co2 != nullptr) ? effective_co2->state : NAN;
   auto *v = ventilation_ctrl;
-  if (v != nullptr) {
-    for (const auto &peer : v->peers) {
-      if (now - peer.last_seen_ms >= PEER_TIMEOUT_MS) continue;  // Stale peer
-      if (std::isnan(peer.room_co2) || peer.room_co2 <= 0.0f) continue;  // No CO2 data
-      if (std::isnan(max_co2) || peer.room_co2 > max_co2) {
-        max_co2 = peer.room_co2;
-      }
-    }
-  }
-
-  return max_co2;
+  if (v == nullptr) return (!std::isnan(local) && local > 0.0f) ? local : NAN;
+  return ventosync::room::room_max_co2(local, v->peers, now);
 }
 
 /**
@@ -263,10 +248,12 @@ inline float get_room_max_co2(uint32_t now) {
  *
  * @details CO2 demand always takes priority over humidity to ensure air quality.
  *          Hysteresis (Grab at 0.01 / Release at 0.005) ensures stable behavior
- *          near setpoints. Room-wide CO2 sensor fusion replaces blind peer
- *          PID demand adoption: the highest actual CO2 measurement from any
- *          device in the room is used to derive the CO2 demand, preventing
- *          stale demand propagation feedback loops.
+ *          near setpoints. Room-wide fusion: the result is the maximum of
+ *          the local demand and the highest LOCAL-SENSOR demand broadcast by
+ *          any fresh peer (CO2 and humidity, full PID incl. integral term).
+ *          Only the local-sensor demand is broadcast (`local_pid_demand`),
+ *          so a fused value can never be echoed back and latch the room at
+ *          a high level (feedback loop fixed in 0.10.21).
  *
  * @param[in] now         Current millis() timestamp.
  * @param[in] eff_in_temp Effective indoor temperature (for absolute humidity).
@@ -360,54 +347,36 @@ inline float calculate_combined_demand(uint32_t now, float eff_in_temp, float ef
   }
   // else: local_demand stays NAN → triggers "hold state" guard
 
-  // 5. Room-wide CO2 Sensor Fusion (replaces blind peer PID demand adoption)
-  //    Instead of adopting a peer's pre-computed PID demand (which can become
-  //    stale and create feedback loops), we use the actual highest CO2 value
-  //    measured anywhere in the room. Each device derives its own demand from
-  //    the real sensor reading, ensuring demand always tracks the current
-  //    air quality.
+  // 5. Broadcast ONLY the local-sensor demand (feedback-loop guard).
+  //    Devices without their own sensors (nosensor / radar_only / NTConly)
+  //    still get co2_pid_result == 0.0 from the PID (NaN input -> output 0),
+  //    so gate on a real CO2 reading or valid humidity data and advertise
+  //    NaN otherwise ("no data" instead of a misleading 0 %).
+  const bool local_co2_valid = (effective_co2 != nullptr) && !std::isnan(effective_co2->state) &&
+                               effective_co2->state > 0.0f;
+  const bool has_local_sensor_data = local_co2_valid || has_hum_data;
+  v->local_pid_demand = has_local_sensor_data ? local_demand : NAN;
+
+  // 6. Room-wide demand fusion: adopt the highest local-sensor demand of any
+  //    fresh peer (max age 5 min). Peers compute it with their full CO2 and
+  //    humidity PIDs (integral term, hysteresis, enthalpy guard), so a Master
+  //    without sensors regulates the room exactly like the sensor device.
   float effective_demand = local_demand;
-  const float room_co2 = get_room_max_co2(now);
-  const float local_co2_val = (effective_co2 != nullptr && !std::isnan(effective_co2->state))
-      ? effective_co2->state : NAN;
-
-  if (!std::isnan(room_co2)) {
-    const float co2_setpoint = (pid_co2 != nullptr) ? pid_co2->target_temperature : 1000.0f;
-    // Only boost demand if room CO2 exceeds the setpoint and comes from a peer
-    // (if the highest reading IS the local sensor, the local PID already handles it)
-    const bool peer_has_higher_co2 = std::isnan(local_co2_val) || room_co2 > local_co2_val + 10.0f;
-
-    if (peer_has_higher_co2 && room_co2 > co2_setpoint && co2_setpoint > 0.0f) {
-      // Scale linearly: at setpoint -> 0.0, at 2x setpoint -> 1.0
-      float peer_co2_demand = std::clamp((room_co2 - co2_setpoint) / co2_setpoint, 0.0f, 1.0f);
-
-      if (!std::isnan(effective_demand) && peer_co2_demand > effective_demand + 0.5f) {
-        ESP_LOGW("auto_mode", "Large room CO2 deviation: room=%.0f ppm, peer_demand=%.2f local=%.2f",
-                 room_co2, peer_co2_demand, effective_demand);
-      }
-
-      if (std::isnan(effective_demand) || peer_co2_demand > effective_demand) {
-        if (peer_co2_demand > (std::isnan(effective_demand) ? 0.0f : effective_demand) + 0.05f) {
-          ESP_LOGI("auto_mode", "Adopting higher room CO2 demand: %.2f (CO2=%.0f ppm, Local: %.2f)",
-                   peer_co2_demand, room_co2, effective_demand);
-        }
-        effective_demand = peer_co2_demand;
-      }
-    } else if (std::isnan(effective_demand) && !std::isnan(room_co2) && std::isnan(local_co2_val)) {
-      // Device has no local CO2 sensor AND no local demand — derive from peer CO2.
-      // Below setpoint -> minimal demand (0.0); the device still ventilates at min level.
-      float peer_co2_demand = (room_co2 > co2_setpoint && co2_setpoint > 0.0f)
-          ? std::clamp((room_co2 - co2_setpoint) / co2_setpoint, 0.0f, 1.0f)
-          : 0.0f;
-      effective_demand = peer_co2_demand;
-      ESP_LOGD("auto_mode", "No local CO2 sensor — using room CO2: %.0f ppm -> demand=%.2f",
-               room_co2, peer_co2_demand);
+  const float peer_demand = ventosync::room::room_max_peer_demand(v->peers, now);
+  if (!std::isnan(peer_demand)) {
+    // Only meaningful when both sides measure — a device without sensors
+    // naturally deviates from the room demand.
+    if (has_local_sensor_data && !std::isnan(effective_demand) && peer_demand > effective_demand + 0.5f) {
+      ESP_LOGW("auto_mode", "Large peer demand deviation: peer=%.2f local=%.2f — check peer sensor health",
+               peer_demand, effective_demand);
     }
+    if (std::isnan(effective_demand) || peer_demand > effective_demand + 0.05f) {
+      ESP_LOGI("auto_mode", "Adopting higher peer demand: %.2f (Local: %.2f)", peer_demand, effective_demand);
+    }
+    effective_demand = ventosync::room::max_valid(effective_demand, peer_demand);
   }
 
-  // 6. Network Sync Logic
   if (!std::isnan(effective_demand)) {
-    v->local_pid_demand = effective_demand; // Update value for 60s heartbeat
     return std::clamp(effective_demand, 0.0f, 1.0f);
   }
 
@@ -422,29 +391,48 @@ inline float calculate_combined_demand(uint32_t now, float eff_in_temp, float ef
 /**
  * @brief   Determines whether ventilation can physically dry the room.
  *
- * @details Compares absolute humidity (g/m³) indoors vs. outdoors using the
- *          same Magnus-based conversion as the humidity PID path. Falls back
- *          to a relative comparison when temperatures are unavailable.
+ * @details Uses the room-wide wettest spot (highest rH of the local SCD41 and
+ *          all fresh peers' `room_humidity`), so the mold guard also works on
+ *          devices without a humidity sensor. Compares absolute humidity
+ *          (g/m³) indoors vs. outdoors using the same Magnus-based conversion
+ *          as the humidity PID path, with the temperature measured at the
+ *          same spot. Falls back to a relative comparison when temperatures
+ *          are unavailable.
  *
- * @param[in]  eff_in_temp   Effective indoor temperature.
+ * @param[in]  now           Current millis() for peer staleness checks.
+ * @param[in]  eff_in_temp   Effective indoor temperature (local source).
  * @param[in]  eff_out_temp  Effective outdoor temperature.
- * @param[out] indoor_rh     Indoor relative humidity (NaN if unavailable).
+ * @param[out] indoor_rh     Room-wide indoor relative humidity (NaN if unavailable).
+ * @param[out] rh_from_peer  True if `indoor_rh` was reported by a peer.
  *
  * @return  true if outdoor air is drier than indoor air.
  */
-inline bool ventilation_can_dry(float eff_in_temp, float eff_out_temp, float &indoor_rh) {
+inline bool ventilation_can_dry(uint32_t now, float eff_in_temp, float eff_out_temp,
+                                float &indoor_rh, bool &rh_from_peer) {
   indoor_rh = NAN;
-  if (scd41_humidity == nullptr || outdoor_humidity == nullptr) return false;
-  const float in_hum = scd41_humidity->state;
+  rh_from_peer = false;
+  const float local_rh = (scd41_humidity != nullptr) ? scd41_humidity->state : NAN;
+  auto *v = ventilation_ctrl;
+  ventosync::room::HumiditySource src;
+  if (v != nullptr) {
+    src = ventosync::room::room_max_humidity(local_rh, eff_in_temp, v->peers, now);
+  } else if (!std::isnan(local_rh)) {
+    src.rh_percent = local_rh;
+    src.temp_c = eff_in_temp;
+  }
+  if (std::isnan(src.rh_percent)) return false;
+  indoor_rh = src.rh_percent;
+  rh_from_peer = src.from_peer;
+
+  if (outdoor_humidity == nullptr) return false;
   const float out_hum = outdoor_humidity->state;
-  if (std::isnan(in_hum)) return false;
-  indoor_rh = in_hum;
   if (std::isnan(out_hum)) return false;
 
-  const float abs_in = calculate_absolute_humidity(in_hum, eff_in_temp);
+  const float in_temp = std::isnan(src.temp_c) ? eff_in_temp : src.temp_c;
+  const float abs_in = calculate_absolute_humidity(src.rh_percent, in_temp);
   const float abs_out = calculate_absolute_humidity(out_hum, eff_out_temp);
   if (!std::isnan(abs_in) && !std::isnan(abs_out)) return abs_out < abs_in;
-  return out_hum < in_hum; // Temperature unavailable — relative fallback
+  return out_hum < src.rh_percent; // Temperature unavailable — relative fallback
 }
 
 /**
@@ -471,15 +459,16 @@ inline ventosync::hvac::Decision evaluate_hvac_coordination(uint32_t now, float 
   in.ac_has_state = (hvac_ac_active != nullptr) && hvac_ac_active->has_state();
   in.ac_reported_active = in.ac_has_state && hvac_ac_active->state;
 
-  // CO2: use room-wide maximum from all devices (local + all peers).
-  // This replaces the single-peer select_co2_source() approach with full
-  // room scanning, ensuring the HVAC coordinator sees the worst-case CO2.
+  // CO2: room-wide maximum (local sensor + all fresh peers, max age 5 min),
+  // so the coordinator sees the worst-case air quality in the room.
   const float local_co2 = (effective_co2 != nullptr) ? effective_co2->state : NAN;
   in.co2_ppm = get_room_max_co2(now);
-  const bool co2_from_peer = std::isnan(local_co2) && !std::isnan(in.co2_ppm);
+  const bool co2_from_peer = !std::isnan(in.co2_ppm) && (std::isnan(local_co2) || in.co2_ppm > local_co2);
 
+  // Humidity (mold guard): room-wide wettest spot, local or peer.
   float indoor_rh = NAN;
-  in.ventilation_can_dry = ventilation_can_dry(eff_in, eff_out, indoor_rh);
+  bool rh_from_peer = false;
+  in.ventilation_can_dry = ventilation_can_dry(now, eff_in, eff_out, indoor_rh, rh_from_peer);
   in.indoor_rh_percent = indoor_rh;
 
   // Room-wide thresholds (globals mirrored by the sliders and synced over ESP-NOW)
@@ -493,10 +482,11 @@ inline ventosync::hvac::Decision evaluate_hvac_coordination(uint32_t now, float 
   ventosync::hvac::Decision d = hvac_state::coordinator.evaluate(in);
 
   if (d.state != hvac_state::last_decision.state) {
-    ESP_LOGI("hvac", "Klima-Koordination: %s -> %s (AC=%d, CO2=%.0f ppm%s, rH=%.0f%%)",
+    ESP_LOGI("hvac", "Klima-Koordination: %s -> %s (AC=%d, CO2=%.0f ppm%s, rH=%.0f%%%s)",
              ventosync::hvac::state_label(hvac_state::last_decision.state),
              ventosync::hvac::state_label(d.state),
-             d.ac_active ? 1 : 0, in.co2_ppm, co2_from_peer ? " via Peer" : "", in.indoor_rh_percent);
+             d.ac_active ? 1 : 0, in.co2_ppm, co2_from_peer ? " via Peer" : "",
+             in.indoor_rh_percent, rh_from_peer ? " via Peer" : "");
   }
   hvac_state::last_decision = d;
   return d;
@@ -535,7 +525,11 @@ inline void apply_co2_setpoint(float desired) {
  * @param[in] force  If true, bypasses the 2s evaluation rate-limit.
  */
 inline void evaluate_auto_mode(bool force) {
-  if (!auto_mode::is_system_ready()) return;
+  if (!auto_mode::is_system_ready()) {
+    // Not regulating: never advertise a frozen demand to the room.
+    if (ventilation_ctrl != nullptr) ventilation_ctrl->local_pid_demand = NAN;
+    return;
+  }
 
   auto *v = ventilation_ctrl;
   // v is guaranteed non-null by is_system_ready()

@@ -75,7 +75,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 3. **Signal-Arbitrierung:** Das System wählt das **Maximum** aus CO2- und Feuchtebedarf, damit kein Luftqualitätsparameter vernachlässigt wird.
 4. **Sanfter Einstieg:** Beim Umschalten *in* die Smart-Automatik werden die PID-Integrale zurückgesetzt, damit das Gerät stets mit der Minimalstufe startet und nur bei tatsächlichem Bedarf hochregelt.
 5. **Absolutfeuchte-Schutz:** Eine Entfeuchtung erhöht die Drehzahl nur, wenn die Außenluft absolut trockener ist als die Innenluft (Magnus-Formel). Ist die Außenluft feuchter (z.B. bei Regen), wird der Feuchtebedarf auf 0 gesetzt.
-6. **Gruppen-Fallback:** Hat ein Gerät keine eigenen Sensoren (Varianten `nosensor`, `radar_only`, `NTConly`), übernimmt es automatisch den höchsten Bedarf aus der Raumgruppe via ESP-NOW.
+6. **Raumweite Bedarfsfusion:** Jedes Gerät sendet per ESP-NOW den Bedarf seiner **eigenen** CO2- und Feuchte-PIDs (ohne Sensoren → kein Wert). Jedes Gerät regelt auf das **Maximum** aus lokalem Bedarf und dem aktuellen (≤ 5 min alten) Bedarf aller Peers. Ein Gerät ohne eigene Sensoren (Varianten `nosensor`, `radar_only`, `NTConly` — z. B. ein Master ohne SCD41) folgt damit dem Sensorgerät mit vollem PID-Verhalten, für CO2 **und** Luftfeuchtigkeit. Übernommene Werte werden nie weitergesendet, ein hoher Bedarf kann sich daher nicht zwischen Geräten „festhalten“.
 
 > [!TIP]
 > Für die vollständigen technischen Hintergründe und die C++ Implementierung siehe **[📄 smart-automatic-logic.md](de_smart-automatic-logic.md)** und **[📄 humidity-management.md](de_humidity-management.md)**.

@@ -169,7 +169,7 @@ Complex YAML lambda logic is extracted into focused header files:
 ### Custom Components (`components/`)
 
 - **`ventilation_group`** (`VentilationController`, `VentilationStateMachine`): Manages multi-device coordination, 5s soft ramps (`RAMP_DURATION_MS`), and push-pull timing.
-- **`ventilation_logic`** (`VentilationLogic`): Hardware-agnostic static math and physics utility library. Also hosts `hvac_coordinator.h` (`ventosync::hvac::Coordinator`): the pure, unit-tested Smart Climate Control state machine (AC debounce, CO2 emergency, mold guard) that `auto_mode.h` applies as a modifier to Smart-Automatik.
+- **`ventilation_logic`** (`VentilationLogic`): Hardware-agnostic static math and physics utility library. Also hosts `hvac_coordinator.h` (`ventosync::hvac::Coordinator`): the pure, unit-tested Smart Climate Control state machine (AC debounce, CO2 emergency, mold guard) that `auto_mode.h` applies as a modifier to Smart-Automatik. `room_fusion.h` (`ventosync::room`) holds the pure room-wide fusion helpers (max CO2 / humidity / peer demand, 5-min freshness). Rule: devices broadcast only values from their **own** sensors (`pid_demand`, `room_co2`, `room_humidity`) — never re-broadcast a fused value (feedback loop, see CHANGELOG 0.10.21).
 - **`wrg_dashboard`** (`WrgDashboard`): Async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices

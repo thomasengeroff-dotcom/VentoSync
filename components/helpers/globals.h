@@ -69,6 +69,7 @@
 #include "esphome/components/ventilation_group/ventilation_group.h"
 #include "esphome/components/ventilation_logic/ventilation_logic.h"
 #include "esphome/components/ventilation_logic/hvac_coordinator.h"
+#include "esphome/components/ventilation_logic/room_fusion.h"
 
 // --- Constants ---------------------------------------------------------
 static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR = 22.0f;

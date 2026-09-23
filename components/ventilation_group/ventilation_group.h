@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-03-21
+// Modified:    2026-09-23
 // ==========================================================================
 #pragma once
 
@@ -119,7 +119,7 @@ struct __attribute__((packed)) VentilationPacket {
   bool phase_state;          ///< Sender's current global phase (A or B).
   float t_in;                ///< Sender's local indoor temperature (or NAN).
   float t_out;               ///< Sender's local outdoor temperature (or NAN).
-  float pid_demand;          ///< Sender's local evaluated PID demand (0.0–1.0).
+  float pid_demand;          ///< Sender's LOCAL-sensor PID demand (0.0–1.0, NaN without sensors) — never a fused value.
   float fan_rpm;             ///< Sender's current fan RPM.
   float board_temp;          ///< Sender's board temperature (BMP390).
   float room_temp;           ///< Sender's room temperature (SCD41/BME680).
@@ -222,33 +222,20 @@ public:
   // --- PID CONTROL SHARING ---
 
   /**
-   * @brief   Local PID demand requirement (0.0 to 1.0).
+   * @brief   Local sensor PID demand (0.0 to 1.0, NaN = no local sensor data).
    *
-   * @details Calculated based on local CO2 and humidity sensors. Shared
-   *          with peers to ensure the entire room responds to the
-   *          highest measured pollutant level.
+   * @details Derived ONLY from this device's own CO2 / humidity sensors and
+   *          broadcast as `pid_demand`. It must never contain a value adopted
+   *          from a peer: re-broadcasting fused demand lets two devices latch
+   *          each other at a high level (feedback loop). Peers fuse the
+   *          room-wide maximum themselves from `peers[].pid_demand`.
    */
-  float local_pid_demand = 0.0f;
+  float local_pid_demand = NAN;
 
-  /** @brief Last valid PID demand received from a peer. Used for group-wide scaling. */
-  float last_peer_pid_demand = 0.0f;
-  uint32_t last_peer_pid_demand_time =
-      0; ///< millis() when peer PID demand was received
-  /// FIXED W3: Explicit flag avoids millis()-overflow false-positive when
-  /// last_peer_pid_demand_time == 0 is used as a sentinel after 49.7 days.
-  bool has_peer_pid_demand =
-      false; ///< True once any peer PID demand has been received.
   bool co2_is_controlling =
       false; ///< Hysteresis state for CO2 priority (runtime only).
 
-  // --- CO2 SHARING (Smart Climate Control) ---
-  /// Last valid CO2 reading (ppm) received from a peer. Lets devices without a
-  /// CO2 sensor evaluate the HVAC coordination from the room's measurement.
-  float last_peer_co2 = NAN;
-  uint32_t last_peer_co2_time = 0; ///< millis() when peer CO2 was received.
-  bool has_peer_co2 = false;       ///< True once any peer CO2 has been received.
-
-  // --- PEER TRACKING (For Dashboard) ---
+  // --- PEER TRACKING (dashboard + room-wide sensor/demand fusion) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
       false; ///< tracks if state has been synced from peer after boot
@@ -723,19 +710,9 @@ public:
       last_peer_t_out_time = now;
     }
 
-    // 6. PID Demand sync
-    if (!std::isnan(pkt->pid_demand)) {
-      last_peer_pid_demand = pkt->pid_demand;
-      last_peer_pid_demand_time = now;
-      has_peer_pid_demand = true;
-    }
-
-    // 7. CO2 sync (room-wide reading for Smart Climate Control)
-    if (!std::isnan(pkt->room_co2) && pkt->room_co2 > 0.0f) {
-      last_peer_co2 = pkt->room_co2;
-      last_peer_co2_time = now;
-      has_peer_co2 = true;
-    }
+    // 6. PID demand, CO2 and humidity are stored per peer in `peers` (see
+    //    populate_peer above) and fused room-wide in auto_mode.h
+    //    (ventosync::room helpers) — no single "last peer" value here.
 
     return changed;
   }
