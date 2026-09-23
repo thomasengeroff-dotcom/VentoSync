@@ -418,6 +418,7 @@ struct TestPeer {
   float room_humidity;
   float room_temp;
   bool hvac_ac_active = false;
+  bool window_open = false;
 };
 
 // T-7k: Room-wide CO2 fusion — max of local + fresh peers, stale/mock values rejected
@@ -624,6 +625,41 @@ bool test_auto_target_level() {
   TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.5f, 5, 7, 2) >= 2);  // swapped window
   TEST_ASSERT(VentilationLogic::calculate_auto_target_level(std::numeric_limits<float>::quiet_NaN(), 5, 2, 7) >= 2);
   TEST_ASSERT(VentilationLogic::calculate_auto_target_level(5.0f, 2, 2, 7) == 7); // demand clamped
+  return true;
+}
+
+// T-7q: Window Guard inputs — HA push expiry / API link and room-wide peer flag
+bool test_window_guard_inputs() {
+  using namespace ventosync::room;
+  HaPushedFlag w;
+  // Never pushed -> closed
+  TEST_ASSERT(!w.active(1000u, true));
+  TEST_ASSERT(w.age_ms(1000u) == UINT32_MAX);
+  // Push "open": change reported, active while fresh and connected
+  TEST_ASSERT(w.set(true, 1000u));
+  TEST_ASSERT(!w.set(true, 2000u)); // same value -> no change
+  TEST_ASSERT(w.active(2000u + HA_PUSH_MAX_AGE_MS, true));
+  // Expired or API down -> reads as closed (fan never stays stopped forever)
+  TEST_ASSERT(!w.active(2001u + HA_PUSH_MAX_AGE_MS, true));
+  TEST_ASSERT(!w.active(3000u, false));
+  // Wrap-around of millis()
+  HaPushedFlag wrap;
+  wrap.set(true, 0xFFFFFF00u);
+  TEST_ASSERT(wrap.active(0x00000100u, true));
+  // Push "closed"
+  TEST_ASSERT(w.set(false, 5000u));
+  TEST_ASSERT(!w.active(5000u, true));
+
+  // Room-wide: any fresh peer reporting its own "open" counts, stale ones not
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const uint32_t now = 1000000u;
+  std::vector<TestPeer> peers = {{now - 1000u, nan, nan, nan, nan, false, false}};
+  TEST_ASSERT(!any_fresh_peer_window_open(peers, now));
+  peers.push_back({now - PEER_DATA_MAX_AGE_MS - 1u, nan, nan, nan, nan, false, true});
+  TEST_ASSERT(!any_fresh_peer_window_open(peers, now));
+  peers.push_back({now - 500u, nan, nan, nan, nan, true, true});
+  TEST_ASSERT(any_fresh_peer_window_open(peers, now));
+  TEST_ASSERT(any_fresh_peer_ac_active(peers, now));
   return true;
 }
 
@@ -1272,6 +1308,7 @@ int main() {
     {"T-7n: HVAC AC state sources (HA push, expiry, peers)", test_hvac_ac_state_sources},
     {"T-7o: HVAC config ranges + fusion window", test_hvac_config_ranges},
     {"T-7p: Auto level mapping enforces the window (HVAC cap)", test_auto_target_level},
+    {"T-7q: Window Guard inputs (HA push expiry, peers)", test_window_guard_inputs},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

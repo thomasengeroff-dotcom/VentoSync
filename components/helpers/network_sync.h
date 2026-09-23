@@ -874,7 +874,7 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   }
   // Room-wide enable switch (protocol v10). The switch entity mirrors the
   // global via its lambda; publish immediately for a responsive HA UI.
-  const bool peer_hvac_enabled = (pkt->hvac_flags & esphome::HVAC_FLAG_ENABLED) != 0;
+  const bool peer_hvac_enabled = (pkt->room_flags & esphome::ROOM_FLAG_HVAC_ENABLED) != 0;
   if (hvac_enabled_val != nullptr && peer_hvac_enabled != hvac_enabled_val->value()) {
     hvac_enabled_val->value() = peer_hvac_enabled;
     if (smart_climate_control != nullptr) smart_climate_control->publish_state(peer_hvac_enabled);

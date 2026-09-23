@@ -44,12 +44,16 @@ binary_sensor:
     entity_id: binary_sensor.sommerbetrieb
     internal: true
 
-  # Window Guard (Fenstersperre) - HA State
-  - platform: homeassistant
-    name: "Fenstersperre"
+  # Window Guard (Fenstersperre) - window state last pushed by Home Assistant
+  # via the API action "set_window_open" (below). Diagnostic only; the guard
+  # also honours the window state shared by room peers. Expires after 15 min
+  # without a push (reads as closed — ventilation never stays stopped forever).
+  - platform: template
+    name: "Fenster offen (HA-Signal)"
     id: window_locked
-    entity_id: ${window_sensor_id}
-    internal: true
+    icon: "mdi:window-open-variant"
+    device_class: window
+    entity_category: diagnostic
     
   # Smart Climate Control (Klima-Koordination) - AC state last pushed by
   # Home Assistant via the API action "set_ac_active" (below). Diagnostic
@@ -88,3 +92,12 @@ api:
         active: bool
       then:
         - lambda: "hvac_on_ha_ac_state(active);"
+
+    # Window Guard: Home Assistant pushes whether any window of the room is open.
+    # HA service: esphome.<device_name>_set_window_open  (data: window_open: true/false)
+    # Same rules as set_ac_active: at least one device per room, re-send every 5 min.
+    - action: set_window_open
+      variables:
+        window_open: bool
+      then:
+        - lambda: "window_on_ha_state(window_open);"

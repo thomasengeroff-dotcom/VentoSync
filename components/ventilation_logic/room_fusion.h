@@ -181,19 +181,70 @@ inline HumiditySource room_max_humidity(float local_rh, float local_temp,
 }
 
 /**
- * @brief   True if any fresh peer reports its own HA AC state as active.
+ * @brief   True if any fresh peer satisfies `pred` (room-wide OR of a flag).
  *
- * @details Peers broadcast only the AC state Home Assistant pushed to them
- *          (`hvac_ac_active`), never a fused value — so OR-ing it cannot latch.
+ * @details Only safe for flags peers derive from their OWN inputs (e.g. the
+ *          state Home Assistant pushed to them) — never for fused values.
  */
-template <typename Peers>
-inline bool any_fresh_peer_ac_active(const Peers &peers, uint32_t now_ms,
-                                     uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+template <typename Peers, typename Pred>
+inline bool any_fresh_peer(const Peers &peers, uint32_t now_ms, Pred pred,
+                           uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   for (const auto &peer : peers) {
-    if (is_fresh(now_ms, peer.last_seen_ms, max_age_ms) && peer.hvac_ac_active) return true;
+    if (is_fresh(now_ms, peer.last_seen_ms, max_age_ms) && pred(peer)) return true;
   }
   return false;
 }
+
+/// @brief True if any fresh peer reports its own HA AC state as active.
+template <typename Peers>
+inline bool any_fresh_peer_ac_active(const Peers &peers, uint32_t now_ms,
+                                     uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  return any_fresh_peer(peers, now_ms, [](const auto &p) { return p.hvac_ac_active; }, max_age_ms);
+}
+
+/// @brief True if any fresh peer reports its own HA window state as open.
+template <typename Peers>
+inline bool any_fresh_peer_window_open(const Peers &peers, uint32_t now_ms,
+                                       uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  return any_fresh_peer(peers, now_ms, [](const auto &p) { return p.window_open; }, max_age_ms);
+}
+
+/// A boolean pushed by Home Assistant via an API action is trusted for at
+/// most this long; the HA automation re-sends it periodically (every 5 min).
+constexpr uint32_t HA_PUSH_MAX_AGE_MS = 900000u;
+
+/**
+ * @brief   A boolean room input pushed by Home Assistant (API action).
+ *
+ * @details Valid only while the API link is up and the last push is not
+ *          older than `max_age_ms`; otherwise it reads as `false` (fail-safe:
+ *          an expired "window open" must not stop the ventilation forever,
+ *          an expired "AC active" must not throttle it).
+ */
+struct HaPushedFlag {
+  bool has_state = false;
+  bool value = false;
+  uint32_t update_ms = 0;
+
+  /// @brief Stores a new push. @return true if the value changed.
+  bool set(bool v, uint32_t now_ms) {
+    const bool changed = !has_state || value != v;
+    has_state = true;
+    value = v;
+    update_ms = now_ms;
+    return changed;
+  }
+
+  /// @brief Age of the last push (UINT32_MAX if never pushed).
+  uint32_t age_ms(uint32_t now_ms) const {
+    return has_state ? static_cast<uint32_t>(now_ms - update_ms) : UINT32_MAX;
+  }
+
+  /// @brief true if pushed "true", fresh and the API link is up.
+  bool active(uint32_t now_ms, bool ha_connected, uint32_t max_age_ms = HA_PUSH_MAX_AGE_MS) const {
+    return ha_connected && has_state && value && age_ms(now_ms) <= max_age_ms;
+  }
+};
 
 } // namespace room
 } // namespace ventosync

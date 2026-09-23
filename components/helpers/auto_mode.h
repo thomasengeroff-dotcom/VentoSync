@@ -475,18 +475,29 @@ inline void fill_ac_inputs(ventosync::hvac::Inputs &in, uint32_t now) {
 }
 
 /**
- * @brief   Refreshes the AC flag this device broadcasts to its peers.
+ * @brief   Refreshes the room flags this device broadcasts to its peers.
  *
- * @details Only the LOCAL HA state is broadcast (never the room-wide OR),
- *          so the flag cannot latch between devices. Called every 10 s
- *          regardless of the operating mode and on every HA push.
+ * @details AC state (`set_ac_active`) and window state (`set_window_open`)
+ *          as pushed by Home Assistant to THIS device — only the local push
+ *          is broadcast (never the room-wide OR), so the flags cannot latch
+ *          between devices. Both expire (HA re-sends every 5 min) and read
+ *          as false while the API link is down. Called every 10 s regardless
+ *          of the operating mode and on every HA push; a change triggers an
+ *          immediate ESP-NOW broadcast so peers react without waiting for the
+ *          next heartbeat.
  */
-inline void refresh_local_ac_broadcast(uint32_t now) {
+inline void refresh_local_room_flags(uint32_t now) {
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
   ventosync::hvac::Inputs in;
   fill_ac_inputs(in, now);
-  v->hvac_local_ac_active = ventosync::hvac::local_ac_active(in);
+  const bool ac = ventosync::hvac::local_ac_active(in);
+  const bool window = window_state::pushed.active(now, in.ha_connected);
+  if (ac != v->hvac_local_ac_active || window != v->window_local_open) {
+    v->hvac_local_ac_active = ac;
+    v->window_local_open = window;
+    v->pending_broadcast = true; // MSG_SYNC: peers only refresh their PeerState
+  }
 }
 
 /**
@@ -570,8 +581,8 @@ inline void apply_co2_setpoint(float desired) {
  * @param[in] force  If true, bypasses the 2s evaluation rate-limit.
  */
 inline void evaluate_auto_mode(bool force) {
-  // AC flag for peers must stay current in every operating mode.
-  auto_mode::refresh_local_ac_broadcast(millis());
+  // Room flags for peers (AC, window) must stay current in every mode.
+  auto_mode::refresh_local_room_flags(millis());
 
   if (!auto_mode::is_system_ready()) {
     // Not regulating: never advertise a frozen demand to the room.
@@ -757,6 +768,28 @@ inline void hvac_on_ha_ac_state(bool active) {
   if (changed) {
     ESP_LOGI("hvac", "AC state from Home Assistant: %s", active ? "aktiv" : "inaktiv");
   }
-  auto_mode::refresh_local_ac_broadcast(now);
+  auto_mode::refresh_local_room_flags(now);
   if (changed) evaluate_auto_mode();
+}
+
+/**
+ * @brief   Home Assistant API action `set_window_open` (Window Guard).
+ *
+ * @details Home Assistant pushes whether any window of the room is open (see
+ *          documentation/en/en_window-guard-ha-setup.md). Shared room-wide
+ *          over ESP-NOW, so HA only has to reach one device of the room. The
+ *          state expires after 15 min unless re-sent — an expired "open"
+ *          reads as closed so the ventilation can never stay stopped forever.
+ *          The 5 s engage delay is applied by VentilationController::loop().
+ *
+ * @param[in] open  true = at least one window of the room is open.
+ */
+inline void window_on_ha_state(bool open) {
+  const uint32_t now = millis();
+  const bool changed = window_state::pushed.set(open, now);
+  if (window_locked != nullptr) window_locked->publish_state(open);
+  if (changed) {
+    ESP_LOGI("window", "Window state from Home Assistant: %s", open ? "offen" : "geschlossen");
+  }
+  auto_mode::refresh_local_room_flags(now);
 }

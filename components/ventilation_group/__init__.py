@@ -24,7 +24,6 @@ CONF_AUTO_CO2_GLOBAL = 'auto_co2_threshold_global'
 CONF_AUTO_HUM_GLOBAL = 'auto_humidity_threshold_global'
 CONF_AUTO_PRES_GLOBAL = 'auto_presence_global'
 CONF_LED_BRIGHT_GLOBAL = 'max_led_brightness_global'
-CONF_WINDOW_SENSOR = 'window_sensor'
 CONF_CO2_SENSOR = 'co2_sensor'
 CONF_SCD41_HUM_SENSOR = 'scd41_humidity_sensor'
 CONF_BME680_HUM_SENSOR = 'bme680_humidity_sensor'
@@ -52,7 +51,6 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_AUTO_HUM_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_AUTO_PRES_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_LED_BRIGHT_GLOBAL): cv.use_id(GlobalsComponent),
-    cv.Optional(CONF_WINDOW_SENSOR): cv.use_id(binary_sensor.BinarySensor),
     cv.Optional(CONF_CO2_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_SCD41_HUM_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_BME680_HUM_SENSOR): cv.use_id(sensor.Sensor),
@@ -115,9 +113,6 @@ async def to_code(config):
         g = await cg.get_variable(config[CONF_LED_BRIGHT_GLOBAL])
         cg.add(var.set_max_led_brightness_global(g))
 
-    if (CONF_WINDOW_SENSOR in config):
-        s = await cg.get_variable(config[CONF_WINDOW_SENSOR])
-        cg.add(var.set_window_sensor(s))
 
     if CONF_CO2_SENSOR in config:
         s = await cg.get_variable(config[CONF_CO2_SENSOR])

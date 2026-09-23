@@ -71,6 +71,20 @@ Modifikator für die `Smart-Automatik`, solange die Raumklimaanlage aktiv ist. V
   * *Typ:* Binary-Sensor (Diagnose)
   * *Dokumentation:* Zuletzt von Home Assistant per API-Action `set_ac_active` an dieses Gerät gesendeter Klima-Status (läuft ohne neue Meldung nach 15 min ab). Der Koordinator berücksichtigt auch den Klima-Status, den ein Peer des Raums erhalten hat.
 
+### Fenstersperre
+
+Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fenstersperre einrichten](de_window-guard-ha-setup.md).
+
+* **`binary_sensor.fenster_offen_ha_signal`** ("Fenster offen (HA-Signal)", YAML-ID `window_locked`)
+  * *Typ:* Binary-Sensor (Diagnose)
+  * *Dokumentation:* Zuletzt von Home Assistant per API-Action `set_window_open` an dieses Gerät gesendeter Fensterstatus (läuft ohne neue Meldung nach 15 min ab → gilt als geschlossen). Die Sperre berücksichtigt auch den Fensterstatus, den ein Peer des Raums erhalten hat.
+* **`text_sensor.fenstersperre_aktiv`** ("Fenstersperre Aktiv", YAML-ID `window_guard_status`)
+  * *Typ:* Textsensor (`Ja` / `Nein`)
+  * *Dokumentation:* Resultierende raumweite Sperre (greift nach 5 s „offen").
+* **`switch.fenstersperre_ignorieren`** ("Fenstersperre ignorieren", YAML-ID `ignore_window_guard_switch`)
+  * *Typ:* Switch (Config, persistent, pro Gerät)
+  * *Dokumentation:* Nimmt dieses Gerät von der Fenstersperre aus.
+
 ## 3. Zeiten & Intervalle
 
 * **`number.vent_timer`** ("Durchlüften Dauer (min)")

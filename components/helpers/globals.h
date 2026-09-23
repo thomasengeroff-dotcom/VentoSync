@@ -294,8 +294,8 @@ extern esphome::homeassistant::HomeassistantSensor
     *const outdoor_humidity; ///< Outdoor Humidity (HA)
 extern esphome::homeassistant::HomeassistantBinarySensor
     *const sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
-extern esphome::homeassistant::HomeassistantBinarySensor
-    *const window_locked; ///< Window lock gate (HA: open windows in room)
+extern esphome::template_::TemplateBinarySensor
+    *const window_locked; ///< Diagnostic: window state last pushed by HA (API action set_window_open)
 /// @}
 
 /// @name Smart Climate Control (HVAC Coordination)
@@ -330,6 +330,11 @@ namespace hvac_state {
   inline bool ac_has_state = false;
   inline bool ac_reported = false;
   inline uint32_t ac_update_ms = 0; ///< millis() of the last push (expiry: AC_STATE_MAX_AGE_MS).
+}
+
+namespace window_state {
+  /// Window state pushed by Home Assistant (API action `set_window_open`), runtime only.
+  inline ventosync::room::HaPushedFlag pushed;
 }
 /// @}
 

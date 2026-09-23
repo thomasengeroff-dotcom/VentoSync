@@ -31,6 +31,7 @@
 
 #include "esphome.h"
 #include "ventilation_state_machine.h"
+#include "esphome/components/ventilation_logic/room_fusion.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -95,12 +96,13 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 10; // Bumped: Smart Climate Control flags (room-wide switch + AC state)
+static constexpr uint8_t PROTOCOL_VERSION = 10; // Bumped: room_flags (HVAC switch, AC state, window state)
 
-/// @name VentilationPacket::hvac_flags bits (protocol v10)
+/// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
-static constexpr uint8_t HVAC_FLAG_ENABLED = 0x01;   ///< Room-wide "Klima-Koordination" switch (setting, synced like the sliders).
-static constexpr uint8_t HVAC_FLAG_AC_ACTIVE = 0x02; ///< Sender's OWN Home Assistant AC state (fresh) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_HVAC_ENABLED = 0x01; ///< Room-wide "Klima-Koordination" switch (setting, synced like the sliders).
+static constexpr uint8_t ROOM_FLAG_AC_ACTIVE = 0x02;    ///< Sender's OWN Home Assistant AC state (fresh) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_WINDOW_OPEN = 0x04;  ///< Sender's OWN Home Assistant window state (fresh) — never a fused value.
 /// @}
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
@@ -154,8 +156,8 @@ struct __attribute__((packed)) VentilationPacket {
   // UI Settings payload
   float max_led_brightness; ///< Shared LED brightness limit (0.1–1.0)
 
-  // Smart Climate Control flags (v10) — see HVAC_FLAG_*
-  uint8_t hvac_flags;
+  // Room flags (v10) — see ROOM_FLAG_*
+  uint8_t room_flags;
 };
 
 static_assert(sizeof(VentilationPacket) <= 250,
@@ -177,7 +179,8 @@ struct PeerState {
   float room_temp;
   float room_co2;
   float room_humidity;
-  bool hvac_ac_active; ///< Peer's own HA AC state (HVAC_FLAG_AC_ACTIVE).
+  bool hvac_ac_active; ///< Peer's own HA AC state (ROOM_FLAG_AC_ACTIVE).
+  bool window_open;    ///< Peer's own HA window state (ROOM_FLAG_WINDOW_OPEN).
 };
 
 // ---------------------------------------------------------
@@ -246,8 +249,11 @@ public:
       false; ///< Hysteresis state for CO2 priority (runtime only).
 
   /// AC state Home Assistant pushed to THIS device (fresh, API connected).
-  /// Broadcast as HVAC_FLAG_AC_ACTIVE; set by auto_mode.h. Never fused.
+  /// Broadcast as ROOM_FLAG_AC_ACTIVE; set by auto_mode.h. Never fused.
   bool hvac_local_ac_active = false;
+  /// Window state Home Assistant pushed to THIS device (fresh, API connected).
+  /// Broadcast as ROOM_FLAG_WINDOW_OPEN; set by auto_mode.h. Never fused.
+  bool window_local_open = false;
 
   // --- PEER TRACKING (dashboard + room-wide sensor/demand fusion) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
@@ -289,11 +295,8 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *hvac_emergency_co2_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *hvac_max_fan_level_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
-  binary_sensor::BinarySensor *window_sensor_{nullptr}; ///< Injected window lock sensor.
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
-  /** @brief Sets the binary sensor used for window locking. */
-  void set_window_sensor(binary_sensor::BinarySensor *s) { window_sensor_ = s; }
   /** @brief Sets the global mode index reference. */
   void set_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { mode_index_global_ = g; }
   /** @brief Sets the global minimum fan level reference. */
@@ -406,8 +409,12 @@ public:
     // 1. Update State Machine (returns true on discrete state flip)
     bool dirty = state_machine.update(now);
 
-    // 1.1 Window Guard (Room-wide safety lock with 5s delay)
-    bool sensor_on = (window_sensor_ != nullptr && window_sensor_->state);
+    // 1.1 Window Guard (Room-wide safety lock with 5s delay).
+    //     Open if HA pushed "open" to this device or to any fresh peer
+    //     (API action set_window_open; each device shares only its own push).
+    const bool sensor_on = window_local_open ||
+        ventosync::room::any_fresh_peer_window_open(
+            peers, now, ventosync::room::fusion_max_age_ms(sync_interval_ms, PEER_TIMEOUT_MS));
     if (sensor_on) {
         if (window_sensor_on_start_ms_ == 0) window_sensor_on_start_ms_ = now;
         
@@ -630,7 +637,8 @@ public:
       peer.room_temp = pkt->room_temp;
       peer.room_co2 = pkt->room_co2;
       peer.room_humidity = pkt->room_humidity;
-      peer.hvac_ac_active = (pkt->hvac_flags & HVAC_FLAG_AC_ACTIVE) != 0;
+      peer.hvac_ac_active = (pkt->room_flags & ROOM_FLAG_AC_ACTIVE) != 0;
+      peer.window_open = (pkt->room_flags & ROOM_FLAG_WINDOW_OPEN) != 0;
     };
 
     bool found_peer = false;
@@ -858,9 +866,10 @@ public:
     pkt.hvac_co2_threshold = hvac_co2_threshold_global_ != nullptr ? static_cast<uint16_t>(hvac_co2_threshold_global_->value()) : 1200;
     pkt.hvac_emergency_co2 = hvac_emergency_co2_global_ != nullptr ? static_cast<uint16_t>(hvac_emergency_co2_global_->value()) : 1500;
     pkt.hvac_max_fan_level = hvac_max_fan_level_global_ != nullptr ? static_cast<uint8_t>(hvac_max_fan_level_global_->value()) : 3;
-    pkt.hvac_flags = 0;
-    if (hvac_enabled_global_ != nullptr && hvac_enabled_global_->value()) pkt.hvac_flags |= HVAC_FLAG_ENABLED;
-    if (hvac_local_ac_active) pkt.hvac_flags |= HVAC_FLAG_AC_ACTIVE; // own HA state only
+    pkt.room_flags = 0;
+    if (hvac_enabled_global_ != nullptr && hvac_enabled_global_->value()) pkt.room_flags |= ROOM_FLAG_HVAC_ENABLED;
+    if (hvac_local_ac_active) pkt.room_flags |= ROOM_FLAG_AC_ACTIVE;    // own HA state only
+    if (window_local_open) pkt.room_flags |= ROOM_FLAG_WINDOW_OPEN;     // own HA state only
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

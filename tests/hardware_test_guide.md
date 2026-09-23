@@ -62,8 +62,9 @@ korrumpiert.
 ### Testschritte — Fenstersperre aktivieren
 
 1. Serial-Monitor öffnen
-2. In Home Assistant: Fenstersperre-Sensor auf **Offen** setzen
-   (Entity: `binary_sensor.ventosync_window_lock_room_X`)
+2. In Home Assistant: Action `esphome.<gerätename>_set_window_open` mit
+   `window_open: true` ausführen (Entwicklerwerkzeuge → Aktionen), bzw. die
+   Fenstergruppe des Raums auf **Offen** setzen, wenn die Automation aktiv ist
 3. Warten bis Lüfter stoppt (ca. 10s Debounce)
 4. In Home Assistant: **Lüfter-Entity** prüfen  
    (Entity: `fan.ventosync_lueftung_X`)

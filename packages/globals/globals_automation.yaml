@@ -133,7 +133,7 @@ globals:
     restore_value: true
 
   # Room-wide enable flag of the "Klima-Koordination" switch (ESP-NOW v10
-  # flag HVAC_FLAG_ENABLED). The switch entity mirrors this global.
+  # flag ROOM_FLAG_HVAC_ENABLED). The switch entity mirrors this global.
   - id: hvac_enabled_val
     type: bool
     initial_value: "false"

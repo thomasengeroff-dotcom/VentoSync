@@ -238,7 +238,7 @@ automation:
 
 ## Räume mit mehreren Geräten (ESP-NOW, Protokoll v10)
 
-Das `VentilationPacket` trägt die Smart-Climate-Control-Felder `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (seit v8) und `hvac_flags` (seit **v10**: Bit 0 = raumweiter Schalter, Bit 1 = eigener HA-Klima-Status des Senders). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren — gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump. Fünf Mechanismen halten eine Raumgruppe konsistent:
+Das `VentilationPacket` trägt die Smart-Climate-Control-Felder `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (seit v8) und `room_flags` (seit **v10**: Bit 0 = raumweiter Schalter, Bit 1 = eigener HA-Klima-Status des Senders; Bit 2 = eigener HA-Fensterstatus für die [Fenstersperre](de_window-guard-ha-setup.md)). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren — gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump. Fünf Mechanismen halten eine Raumgruppe konsistent:
 
 1. **Geteilter CO2-Wert:** Jedes Gerät sendet seinen effektiven CO2-Wert; Geräte ohne Sensor werten den Koordinator mit dem Raumwert aus (siehe [Fehlender CO2-Messwert](#3-fehlender-co2-messwert-raumweit)).
 2. **Raumweite Einstellungen:** Der Schalter und die drei Slider werden über den bestehenden Config-Sync-Pfad (`handle_config_sync()`) abgeglichen: Eine Änderung an einem Gerät geht als `MSG_STATE` an alle Peers, der `MSG_SYNC`-Heartbeat des Masters setzt die Werte auf Slaves erneut.

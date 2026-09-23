@@ -43,7 +43,7 @@ This directory contains the modularized ESPHome configuration files (packages). 
 ### 🔗 Integration (`integration/`)
 | File | Description |
 | :--- | :--- |
-| **`homeassistant.yaml`** | External data points imported from Home Assistant (outdoor climate sensors, vacation switch, window contacts) and the API action `set_ac_active` (Smart Climate Control AC state). |
+| **`homeassistant.yaml`** | External data points imported from Home Assistant (outdoor climate sensors, vacation switch, window contacts) and the API actions `set_ac_active` (Smart Climate Control AC state) and `set_window_open` (Window Guard). |
 | **`ha_fan_entity.yaml`** | Native Home Assistant `fan` platform integration exposing preset modes, speed percentage, and directional control for `ventosync-card`. |
 
 ### 🎛️ User Interface (`ui/`)

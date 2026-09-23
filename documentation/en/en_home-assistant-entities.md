@@ -68,6 +68,20 @@ Modifier for `Smart-Automatik` while the room air conditioner is active. Full de
   * *Type:* Binary Sensor (Diagnostic)
   * *Documentation:* AC state last pushed by Home Assistant to this device via the API action `set_ac_active` (expires after 15 min without a new push). The coordinator also honours the AC state that a peer of the room received.
 
+### Window Guard
+
+Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Setup](en_window-guard-ha-setup.md).
+
+* **`binary_sensor.fenster_offen_ha_signal`** ("Fenster offen (HA-Signal)", YAML ID `window_locked`)
+  * *Type:* Binary Sensor (Diagnostic)
+  * *Documentation:* Window state last pushed by Home Assistant to this device via the API action `set_window_open` (expires after 15 min without a new push → treated as closed). The guard also honours the window state that a peer of the room received.
+* **`text_sensor.fenstersperre_aktiv`** ("Fenstersperre Aktiv", YAML ID `window_guard_status`)
+  * *Type:* Text Sensor (`Ja` / `Nein`)
+  * *Documentation:* Resulting room-wide lock (engaged after 5 s of "open").
+* **`switch.fenstersperre_ignorieren`** ("Fenstersperre ignorieren", YAML ID `ignore_window_guard_switch`)
+  * *Type:* Switch (Config, persisted, per device)
+  * *Documentation:* Excludes this device from the window lock.
+
 ## 3. Times & Intervals
 
 * **`number.vent_timer`** ("Ventilation Duration (min)")
