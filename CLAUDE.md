@@ -44,7 +44,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 ```text
 VentoSync/
-├── .github/workflows/         # CI/CD: build.yaml, lint.yaml, codeql.yaml, security.yaml (see CI section)
+├── .github/                   # CI/CD workflows (build, lint, codeql, security, version-guard) + scripts/
 ├── components/                # Custom ESPHome C++ external components & helper libraries
 │   ├── helpers/               # Modular C++ headers included by the YAML lambdas (see list below)
 │   ├── ventilation_group/     # VentilationController (ESP-NOW group, peers) & VentilationStateMachine
