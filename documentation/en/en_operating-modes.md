@@ -76,7 +76,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 3. **Signal Arbitration:** The system takes the **maximum** of CO2 demand and Humidity demand, ensuring neither parameter is neglected.
 4. **Smooth Mode Entry:** Switching *into* Smart Automatic resets PID integrals to zero so the fan always starts at the minimum level and ramps up only if needed.
 5. **Absolute Humidity Guard:** Dehumidification only increases fan speeds if outdoor absolute humidity is actually lower than indoor air (using the Magnus formula). If outdoor air is more humid (e.g. raining), humidity ventilation demand is set to 0.
-6. **Group Fallback:** A device without its own sensors (the `nosensor`, `radar_only` and `NTConly` variants) automatically adopts the highest demand of the room group via ESP-NOW.
+6. **Room-wide Demand Fusion:** Every device broadcasts the demand of its **own** CO2 and humidity PIDs via ESP-NOW (no sensors → no value). Each device regulates on the **maximum** of its local demand and the freshest (≤ 5 min) demand of every peer. A device without its own sensors (the `nosensor`, `radar_only` and `NTConly` variants — e.g. a Master without SCD41) therefore follows the sensor device with its full PID behaviour, for CO2 **and** humidity. Adopted values are never re-broadcast, so a high demand cannot latch between devices.
 
 > [!TIP]
 > For the complete technical background and C++ logic implementation, see **[📄 smart-automatic-logic.md](en_smart-automatic-logic.md)** and **[📄 humidity-management.md](en_humidity-management.md)**.

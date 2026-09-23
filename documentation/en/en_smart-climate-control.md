@@ -115,7 +115,9 @@ If the outdoor air is muggier than the room, ventilating would *add* moisture â€
 
 ### 3. Missing CO2 Reading (Room-Wide)
 
-The health guarantee of this feature rests on a CO2 measurement (SCD43, or the BME680 eCO2 fallback via `effective_co2`). The measurement is **room-wide**: every device shares its effective CO2 in the ESP-NOW packet, and a device without its own sensor (`radar_only` / `nosensor` / `NTConly` variants) uses the freshest peer reading, trusted for at most 5 minutes (`PEER_CO2_MAX_AGE_MS`). The log line marks such evaluations with "via Peer".
+The health guarantee of this feature rests on a CO2 measurement (SCD43, or the BME680 eCO2 fallback via `effective_co2`). The measurement is **room-wide**: every device shares its own effective CO2 in the ESP-NOW packet, and the coordinator evaluates the **highest** CO2 of the local sensor and all peers whose reading is at most 5 minutes old (`ventosync::room::PEER_DATA_MAX_AGE_MS`). A device without its own sensor (`radar_only` / `nosensor` / `NTConly` variants) therefore coordinates on the room's measurement. The log line marks values that came from a peer with "via Peer".
+
+The **mold guard** works the same way: it uses the highest relative humidity of the local SCD41 and all fresh peers (`room_humidity`), together with the temperature measured at the same spot for the absolute-humidity check. It therefore also protects rooms whose Master has no humidity sensor.
 
 Only if **no device in the room** delivers a CO2 value does the coordinator report **"Ausgesetzt (kein CO2-Wert im Raum)"** and refrain from throttling. Heat recovery is still enforced while the AC is active.
 

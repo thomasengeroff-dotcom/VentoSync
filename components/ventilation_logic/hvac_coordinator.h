@@ -24,7 +24,7 @@
 //              air conditioner is active.
 // Author:      Thomas Engeroff
 // Created:     2026-09-02
-// Modified:    2026-09-02
+// Modified:    2026-09-23
 // ==========================================================================
 #pragma once
 
@@ -76,9 +76,6 @@ constexpr float MOLD_GUARD_RH_OFF_PERCENT = 65.0f;
 /// AC "off" must persist this long before the restrictions are lifted.
 /// Absorbs compressor cycling and short Home Assistant reconnects.
 constexpr uint32_t AC_RELEASE_DELAY_MS = 120000u;
-/// A CO2 reading shared by a peer is trusted for at most this long
-/// (matches the 5-minute staleness hold of the local `effective_co2` sensor).
-constexpr uint32_t PEER_CO2_MAX_AGE_MS = 300000u;
 
 static_assert(DEFAULT_EMERGENCY_CO2_PPM >= DEFAULT_CO2_THRESHOLD_PPM + MIN_EMERGENCY_MARGIN_PPM,
               "Default emergency CO2 must lie above the relaxed setpoint");
@@ -136,28 +133,6 @@ inline const char *state_label(State s) {
     case State::EMERGENCY_HUMIDITY: return "Notfall (Feuchte)";
   }
   return "Unbekannt";
-}
-
-/**
- * @brief   Selects the CO2 reading to use: local sensor first, else a fresh peer value.
- *
- * @details Devices without a CO2 sensor (e.g. the `nosensor` / `radar_only`
- *          variants) still coordinate correctly because peers share their
- *          effective CO2 over ESP-NOW. A peer value older than `max_age_ms`
- *          is discarded (sensor offline or peer gone).
- *
- * @param[in] local_ppm     Local effective CO2 (NaN = unavailable).
- * @param[in] peer_ppm      Last CO2 received from a peer (NaN = never).
- * @param[in] peer_age_ms   Age of the peer value in milliseconds.
- * @param[in] max_age_ms    Maximum acceptable peer age.
- *
- * @return  CO2 in ppm, or NaN if neither source is usable.
- */
-inline float select_co2_source(float local_ppm, float peer_ppm, uint32_t peer_age_ms,
-                               uint32_t max_age_ms = PEER_CO2_MAX_AGE_MS) {
-  if (!std::isnan(local_ppm) && local_ppm > 0.0f) return local_ppm;
-  if (!std::isnan(peer_ppm) && peer_ppm > 0.0f && peer_age_ms <= max_age_ms) return peer_ppm;
-  return NAN;
 }
 
 /**

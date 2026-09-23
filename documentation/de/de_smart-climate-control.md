@@ -115,7 +115,9 @@ Ist die Außenluft schwüler als der Raum, würde Lüften Feuchte *eintragen* �
 
 ### 3. Fehlender CO2-Messwert (raumweit)
 
-Die Gesundheitsgarantie dieses Features beruht auf einer CO2-Messung (SCD43 oder BME680-eCO2-Fallback über `effective_co2`). Die Messung gilt **raumweit**: Jedes Gerät teilt seinen effektiven CO2-Wert im ESP-NOW-Paket, und ein Gerät ohne eigenen Sensor (Varianten `radar_only` / `nosensor` / `NTConly`) nutzt den frischesten Peer-Wert, der maximal 5 Minuten alt sein darf (`PEER_CO2_MAX_AGE_MS`). Die Log-Zeile kennzeichnet solche Auswertungen mit „via Peer".
+Die Gesundheitsgarantie dieses Features beruht auf einer CO2-Messung (SCD43 oder BME680-eCO2-Fallback über `effective_co2`). Die Messung gilt **raumweit**: Jedes Gerät teilt seinen eigenen effektiven CO2-Wert im ESP-NOW-Paket, und der Koordinator wertet den **höchsten** CO2-Wert aus lokalem Sensor und allen Peers aus, deren Wert höchstens 5 Minuten alt ist (`ventosync::room::PEER_DATA_MAX_AGE_MS`). Ein Gerät ohne eigenen Sensor (Varianten `radar_only` / `nosensor` / `NTConly`) koordiniert damit auf Basis der Raummessung. Die Log-Zeile kennzeichnet Werte von einem Peer mit „via Peer".
+
+Der **Schimmelschutz** arbeitet genauso: Er nutzt die höchste relative Feuchte aus lokalem SCD41 und allen aktuellen Peers (`room_humidity`) sowie die am selben Ort gemessene Temperatur für den Vergleich der absoluten Feuchte. Damit greift er auch in Räumen, deren Master keinen Feuchtesensor hat.
 
 Nur wenn **kein Gerät im Raum** einen CO2-Wert liefert, meldet der Koordinator **„Ausgesetzt (kein CO2-Wert im Raum)"** und drosselt **nicht**. Die Wärmerückgewinnung bleibt bei aktiver Klimaanlage weiterhin erzwungen.
 

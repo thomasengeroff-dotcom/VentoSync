@@ -7,6 +7,8 @@ This component provides a pure, hardware-agnostic C++ utility library (`Ventilat
 | File | Description |
 | :--- | :--- |
 | **`ventilation_logic.h` / `.cpp`** | **Static Math & Logic Utilities (`VentilationLogic`)**: Stateless, pure functions for heat recovery efficiency calculation, bidirectional fan PWM mapping, dynamic cycle timing, virtual RPM estimation, and linear ramping. |
+| **`hvac_coordinator.h`** | **Smart Climate Control state machine (`ventosync::hvac::Coordinator`)**: AC debounce, CO2 emergency and mold guard. |
+| **`room_fusion.h`** | **Room-wide fusion helpers (`ventosync::room`)**: NaN-aware maxima of local and fresh (≤ 5 min) ESP-NOW peer values for CO2, humidity and PID demand. |
 | **`__init__.py`** | **ESPHome Code Injector**: Registers the component with ESPHome and injects the `#include` header globally into the generated firmware build. |
 
 ## ⚙️ Key Calculations & Functions

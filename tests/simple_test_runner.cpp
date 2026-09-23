@@ -26,6 +26,7 @@
 
 #include "../components/ventilation_logic/ventilation_logic.h"
 #include "../components/ventilation_logic/hvac_coordinator.h"
+#include "../components/ventilation_logic/room_fusion.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -409,27 +410,121 @@ bool test_hvac_mold_guard() {
   return true;
 }
 
-// T-7k: CO2 source selection — local first, fresh peer fallback, stale peer rejected
-bool test_hvac_co2_source_selection() {
-  using namespace ventosync::hvac;
+// Minimal stand-in for esphome::PeerState (only the fields the fusion reads)
+struct TestPeer {
+  uint32_t last_seen_ms;
+  float pid_demand;
+  float room_co2;
+  float room_humidity;
+  float room_temp;
+};
+
+// T-7k: Room-wide CO2 fusion — max of local + fresh peers, stale/mock values rejected
+bool test_room_co2_fusion() {
+  using namespace ventosync::room;
   const float nan = std::numeric_limits<float>::quiet_NaN();
-  // Local reading wins even when a peer value exists
-  TEST_ASSERT(std::abs(select_co2_source(900.0f, 1400.0f, 0) - 900.0f) < 0.01f);
-  // No local reading → fresh peer reading is used
-  TEST_ASSERT(std::abs(select_co2_source(nan, 1400.0f, PEER_CO2_MAX_AGE_MS) - 1400.0f) < 0.01f);
-  // Stale peer reading is rejected
-  TEST_ASSERT(std::isnan(select_co2_source(nan, 1400.0f, PEER_CO2_MAX_AGE_MS + 1)));
-  // Zero / negative values are treated as invalid (mock sensors)
-  TEST_ASSERT(std::isnan(select_co2_source(0.0f, nan, 0)));
-  TEST_ASSERT(std::isnan(select_co2_source(nan, -1.0f, 0)));
-  // Peer CO2 feeds the coordinator: device without sensor still throttles / escalates
+  const uint32_t now = 1000000u;
+  std::vector<TestPeer> peers = {
+    {now - 1000u, nan, 1400.0f, nan, nan},                        // fresh, high
+    {now - PEER_DATA_MAX_AGE_MS - 1u, nan, 2500.0f, nan, nan},    // stale → ignored
+    {now - 500u, nan, 0.0f, nan, nan},                            // mock sensor → ignored
+  };
+  // Peer higher than local → peer wins
+  TEST_ASSERT(std::abs(room_max_co2(900.0f, peers, now) - 1400.0f) < 0.01f);
+  // Local higher than peer → local wins
+  TEST_ASSERT(std::abs(room_max_co2(1600.0f, peers, now) - 1600.0f) < 0.01f);
+  // No local sensor → fresh peer
+  TEST_ASSERT(std::abs(room_max_co2(nan, peers, now) - 1400.0f) < 0.01f);
+  // Only stale / invalid peers and no local → NaN
+  peers.erase(peers.begin());
+  TEST_ASSERT(std::isnan(room_max_co2(nan, peers, now)));
+  TEST_ASSERT(std::isnan(room_max_co2(0.0f, peers, now)));
+  // millis() wrap-around: peer seen just before the overflow is still fresh
+  std::vector<TestPeer> wrap = {{0xFFFFFF00u, nan, 1200.0f, nan, nan}};
+  TEST_ASSERT(std::abs(room_max_co2(nan, wrap, 0x00000100u) - 1200.0f) < 0.01f);
+
+  // Room CO2 feeds the coordinator: device without sensor still throttles / escalates
+  using namespace ventosync::hvac;
+  std::vector<TestPeer> room = {{now - 1000u, nan, 1000.0f, nan, nan}};
   Coordinator c;
-  ventosync::hvac::Inputs in = hvac_inputs(true, true, select_co2_source(nan, 1000.0f, 1000), 0);
+  ventosync::hvac::Inputs in = hvac_inputs(true, true, room_max_co2(nan, room, now), 0);
   TEST_ASSERT(c.evaluate(in).state == State::THROTTLED);
-  in.co2_ppm = select_co2_source(nan, 1600.0f, 1000);
+  room[0].room_co2 = 1600.0f;
+  in.co2_ppm = room_max_co2(nan, room, now);
   TEST_ASSERT(c.evaluate(in).state == State::EMERGENCY_CO2);
-  in.co2_ppm = select_co2_source(nan, 1600.0f, PEER_CO2_MAX_AGE_MS * 2);
+  in.co2_ppm = room_max_co2(nan, room, now + PEER_DATA_MAX_AGE_MS * 2);
   TEST_ASSERT(c.evaluate(in).state == State::SUSPENDED_NO_CO2);
+  return true;
+}
+
+// T-7l: Room-wide demand fusion — no feedback loop, stale demand expires
+bool test_room_demand_fusion() {
+  using namespace ventosync::room;
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const uint32_t now = 1000000u;
+
+  // max_valid ignores NaN operands
+  TEST_ASSERT(std::abs(max_valid(nan, 0.3f) - 0.3f) < 1e-6f);
+  TEST_ASSERT(std::abs(max_valid(0.7f, nan) - 0.7f) < 1e-6f);
+  TEST_ASSERT(std::isnan(max_valid(nan, nan)));
+
+  // Highest fresh peer demand wins; NaN (no sensor) and stale peers ignored; clamped to 1.0
+  std::vector<TestPeer> peers = {
+    {now - 1000u, 0.2f, nan, nan, nan},
+    {now - 2000u, nan, nan, nan, nan},                          // sensorless peer
+    {now - PEER_DATA_MAX_AGE_MS - 1u, 0.9f, nan, nan, nan},     // stale
+  };
+  TEST_ASSERT(std::abs(room_max_peer_demand(peers, now) - 0.2f) < 1e-6f);
+  peers[0].pid_demand = 1.7f;
+  TEST_ASSERT(std::abs(room_max_peer_demand(peers, now) - 1.0f) < 1e-6f);
+  peers[0].pid_demand = -0.1f;
+  TEST_ASSERT(std::isnan(room_max_peer_demand(peers, now)));
+
+  // Feedback-loop regression (0.10.20 bug): sensor device S and sensorless
+  // master M. Each device broadcasts only its LOCAL demand, so once S's CO2
+  // drops, M follows within one heartbeat and nothing latches at 1.0.
+  float s_local = 1.0f;          // S: CO2 spike
+  const float m_local = nan;     // M: no sensors → broadcasts NaN
+  for (int round = 0; round < 3; ++round) {
+    std::vector<TestPeer> seen_by_m = {{now, s_local, nan, nan, nan}};
+    std::vector<TestPeer> seen_by_s = {{now, m_local, nan, nan, nan}};
+    const float m_eff = max_valid(m_local, room_max_peer_demand(seen_by_m, now));
+    const float s_eff = max_valid(s_local, room_max_peer_demand(seen_by_s, now));
+    if (round == 0) {
+      TEST_ASSERT(std::abs(m_eff - 1.0f) < 1e-6f);  // M adopts the spike
+    } else {
+      TEST_ASSERT(std::abs(m_eff - 0.1f) < 1e-6f);  // M follows the drop
+      TEST_ASSERT(std::abs(s_eff - 0.1f) < 1e-6f);  // S is not pulled back up
+    }
+    s_local = 0.1f;              // CO2 back to normal after the first round
+  }
+  return true;
+}
+
+// T-7m: Room-wide humidity for the mold guard — wettest spot with matching temperature
+bool test_room_humidity_fusion() {
+  using namespace ventosync::room;
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const uint32_t now = 1000000u;
+  std::vector<TestPeer> peers = {
+    {now - 1000u, nan, nan, 72.0f, 19.5f},
+    {now - PEER_DATA_MAX_AGE_MS - 1u, nan, nan, 95.0f, 18.0f},  // stale
+    {now - 1000u, nan, nan, 120.0f, 20.0f},                     // implausible
+  };
+  // Device without humidity sensor uses the peer value and the peer's temperature
+  HumiditySource h = room_max_humidity(nan, 22.0f, peers, now);
+  TEST_ASSERT(std::abs(h.rh_percent - 72.0f) < 0.01f);
+  TEST_ASSERT(std::abs(h.temp_c - 19.5f) < 0.01f);
+  TEST_ASSERT(h.from_peer);
+  // Wetter local sensor wins and keeps the local temperature
+  h = room_max_humidity(80.0f, 22.0f, peers, now);
+  TEST_ASSERT(std::abs(h.rh_percent - 80.0f) < 0.01f);
+  TEST_ASSERT(std::abs(h.temp_c - 22.0f) < 0.01f);
+  TEST_ASSERT(!h.from_peer);
+  // Nothing usable → NaN
+  peers.erase(peers.begin());
+  h = room_max_humidity(nan, 22.0f, peers, now);
+  TEST_ASSERT(std::isnan(h.rh_percent));
   return true;
 }
 
@@ -1072,7 +1167,9 @@ int main() {
     {"T-7h: HVAC Coordinator suspended without CO2", test_hvac_suspended_without_co2},
     {"T-7i: HVAC Coordinator mold guard", test_hvac_mold_guard},
     {"T-7j: HVAC Coordinator latch reset", test_hvac_latch_reset},
-    {"T-7k: HVAC Coordinator CO2 source selection (local / peer)", test_hvac_co2_source_selection},
+    {"T-7k: Room-wide CO2 fusion (local / fresh peers)", test_room_co2_fusion},
+    {"T-7l: Room-wide demand fusion (no feedback loop)", test_room_demand_fusion},
+    {"T-7m: Room-wide humidity fusion (mold guard)", test_room_humidity_fusion},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

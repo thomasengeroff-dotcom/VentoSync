@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.21] - 2026-09-23
+
+### Fixed
+
+- **Room-wide demand fusion without a feedback loop** (`components/helpers/auto_mode.h`, `components/ventilation_logic/room_fusion.h`):
+  - Root cause of the latching demand fixed in 0.10.20: devices re-broadcast their *fused* demand (max of local and peer), so two devices kept each other at 1.00. Each device now broadcasts **only the demand of its own sensors** (`pid_demand`, NaN without sensors); fused values are never re-broadcast.
+  - Restored room-wide demand adoption, now as the maximum over **all** fresh peers (`peers[].pid_demand`, max age 5 min) instead of the last received packet. A Master without sensors again follows the sensor device with its full CO2 **and** humidity PID (integral term, hysteresis, enthalpy guard) instead of the proportional-only CO2 estimate introduced in 0.10.20.
+  - **Humidity:** 0.10.20 dropped humidity demand propagation entirely; since slaves follow the Master's level, a room whose Master has no humidity sensor ignored high humidity. Fixed by the demand fusion above.
+  - **Mold guard (Smart Climate Control):** uses the room-wide highest rH (local SCD41 + peers' `room_humidity`, with the temperature of the same spot) instead of the local SCD41 only.
+  - Room-wide CO2 for Smart Climate Control now trusts peer values for 5 min again (was 15 min in 0.10.20); the "via Peer" log flag also covers a higher peer reading.
+  - Devices outside Smart-Automatik no longer advertise a frozen demand.
+  - Note: flash **all** devices of a room — an old firmware still re-broadcasts fused demand.
+
+### Removed
+
+- `last_peer_pid_demand`, `has_peer_pid_demand`, `last_peer_co2`, `has_peer_co2` (`VentilationController`) and `ventosync::hvac::select_co2_source()` — replaced by the `ventosync::room` helpers (unit tests T-7k … T-7m).
+- Accidentally committed `components/helpers/auto_mode.h.bak` and the `tests/test_runner` binary; `*.bak` added to `.gitignore`.
+
 ## [0.10.20] - 2026-09-23
 
 ### Fixed
