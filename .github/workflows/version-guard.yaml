@@ -1,0 +1,50 @@
+# =============================================================
+# VentoSync – Release Version Guard
+# =============================================================
+# Every push to master publishes a release tagged v<version.json>
+# (build.yaml → release job). This check makes sure a pull request
+# bumps version.json, has a matching top CHANGELOG entry and does
+# not reuse an existing tag.
+#
+# PRs that must not create a release (docs / tooling only) carry
+# the label "no-release" — the check then passes without changes;
+# the release job skips because the tag already exists.
+#
+# Make this check required in the branch protection of master.
+# =============================================================
+
+name: Version Guard
+
+on:
+  pull_request:
+    branches: ["master"]
+    # labeled / unlabeled: re-evaluate when "no-release" is toggled
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  version-guard:
+    name: Version Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip (label no-release)
+        if: contains(github.event.pull_request.labels.*.name, 'no-release')
+        run: echo "::notice::Label 'no-release' set — no version bump required, no release will be created."
+
+      - name: Checkout Repository
+        if: "!contains(github.event.pull_request.labels.*.name, 'no-release')"
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check version bump
+        if: "!contains(github.event.pull_request.labels.*.name, 'no-release')"
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          python3 .github/scripts/check_version.py --base-ref "origin/$BASE_REF"
