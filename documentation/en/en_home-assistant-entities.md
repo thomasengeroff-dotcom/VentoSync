@@ -50,8 +50,8 @@ These entities configure the behavior of the "Automatic" mode.
 Modifier for `Smart-Automatik` while the room air conditioner is active. Full description: [📄 Smart Climate Control — HVAC Coordination](en_smart-climate-control.md).
 
 * **`switch.klima_koordination`** ("Klima-Koordination", YAML ID `smart_climate_control`)
-  * *Type:* Switch (Config, persisted)
-  * *Documentation:* Enables the HVAC coordination on this device. While the imported AC state (`binary_sensor.ventosync_hvac_active_room_<room_id>`) is `on`, the automatic mode switches to a CO2-only loop with a relaxed setpoint, a fan level cap and enforced heat recovery. Default: off.
+  * *Type:* Switch (Config, persisted), room-wide
+  * *Documentation:* Enables the HVAC coordination for the whole room (synchronized to all peers over ESP-NOW). While Home Assistant reports the AC as active (API action `set_ac_active`, pushed to any device of the room), the automatic mode switches to a CO2-only loop with a relaxed setpoint, a fan level cap and enforced heat recovery. Default: off.
 * **`number.klima_koordination_co2_grenzwert`** ("Klima-Koordination: CO2 Grenzwert", YAML ID `hvac_co2_threshold`)
   * *Type:* Number (Slider, 800–1500 ppm), room-wide
   * *Documentation:* Relaxed CO2 setpoint while the AC is active (default 1200 ppm). Also the release threshold of the CO2 emergency. Like the other two HVAC sliders this is a **room-wide** value: a change on any device is synchronized to all peers of the room over ESP-NOW.
@@ -64,6 +64,23 @@ Modifier for `Smart-Automatik` while the room air conditioner is active. Full de
 * **`text_sensor.klima_koordination_status`** ("Klima-Koordination Status", YAML ID `hvac_status`)
   * *Type:* Text Sensor (Diagnostic)
   * *Documentation:* Current coordinator state: `Deaktiviert`, `Inaktiv (kein Smart-Automatik)`, `Bereit (Klima aus)`, `Aktiv (gedrosselt)`, `Notfall (CO2)`, `Notfall (Feuchte)`, `Ausgesetzt (kein CO2-Wert im Raum)`. Devices without a CO2 sensor use the CO2 reading shared by a peer over ESP-NOW.
+* **`binary_sensor.klima_aktiv_ha_signal`** ("Klima aktiv (HA-Signal)", YAML ID `hvac_ac_active`)
+  * *Type:* Binary Sensor (Diagnostic)
+  * *Documentation:* AC state last pushed by Home Assistant to this device via the API action `set_ac_active` (expires after 15 min without a new push). The coordinator also honours the AC state that a peer of the room received.
+
+### Window Guard
+
+Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Setup](en_window-guard-ha-setup.md).
+
+* **`binary_sensor.fenster_offen_ha_signal`** ("Fenster offen (HA-Signal)", YAML ID `window_locked`)
+  * *Type:* Binary Sensor (Diagnostic)
+  * *Documentation:* Window state last pushed by Home Assistant to this device via the API action `set_window_open` (expires after 15 min without a new push → treated as closed). The guard also honours the window state that a peer of the room received.
+* **`text_sensor.fenstersperre_aktiv`** ("Fenstersperre Aktiv", YAML ID `window_guard_status`)
+  * *Type:* Text Sensor (`Ja` / `Nein`)
+  * *Documentation:* Resulting room-wide lock (engaged after 5 s of "open").
+* **`switch.fenstersperre_ignorieren`** ("Fenstersperre ignorieren", YAML ID `ignore_window_guard_switch`)
+  * *Type:* Switch (Config, persisted, per device)
+  * *Documentation:* Excludes this device from the window lock.
 
 ## 3. Times & Intervals
 

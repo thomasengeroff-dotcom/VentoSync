@@ -21,7 +21,7 @@
 // Description: Core ventilation math and logic utilities.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-03-23
+// Modified:    2026-09-23
 // ==========================================================================
 #pragma once
 
@@ -81,6 +81,22 @@ public:
    * @return  Next level.
    */
   static int get_next_fan_level(int current_level);
+
+  /**
+   * @brief   Smart-Automatik: maps a demand (0–1) to a discrete fan level.
+   * @details Linear mapping onto [min_level, max_level] with a ±25 % hysteresis
+   *          band around the current level. The result always lies inside
+   *          the window — also when the window just shrank below the current
+   *          level (e.g. Smart Climate Control cap, user lowered the max).
+   *          The ±1 soft ramp is applied by the caller.
+   * @param[in] demand         Combined demand 0.0–1.0 (clamped).
+   * @param[in] current_level  Current fan level (any value, clamped internally).
+   * @param[in] min_level      Window minimum (1–10).
+   * @param[in] max_level      Window maximum (1–10, swapped if < min).
+   * @return  Target level within [min_level, max_level].
+   */
+  static int calculate_auto_target_level(float demand, int current_level, int min_level,
+                                         int max_level);
 
   /**
    * @brief   Maps a user-facing level (1-10) to hardware speed (0.1–1.0).

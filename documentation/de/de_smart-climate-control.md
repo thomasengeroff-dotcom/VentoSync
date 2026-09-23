@@ -2,7 +2,7 @@
 
 [![Language: EN](https://img.shields.io/badge/Language-EN-red.svg)](../en/en_smart-climate-control.md)
 
-> **Status:** Implementiert seit Version **0.10.13** (raumweite Grenzwerte und geteilter CO2-Wert seit **0.10.14**, ESP-NOW-Protokoll v8). Die Entscheidungslogik liegt in
+> **Status:** Implementiert seit Version **0.10.13** (raumweite Grenzwerte und geteilter CO2-Wert seit **0.10.14**, ESP-NOW-Protokoll v8; Klima-Status per Home-Assistant-Action und raumweiter Schalter seit **0.10.22**, Protokoll v10). Die Entscheidungslogik liegt in
 > [`components/ventilation_logic/hvac_coordinator.h`](../../components/ventilation_logic/hvac_coordinator.h)
 > (rein, unit-getestet), die Integration in die Smart-Automatik in
 > [`components/helpers/auto_mode.h`](../../components/helpers/auto_mode.h) und die Home-Assistant-Entitäten in
@@ -21,24 +21,27 @@ Dezentrale Wohnraumlüftungen mit Wärmerückgewinnung tauschen ständig Innen- 
 
 ### Aktivierung & Modusumschaltung
 
-VentoSync bietet einen **dedizierten Schalter** in Home Assistant, mit dem Smart Climate Control pro Gerät aktiviert oder deaktiviert wird:
+VentoSync bietet einen **dedizierten Schalter** in Home Assistant, mit dem Smart Climate Control für den **ganzen Raum** aktiviert oder deaktiviert wird:
 
 | HA-Entität | YAML-ID | Typ | Standard | Zweck |
 | :--- | :--- | :---: | :---: | :--- |
-| `switch.klima_koordination` („Klima-Koordination") | `smart_climate_control` | **Switch** | Aus | Master-Schalter zur Aktivierung/Deaktivierung der HVAC-Koordination für dieses Gerät. Wird im Flash gespeichert. |
+| `switch.klima_koordination` („Klima-Koordination") | `smart_climate_control` | **Switch**, raumweit | Aus | Aktivierung/Deaktivierung der HVAC-Koordination. Das Schalten an einem Gerät schaltet alle Geräte des Raums (ESP-NOW). Wird im Flash gespeichert. |
 
 Bei **deaktiviertem** Schalter ignoriert die Lüftung den Klima-Status vollständig und arbeitet normal.
 Bei **aktiviertem** Schalter reagiert VentoSync auf die Klimaanlagen-Entität des Raums und wendet das unten beschriebene eingeschränkte Profil **ausschließlich im Betriebsmodus `Smart-Automatik`** an. Manuelle Modi (Wärmerückgewinnung, Durchlüften, Stoßlüftung, Aus) werden nie verändert — das Feature ist ein *Modifikator* der Automatik, kein eigener Betriebsmodus.
 
 ### Klimaanlagen-Status (aus Home Assistant)
 
-Der Betriebszustand der Klimaanlage erreicht die Firmware über einen **von ESPHome importierten Home-Assistant-Binary-Sensor** (gleicher Mechanismus wie `sensor.outdoor_humidity` und die Fenstersperre):
+Home Assistant **sendet** den Klima-Status mit der API-Action **`set_ac_active`** an die Lüftungsgeräte (definiert in `packages/integration/homeassistant.yaml`):
 
-| ESPHome-ID | Standard-HA-Entität (Substitution `hvac_ac_sensor_id`) | Bedeutung |
+| HA-Action | Daten | Bedeutung |
 | :--- | :--- | :--- |
-| `hvac_ac_active` | `binary_sensor.ventosync_hvac_active_room_<room_id>` | `on` = Klimaanlage ist in einem konditionierenden Modus eingeschaltet. |
+| `esphome.<gerätename>_set_ac_active` | `active: true` / `false` | `true` = Klimaanlage ist in einem konditionierenden Modus eingeschaltet. |
 
-Die ESPHome-Plattform `homeassistant` für Binary-Sensoren versteht nur `on` / `off`. Eine `climate`-Entität muss daher in Home Assistant über einen **Template-Binary-Sensor** abgebildet werden (siehe [Home-Assistant-Einrichtung](#️-home-assistant-einrichtung)).
+* **Raumweit:** Der gesendete Status wird per ESP-NOW mit allen Geräten des Raums geteilt (Flag in Protokoll v10). Home Assistant muss deshalb **mindestens ein** Gerät des Raums erreichen; die Action an alle Geräte zu senden erhöht die Redundanz. Jedes Gerät sendet nur den Status, den HA an *dieses* Gerät geschickt hat (nie das raumweite Ergebnis) — das Flag kann sich daher nicht gegenseitig festhalten.
+* **Unabhängig von der Raum-ID:** Anders als eine importierte Entität hängt die Action nicht von der Compile-Zeit-Substitution `room_id` ab — die zur Laufzeit eingestellte Raumzuordnung (`config_room_id`) bestimmt, welche Geräte den Status teilen.
+* **Ablauf:** Ein gesendeter Status gilt **15 Minuten** (`AC_STATE_MAX_AGE_MS`). Die HA-Automation sendet ihn regelmäßig erneut (empfohlen alle 5 min, siehe [Home-Assistant-Einrichtung](#️-home-assistant-einrichtung)); das deckt auch Geräteneustarts und HA-Neustarts ab.
+* **Diagnose:** Der zuletzt gesendete Wert erscheint als `binary_sensor.klima_aktiv_ha_signal` („Klima aktiv (HA-Signal)").
 
 > [!IMPORTANT]
 > **Den Betriebsmodus der Klimaanlage verwenden, nicht die Kompressor-Aktion.** Eine `climate`-Entität liefert zwei verschiedene Signale:
@@ -52,7 +55,7 @@ Die ESPHome-Plattform `homeassistant` für Binary-Sensoren versteht nur `on` / `
 >
 > `fan_only` zählt als inaktiv: Das Gerät wälzt nur Luft um, es gibt keine thermische Last zu schützen.
 
-**Fail-Safe-Verhalten:** Hat die Entität noch nie einen Zustand gemeldet, ist sie `unavailable` oder ist die API-Verbindung zu Home Assistant getrennt, gilt die Klimaanlage als **inaktiv**. Die Lüftung wird nie blind gedrosselt.
+**Fail-Safe-Verhalten:** Hat Home Assistant noch nie einen Status gesendet, ist der letzte älter als 15 Minuten oder ist die API-Verbindung getrennt, gilt der lokale Klima-Status als **inaktiv** (ein aktueller Status eines Peers im Raum zählt weiterhin). Die Lüftung wird nie blind gedrosselt.
 
 ---
 
@@ -64,7 +67,7 @@ Wenn Smart Climate Control **aktiviert** ist, der Betriebsmodus **Smart-Automati
 
 > **Nur so viel lüften, wie für die Gesundheit nötig ist — nicht für Komfort oder Entfeuchtung.**
 
-Die standardmäßige Dual-PID-Regelung (CO2 + Feuchte) wird durch eine **reine CO2-Regelschleife** mit verschärften Grenzen ersetzt:
+Die standardmäßige Dual-PID-Regelung (CO2 + Feuchte) wird durch eine **reine CO2-Regelschleife** mit verschärften Grenzen ersetzt. Da Schalter und Klima-Status raumweit gelten, wendet jedes Gerät des Raums dasselbe Profil an — auch der Bedarf, den ein Gerät mit seinen Peers teilt, ist während der Drosselung reiner CO2-Bedarf:
 
 | Parameter | Normale Smart-Automatik | HVAC-Koordination (gedrosselt) | Begründung |
 | :--- | :---: | :---: | :--- |
@@ -115,7 +118,7 @@ Ist die Außenluft schwüler als der Raum, würde Lüften Feuchte *eintragen* �
 
 ### 3. Fehlender CO2-Messwert (raumweit)
 
-Die Gesundheitsgarantie dieses Features beruht auf einer CO2-Messung (SCD43 oder BME680-eCO2-Fallback über `effective_co2`). Die Messung gilt **raumweit**: Jedes Gerät teilt seinen eigenen effektiven CO2-Wert im ESP-NOW-Paket, und der Koordinator wertet den **höchsten** CO2-Wert aus lokalem Sensor und allen Peers aus, deren Wert höchstens 5 Minuten alt ist (`ventosync::room::PEER_DATA_MAX_AGE_MS`). Ein Gerät ohne eigenen Sensor (Varianten `radar_only` / `nosensor` / `NTConly`) koordiniert damit auf Basis der Raummessung. Die Log-Zeile kennzeichnet Werte von einem Peer mit „via Peer".
+Die Gesundheitsgarantie dieses Features beruht auf einer CO2-Messung (SCD43 oder BME680-eCO2-Fallback über `effective_co2`). Die Messung gilt **raumweit**: Jedes Gerät teilt seinen eigenen effektiven CO2-Wert im ESP-NOW-Paket, und der Koordinator wertet den **höchsten** CO2-Wert aus lokalem Sensor und allen Peers aus, deren Wert höchstens 5 Minuten alt ist (`ventosync::room::PEER_DATA_MAX_AGE_MS`; bei längerem Sync-Intervall zwei Heartbeats). Ein Gerät ohne eigenen Sensor (Varianten `radar_only` / `nosensor` / `NTConly`) koordiniert damit auf Basis der Raummessung. Die Log-Zeile kennzeichnet Werte von einem Peer mit „via Peer".
 
 Der **Schimmelschutz** arbeitet genauso: Er nutzt die höchste relative Feuchte aus lokalem SCD41 und allen aktuellen Peers (`room_humidity`) sowie die am selben Ort gemessene Temperatur für den Vergleich der absoluten Feuchte. Damit greift er auch in Räumen, deren Master keinen Feuchtesensor hat.
 
@@ -125,8 +128,8 @@ Nur wenn **kein Gerät im Raum** einen CO2-Wert liefert, meldet der Koordinator 
 
 ## Übergangsverhalten
 
-* **Klimaanlage schaltet ein:** Das eingeschränkte Profil greift beim nächsten 10-Sekunden-Zyklus (der importierte Binary-Sensor löst zusätzlich eine sofortige Auswertung aus). Der Lüfter fährt um höchstens 1 Stufe pro Zyklus herunter, z. B. Stufe 6 → 3 in ca. 30 s.
-* **Klimaanlage schaltet aus:** Die Firmware wartet auf **120 s durchgehendes „aus"**, bevor die Einschränkungen aufgehoben werden (`AC_RELEASE_DELAY_MS`). Das fängt kurze Home-Assistant-Reconnects und kurzzeitiges Umschalten ab. Bei Split-Geräten, deren Integration nur `hvac_action` liefert, zusätzlich ein `delay_off` im HA-Template-Sensor setzen (siehe unten), um Kompressor-Taktung weiter zu glätten.
+* **Klimaanlage schaltet ein:** Das eingeschränkte Profil greift sofort auf dem Gerät, das die HA-Action erhalten hat, und auf den übrigen Geräten des Raums mit ihrem nächsten ESP-NOW-Heartbeat (Standard alle 60 s). Der Lüfter fährt um höchstens 1 Stufe pro 10-Sekunden-Zyklus herunter, z. B. Stufe 6 → 3 in ca. 30 s; das Stufenfenster wird immer durchgesetzt, auch wenn der Lüfter oberhalb der Obergrenze lief.
+* **Klimaanlage schaltet aus:** Die Firmware wartet auf **120 s durchgehendes „aus"**, bevor die Einschränkungen aufgehoben werden (`AC_RELEASE_DELAY_MS`). Das fängt kurze Home-Assistant-Reconnects und kurzzeitiges Umschalten ab. Bei Split-Geräten, deren Integration nur `hvac_action` liefert, den gesendeten Status aus einem Template-Binary-Sensor mit `delay_off` ableiten (siehe unten), um Kompressor-Taktung weiter zu glätten.
 * **Freigabe:** Grenzen und Sollwert kehren zu den Nutzerwerten zurück; das CO2-PID-Integral wird bei jedem Sollwertwechsel und das Feuchte-PID-Integral bei Wiederaktivierung zurückgesetzt, sodass kein Windup aus der gedrosselten Phase übernommen wird. Der Lüfter fährt mit ±1 Stufe pro 10 s wieder hoch.
 * **Sollwert-Autorität:** Der HA-Slider `auto_co2_threshold` und der ESP-NOW-Konfigurationsabgleich schreiben beide das CO2-PID-Ziel. Der Koordinator setzt das korrekte Ziel in jedem Zyklus erneut, sodass eine Slider-Änderung während des Klimabetriebs den gelockerten Sollwert nicht unbemerkt überschreiben kann.
 
@@ -183,52 +186,67 @@ Der Zustand wird als Diagnose-Textsensor **„Klima-Koordination Status"** (`hva
 
 | HA-Entität (deutscher UI-Name) | YAML-ID | Typ | Standard | Bereich | Zweck |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| `Klima-Koordination` | `smart_climate_control` | Switch | Aus | — | Aktivierung/Deaktivierung der HVAC-Koordination für dieses Gerät. |
+| `Klima-Koordination` | `smart_climate_control` | Switch, **raumweit** | Aus | — | Aktivierung/Deaktivierung der HVAC-Koordination für den Raum. |
 | `Klima-Koordination: CO2 Grenzwert` | `hvac_co2_threshold` | Number (Slider), **raumweit** | 1200 ppm (`hvac_default_co2_threshold`) | 800–1500 ppm | Gelockerter CO2-Sollwert bei aktiver Klimaanlage. Zugleich Freigabeschwelle des CO2-Notfalls. |
 | `Klima-Koordination: Max Lüfterstufe` | `hvac_max_fan_level` | Number (Slider), **raumweit** | 3 (`hvac_default_max_fan_level`) | 1–5 | Maximale Lüfterstufe bei aktiver Klimaanlage. |
 | `Klima-Koordination: CO2 Notfallgrenze` | `hvac_emergency_co2` | Number (Slider), **raumweit** | 1500 ppm (`hvac_default_emergency_co2`) | 1200–2000 ppm | CO2-Wert, ab dem die normale Automatikregelung unabhängig vom Klima-Status greift (wird ≥ Sollwert + 100 ppm gehalten). |
 | `Klima-Koordination Status` | `hvac_status` | Textsensor (Diagnose) | — | — | Aktueller Koordinator-Zustand (siehe Tabelle oben). |
-| *(intern)* `Klima Aktiv (Raum)` | `hvac_ac_active` | Binary-Sensor (Import aus HA) | — | — | Echtzeit-Klima-Status; Entity-ID über die Substitution `hvac_ac_sensor_id`. |
+| `Klima aktiv (HA-Signal)` | `hvac_ac_active` | Binary-Sensor (Diagnose) | — | — | Zuletzt von Home Assistant an dieses Gerät gesendeter Klima-Status (Action `set_ac_active`). |
 
-Alle Slider und der Schalter sind `entity_category: config`, werden im NVS gespeichert und greifen beim nächsten Auswertezyklus. Die drei Slider sind **raumweite Einstellungen**: Eine Änderung an einem beliebigen Gerät wird sofort per ESP-NOW an alle Peers des Raums übertragen (`sync_settings_to_peers()`), und der Master-Heartbeat setzt sie erneut, genau wie die Smart-Automatik Min/Max-Stufen. Ihre Startwerte stammen aus den Substitutionen `hvac_default_co2_threshold`, `hvac_default_emergency_co2` und `hvac_default_max_fan_level` in `ventosync_base.yaml`. Der Schalter bleibt pro Gerät. Feste Konstanten (`MIN_FAN_LEVEL = 1`, Schimmelschutz 70 % / 65 %, Freigabeverzögerung 120 s, Notfallabstand 100 ppm) sind in `hvac_coordinator.h` definiert.
+Alle Slider und der Schalter sind `entity_category: config`, werden im NVS gespeichert und greifen beim nächsten Auswertezyklus. Der Schalter und die drei Slider sind **raumweite Einstellungen**: Eine Änderung an einem beliebigen Gerät wird sofort per ESP-NOW an alle Peers des Raums übertragen (`sync_settings_to_peers()`), und der Master-Heartbeat setzt sie erneut, genau wie die Smart-Automatik Min/Max-Stufen. Ihre Startwerte stammen aus den Substitutionen `hvac_default_co2_threshold`, `hvac_default_emergency_co2` und `hvac_default_max_fan_level` in `ventosync_base.yaml` (Schalter: aus). Werte von Peers werden nur innerhalb der obigen Slider-Bereiche übernommen; der Koordinator begrenzt sie zusätzlich (Konstanten `CO2_THRESHOLD_*`, `EMERGENCY_CO2_*`, `MAX_FAN_LEVEL_CONFIG_*` in `hvac_coordinator.h`). Feste Konstanten (`MIN_FAN_LEVEL = 1`, Schimmelschutz 70 % / 65 %, Freigabeverzögerung 120 s, Notfallabstand 100 ppm) sind in `hvac_coordinator.h` definiert.
 
 ---
 
 ## 🛠️ Home-Assistant-Einrichtung
 
-Pro Raum einen Template-Binary-Sensor anlegen, der die Climate-Entität auf `on` / `off` abbildet. Die von der Firmware erwartete Standard-Entity-ID für **Raum 1** lautet `binary_sensor.ventosync_hvac_active_room_1` (überschreibbar über die Substitution `hvac_ac_sensor_id` in `ventosync_base.yaml` bzw. der Geräte-YAML).
+Pro Raum eine Automation anlegen, die den Klima-Status an die VentoSync-Geräte dieses Raums sendet. `<gerätename>` ist der ESPHome-Node-Name des Geräts (Bindestriche werden zu Unterstrichen, z. B. `ventosync-dg-buero` → `esphome.ventosync_dg_buero_set_ac_active`).
 
 ```yaml
-template:
-  - binary_sensor:
-      - name: "VentoSync HVAC Active Room 1"
-        unique_id: ventosync_hvac_active_room_1
-        device_class: running
-        # Den gewählten hvac_mode verwenden, NICHT hvac_action (Kompressor-Taktung würde flattern).
-        state: >
-          {{ states('climate.schlafzimmer_klima') in ['cool', 'heat', 'heat_cool', 'dry', 'auto'] }}
-        # Optional: zusätzliche Glättung bei kurzem Ausschalten der Klimaanlage.
-        delay_off:
-          minutes: 5
+automation:
+  - alias: "VentoSync: Klima-Status Raum 1"
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: climate.schlafzimmer_klima
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern   # erneut senden: der Status läuft im Gerät nach 15 min ab
+        minutes: "/5"
+    variables:
+      # Den gewählten hvac_mode verwenden, NICHT hvac_action (Kompressor-Taktung würde flattern).
+      ac_active: "{{ states('climate.schlafzimmer_klima') in ['cool', 'heat', 'heat_cool', 'dry', 'auto'] }}"
+    actions:
+      # Mindestens ein Gerät des Raums; für Redundanz alle Geräte auflisten.
+      - action: esphome.ventosync_schlafzimmer_1_set_ac_active
+        data:
+          active: "{{ ac_active }}"
+        continue_on_error: true
+      - action: esphome.ventosync_schlafzimmer_2_set_ac_active
+        data:
+          active: "{{ ac_active }}"
+        continue_on_error: true
 ```
 
-Für einen einfachen `input_boolean`-Helfer oder eine Schaltsteckdose, die ein mobiles Klimagerät versorgt, kann `hvac_ac_sensor_id` direkt auf diese Entität zeigen (jede `on`/`off`-Entität funktioniert).
+* **`input_boolean` / Schaltsteckdose** (mobiles Klimagerät): diese Entität als Trigger und `is_state('input_boolean.xyz', 'on')` als `ac_active` verwenden.
+* **Zusätzliche Glättung** für Integrationen, die nur `hvac_action` liefern: einen Template-Binary-Sensor mit `delay_off: {minutes: 5}` anlegen und ihn statt der Climate-Entität als Trigger/Quelle nutzen.
+* **Mehrere Klimageräte in einem Raum:** im `ac_active`-Template mit `or` verknüpfen (oder einen **Binary-Sensor-Gruppen**-Helfer „beliebige Entität an" verwenden — genau wie bei der [Fenstersperre](de_window-guard-ha-setup.md)).
 
-> [!TIP]
-> Mehrere Klimageräte in einem Raum: mit einem **Binary-Sensor-Gruppen**-Helfer („beliebige Entität an") zusammenfassen — genau wie bei der [Fenstersperre](de_window-guard-ha-setup.md) — und die Gruppe als `hvac_ac_sensor_id` verwenden.
+> [!IMPORTANT]
+> **Umstieg von ≤ 0.10.21:** Die Firmware importiert `binary_sensor.ventosync_hvac_active_room_<room_id>` nicht mehr (Substitution `hvac_ac_sensor_id` entfernt). Ein vorhandener Template-Binary-Sensor kann bleiben und einfach als Trigger/Quelle der obigen Automation dienen. Der Schalter „Klima-Koordination" steht nach dem Update auf **aus** — einmal pro Raum einschalten.
 
 ---
 
-## Räume mit mehreren Geräten (ESP-NOW, Protokoll v9)
+## Räume mit mehreren Geräten (ESP-NOW, Protokoll v10)
 
-Das `VentilationPacket` trägt seit Protokoll **v8** vier zusätzliche Felder (`room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level`). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren — gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump (aktuelles Protokoll: v9, das `room_humidity` ergänzt hat). Vier Mechanismen halten eine Raumgruppe konsistent:
+Das `VentilationPacket` trägt die Smart-Climate-Control-Felder `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (seit v8) und `room_flags` (seit **v10**: Bit 0 = raumweiter Schalter, Bit 1 = eigener HA-Klima-Status des Senders; Bit 2 = eigener HA-Fensterstatus für die [Fenstersperre](de_window-guard-ha-setup.md)). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren — gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump. Fünf Mechanismen halten eine Raumgruppe konsistent:
 
 1. **Geteilter CO2-Wert:** Jedes Gerät sendet seinen effektiven CO2-Wert; Geräte ohne Sensor werten den Koordinator mit dem Raumwert aus (siehe [Fehlender CO2-Messwert](#3-fehlender-co2-messwert-raumweit)).
-2. **Raumweite Grenzwerte:** Die drei Slider werden über den bestehenden Config-Sync-Pfad (`handle_config_sync()`) abgeglichen: Eine Änderung an einem Gerät geht als `MSG_STATE` an alle Peers, der `MSG_SYNC`-Heartbeat des Masters setzt die Werte auf Slaves erneut.
+2. **Raumweite Einstellungen:** Der Schalter und die drei Slider werden über den bestehenden Config-Sync-Pfad (`handle_config_sync()`) abgeglichen: Eine Änderung an einem Gerät geht als `MSG_STATE` an alle Peers, der `MSG_SYNC`-Heartbeat des Masters setzt die Werte auf Slaves erneut.
 3. **Stufen-Autorität:** In der Smart-Automatik spiegeln Slaves die diskrete Lüfterstufe des Masters (Geräte-ID 1). Drosselt der Master auf Stufe 1–3, folgt jeder Slave innerhalb eines Auswertezyklus.
 4. **Modus-Abgleich:** Das periodische Sync-Paket des Masters trägt den erzwungenen WRG-Modus; Slaves übernehmen ihn.
+5. **Geteilter Klima-Status:** Ein Gerät wertet die Klimaanlage als aktiv, wenn HA „aktiv" an dieses Gerät **oder** an einen aktuellen Peer gesendet hat (Aktualität: 5 min, bei längerem Sync-Intervall zwei Heartbeats).
 
-Jedes Gerät wertet den Koordinator dennoch lokal aus (standardmäßig dieselbe Klima-Entität über `${room_id}`), sodass ein Slave bei ausgefallenem Master selbstständig drosselt. Nur der Aktivierungsschalter gilt **pro Gerät** — das Feature auf jedem Gerät im Raum einschalten.
+Jedes Gerät wertet den Koordinator dennoch lokal mit den raumweiten Eingangsdaten aus, sodass ein Slave bei ausgefallenem Master selbstständig drosselt. Slaves, die dem Master folgen, begrenzen die übernommene Stufe zusätzlich auf ihr eigenes Stufenfenster.
 
 ---
 
@@ -247,8 +265,8 @@ Jedes Gerät wertet den Koordinator dennoch lokal aus (standardmäßig dieselbe 
 
 ## Implementierungshinweise
 
-1. **Sensor-Anforderungen:** Keine zusätzliche Hardware. Benötigt eine CO2-Quelle (`effective_co2`: SCD43 oder BME680-eCO2) und eine Home-Assistant-Entität für den Klima-Status. Der Schimmelschutz nutzt zusätzlich die Raumfeuchte und `sensor.outdoor_humidity`.
-2. **Dateien:** `components/ventilation_logic/hvac_coordinator.h` (reiner `ventosync::hvac::Coordinator`, Unit-Tests T-7a–T-7j in `tests/simple_test_runner.cpp`), `components/helpers/auto_mode.h` (`evaluate_hvac_coordination()`, `apply_co2_setpoint()`, Stufenfenster und WRG-Sperre in `evaluate_auto_mode()`), `components/helpers/globals.h` (Entitäts-Externs, `hvac_state`), `packages/ui/ui_controls.yaml`, `packages/integration/homeassistant.yaml`, `packages/base/ventosync_base.yaml` (`hvac_ac_sensor_id`).
+1. **Sensor-Anforderungen:** Keine zusätzliche Hardware. Benötigt eine CO2-Quelle (`effective_co2`: SCD43 oder BME680-eCO2) und eine Home-Assistant-Automation, die den Klima-Status sendet (`set_ac_active`). Der Schimmelschutz nutzt zusätzlich die Raumfeuchte und `sensor.outdoor_humidity`.
+2. **Dateien:** `components/ventilation_logic/hvac_coordinator.h` (reiner `ventosync::hvac::Coordinator`, Unit-Tests T-7a–T-7p in `tests/simple_test_runner.cpp`), `components/ventilation_logic/room_fusion.h` (raumweite CO2-/Feuchte-/Klima-Fusion), `VentilationLogic::calculate_auto_target_level()` (Stufenfenster), `components/helpers/auto_mode.h` (`evaluate_hvac_coordination()`, `hvac_on_ha_ac_state()`, `apply_co2_setpoint()`, WRG-Sperre in `evaluate_auto_mode()`), `components/helpers/network_sync.h` (raumweiter Abgleich), `components/helpers/globals.h` (Entitäts-Externs, `hvac_state`), `packages/ui/ui_controls.yaml`, `packages/integration/homeassistant.yaml` (API-Action).
 3. **Heizbetrieb:** Dieselbe Logik gilt, wenn die Klimaanlage im Winter heizt — intensive Lüftung würde warme Raumluft hinausbefördern. Da Heizen nicht entfeuchtet, ist der Schimmelschutz in dieser Jahreszeit das Sicherheitsnetz.
-4. **Flash-Verschleiß:** Nur Schalter und die drei Slider werden (bei Änderung) persistiert. Der Laufzeitzustand liegt im RAM.
-5. **Hardware-Varianten:** Die Entitäten existieren in allen Varianten. Varianten ohne CO2-Quelle nutzen den von einem Peer geteilten CO2-Wert; nur ein Raum ganz ohne CO2-Quelle meldet `Ausgesetzt (kein CO2-Wert im Raum)` und drosselt nie.
+4. **Flash-Verschleiß:** Nur Schalter und die drei Slider werden (bei Änderung) persistiert. Der Laufzeitzustand (auch der gesendete Klima-Status) liegt im RAM.
+5. **Hardware-Varianten:** Die Entitäten existieren in allen Varianten. Auch die MQTT-Variante braucht für die Action `set_ac_active` die native API. Varianten ohne CO2-Quelle nutzen den von einem Peer geteilten CO2-Wert; nur ein Raum ganz ohne CO2-Quelle meldet `Ausgesetzt (kein CO2-Wert im Raum)` und drosselt nie.

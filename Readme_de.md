@@ -163,7 +163,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
 
     Falls beide Temperatursensoren ausfallen, greift ein Fallback, der die relative Feuchtigkeit direkt vergleicht. Details im [📄 Smart-Automatik Modus (Auto-Logik)](documentation/de/de_smart-automatic-logic.md).
 - 📊 **Echte VentoMaxx V-Kennlinie**: Basierend auf den physikalischen Parametern der Original-Hardware (50% PWM = Stopp-Zone), wurde die Kennlinie jedoch in den niedrigeren Stufen (Stufe 1-6) feiner abgestimmt, um akustisch noch dezenter zu bleiben.
-- 🪟 **Fenstersperre (Window Guard)**: Automatischer raumweiter Lüftungsstopp bei offenen Fenstern mit 5s Verzögerung, automatischem Fortsetzen und Master-LED-Feedback.
+- 🪟 **Fenstersperre (Window Guard)**: Automatischer raumweiter Lüftungsstopp bei offenen Fenstern mit 5s Verzögerung, automatischem Fortsetzen und Master-LED-Feedback. Home Assistant sendet den Fensterstatus mit der API-Action `set_window_open` an ein beliebiges Gerät des Raums; er wird per ESP-NOW raumweit geteilt.
   > 👉 *Einrichtungsanleitung & Details: [📄 Fenstersperre Setup Guide](documentation/de/de_window-guard-ha-setup.md).*
 - ❄️🔥 **Klima-Koordination (Smart Climate Control)**: Solange die Raumklimaanlage aktiv ist, drosselt die `Smart-Automatik` auf eine reine CO2-Regelung (gelockertes Ziel 1200 ppm, Lüfter-Obergrenze Stufe 3, erzwungene Wärmerückgewinnung), damit die Lüftung keine heiße Außenluft importiert. CO2-Notfall (1500 ppm) und Schimmelschutz (70 % rH) stellen die volle Regelung automatisch wieder her; die Freigabe ist entprellt (120 s).
   > 👉 *Konzept, Zustandsautomat & HA-Template-Sensor: [📄 Intelligente Klimaanlagen-Koordination](documentation/de/de_smart-climate-control.md).*
@@ -231,7 +231,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v9, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v10, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -492,12 +492,13 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **LED-Helligkeit**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
 - **CO2-Grenzwert**: `number.auto_co2_threshold` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
 - **Klima-Koordination** *(Konfiguration)*:
-  - `switch.klima_koordination` — HVAC-Koordination aktivieren, **pro Gerät** (Standard: aus)
+  - `switch.klima_koordination` — HVAC-Koordination aktivieren, **raumweit** (Standard: aus)
   - `number.klima_koordination_co2_grenzwert` — Gelockerter CO2-Sollwert bei aktiver Klimaanlage, 800–1500 ppm (Standard: `1200`)
   - `number.klima_koordination_max_lufterstufe` — Lüfter-Obergrenze bei aktiver Klimaanlage, 1–5 (Standard: `3`)
   - `number.klima_koordination_co2_notfallgrenze` — CO2-Notfallgrenze, 1200–2000 ppm (Standard: `1500`)
   - `text_sensor.klima_koordination_status` — Aktueller Koordinator-Zustand (Diagnose)
-  > Die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v9) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Nur der Aktivierungsschalter gilt pro Gerät.
+  - `binary_sensor.klima_aktiv_ha_signal` — Zuletzt von Home Assistant gesendeter Klima-Status (Diagnose)
+  > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v10) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)

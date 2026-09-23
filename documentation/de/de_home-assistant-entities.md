@@ -53,8 +53,8 @@ Mit diesen Entitäten wird das Verhalten des "Smart-Automatik" Modus konfigurier
 Modifikator für die `Smart-Automatik`, solange die Raumklimaanlage aktiv ist. Vollständige Beschreibung: [📄 Intelligente Klimaanlagen-Koordination](de_smart-climate-control.md).
 
 * **`switch.klima_koordination`** ("Klima-Koordination", YAML-ID `smart_climate_control`)
-  * *Typ:* Switch (Config, persistent)
-  * *Dokumentation:* Aktiviert die HVAC-Koordination auf diesem Gerät. Solange der importierte Klima-Status (`binary_sensor.ventosync_hvac_active_room_<room_id>`) `on` ist, wechselt die Automatik auf eine reine CO2-Regelung mit gelockertem Sollwert, Stufenbegrenzung und erzwungener Wärmerückgewinnung. Standard: aus.
+  * *Typ:* Switch (Config, persistent), raumweit
+  * *Dokumentation:* Aktiviert die HVAC-Koordination für den ganzen Raum (per ESP-NOW mit allen Peers abgeglichen). Solange Home Assistant die Klimaanlage als aktiv meldet (API-Action `set_ac_active`, an ein beliebiges Gerät des Raums), wechselt die Automatik auf eine reine CO2-Regelung mit gelockertem Sollwert, Stufenbegrenzung und erzwungener Wärmerückgewinnung. Standard: aus.
 * **`number.klima_koordination_co2_grenzwert`** ("Klima-Koordination: CO2 Grenzwert", YAML-ID `hvac_co2_threshold`)
   * *Typ:* Number (Slider, 800–1500 ppm), raumweit
   * *Dokumentation:* Gelockerter CO2-Sollwert bei aktiver Klimaanlage (Standard 1200 ppm). Zugleich Freigabeschwelle des CO2-Notfalls. Wie die beiden anderen HVAC-Slider ein **raumweiter** Wert: Eine Änderung an einem Gerät wird per ESP-NOW an alle Peers des Raums synchronisiert.
@@ -67,6 +67,23 @@ Modifikator für die `Smart-Automatik`, solange die Raumklimaanlage aktiv ist. V
 * **`text_sensor.klima_koordination_status`** ("Klima-Koordination Status", YAML-ID `hvac_status`)
   * *Typ:* Textsensor (Diagnose)
   * *Dokumentation:* Aktueller Koordinator-Zustand: `Deaktiviert`, `Inaktiv (kein Smart-Automatik)`, `Bereit (Klima aus)`, `Aktiv (gedrosselt)`, `Notfall (CO2)`, `Notfall (Feuchte)`, `Ausgesetzt (kein CO2-Wert im Raum)`. Geräte ohne CO2-Sensor nutzen den per ESP-NOW geteilten CO2-Wert eines Peers.
+* **`binary_sensor.klima_aktiv_ha_signal`** ("Klima aktiv (HA-Signal)", YAML-ID `hvac_ac_active`)
+  * *Typ:* Binary-Sensor (Diagnose)
+  * *Dokumentation:* Zuletzt von Home Assistant per API-Action `set_ac_active` an dieses Gerät gesendeter Klima-Status (läuft ohne neue Meldung nach 15 min ab). Der Koordinator berücksichtigt auch den Klima-Status, den ein Peer des Raums erhalten hat.
+
+### Fenstersperre
+
+Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fenstersperre einrichten](de_window-guard-ha-setup.md).
+
+* **`binary_sensor.fenster_offen_ha_signal`** ("Fenster offen (HA-Signal)", YAML-ID `window_locked`)
+  * *Typ:* Binary-Sensor (Diagnose)
+  * *Dokumentation:* Zuletzt von Home Assistant per API-Action `set_window_open` an dieses Gerät gesendeter Fensterstatus (läuft ohne neue Meldung nach 15 min ab → gilt als geschlossen). Die Sperre berücksichtigt auch den Fensterstatus, den ein Peer des Raums erhalten hat.
+* **`text_sensor.fenstersperre_aktiv`** ("Fenstersperre Aktiv", YAML-ID `window_guard_status`)
+  * *Typ:* Textsensor (`Ja` / `Nein`)
+  * *Dokumentation:* Resultierende raumweite Sperre (greift nach 5 s „offen").
+* **`switch.fenstersperre_ignorieren`** ("Fenstersperre ignorieren", YAML-ID `ignore_window_guard_switch`)
+  * *Typ:* Switch (Config, persistent, pro Gerät)
+  * *Dokumentation:* Nimmt dieses Gerät von der Fenstersperre aus.
 
 ## 3. Zeiten & Intervalle
 

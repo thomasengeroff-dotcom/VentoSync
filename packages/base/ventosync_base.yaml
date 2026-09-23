@@ -22,7 +22,7 @@
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-04-21
+# Modified:    2026-09-23
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -39,21 +39,20 @@ substitutions:
   is_phase_a: "true"
 
   # WINDOW GUARD CONFIG
-  # Entity ID of the Home Assistant binary sensor (group) for windows in this room.
-  # Default convention: binary_sensor.ventosync_window_lock_room_${room_id}
-  window_sensor_id: "binary_sensor.ventosync_window_lock_room_${room_id}"
+  # The window state is pushed by Home Assistant via the API action
+  # "set_window_open" (see documentation/en/en_window-guard-ha-setup.md) and
+  # shared with the room over ESP-NOW — no per-room entity ID needed here.
 
   # SMART CLIMATE CONTROL (HVAC COORDINATION) CONFIG
-  # Entity ID of the Home Assistant binary sensor that is "on" while the room
-  # air conditioner is actively conditioning the room.
-  # Default convention: binary_sensor.ventosync_hvac_active_room_${room_id}
-  hvac_ac_sensor_id: "binary_sensor.ventosync_hvac_active_room_${room_id}"
+  # The AC state is pushed by Home Assistant via the API action
+  # "set_ac_active" (see documentation/en/en_smart-climate-control.md) and
+  # shared with the room over ESP-NOW — no per-room entity ID needed here.
   # Initial (first-boot) values of the room-wide Smart Climate Control thresholds.
   # Runtime changes via HA are persisted and synced to all devices of the room
   # over ESP-NOW (Master authority) — set them once per room, not per device.
   hvac_default_co2_threshold: "1200"   # ppm, relaxed CO2 setpoint while the AC is active
   hvac_default_emergency_co2: "1500"   # ppm, CO2 emergency override
-  hvac_default_max_fan_level: "3"      # 1-10, fan level cap while the AC is active
+  hvac_default_max_fan_level: "3"      # 1-5, fan level cap while the AC is active
 
   # VACATION MODE CONFIG
   # Entity ID of the Home Assistant input_boolean helper for vacation mode.
@@ -176,7 +175,6 @@ ventilation_group:
   is_phase_a: ${is_phase_a}
   main_fan: lueftung_fan
   direction_switch: fan_direction
-  window_sensor: window_locked
   fan_rpm_sensor: fan_rpm
   board_temp_sensor: temperature
   scd41_temp_sensor: scd41_temperature
@@ -194,6 +192,7 @@ ventilation_group:
   hvac_co2_threshold_global: hvac_co2_threshold_val
   hvac_emergency_co2_global: hvac_emergency_co2_val
   hvac_max_fan_level_global: hvac_max_fan_level_val
+  hvac_enabled_global: hvac_enabled_val
 
 # Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
 ventilation_logic:

@@ -165,7 +165,7 @@ All devices in a room find each other automatically upon startup or room change 
     If both temperature sensors are unavailable, the system falls back to a simple relative humidity comparison as a safety net. See [📄 Automatic-Mode-Logic.md](documentation/en/en_smart-automatic-logic.md) for full technical details.
 
 - 📊 **Optimized VentoMaxx Ventilation Curve**: Based on the physical parameters of the original hardware (50% PWM = stop zone), the curve has been optimized with finer granularity in the lower levels (Levels 1-6) to ensure even more discreet acoustic operation.
-- 🪟 **Window Guard**: Automatic room-wide ventilation pause with 5s delay, auto-resume, visual Master LED feedback, and individual bypass switches.
+- 🪟 **Window Guard**: Automatic room-wide ventilation pause with 5s delay, auto-resume, visual Master LED feedback, and individual bypass switches. Home Assistant pushes the window state with the API action `set_window_open` to any device of the room; it is shared room-wide via ESP-NOW.
   > 👉 *Setup guide & behavior details: [📄 Window Guard Setup Guide](documentation/en/en_window-guard-ha-setup.md).*
 - ❄️🔥 **Smart Climate Control (HVAC Coordination)**: While the room air conditioner is active, `Smart-Automatik` throttles to a CO2-only loop (relaxed 1200 ppm target, fan cap Level 3, enforced heat recovery) so the ventilation stops importing hot outdoor air. CO2 emergency (1500 ppm) and mold guard (70 % rH) restore full regulation automatically; AC release is debounced (120 s).
   > 👉 *Concept, state machine & HA template sensor: [📄 Smart Climate Control](documentation/en/en_smart-climate-control.md).*
@@ -233,7 +233,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v9 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v10 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -494,12 +494,13 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **LED Brightness**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, default: 80 %) to limit the maximum panel brightness.
 - **CO2 Limit**: `number.auto_co2_threshold` (400–2000 ppm, default: 1000; always active in Smart-Automatik mode)
 - **Smart Climate Control** *(Configuration)*:
-  - `switch.klima_koordination` — Enable HVAC coordination, **per device** (default: off)
+  - `switch.klima_koordination` — Enable HVAC coordination, **room-wide** (default: off)
   - `number.klima_koordination_co2_grenzwert` — Relaxed CO2 target while the AC is active, 800–1500 ppm (default: `1200`)
   - `number.klima_koordination_max_lufterstufe` — Fan level cap while the AC is active, 1–5 (default: `3`)
   - `number.klima_koordination_co2_notfallgrenze` — CO2 emergency override, 1200–2000 ppm (default: `1500`)
   - `text_sensor.klima_koordination_status` — Current coordinator state (diagnostic)
-  > The three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v9), so they only have to be set once per room. Only the enable switch is per device.
+  - `binary_sensor.klima_aktiv_ha_signal` — AC state last pushed by Home Assistant (diagnostic)
+  > The switch and the three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v10), so they only have to be set once per room. Home Assistant pushes the AC state with the API action `set_ac_active` to at least one device per room; it is shared room-wide as well. *→ [Setup in 📄 Smart Climate Control](documentation/en/en_smart-climate-control.md#️-home-assistant-setup)*
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)

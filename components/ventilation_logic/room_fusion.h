@@ -48,6 +48,19 @@ namespace room {
 /// default 60 s heartbeat this tolerates several lost packets.
 constexpr uint32_t PEER_DATA_MAX_AGE_MS = 300000u;
 
+/// @brief Effective freshness window for a given ESP-NOW heartbeat interval.
+///
+/// Every device announces itself once per `sync_interval_ms` (1–360 min,
+/// default 1 min). The window covers two heartbeats plus jitter so a single
+/// lost packet does not drop a peer, but never exceeds `peer_timeout_ms`
+/// (peers are removed from the cache after that anyway).
+inline uint32_t fusion_max_age_ms(uint32_t sync_interval_ms, uint32_t peer_timeout_ms) {
+  const uint64_t two_beats = 2ull * sync_interval_ms + 30000ull;
+  uint64_t age = two_beats > PEER_DATA_MAX_AGE_MS ? two_beats : PEER_DATA_MAX_AGE_MS;
+  if (age > peer_timeout_ms) age = peer_timeout_ms;
+  return static_cast<uint32_t>(age);
+}
+
 /// @brief True if a peer seen at `last_seen_ms` is still fresh (wrap-safe).
 inline bool is_fresh(uint32_t now_ms, uint32_t last_seen_ms,
                      uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
@@ -97,11 +110,12 @@ inline float max_fresh_peer_value(const Peers &peers, uint32_t now_ms, Getter ge
  * @return  Highest CO2 in ppm, or NaN if no source is available.
  */
 template <typename Peers>
-inline float room_max_co2(float local_ppm, const Peers &peers, uint32_t now_ms) {
+inline float room_max_co2(float local_ppm, const Peers &peers, uint32_t now_ms,
+                          uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   const float local = (!std::isnan(local_ppm) && local_ppm > 0.0f) ? local_ppm : NAN;
   // 0 ppm is physically impossible — strictly positive values only.
   const float peer = max_fresh_peer_value(
-      peers, now_ms, [](const auto &p) { return p.room_co2; }, 1.0f);
+      peers, now_ms, [](const auto &p) { return p.room_co2; }, 1.0f, max_age_ms);
   return max_valid(local, peer);
 }
 
@@ -115,9 +129,10 @@ inline float room_max_co2(float local_ppm, const Peers &peers, uint32_t now_ms) 
  * @return  Peer demand in 0.0–1.0, or NaN if no fresh peer reports one.
  */
 template <typename Peers>
-inline float room_max_peer_demand(const Peers &peers, uint32_t now_ms) {
+inline float room_max_peer_demand(const Peers &peers, uint32_t now_ms,
+                                  uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   const float d = max_fresh_peer_value(
-      peers, now_ms, [](const auto &p) { return p.pid_demand; }, 0.0f);
+      peers, now_ms, [](const auto &p) { return p.pid_demand; }, 0.0f, max_age_ms);
   if (std::isnan(d)) return NAN;
   return (d > 1.0f) ? 1.0f : d;
 }
@@ -145,14 +160,15 @@ struct HumiditySource {
  */
 template <typename Peers>
 inline HumiditySource room_max_humidity(float local_rh, float local_temp,
-                                        const Peers &peers, uint32_t now_ms) {
+                                        const Peers &peers, uint32_t now_ms,
+                                        uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   HumiditySource out;
   if (!std::isnan(local_rh) && local_rh > 0.0f && local_rh <= 100.0f) {
     out.rh_percent = local_rh;
     out.temp_c = local_temp;
   }
   for (const auto &peer : peers) {
-    if (!is_fresh(now_ms, peer.last_seen_ms)) continue;
+    if (!is_fresh(now_ms, peer.last_seen_ms, max_age_ms)) continue;
     const float rh = peer.room_humidity;
     if (std::isnan(rh) || rh <= 0.0f || rh > 100.0f) continue;
     if (std::isnan(out.rh_percent) || rh > out.rh_percent) {
@@ -163,6 +179,72 @@ inline HumiditySource room_max_humidity(float local_rh, float local_temp,
   }
   return out;
 }
+
+/**
+ * @brief   True if any fresh peer satisfies `pred` (room-wide OR of a flag).
+ *
+ * @details Only safe for flags peers derive from their OWN inputs (e.g. the
+ *          state Home Assistant pushed to them) — never for fused values.
+ */
+template <typename Peers, typename Pred>
+inline bool any_fresh_peer(const Peers &peers, uint32_t now_ms, Pred pred,
+                           uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  for (const auto &peer : peers) {
+    if (is_fresh(now_ms, peer.last_seen_ms, max_age_ms) && pred(peer)) return true;
+  }
+  return false;
+}
+
+/// @brief True if any fresh peer reports its own HA AC state as active.
+template <typename Peers>
+inline bool any_fresh_peer_ac_active(const Peers &peers, uint32_t now_ms,
+                                     uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  return any_fresh_peer(peers, now_ms, [](const auto &p) { return p.hvac_ac_active; }, max_age_ms);
+}
+
+/// @brief True if any fresh peer reports its own HA window state as open.
+template <typename Peers>
+inline bool any_fresh_peer_window_open(const Peers &peers, uint32_t now_ms,
+                                       uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  return any_fresh_peer(peers, now_ms, [](const auto &p) { return p.window_open; }, max_age_ms);
+}
+
+/// A boolean pushed by Home Assistant via an API action is trusted for at
+/// most this long; the HA automation re-sends it periodically (every 5 min).
+constexpr uint32_t HA_PUSH_MAX_AGE_MS = 900000u;
+
+/**
+ * @brief   A boolean room input pushed by Home Assistant (API action).
+ *
+ * @details Valid only while the API link is up and the last push is not
+ *          older than `max_age_ms`; otherwise it reads as `false` (fail-safe:
+ *          an expired "window open" must not stop the ventilation forever,
+ *          an expired "AC active" must not throttle it).
+ */
+struct HaPushedFlag {
+  bool has_state = false;
+  bool value = false;
+  uint32_t update_ms = 0;
+
+  /// @brief Stores a new push. @return true if the value changed.
+  bool set(bool v, uint32_t now_ms) {
+    const bool changed = !has_state || value != v;
+    has_state = true;
+    value = v;
+    update_ms = now_ms;
+    return changed;
+  }
+
+  /// @brief Age of the last push (UINT32_MAX if never pushed).
+  uint32_t age_ms(uint32_t now_ms) const {
+    return has_state ? static_cast<uint32_t>(now_ms - update_ms) : UINT32_MAX;
+  }
+
+  /// @brief true if pushed "true", fresh and the API link is up.
+  bool active(uint32_t now_ms, bool ha_connected, uint32_t max_age_ms = HA_PUSH_MAX_AGE_MS) const {
+    return ha_connected && has_state && value && age_ms(now_ms) <= max_age_ms;
+  }
+};
 
 } // namespace room
 } // namespace ventosync

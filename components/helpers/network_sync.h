@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-03-29
+// Modified:    2026-09-23
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -846,26 +846,40 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     dirty = true;
   }
 
-  // 2b. Smart Climate Control thresholds (room-wide, same authority rule)
+  // 2b. Smart Climate Control (room-wide, same authority rule).
+  //     Only values inside the HA slider ranges are adopted (shared
+  //     constants in hvac_coordinator.h) — a peer can never push a value the
+  //     UI could not represent.
+  using namespace ventosync::hvac;
   if (hvac_co2_threshold_val != nullptr && hvac_co2_threshold != nullptr &&
-      pkt->hvac_co2_threshold >= 400 && pkt->hvac_co2_threshold <= 5000 &&
+      in_range(pkt->hvac_co2_threshold, CO2_THRESHOLD_MIN_PPM, CO2_THRESHOLD_MAX_PPM) &&
       pkt->hvac_co2_threshold != hvac_co2_threshold_val->value()) {
     hvac_co2_threshold_val->value() = pkt->hvac_co2_threshold;
     hvac_co2_threshold->publish_state(pkt->hvac_co2_threshold);
     dirty = true;
   }
   if (hvac_emergency_co2_val != nullptr && hvac_emergency_co2 != nullptr &&
-      pkt->hvac_emergency_co2 >= 400 && pkt->hvac_emergency_co2 <= 5000 &&
+      in_range(pkt->hvac_emergency_co2, EMERGENCY_CO2_MIN_PPM, EMERGENCY_CO2_MAX_PPM) &&
       pkt->hvac_emergency_co2 != hvac_emergency_co2_val->value()) {
     hvac_emergency_co2_val->value() = pkt->hvac_emergency_co2;
     hvac_emergency_co2->publish_state(pkt->hvac_emergency_co2);
     dirty = true;
   }
   if (hvac_max_fan_level_val != nullptr && hvac_max_fan_level != nullptr &&
-      pkt->hvac_max_fan_level >= 1 && pkt->hvac_max_fan_level <= 10 &&
+      in_range(pkt->hvac_max_fan_level, MAX_FAN_LEVEL_CONFIG_MIN, MAX_FAN_LEVEL_CONFIG_MAX) &&
       pkt->hvac_max_fan_level != hvac_max_fan_level_val->value()) {
     hvac_max_fan_level_val->value() = pkt->hvac_max_fan_level;
     hvac_max_fan_level->publish_state(pkt->hvac_max_fan_level);
+    dirty = true;
+  }
+  // Room-wide enable switch (protocol v10). The switch entity mirrors the
+  // global via its lambda; publish immediately for a responsive HA UI.
+  const bool peer_hvac_enabled = (pkt->room_flags & esphome::ROOM_FLAG_HVAC_ENABLED) != 0;
+  if (hvac_enabled_val != nullptr && peer_hvac_enabled != hvac_enabled_val->value()) {
+    hvac_enabled_val->value() = peer_hvac_enabled;
+    if (smart_climate_control != nullptr) smart_climate_control->publish_state(peer_hvac_enabled);
+    ESP_LOGI("hvac", "Klima-Koordination %s (room-wide sync from device %d)",
+             peer_hvac_enabled ? "aktiviert" : "deaktiviert", pkt->device_id);
     dirty = true;
   }
 

@@ -15,7 +15,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
   naming — do not rename to `scd43_*`.
-- Communication: ESP-NOW (protocol v9) for multi-device sync (no Wi-Fi router required between units),
+- Communication: ESP-NOW (protocol v10) for multi-device sync (no Wi-Fi router required between units),
   ESPHome Native API to Home Assistant (optional MQTT variant)
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names,
   UI labels, and user-facing strings remain in **German**.
@@ -162,8 +162,10 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v9` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 9` in `ventilation_group.h`;
-  v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`).
+- **Protocol version:** `v10` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 10` in `ventilation_group.h`;
+  v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
+  v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
+  window state).
 - **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
@@ -175,12 +177,19 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   Master's **fan level**. Consequence: the Master decides for the whole room, so every demand must reach it.
 - **Heartbeat:** `sync_interval_config` (default 60 s). **Peer timeout:** `PEER_TIMEOUT_MS = 900000` (15 min)
   for mode/level following and the dashboard.
+- **Room-wide settings** (sliders, HVAC switch): a change is sent as `MSG_STATE` (`sync_settings_to_peers()`),
+  applied in `handle_config_sync()` only inside the HA slider ranges, and re-asserted by the Master heartbeat.
 - **Room-wide fusion** (`components/ventilation_logic/room_fusion.h`, `ventosync::room`):
-  - Devices broadcast **only values from their own sensors**: `pid_demand` (NaN without sensors),
-    `room_co2`, `room_humidity`. **Never re-broadcast a fused/adopted value** — two devices would latch
-    each other at a high level (feedback loop, CHANGELOG 0.10.21).
-  - Receivers fuse the maximum over all peers fresher than `PEER_DATA_MAX_AGE_MS` (5 min) — not only the
-    last received packet.
+  - Devices broadcast **only their own inputs**: `pid_demand` (NaN without sensors), `room_co2`,
+    `room_humidity`, the HA-pushed AC / window state (`ROOM_FLAG_AC_ACTIVE`, `ROOM_FLAG_WINDOW_OPEN`).
+    **Never re-broadcast a fused/adopted value** —
+    two devices would latch each other at a high level (feedback loop, CHANGELOG 0.10.21).
+  - Receivers fuse the maximum (or OR) over all fresh peers — not only the last received packet. Freshness:
+    `fusion_max_age_ms()` = max(5 min, two heartbeats), capped at `PEER_TIMEOUT_MS`.
+- **HA-pushed room inputs** (API actions in `packages/integration/homeassistant.yaml`): `set_ac_active`,
+  `set_window_open`. Stored as `ventosync::room::HaPushedFlag` (expires after 15 min, false while the API is
+  down), shared room-wide via `room_flags`; a local change triggers an immediate `MSG_SYNC`
+  (`refresh_local_room_flags()`), so HA only has to reach one device per room.
 
 ---
 
@@ -198,6 +207,7 @@ Complex YAML lambda logic is extracted into focused header files:
 
 - **`globals.h`** — Central `extern` registry and shared pointers for all ESPHome sensors and entities
 - **`auto_mode.h`** — Dual-PID demand evaluation, CO2 priority hysteresis, summer bypass, room demand fusion, HVAC glue
+  (incl. the HA API action handlers `hvac_on_ha_ac_state()` and `window_on_ha_state()`)
 - **`automation_helpers.h`** — Fan motor actuation, V-curve PWM duty calculation, soft ramps, thermal cutoff
 - **`bme680_iaq_engine.h`** — BME680 IAQ index estimation, absolute humidity, and calibration logic
 - **`climate.h`** — Phase-locked NTC stabilization filter, sensor mapping, and human-readable AQI formatting
@@ -207,7 +217,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v9 mesh communication, packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v10 mesh communication, packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock
@@ -218,10 +228,14 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`ventilation_group`** (`VentilationController`, `VentilationStateMachine`): multi-device coordination,
   peer tracking, 5 s soft ramps (`RAMP_DURATION_MS`), push-pull timing.
 - **`ventilation_logic`**: hardware-agnostic, unit-tested logic.
-  - `ventilation_logic.h/.cpp` (`VentilationLogic`): static math — fan curve, PWM, cycle timing, efficiency.
-  - `hvac_coordinator.h` (`ventosync::hvac::Coordinator`): Smart Climate Control state machine (AC debounce,
-    CO2 emergency, mold guard), applied by `auto_mode.h` as a modifier to Smart-Automatik.
-  - `room_fusion.h` (`ventosync::room`): room-wide max of CO2 / humidity / peer demand with 5-min freshness.
+  - `ventilation_logic.h/.cpp` (`VentilationLogic`): static math — fan curve, PWM, cycle timing, efficiency,
+    Smart-Automatik level mapping (`calculate_auto_target_level`, always inside the level window).
+  - `hvac_coordinator.h` (`ventosync::hvac::Coordinator`): Smart Climate Control state machine (AC debounce and
+    expiry, CO2 emergency, mold guard), applied by `auto_mode.h` as a modifier to Smart-Automatik. Also holds the
+    configuration ranges (`CO2_THRESHOLD_*`, `EMERGENCY_CO2_*`, `MAX_FAN_LEVEL_CONFIG_*`) that must match the
+    HA sliders in `ui_controls.yaml`.
+  - `room_fusion.h` (`ventosync::room`): room-wide max of CO2 / humidity / peer demand, OR of the peers' AC /
+    window flags (freshness ≥ 5 min), `HaPushedFlag` for expiring HA-pushed inputs.
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices
@@ -258,6 +272,12 @@ Complex YAML lambda logic is extracted into focused header files:
   `co2_pid_result` starts at `0.0`. To detect "no local sensor", check the sensor value
   (`effective_co2->state`), not the PID output.
 - **Re-broadcasting fused values** creates latching feedback loops (see ESP-NOW section, CHANGELOG 0.10.21).
+- **Template switch mirroring a global** (`lambda: return id(x);` + turn_on/off actions): set
+  `restore_mode: DISABLED`, otherwise the boot-time restore runs the turn_off action and overwrites the global
+  (and, for room-wide settings, broadcasts it).
+- **Compile-time `${room_id}` ≠ runtime room:** the room is configured at runtime (`config_room_id`, NVS); never
+  derive per-room HA entity IDs from the substitution — push room data via API actions instead (see
+  `set_ac_active`, `set_window_open`).
 - **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
   whole firmware — they persist across mode switches and are not per-instance.
 - **`effective_co2` may be a BME680 eCO2 estimate** (VOC-based) in the `bme680_only` variant; room-wide

@@ -76,13 +76,36 @@ constexpr float MOLD_GUARD_RH_OFF_PERCENT = 65.0f;
 /// AC "off" must persist this long before the restrictions are lifted.
 /// Absorbs compressor cycling and short Home Assistant reconnects.
 constexpr uint32_t AC_RELEASE_DELAY_MS = 120000u;
+/// The AC state is pushed by Home Assistant via the API action
+/// `set_ac_active`. It is trusted for at most this long; the HA automation
+/// re-sends it periodically (recommended: every 5 min). An expired state
+/// counts as "AC inactive" (fail-safe: never throttle on stale data).
+constexpr uint32_t AC_STATE_MAX_AGE_MS = 900000u;
+
+// --- Configuration ranges (must match the HA sliders in ui_controls.yaml) ---
+// Used to sanitize values from NVS, the HA sliders and ESP-NOW peers alike.
+constexpr int CO2_THRESHOLD_MIN_PPM = 800;   ///< `hvac_co2_threshold` slider min.
+constexpr int CO2_THRESHOLD_MAX_PPM = 1500;  ///< `hvac_co2_threshold` slider max.
+constexpr int EMERGENCY_CO2_MIN_PPM = 1200;  ///< `hvac_emergency_co2` slider min.
+constexpr int EMERGENCY_CO2_MAX_PPM = 2000;  ///< `hvac_emergency_co2` slider max.
+constexpr int MAX_FAN_LEVEL_CONFIG_MIN = 1;  ///< `hvac_max_fan_level` slider min.
+constexpr int MAX_FAN_LEVEL_CONFIG_MAX = 5;  ///< `hvac_max_fan_level` slider max.
 
 static_assert(DEFAULT_EMERGENCY_CO2_PPM >= DEFAULT_CO2_THRESHOLD_PPM + MIN_EMERGENCY_MARGIN_PPM,
               "Default emergency CO2 must lie above the relaxed setpoint");
 static_assert(MOLD_GUARD_RH_ON_PERCENT > MOLD_GUARD_RH_OFF_PERCENT,
               "Mold guard hysteresis must be positive");
-static_assert(DEFAULT_MAX_FAN_LEVEL >= MIN_FAN_LEVEL && DEFAULT_MAX_FAN_LEVEL <= HARDWARE_MAX_FAN_LEVEL,
+static_assert(DEFAULT_MAX_FAN_LEVEL >= MAX_FAN_LEVEL_CONFIG_MIN && DEFAULT_MAX_FAN_LEVEL <= MAX_FAN_LEVEL_CONFIG_MAX,
               "Default HVAC fan cap out of range");
+static_assert(MAX_FAN_LEVEL_CONFIG_MIN >= MIN_FAN_LEVEL && MAX_FAN_LEVEL_CONFIG_MAX <= HARDWARE_MAX_FAN_LEVEL,
+              "HVAC fan cap range must lie within the hardware levels");
+static_assert(DEFAULT_CO2_THRESHOLD_PPM >= CO2_THRESHOLD_MIN_PPM && DEFAULT_CO2_THRESHOLD_PPM <= CO2_THRESHOLD_MAX_PPM,
+              "Default relaxed CO2 setpoint out of range");
+static_assert(DEFAULT_EMERGENCY_CO2_PPM >= EMERGENCY_CO2_MIN_PPM && DEFAULT_EMERGENCY_CO2_PPM <= EMERGENCY_CO2_MAX_PPM,
+              "Default emergency CO2 out of range");
+
+/// @brief True if an integer configuration value lies within [lo, hi].
+constexpr bool in_range(int value, int lo, int hi) { return value >= lo && value <= hi; }
 
 /// @brief Coordinator state reported to the UI / diagnostics.
 enum class State : uint8_t {
@@ -98,8 +121,10 @@ enum class State : uint8_t {
 struct Inputs {
   bool enabled = false;             ///< `smart_climate_control` switch state.
   bool ha_connected = true;         ///< Home Assistant API link is up.
-  bool ac_has_state = false;        ///< AC binary sensor has received a value.
-  bool ac_reported_active = false;  ///< AC binary sensor value.
+  bool ac_has_state = false;        ///< HA has pushed an AC state (`set_ac_active`).
+  bool ac_reported_active = false;  ///< Last AC state pushed by HA to THIS device.
+  uint32_t ac_state_age_ms = 0;     ///< Age of that state (expires after AC_STATE_MAX_AGE_MS).
+  bool peer_ac_active = false;      ///< A fresh peer of the room reports its own HA AC state as active.
   float co2_ppm = NAN;              ///< Effective CO2 (NaN = unavailable).
   float indoor_rh_percent = NAN;    ///< Indoor relative humidity (NaN = unavailable).
   bool ventilation_can_dry = false; ///< Outdoor absolute humidity < indoor.
@@ -136,6 +161,18 @@ inline const char *state_label(State s) {
 }
 
 /**
+ * @brief   AC state as reported by Home Assistant to THIS device.
+ *
+ * @details Valid only while the API link is up and the last push is not
+ *          older than AC_STATE_MAX_AGE_MS. This is the value a device
+ *          broadcasts to its peers (never the room-wide fused state).
+ */
+inline bool local_ac_active(const Inputs &in) {
+  return in.ha_connected && in.ac_has_state && in.ac_state_age_ms <= AC_STATE_MAX_AGE_MS &&
+         in.ac_reported_active;
+}
+
+/**
  * @class   Coordinator
  * @brief   Stateful HVAC coordination state machine.
  *
@@ -155,14 +192,20 @@ public:
     Decision d;
 
     // --- Sanitize configuration ------------------------------------------
+    // Values are clamped to the slider ranges so NVS leftovers or peer
+    // packets outside the UI range can never widen the profile.
     const float threshold = std::isnan(in.co2_threshold_ppm)
                                 ? DEFAULT_CO2_THRESHOLD_PPM
-                                : in.co2_threshold_ppm;
+                                : std::clamp(in.co2_threshold_ppm,
+                                             static_cast<float>(CO2_THRESHOLD_MIN_PPM),
+                                             static_cast<float>(CO2_THRESHOLD_MAX_PPM));
     float emergency = std::isnan(in.emergency_co2_ppm)
                           ? DEFAULT_EMERGENCY_CO2_PPM
-                          : in.emergency_co2_ppm;
+                          : std::clamp(in.emergency_co2_ppm,
+                                       static_cast<float>(EMERGENCY_CO2_MIN_PPM),
+                                       static_cast<float>(EMERGENCY_CO2_MAX_PPM));
     emergency = std::max(emergency, threshold + MIN_EMERGENCY_MARGIN_PPM);
-    const int cap = std::clamp(in.max_fan_level, MIN_FAN_LEVEL, HARDWARE_MAX_FAN_LEVEL);
+    const int cap = std::clamp(in.max_fan_level, MAX_FAN_LEVEL_CONFIG_MIN, MAX_FAN_LEVEL_CONFIG_MAX);
 
     d.co2_setpoint = threshold;
 
@@ -174,9 +217,10 @@ public:
     }
 
     // --- AC state with release debounce ---------------------------------
-    // Fail-safe: an unknown AC state (HA offline, entity unavailable) is
-    // treated as "inactive" so the ventilation is never throttled blindly.
-    const bool reported_active = in.ha_connected && in.ac_has_state && in.ac_reported_active;
+    // Room-wide: active if HA reported it to this device OR to any fresh
+    // peer. Fail-safe: an unknown or expired state (HA offline, no push for
+    // AC_STATE_MAX_AGE_MS) is "inactive" — never throttle blindly.
+    const bool reported_active = local_ac_active(in) || in.peer_ac_active;
 
     if (reported_active) {
       ac_active_ = true;

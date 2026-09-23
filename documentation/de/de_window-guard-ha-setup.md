@@ -12,36 +12,49 @@ Die **Fenstersperre (Window Guard)** pausiert automatisch alle Lüftungsgeräte 
 - ⏱️ **Smart Pause (5s Verzögerung)**: Die Sperre greift erst nach 5 Sekunden durchgehender Fenster-Öffnung, um kurzes Lüften oder Nachschauen abzufedern. Alle VentoSync-Geräte im Raum stoppen sofort ihre Lüfter.
 - 🔄 **Automatisches Fortsetzen**: Das System behält seinen aktuellen Betriebsmodus (z. B. Automatik oder Manuell) bei und nimmt den Betrieb nahtlos wieder auf, sobald alle Fenster geschlossen sind.
 - 🔆 **Visuelles Feedback (35s Limit)**: Ein markantes Pulsieren der Master-LED (1s An, 2s Aus) signalisiert den Zustand "Pause durch Fenster". Zur Vermeidung von Lichtstörungen nachts stoppt das Pulsieren nach 35 Sekunden, während der Lüfter weiterhin sicher gestoppt bleibt.
-- 📊 **HA Status-Entität**: Eine dedizierte Binär-Sensor-Entität (`binary_sensor.fenstersperre_aktiv`) bietet direkte Sichtbarkeit des Sperrstatus in Home Assistant.
+- 📊 **HA Status-Entität**: Ein dedizierter Textsensor (`text_sensor.fenstersperre_aktiv`, `Ja` / `Nein`) bietet direkte Sichtbarkeit des Sperrstatus in Home Assistant.
 - 🎛️ **Individueller Bypass-Schalter**: Über den Schalter **"Fenstersperre ignorieren"** (`switch.ignore_window_guard` / `switch.fenstersperre_ignorieren`) können einzelne Geräte bei Bedarf von der Raumsperre ausgenommen werden.
 
 ---
 
 ## 🛠️ Einrichtung in Home Assistant
 
-Für die Einbindung deiner Fenstersensoren in den VentoSync Window Guard für einen bestimmten Raum (z. B. **Raum 1**) erstellst du in Home Assistant eine **Binärer Sensor-Gruppe**. Diese Gruppe bündelt die Sensoren zu einer einzigen Entität, auf die die Firmware automatisch zugreift.
+Seit **0.10.22** **sendet** Home Assistant den Fensterstatus mit der API-Action **`set_window_open`** (Daten `window_open: true/false`) an die Lüftungsgeräte. Der Status wird per ESP-NOW (Protokoll v10) mit allen Geräten des Raums geteilt; Home Assistant muss daher **mindestens ein** Gerät des Raums erreichen — unabhängig von der am Gerät eingestellten Raum-ID. Ein gesendeter Status gilt **15 Minuten**; ein abgelaufener oder nie gesendeter Status gilt als **geschlossen** (die Lüftung kann nie dauerhaft stehen bleiben), deshalb sendet die Automation ihn alle 5 Minuten erneut.
 
-**Standard-Entity-ID für Raum 1:** `binary_sensor.ventosync_window_lock_room_1`
+### Schritt 1: Fensterkontakte gruppieren (optional)
 
-### Option A: Über die Benutzeroberfläche (Empfohlen)
-1. Gehe zu **Einstellungen** > **Geräte & Dienste** > **Helfer**.
-2. Klicke auf **Helfer erstellen** > **Gruppe** > **Binärer Sensor-Gruppe**.
-3. **Name**: `VentoSync Window Lock Room 1`
-4. **Mitglieder**: Füge alle deine Fensterkontakte hinzu (z. B. `binary_sensor.fenster_dg_wohnraum_contact`).
-5. **Status aller Entitäten**: Aktiviere **"Status einer Entität"** (Standard – d. h. wenn *irgendein* Fenster offen ist, ist die Gruppe `on`).
-6. **Entitäts-ID**: Ändere diese manuell auf `ventosync_window_lock_room_1`.
+Bei mehreren Fenstern die Kontakte in einem **Binary-Sensor-Gruppen**-Helfer bündeln (**Einstellungen** > **Geräte & Dienste** > **Helfer** > **Helfer erstellen** > **Gruppe** > **Binärsensor-Gruppe**, Mitglieder: alle Fensterkontakte des Raums, „beliebige Entität" = an). Eine vorhandene Gruppe wie `binary_sensor.ventosync_window_lock_room_1` kann unverändert weiterverwendet werden.
 
-### Option B: Über die `configuration.yaml`
-Füge folgenden Code in deine Home Assistant Konfiguration ein:
+### Schritt 2: Automation
+
+`<gerätename>` ist der ESPHome-Node-Name des Geräts (Bindestriche werden zu Unterstrichen, z. B. `ventosync-dg-buero` → `esphome.ventosync_dg_buero_set_window_open`).
 
 ```yaml
-binary_sensor:
-  - platform: group
-    name: "VentoSync Window Lock Room 1"
-    unique_id: ventosync_window_lock_room_1
-    device_class: window
-    entities:
-      - binary_sensor.fenster_dg_wohnraum_contact
-      - binary_sensor.fenster_dg_flur_contact
-      - binary_sensor.fenster_dg_gaube_contact
+automation:
+  - alias: "VentoSync: Fensterstatus Raum 1"
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.ventosync_window_lock_room_1
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern   # erneut senden: der Status läuft im Gerät nach 15 min ab
+        minutes: "/5"
+    variables:
+      window_open: "{{ is_state('binary_sensor.ventosync_window_lock_room_1', 'on') }}"
+    actions:
+      # Mindestens ein Gerät des Raums; für Redundanz alle Geräte auflisten.
+      - action: esphome.ventosync_raum1_a_set_window_open
+        data:
+          window_open: "{{ window_open }}"
+        continue_on_error: true
+      - action: esphome.ventosync_raum1_b_set_window_open
+        data:
+          window_open: "{{ window_open }}"
+        continue_on_error: true
 ```
+
+Der zuletzt gesendete Wert ist auf jedem Gerät als `binary_sensor.fenster_offen_ha_signal` („Fenster offen (HA-Signal)", Diagnose) sichtbar; die daraus resultierende raumweite Sperre als Textsensor `text_sensor.fenstersperre_aktiv` („Fenstersperre Aktiv": `Ja` / `Nein`).
+
+> [!IMPORTANT]
+> **Umstieg von ≤ 0.10.21:** Die Firmware importiert `binary_sensor.ventosync_window_lock_room_<room_id>` nicht mehr (Substitution `window_sensor_id` entfernt) — diese Entität wurde aus der Compile-Zeit-`room_id` (Standard `1`) gebildet, sodass zur Laufzeit einem anderen Raum zugeordnete Geräte auf Raum 1 hörten. Den Gruppen-Helfer behalten und die obige Automation anlegen. Alle Geräte eines Raums gemeinsam flashen (ESP-NOW-Protokoll v10).

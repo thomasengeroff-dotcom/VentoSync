@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-03-29
+// Modified:    2026-09-23
 // ==========================================================================
 #pragma once
 
@@ -294,16 +294,18 @@ extern esphome::homeassistant::HomeassistantSensor
     *const outdoor_humidity; ///< Outdoor Humidity (HA)
 extern esphome::homeassistant::HomeassistantBinarySensor
     *const sommerbetrieb; ///< Summer mode gate (HA: season + outdoor temp > 18°C)
-extern esphome::homeassistant::HomeassistantBinarySensor
-    *const window_locked; ///< Window lock gate (HA: open windows in room)
-extern esphome::homeassistant::HomeassistantBinarySensor
-    *const hvac_ac_active; ///< Smart Climate Control: room AC active (HA import)
+extern esphome::template_::TemplateBinarySensor
+    *const window_locked; ///< Diagnostic: window state last pushed by HA (API action set_window_open)
 /// @}
 
 /// @name Smart Climate Control (HVAC Coordination)
 /// @{
 extern esphome::template_::TemplateSwitch
-    *const smart_climate_control; ///< Master enable switch for HVAC coordination.
+    *const smart_climate_control; ///< Enable switch for HVAC coordination (mirrors hvac_enabled_val).
+extern esphome::globals::RestoringGlobalsComponent<bool>
+    *const hvac_enabled_val; ///< Room-wide enable flag (NVS persisted, ESP-NOW synced).
+extern esphome::template_::TemplateBinarySensor
+    *const hvac_ac_active; ///< Diagnostic: AC state last pushed by HA (API action set_ac_active).
 extern esphome::template_::TemplateNumber
     *const hvac_co2_threshold; ///< Relaxed CO2 setpoint while the AC is active (ppm).
 extern esphome::template_::TemplateNumber
@@ -324,6 +326,15 @@ namespace hvac_state {
   inline ventosync::hvac::Decision last_decision;
   /// Previous suppress_humidity flag — used to reset the humidity PID on release.
   inline bool prev_suppress_humidity = false;
+  /// AC state pushed by Home Assistant (API action `set_ac_active`), runtime only.
+  inline bool ac_has_state = false;
+  inline bool ac_reported = false;
+  inline uint32_t ac_update_ms = 0; ///< millis() of the last push (expiry: AC_STATE_MAX_AGE_MS).
+}
+
+namespace window_state {
+  /// Window state pushed by Home Assistant (API action `set_window_open`), runtime only.
+  inline ventosync::room::HaPushedFlag pushed;
 }
 /// @}
 
