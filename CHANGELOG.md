@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.18] - 2026-09-23
+
+### Fixed
+
+- **Room-wide CO2 Sensor Fusion** (`components/helpers/auto_mode.h`):
+  - Fixed an issue where a device without a local CO2 sensor could adopt a high peer PID demand during a CO2 spike and continue propagating it via ESP-NOW, locking the entire room group in a high-demand state even after the actual CO2 levels returned to normal.
+  - Replaced the blind adoption of peer PID demand (`last_peer_pid_demand`) with an explicit "room-wide maximum CO2" calculation (`get_room_max_co2()`). Each device now independently calculates its own PID demand based on the highest actual CO2 value measured anywhere in the room.
+  - This eliminates the feedback loop and ensures the system always reacts to the true current air quality.
+  - The HVAC coordinator now also leverages this unified `get_room_max_co2()` function for robust room-wide CO2 evaluation.
+
 ## [0.10.15] - 2026-09-04
 
 ### Fixed
