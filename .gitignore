@@ -29,3 +29,9 @@ test_runner
 .code-workspace
 CLAUDE.mdZone.Identifier
 *.bak
+
+# Build / test artifacts (native unit tests, size probes)
+simple_test
+*.exe
+tests/manual_test_runner
+tests/runner
