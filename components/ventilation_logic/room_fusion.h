@@ -48,6 +48,19 @@ namespace room {
 /// default 60 s heartbeat this tolerates several lost packets.
 constexpr uint32_t PEER_DATA_MAX_AGE_MS = 300000u;
 
+/// @brief Effective freshness window for a given ESP-NOW heartbeat interval.
+///
+/// Every device announces itself once per `sync_interval_ms` (1–360 min,
+/// default 1 min). The window covers two heartbeats plus jitter so a single
+/// lost packet does not drop a peer, but never exceeds `peer_timeout_ms`
+/// (peers are removed from the cache after that anyway).
+inline uint32_t fusion_max_age_ms(uint32_t sync_interval_ms, uint32_t peer_timeout_ms) {
+  const uint64_t two_beats = 2ull * sync_interval_ms + 30000ull;
+  uint64_t age = two_beats > PEER_DATA_MAX_AGE_MS ? two_beats : PEER_DATA_MAX_AGE_MS;
+  if (age > peer_timeout_ms) age = peer_timeout_ms;
+  return static_cast<uint32_t>(age);
+}
+
 /// @brief True if a peer seen at `last_seen_ms` is still fresh (wrap-safe).
 inline bool is_fresh(uint32_t now_ms, uint32_t last_seen_ms,
                      uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
@@ -97,11 +110,12 @@ inline float max_fresh_peer_value(const Peers &peers, uint32_t now_ms, Getter ge
  * @return  Highest CO2 in ppm, or NaN if no source is available.
  */
 template <typename Peers>
-inline float room_max_co2(float local_ppm, const Peers &peers, uint32_t now_ms) {
+inline float room_max_co2(float local_ppm, const Peers &peers, uint32_t now_ms,
+                          uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   const float local = (!std::isnan(local_ppm) && local_ppm > 0.0f) ? local_ppm : NAN;
   // 0 ppm is physically impossible — strictly positive values only.
   const float peer = max_fresh_peer_value(
-      peers, now_ms, [](const auto &p) { return p.room_co2; }, 1.0f);
+      peers, now_ms, [](const auto &p) { return p.room_co2; }, 1.0f, max_age_ms);
   return max_valid(local, peer);
 }
 
@@ -115,9 +129,10 @@ inline float room_max_co2(float local_ppm, const Peers &peers, uint32_t now_ms) 
  * @return  Peer demand in 0.0–1.0, or NaN if no fresh peer reports one.
  */
 template <typename Peers>
-inline float room_max_peer_demand(const Peers &peers, uint32_t now_ms) {
+inline float room_max_peer_demand(const Peers &peers, uint32_t now_ms,
+                                  uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   const float d = max_fresh_peer_value(
-      peers, now_ms, [](const auto &p) { return p.pid_demand; }, 0.0f);
+      peers, now_ms, [](const auto &p) { return p.pid_demand; }, 0.0f, max_age_ms);
   if (std::isnan(d)) return NAN;
   return (d > 1.0f) ? 1.0f : d;
 }
@@ -145,14 +160,15 @@ struct HumiditySource {
  */
 template <typename Peers>
 inline HumiditySource room_max_humidity(float local_rh, float local_temp,
-                                        const Peers &peers, uint32_t now_ms) {
+                                        const Peers &peers, uint32_t now_ms,
+                                        uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   HumiditySource out;
   if (!std::isnan(local_rh) && local_rh > 0.0f && local_rh <= 100.0f) {
     out.rh_percent = local_rh;
     out.temp_c = local_temp;
   }
   for (const auto &peer : peers) {
-    if (!is_fresh(now_ms, peer.last_seen_ms)) continue;
+    if (!is_fresh(now_ms, peer.last_seen_ms, max_age_ms)) continue;
     const float rh = peer.room_humidity;
     if (std::isnan(rh) || rh <= 0.0f || rh > 100.0f) continue;
     if (std::isnan(out.rh_percent) || rh > out.rh_percent) {
@@ -162,6 +178,21 @@ inline HumiditySource room_max_humidity(float local_rh, float local_temp,
     }
   }
   return out;
+}
+
+/**
+ * @brief   True if any fresh peer reports its own HA AC state as active.
+ *
+ * @details Peers broadcast only the AC state Home Assistant pushed to them
+ *          (`hvac_ac_active`), never a fused value — so OR-ing it cannot latch.
+ */
+template <typename Peers>
+inline bool any_fresh_peer_ac_active(const Peers &peers, uint32_t now_ms,
+                                     uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  for (const auto &peer : peers) {
+    if (is_fresh(now_ms, peer.last_seen_ms, max_age_ms) && peer.hvac_ac_active) return true;
+  }
+  return false;
 }
 
 } // namespace room

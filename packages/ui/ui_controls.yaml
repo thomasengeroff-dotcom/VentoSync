@@ -21,7 +21,7 @@
 # Description: Web UI and physical control entities for ventilation.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-03-27
+# Modified:    2026-09-23
 # ==========================================================================
 
 
@@ -219,6 +219,10 @@ number:
   # hvac_*_val (NVS persisted, initial values from ventosync_base.yaml).
   # ---------------------------------------------------------
 
+  # Slider ranges must match the constants in hvac_coordinator.h
+  # (CO2_THRESHOLD_*, EMERGENCY_CO2_*, MAX_FAN_LEVEL_CONFIG_*): values outside
+  # them are ignored when received from peers and clamped by the coordinator.
+
   # HVAC: Relaxed CO2 setpoint while the AC is active (DIN EN 13779 IDA 3)
   - platform: template
     name: "Klima-Koordination: CO2 Grenzwert"
@@ -344,7 +348,7 @@ text_sensor:
     lambda: |-
       static std::string last_state = "";
       std::string current_state;
-      if (id(smart_climate_control).state == false) {
+      if (!id(hvac_enabled_val)) {
         current_state = ventosync::hvac::state_label(ventosync::hvac::State::DISABLED);
       } else if (!id(auto_mode_active)) {
         current_state = "Inaktiv (kein Smart-Automatik)";
@@ -359,22 +363,33 @@ text_sensor:
 # VENTILATION MODE SELECTION
 # ---------------------------------------------------------
 switch:
-  # Smart Climate Control (HVAC coordination) master enable.
-  # Only affects Smart-Automatik while ${hvac_ac_sensor_id} reports "on".
+  # Smart Climate Control (HVAC coordination) enable — ROOM-WIDE.
+  # Mirrors the global hvac_enabled_val (NVS); a change on any device is
+  # pushed to all peers (ESP-NOW v10 flag) and re-asserted by the Master
+  # heartbeat, like the sliders. Only affects Smart-Automatik while the AC
+  # is reported active (HA action set_ac_active, on any device of the room).
   - platform: template
     name: "Klima-Koordination"
     id: smart_climate_control
     icon: "mdi:hvac"
     entity_category: config
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
+    # DISABLED: never run turn_on/off_action at boot — the state comes from
+    # the NVS global; a boot-time turn_off would wipe it and sync it room-wide.
+    restore_mode: DISABLED
+    lambda: "return id(hvac_enabled_val);"
     turn_on_action:
       - lambda: |-
-          ESP_LOGI("hvac", "Smart Climate Control ENABLED via HA");
+          id(hvac_enabled_val) = true;
+          id(smart_climate_control).publish_state(true);
+          ESP_LOGI("hvac", "Smart Climate Control ENABLED via HA (room-wide)");
+          sync_settings_to_peers();
           evaluate_auto_mode();
     turn_off_action:
       - lambda: |-
-          ESP_LOGI("hvac", "Smart Climate Control DISABLED via HA");
+          id(hvac_enabled_val) = false;
+          id(smart_climate_control).publish_state(false);
+          ESP_LOGI("hvac", "Smart Climate Control DISABLED via HA (room-wide)");
+          sync_settings_to_peers();
           evaluate_auto_mode();
 
   - platform: template

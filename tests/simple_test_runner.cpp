@@ -277,7 +277,7 @@ bool test_hvac_throttled_profile() {
   TEST_ASSERT(std::abs(d.co2_setpoint - 1100.0f) < 0.01f);
   in.max_fan_level = 42;
   d = c.evaluate(in);
-  TEST_ASSERT(d.max_level == HARDWARE_MAX_FAN_LEVEL);
+  TEST_ASSERT(d.max_level == MAX_FAN_LEVEL_CONFIG_MAX); // clamped to the slider range (1-5)
   in.max_fan_level = 0;
   d = c.evaluate(in);
   TEST_ASSERT(d.max_level == MIN_FAN_LEVEL);
@@ -417,6 +417,7 @@ struct TestPeer {
   float room_co2;
   float room_humidity;
   float room_temp;
+  bool hvac_ac_active = false;
 };
 
 // T-7k: Room-wide CO2 fusion — max of local + fresh peers, stale/mock values rejected
@@ -525,6 +526,104 @@ bool test_room_humidity_fusion() {
   peers.erase(peers.begin());
   h = room_max_humidity(nan, 22.0f, peers, now);
   TEST_ASSERT(std::isnan(h.rh_percent));
+  return true;
+}
+
+// T-7n: AC state pushed by HA — expiry, API link and room-wide peer flag
+bool test_hvac_ac_state_sources() {
+  using namespace ventosync::hvac;
+  Coordinator c;
+  // Fresh local push → throttled
+  Inputs in = hvac_inputs(true, true, 900.0f, 0);
+  in.ac_state_age_ms = AC_STATE_MAX_AGE_MS;
+  TEST_ASSERT(local_ac_active(in));
+  TEST_ASSERT(c.evaluate(in).state == State::THROTTLED);
+  // Expired push → treated as inactive (release after the debounce delay)
+  in.ac_state_age_ms = AC_STATE_MAX_AGE_MS + 1;
+  TEST_ASSERT(!local_ac_active(in));
+  in.now_ms = 1000;
+  TEST_ASSERT(c.evaluate(in).state == State::THROTTLED); // debounce running
+  in.now_ms = 1000 + AC_RELEASE_DELAY_MS;
+  TEST_ASSERT(c.evaluate(in).state == State::STANDBY);
+  // API link down → local state ignored
+  in = hvac_inputs(true, true, 900.0f, 0);
+  in.ha_connected = false;
+  TEST_ASSERT(!local_ac_active(in));
+  // ...but a fresh peer reporting its own HA AC state keeps the room throttled
+  in.peer_ac_active = true;
+  Coordinator c2;
+  TEST_ASSERT(c2.evaluate(in).state == State::THROTTLED);
+  // Never pushed → inactive
+  in = hvac_inputs(true, false, 900.0f, 0);
+  in.ac_has_state = false;
+  Coordinator c3;
+  TEST_ASSERT(c3.evaluate(in).state == State::STANDBY);
+
+  // Peer AC flag fusion: only fresh peers count
+  const uint32_t now = 1000000u;
+  std::vector<TestPeer> peers = {{now - 1000u, 0.0f, 0.0f, 0.0f, 0.0f, false}};
+  TEST_ASSERT(!ventosync::room::any_fresh_peer_ac_active(peers, now));
+  peers.push_back({now - ventosync::room::PEER_DATA_MAX_AGE_MS - 1u, 0.0f, 0.0f, 0.0f, 0.0f, true});
+  TEST_ASSERT(!ventosync::room::any_fresh_peer_ac_active(peers, now)); // stale
+  peers.push_back({now - 2000u, 0.0f, 0.0f, 0.0f, 0.0f, true});
+  TEST_ASSERT(ventosync::room::any_fresh_peer_ac_active(peers, now));
+  return true;
+}
+
+// T-7o: Config values are clamped to the HA slider ranges
+bool test_hvac_config_ranges() {
+  using namespace ventosync::hvac;
+  Coordinator c;
+  Inputs in = hvac_inputs(true, true, 900.0f, 0);
+  in.co2_threshold_ppm = 5000.0f;   // e.g. from an old peer / NVS leftover
+  in.emergency_co2_ppm = 400.0f;
+  Decision d = c.evaluate(in);
+  TEST_ASSERT(std::abs(d.co2_setpoint - static_cast<float>(CO2_THRESHOLD_MAX_PPM)) < 0.01f);
+  in.co2_threshold_ppm = 100.0f;
+  d = c.evaluate(in);
+  TEST_ASSERT(std::abs(d.co2_setpoint - static_cast<float>(CO2_THRESHOLD_MIN_PPM)) < 0.01f);
+  TEST_ASSERT(in_range(1200, CO2_THRESHOLD_MIN_PPM, CO2_THRESHOLD_MAX_PPM));
+  TEST_ASSERT(!in_range(5000, CO2_THRESHOLD_MIN_PPM, CO2_THRESHOLD_MAX_PPM));
+  TEST_ASSERT(!in_range(6, MAX_FAN_LEVEL_CONFIG_MIN, MAX_FAN_LEVEL_CONFIG_MAX));
+  // Emergency below the minimum is lifted to EMERGENCY_CO2_MIN_PPM (and the margin)
+  in.co2_threshold_ppm = 1000.0f;
+  in.emergency_co2_ppm = 400.0f;
+  in.co2_ppm = static_cast<float>(EMERGENCY_CO2_MIN_PPM) - 1.0f;
+  Coordinator c2;
+  TEST_ASSERT(c2.evaluate(in).state == State::THROTTLED);
+  in.co2_ppm = static_cast<float>(EMERGENCY_CO2_MIN_PPM);
+  TEST_ASSERT(c2.evaluate(in).state == State::EMERGENCY_CO2);
+
+  // Fusion window follows the ESP-NOW heartbeat interval
+  using ventosync::room::fusion_max_age_ms;
+  TEST_ASSERT(fusion_max_age_ms(60000u, 900000u) == ventosync::room::PEER_DATA_MAX_AGE_MS);
+  TEST_ASSERT(fusion_max_age_ms(300000u, 900000u) == 630000u);
+  TEST_ASSERT(fusion_max_age_ms(21600000u, 900000u) == 900000u); // capped at the peer timeout
+  return true;
+}
+
+// T-7p: Auto level mapping — window always enforced (HVAC cap regression)
+bool test_auto_target_level() {
+  // Normal mapping 2..7
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.0f, 2, 2, 7) == 2);
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(1.0f, 2, 2, 7) == 7);
+  // Hysteresis: small demand change around level 4 (center 0.4) holds
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.45f, 4, 2, 7) == 4);
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.70f, 4, 2, 7) == 6);
+  // Regression: running at 6, AC cap shrinks the window to 1..3 — the hold
+  // path used to return the unclamped level 6 for any demand >= 0.625
+  for (float demand : {0.0f, 0.3f, 0.63f, 0.8f, 1.0f}) {
+    const int t = VentilationLogic::calculate_auto_target_level(demand, 6, 1, 3);
+    TEST_ASSERT(t >= 1 && t <= 3);
+  }
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.8f, 6, 1, 3) == 3);
+  // Window grows back (AC off: min 1 -> 2): level 1 is lifted into the window
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.0f, 1, 2, 7) == 2);
+  // Degenerate / invalid inputs
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.5f, 5, 3, 3) == 3);
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(0.5f, 5, 7, 2) >= 2);  // swapped window
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(std::numeric_limits<float>::quiet_NaN(), 5, 2, 7) >= 2);
+  TEST_ASSERT(VentilationLogic::calculate_auto_target_level(5.0f, 2, 2, 7) == 7); // demand clamped
   return true;
 }
 
@@ -1170,6 +1269,9 @@ int main() {
     {"T-7k: Room-wide CO2 fusion (local / fresh peers)", test_room_co2_fusion},
     {"T-7l: Room-wide demand fusion (no feedback loop)", test_room_demand_fusion},
     {"T-7m: Room-wide humidity fusion (mold guard)", test_room_humidity_fusion},
+    {"T-7n: HVAC AC state sources (HA push, expiry, peers)", test_hvac_ac_state_sources},
+    {"T-7o: HVAC config ranges + fusion window", test_hvac_config_ranges},
+    {"T-7p: Auto level mapping enforces the window (HVAC cap)", test_auto_target_level},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

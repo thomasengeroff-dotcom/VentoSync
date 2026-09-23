@@ -95,7 +95,13 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 9; // Bumped: added room humidity (air quality per device)
+static constexpr uint8_t PROTOCOL_VERSION = 10; // Bumped: Smart Climate Control flags (room-wide switch + AC state)
+
+/// @name VentilationPacket::hvac_flags bits (protocol v10)
+/// @{
+static constexpr uint8_t HVAC_FLAG_ENABLED = 0x01;   ///< Room-wide "Klima-Koordination" switch (setting, synced like the sliders).
+static constexpr uint8_t HVAC_FLAG_AC_ACTIVE = 0x02; ///< Sender's OWN Home Assistant AC state (fresh) — never a fused value.
+/// @}
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
 /// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
@@ -147,6 +153,9 @@ struct __attribute__((packed)) VentilationPacket {
 
   // UI Settings payload
   float max_led_brightness; ///< Shared LED brightness limit (0.1–1.0)
+
+  // Smart Climate Control flags (v10) — see HVAC_FLAG_*
+  uint8_t hvac_flags;
 };
 
 static_assert(sizeof(VentilationPacket) <= 250,
@@ -168,6 +177,7 @@ struct PeerState {
   float room_temp;
   float room_co2;
   float room_humidity;
+  bool hvac_ac_active; ///< Peer's own HA AC state (HVAC_FLAG_AC_ACTIVE).
 };
 
 // ---------------------------------------------------------
@@ -235,6 +245,10 @@ public:
   bool co2_is_controlling =
       false; ///< Hysteresis state for CO2 priority (runtime only).
 
+  /// AC state Home Assistant pushed to THIS device (fresh, API connected).
+  /// Broadcast as HVAC_FLAG_AC_ACTIVE; set by auto_mode.h. Never fused.
+  bool hvac_local_ac_active = false;
+
   // --- PEER TRACKING (dashboard + room-wide sensor/demand fusion) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
@@ -274,6 +288,7 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *hvac_co2_threshold_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *hvac_emergency_co2_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *hvac_max_fan_level_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
   binary_sensor::BinarySensor *window_sensor_{nullptr}; ///< Injected window lock sensor.
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
@@ -305,6 +320,8 @@ public:
   void set_hvac_emergency_co2_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_emergency_co2_global_ = g; }
   /** @brief Sets the global Smart Climate Control fan level cap reference. */
   void set_hvac_max_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_max_fan_level_global_ = g; }
+  /** @brief Sets the global Smart Climate Control enable flag reference (room-wide switch). */
+  void set_hvac_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { hvac_enabled_global_ = g; }
 
   /** @return true if the window guard safety lock is active. */
   bool is_window_guard_active() const { return window_guard_active_; }
@@ -613,6 +630,7 @@ public:
       peer.room_temp = pkt->room_temp;
       peer.room_co2 = pkt->room_co2;
       peer.room_humidity = pkt->room_humidity;
+      peer.hvac_ac_active = (pkt->hvac_flags & HVAC_FLAG_AC_ACTIVE) != 0;
     };
 
     bool found_peer = false;
@@ -840,6 +858,9 @@ public:
     pkt.hvac_co2_threshold = hvac_co2_threshold_global_ != nullptr ? static_cast<uint16_t>(hvac_co2_threshold_global_->value()) : 1200;
     pkt.hvac_emergency_co2 = hvac_emergency_co2_global_ != nullptr ? static_cast<uint16_t>(hvac_emergency_co2_global_->value()) : 1500;
     pkt.hvac_max_fan_level = hvac_max_fan_level_global_ != nullptr ? static_cast<uint8_t>(hvac_max_fan_level_global_->value()) : 3;
+    pkt.hvac_flags = 0;
+    if (hvac_enabled_global_ != nullptr && hvac_enabled_global_->value()) pkt.hvac_flags |= HVAC_FLAG_ENABLED;
+    if (hvac_local_ac_active) pkt.hvac_flags |= HVAC_FLAG_AC_ACTIVE; // own HA state only
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

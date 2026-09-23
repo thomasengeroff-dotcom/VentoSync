@@ -31,6 +31,7 @@ CONF_BME680_HUM_SENSOR = 'bme680_humidity_sensor'
 CONF_HVAC_CO2_GLOBAL = 'hvac_co2_threshold_global'
 CONF_HVAC_EMERGENCY_GLOBAL = 'hvac_emergency_co2_global'
 CONF_HVAC_MAX_GLOBAL = 'hvac_max_fan_level_global'
+CONF_HVAC_ENABLED_GLOBAL = 'hvac_enabled_global'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VentilationController),
@@ -58,6 +59,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_HVAC_CO2_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_HVAC_EMERGENCY_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_HVAC_MAX_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_HVAC_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -135,3 +137,6 @@ async def to_code(config):
     if CONF_HVAC_MAX_GLOBAL in config:
         g = await cg.get_variable(config[CONF_HVAC_MAX_GLOBAL])
         cg.add(var.set_hvac_max_fan_level_global(g))
+    if CONF_HVAC_ENABLED_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_HVAC_ENABLED_GLOBAL])
+        cg.add(var.set_hvac_enabled_global(g))

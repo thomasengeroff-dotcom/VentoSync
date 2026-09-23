@@ -38,12 +38,12 @@ This directory contains the modularized ESPHome configuration files (packages). 
 ### 🌐 Communication (`communication/`)
 | File | Description |
 | :--- | :--- |
-| **`esp_now.yaml`** | Low-latency ESP-NOW v9 mesh protocol setup and wireless peer synchronization. |
+| **`esp_now.yaml`** | Low-latency ESP-NOW v10 mesh protocol setup and wireless peer synchronization. |
 
 ### 🔗 Integration (`integration/`)
 | File | Description |
 | :--- | :--- |
-| **`homeassistant.yaml`** | External data points imported from Home Assistant (outdoor climate sensors, vacation switch, window contacts). |
+| **`homeassistant.yaml`** | External data points imported from Home Assistant (outdoor climate sensors, vacation switch, window contacts) and the API action `set_ac_active` (Smart Climate Control AC state). |
 | **`ha_fan_entity.yaml`** | Native Home Assistant `fan` platform integration exposing preset modes, speed percentage, and directional control for `ventosync-card`. |
 
 ### 🎛️ User Interface (`ui/`)

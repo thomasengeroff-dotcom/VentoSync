@@ -223,6 +223,17 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
 }
 
 /**
+ * @brief   Freshness window for room-wide fusion of peer data.
+ * @details At least 5 min, extended to two heartbeats when the user configured
+ *          a longer ESP-NOW sync interval, capped at the peer timeout.
+ */
+inline uint32_t fusion_max_age_ms() {
+  auto *v = ventilation_ctrl;
+  const uint32_t sync_ms = (v != nullptr) ? v->sync_interval_ms : 60000u;
+  return ventosync::room::fusion_max_age_ms(sync_ms, PEER_TIMEOUT_MS);
+}
+
+/**
  * @brief   Determines the highest CO2 value in the room from all sources.
  *
  * @details Combines the local effective CO2 sensor with the CO2 readings
@@ -240,7 +251,7 @@ inline float get_room_max_co2(uint32_t now) {
   const float local = (effective_co2 != nullptr) ? effective_co2->state : NAN;
   auto *v = ventilation_ctrl;
   if (v == nullptr) return (!std::isnan(local) && local > 0.0f) ? local : NAN;
-  return ventosync::room::room_max_co2(local, v->peers, now);
+  return ventosync::room::room_max_co2(local, v->peers, now, fusion_max_age_ms());
 }
 
 /**
@@ -361,8 +372,10 @@ inline float calculate_combined_demand(uint32_t now, float eff_in_temp, float ef
   //    fresh peer (max age 5 min). Peers compute it with their full CO2 and
   //    humidity PIDs (integral term, hysteresis, enthalpy guard), so a Master
   //    without sensors regulates the room exactly like the sensor device.
+  //    Smart Climate Control is consistent room-wide (switch + AC state are
+  //    shared), so throttled peers broadcast a CO2-only demand as well.
   float effective_demand = local_demand;
-  const float peer_demand = ventosync::room::room_max_peer_demand(v->peers, now);
+  const float peer_demand = ventosync::room::room_max_peer_demand(v->peers, now, fusion_max_age_ms());
   if (!std::isnan(peer_demand)) {
     // Only meaningful when both sides measure — a device without sensors
     // naturally deviates from the room demand.
@@ -415,7 +428,7 @@ inline bool ventilation_can_dry(uint32_t now, float eff_in_temp, float eff_out_t
   auto *v = ventilation_ctrl;
   ventosync::room::HumiditySource src;
   if (v != nullptr) {
-    src = ventosync::room::room_max_humidity(local_rh, eff_in_temp, v->peers, now);
+    src = ventosync::room::room_max_humidity(local_rh, eff_in_temp, v->peers, now, fusion_max_age_ms());
   } else if (!std::isnan(local_rh)) {
     src.rh_percent = local_rh;
     src.temp_c = eff_in_temp;
@@ -435,6 +448,47 @@ inline bool ventilation_can_dry(uint32_t now, float eff_in_temp, float eff_out_t
   return out_hum < src.rh_percent; // Temperature unavailable — relative fallback
 }
 
+/// @brief True while the Home Assistant API connection is up.
+inline bool ha_api_connected() {
+#ifdef USE_API
+  return (esphome::api::global_api_server != nullptr) && esphome::api::global_api_server->is_connected();
+#else
+  return false;
+#endif
+}
+
+/**
+ * @brief   Fills the AC-state part of the coordinator inputs.
+ *
+ * @details Local: the state Home Assistant pushed to this device via the API
+ *          action `set_ac_active` (with age for expiry). Peers: any fresh peer
+ *          that reports its own HA AC state as active (ESP-NOW v10 flag).
+ */
+inline void fill_ac_inputs(ventosync::hvac::Inputs &in, uint32_t now) {
+  in.ha_connected = ha_api_connected();
+  in.ac_has_state = hvac_state::ac_has_state;
+  in.ac_reported_active = hvac_state::ac_reported;
+  in.ac_state_age_ms = hvac_state::ac_has_state ? (now - hvac_state::ac_update_ms) : UINT32_MAX;
+  auto *v = ventilation_ctrl;
+  in.peer_ac_active = (v != nullptr) &&
+                      ventosync::room::any_fresh_peer_ac_active(v->peers, now, fusion_max_age_ms());
+}
+
+/**
+ * @brief   Refreshes the AC flag this device broadcasts to its peers.
+ *
+ * @details Only the LOCAL HA state is broadcast (never the room-wide OR),
+ *          so the flag cannot latch between devices. Called every 10 s
+ *          regardless of the operating mode and on every HA push.
+ */
+inline void refresh_local_ac_broadcast(uint32_t now) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr) return;
+  ventosync::hvac::Inputs in;
+  fill_ac_inputs(in, now);
+  v->hvac_local_ac_active = ventosync::hvac::local_ac_active(in);
+}
+
 /**
  * @brief   Collects all HVAC coordination inputs and runs the coordinator.
  *
@@ -447,17 +501,8 @@ inline bool ventilation_can_dry(uint32_t now, float eff_in_temp, float eff_out_t
 inline ventosync::hvac::Decision evaluate_hvac_coordination(uint32_t now, float eff_in, float eff_out) {
   ventosync::hvac::Inputs in;
   in.now_ms = now;
-  in.enabled = (smart_climate_control != nullptr) && smart_climate_control->state;
-
-#ifdef USE_API
-  in.ha_connected = (esphome::api::global_api_server != nullptr) &&
-                    esphome::api::global_api_server->is_connected();
-#else
-  in.ha_connected = false;
-#endif
-
-  in.ac_has_state = (hvac_ac_active != nullptr) && hvac_ac_active->has_state();
-  in.ac_reported_active = in.ac_has_state && hvac_ac_active->state;
+  in.enabled = (hvac_enabled_val != nullptr) && hvac_enabled_val->value(); // room-wide switch
+  fill_ac_inputs(in, now);
 
   // CO2: room-wide maximum (local sensor + all fresh peers, max age 5 min),
   // so the coordinator sees the worst-case air quality in the room.
@@ -525,6 +570,9 @@ inline void apply_co2_setpoint(float desired) {
  * @param[in] force  If true, bypasses the 2s evaluation rate-limit.
  */
 inline void evaluate_auto_mode(bool force) {
+  // AC flag for peers must stay current in every operating mode.
+  auto_mode::refresh_local_ac_broadcast(millis());
+
   if (!auto_mode::is_system_ready()) {
     // Not regulating: never advertise a frozen demand to the room.
     if (ventilation_ctrl != nullptr) ventilation_ctrl->local_pid_demand = NAN;
@@ -639,30 +687,16 @@ inline void evaluate_auto_mode(bool force) {
     }
   }
 
-  if (!slave_following_master) {
-    // I am the Master OR the Master is offline -> Calculate level from demand
-    float scaled = static_cast<float>(min_l) + demand * static_cast<float>(max_l - min_l);
-    int raw_target = std::clamp(static_cast<int>(std::round(scaled)), 1, 10);
-    
-    // Hysteresis: Only change level if demand clearly crosses the boundary
-    static constexpr float LEVEL_HYSTERESIS = 0.25f; // 25% of one level step
-    float step_size = (max_l > min_l) ? 1.0f / static_cast<float>(max_l - min_l) : 1.0f;
-    float hysteresis_band = step_size * LEVEL_HYSTERESIS;
-    
-    // Current demand center relative to current level
-    // K-1 Fix: Clamp current level before math
-    int safe_current = std::clamp(current_level, min_l, max_l);
-    float current_demand_center = (max_l > min_l) 
-        ? static_cast<float>(safe_current - min_l) / static_cast<float>(max_l - min_l) 
-        : 0.5f;
-
-    if (demand > current_demand_center + step_size * 0.5f + hysteresis_band) {
-      target_level = raw_target; // Clearly above -> go up
-    } else if (demand < current_demand_center - step_size * 0.5f - hysteresis_band) {
-      target_level = raw_target; // Clearly below -> go down
-    } else {
-      target_level = current_level; // Within hysteresis band -> hold
-    }
+  if (slave_following_master) {
+    // Enforce the local window too. Room-wide settings and the room-wide AC
+    // state make it identical to the Master's; it only differs transiently
+    // (e.g. until the next heartbeat carries a changed AC state).
+    target_level = std::clamp(target_level, min_l, max_l);
+  } else {
+    // I am the Master OR the Master is offline -> level from demand.
+    // Pure + unit-tested; the result is always inside [min_l, max_l], so a
+    // shrinking window (Smart Climate Control cap) is enforced via the ramp.
+    target_level = VentilationLogic::calculate_auto_target_level(demand, current_level, min_l, max_l);
   }
 
   // Soft Ramping: Maximum ±1 level per evaluation cycle (10s)
@@ -701,4 +735,28 @@ inline void evaluate_auto_mode(bool force) {
     ESP_LOGI("auto_mode", "Automatic level %s %d -> %d (demand=%.2f)", 
              slave_following_master ? "synced" : "ramped", current_level, target_level, demand);
   }
+}
+
+/**
+ * @brief   Home Assistant API action `set_ac_active` (Smart Climate Control).
+ *
+ * @details Home Assistant pushes the room's AC state to the device (see
+ *          documentation/en/en_smart-climate-control.md). The state expires
+ *          after `AC_STATE_MAX_AGE_MS` unless it is re-sent, and it is shared
+ *          with the room over ESP-NOW, so HA only has to reach one device.
+ *
+ * @param[in] active  true = AC is conditioning (cool/heat/dry/auto).
+ */
+inline void hvac_on_ha_ac_state(bool active) {
+  const uint32_t now = millis();
+  const bool changed = !hvac_state::ac_has_state || hvac_state::ac_reported != active;
+  hvac_state::ac_has_state = true;
+  hvac_state::ac_reported = active;
+  hvac_state::ac_update_ms = now;
+  if (hvac_ac_active != nullptr) hvac_ac_active->publish_state(active);
+  if (changed) {
+    ESP_LOGI("hvac", "AC state from Home Assistant: %s", active ? "aktiv" : "inaktiv");
+  }
+  auto_mode::refresh_local_ac_broadcast(now);
+  if (changed) evaluate_auto_mode();
 }

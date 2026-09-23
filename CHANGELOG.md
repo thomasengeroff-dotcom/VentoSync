@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.22] - 2026-09-23
+
+> **Breaking (Smart Climate Control):** ESP-NOW protocol **v10** — flash **all devices of a room** together. The AC state now comes from a Home Assistant **automation** calling the API action `set_ac_active` (the imported `binary_sensor.ventosync_hvac_active_room_<room_id>` is no longer read). The "Klima-Koordination" switch starts **off** after the update — switch it on once per room. Setup: `documentation/en/en_smart-climate-control.md`.
+
+### Fixed
+
+- **Smart Climate Control fan cap not enforced** (`VentilationLogic::calculate_auto_target_level()`, `auto_mode.h`): the level hysteresis held the *unclamped* current level, so a fan running at level 6 stayed at 6 when the AC cap (e.g. 3) applied and the demand was ≥ 0.625 of the window. The level mapping is now a pure, unit-tested function whose result always lies inside the level window (also when the user lowers `automatik_max`, and when the window grows back after the AC turns off). Slaves clamp the level adopted from the Master to their own window as well.
+- **AC state from the wrong room:** the AC entity ID was derived from the compile-time `${room_id}` substitution (default `1`), while the room is configured at runtime — every device listened to room 1. Replaced by the HA API action `set_ac_active`, shared room-wide over ESP-NOW (independent of the room ID).
+- **Inconsistent per-device switch:** with the switch on only some devices, the Master's level governed the room while a slave reported "Aktiv (gedrosselt)", and a throttled Master adopted humidity-driven demand from unthrottled peers. The switch is now **room-wide** (synced like the sliders) and the AC state is shared, so every device of the room applies the same profile.
+- **Slider ranges vs. ESP-NOW:** peers could push values outside the HA slider ranges (400–5000 ppm, level 1–10). Config sync now adopts only values inside the slider ranges (shared constants `CO2_THRESHOLD_*`, `EMERGENCY_CO2_*`, `MAX_FAN_LEVEL_CONFIG_*` in `hvac_coordinator.h`) and the coordinator clamps them.
+- **Room-wide fusion with long sync intervals:** peer data was only trusted for 5 min, so with an ESP-NOW sync interval ≥ 3 min CO2/humidity/demand fusion never saw fresh peers. The window is now max(5 min, two heartbeats), capped at the 15-min peer timeout.
+
+### Added
+
+- HA API action **`set_ac_active`** (`active: bool`) and the diagnostic binary sensor **"Klima aktiv (HA-Signal)"**. A pushed AC state expires after 15 min (`AC_STATE_MAX_AGE_MS`) — the recommended HA automation re-sends it every 5 min.
+- ESP-NOW `VentilationPacket::hvac_flags` (protocol v10): bit 0 room-wide switch, bit 1 the sender's own HA AC state (never a fused value).
+- Unit tests T-7n (AC state sources: expiry, API link, peers), T-7o (config ranges, fusion window), T-7p (level window regression).
+
+### Removed
+
+- Substitution `hvac_ac_sensor_id` and the imported HA binary sensor `hvac_ac_active` (replaced by the API action).
+
 ## [0.10.21] - 2026-09-23
 
 ### Fixed

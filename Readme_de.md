@@ -231,7 +231,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v9, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v10, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -492,12 +492,13 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **LED-Helligkeit**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
 - **CO2-Grenzwert**: `number.auto_co2_threshold` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
 - **Klima-Koordination** *(Konfiguration)*:
-  - `switch.klima_koordination` — HVAC-Koordination aktivieren, **pro Gerät** (Standard: aus)
+  - `switch.klima_koordination` — HVAC-Koordination aktivieren, **raumweit** (Standard: aus)
   - `number.klima_koordination_co2_grenzwert` — Gelockerter CO2-Sollwert bei aktiver Klimaanlage, 800–1500 ppm (Standard: `1200`)
   - `number.klima_koordination_max_lufterstufe` — Lüfter-Obergrenze bei aktiver Klimaanlage, 1–5 (Standard: `3`)
   - `number.klima_koordination_co2_notfallgrenze` — CO2-Notfallgrenze, 1200–2000 ppm (Standard: `1500`)
   - `text_sensor.klima_koordination_status` — Aktueller Koordinator-Zustand (Diagnose)
-  > Die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v9) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Nur der Aktivierungsschalter gilt pro Gerät.
+  - `binary_sensor.klima_aktiv_ha_signal` — Zuletzt von Home Assistant gesendeter Klima-Status (Diagnose)
+  > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v10) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)

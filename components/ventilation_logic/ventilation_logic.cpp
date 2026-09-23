@@ -21,7 +21,7 @@
 // Description: Core ventilation math and logic implementation.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-03-23
+// Modified:    2026-09-23
 // ==========================================================================
 #include "ventilation_logic.h"
 
@@ -105,6 +105,39 @@ float VentilationLogic::calculate_ramp_down(int iteration) {
  */
 int VentilationLogic::get_next_fan_level(int current_level) {
     return (current_level % 10) + 1;  // 1->2->...->10->1
+}
+
+/**
+ * @brief   Smart-Automatik: maps a demand (0–1) to a discrete fan level.
+ * @details See header. Hysteresis: the level only changes when the demand
+ *          leaves the current level's band by more than 25 % of one step.
+ *          Holding keeps the level CLAMPED into the window, so a shrinking
+ *          window (e.g. HVAC cap 3 while running at 6) is always enforced.
+ */
+int VentilationLogic::calculate_auto_target_level(float demand, int current_level, int min_level,
+                                                  int max_level) {
+    constexpr float LEVEL_HYSTERESIS = 0.25f; // 25 % of one level step
+    min_level = std::clamp(min_level, 1, 10);
+    max_level = std::clamp(max_level, 1, 10);
+    if (min_level > max_level) std::swap(min_level, max_level);
+    demand = std::isnan(demand) ? 0.0f : std::clamp(demand, 0.0f, 1.0f);
+
+    const int span = max_level - min_level;
+    const int safe_current = std::clamp(current_level, min_level, max_level);
+    if (span == 0) return min_level;
+
+    const float step_size = 1.0f / static_cast<float>(span);
+    const float hysteresis_band = step_size * LEVEL_HYSTERESIS;
+    const float current_center = static_cast<float>(safe_current - min_level) * step_size;
+    const int raw_target = std::clamp(
+        static_cast<int>(std::round(static_cast<float>(min_level) + demand * static_cast<float>(span))),
+        min_level, max_level);
+
+    if (demand > current_center + step_size * 0.5f + hysteresis_band ||
+        demand < current_center - step_size * 0.5f - hysteresis_band) {
+        return raw_target; // Clearly outside the current level's band
+    }
+    return safe_current; // Within the band -> hold (inside the window)
 }
 
 /**

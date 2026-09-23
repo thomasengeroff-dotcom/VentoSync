@@ -15,4 +15,4 @@ This folder contains the core ESPHome custom component for managing decentralize
 - **Deterministic State Machine**: Calculates `HardwareState` (fan enable, airflow direction, and linear ramp factor $[0.0 \dots 1.0]$) at sub-second precision to ensure soft direction reversals without acoustic noise.
 - **Push-Pull Phase Assignment**: Units in Phase A blow inwards while units in Phase B exhaust outwards, alternating simultaneously every half-cycle (70 seconds).
 - **Stoßlüftung Sub-Cycles**: Implements an automated 2-hour burst ventilation cycle (15 minutes active boost with alternating airflow, followed by a 105-minute energy-saving pause).
-- **ESP-NOW Wireless Mesh**: Communicates with `network_sync.h` using binary packets (`VentilationPacket`, v9 protocol) to mirror master operating mode and target fan level across the room.
+- **ESP-NOW Wireless Mesh**: Communicates with `network_sync.h` using binary packets (`VentilationPacket`, v10 protocol) to mirror master operating mode and target fan level across the room.
