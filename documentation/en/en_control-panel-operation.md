@@ -17,7 +17,7 @@ The control panel features 3 tactile buttons:
 
 | Button | Function | Operation / Action |
 | :--- | :--- | :--- |
-| **Power (I/O)** | System On / Off / Sleep | • **Short press**: Toggles ventilation ON / OFF (OFF stops fan at 50% PWM; remains online in Sensor Monitoring mode; ON restores last active mode and wakes from Light Sleep).<br>• **Long press (> 5s)**: Enters **Light Sleep Mode** (turns off fan, LEDs, and disables Wi-Fi radio to conserve power).<br>• **Very long press (> 10s)**: Reboots the ESP32 microcontroller. |
+| **Power (I/O)** | Room On / Off | • **Press (< 10s)**: Toggles between `Aus` and the last active mode — **room-wide** (OFF stops the fans at 50% PWM; the devices stay online in Sensor Monitoring mode).<br>• **Very long press (> 10s)**: Reboots the ESP32 microcontroller (the mode is kept). |
 | **Mode (M)** | Operating Mode | • **Short press**: Cycles through programs: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off → Auto...** |
 | **Level (+)** | Fan Intensity | • **Short press**: Cycles through 10 speed levels.<br>• **Hold**: Automatically cycles smoothly up and down through all levels (1 level/sec) until released. |
 

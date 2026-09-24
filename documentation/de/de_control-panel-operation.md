@@ -17,7 +17,7 @@ Das Bedienfeld verfügt über 3 Taster:
 
 | Taste | Funktion | Bedienung / Aktion |
 | :--- | :--- | :--- |
-| **Power (I/O)** | System Ein / Aus / Sleep | • **Kurzer Druck**: Schaltet die Lüftung EIN / AUS (AUS stoppt den Lüfter per 50% PWM; Gerät bleibt im Sensor-Monitoring-Modus online; EIN stellt den vorherigen Modus wieder her).<br>• **Langer Druck (> 5s)**: Versetzt das Gerät in den **Light Sleep Modus** (schaltet Lüfter, LEDs und WLAN-Funk ab, um maximal Strom zu sparen).<br>• **Sehr langer Druck (> 10s)**: Startet den ESP32-Mikrocontroller neu (Reboot). |
+| **Power (I/O)** | Raum Ein / Aus | • **Druck (< 10s)**: Schaltet zwischen `Aus` und dem zuletzt aktiven Modus um — **raumweit** (AUS stoppt die Lüfter per 50% PWM; die Geräte bleiben im Sensor-Monitoring-Modus online).<br>• **Sehr langer Druck (> 10s)**: Startet den ESP32-Mikrocontroller neu (der Modus bleibt erhalten). |
 | **Modus (M)** | Betriebsmodus | • **Kurzer Druck**: Zykliert durch die Betriebsmodi: **Automatik → Wärmerückgewinnung → Durchlüften → Stoßlüftung → Aus → Automatik...** |
 | **Stufe (+)** | Lüfterintensität | • **Kurzer Druck**: Zykliert durch 10 Geschwindigkeitsstufen.<br>• **Gedrückt halten**: Automatisches, flüssiges Hoch- und Runterschalten durch alle 10 Stufen (1 Stufe/s), bis die Taste losgelassen wird. |
 

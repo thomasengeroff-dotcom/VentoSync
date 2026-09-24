@@ -137,7 +137,7 @@ All devices in a room find each other automatically upon startup or room change 
 - 🔄 **Efficient Heat Recovery**: Cyclic, bidirectional operation (push-pull) to maximize energy efficiency. While automatic CO2 and humidity control are inactive in manual mode, radar presence detected anywhere in the room can shift the fan level of all devices by a configurable offset (-5 … +5).
 - 💨 **Cross-Ventilation (Summer Mode)**: Constant airflow without changing direction (Phase-A units blow in, Phase-B units blow out simultaneously to create an effective cross-draft for passive night cooling). Flexibly configurable via timer or as continuous operation.
 - 🚀 **Boost Ventilation**: Burst ventilation for quick air exchange. The device ventilates for 15 minutes **in one direction** (Phase A in, Phase B out) with the **manually selected intensity** and then pauses for 105 minutes to effectively remove moisture and regenerate the ceramic heat exchanger. The cycle then repeats; every second burst inverts the direction. All devices of a room follow the Master's schedule.
-- 🌡️ **Off (Monitoring Mode)**: The fan is switched off (0 RPM) but all sensors (CO2, Temp, Radar) and the web dashboard remain fully active to ensure gap-less measurement data in Home Assistant. *(Note: Ultra-low-power Light Sleep with Wi-Fi turned off is available via long-press on the Power button >5s).*
+- 🌡️ **Off (Monitoring Mode)**: The fans of the whole room are switched off (0 RPM) but all sensors (CO2, Temp, Radar), Wi-Fi and the web dashboard remain fully active to ensure gap-less measurement data in Home Assistant. Switching on again on any device (Power button, HA, dashboard) restores the last active mode for the whole room.
 
 ### 🛡️ Precision Sensors & Monitoring
 
@@ -453,7 +453,7 @@ The system is controlled intuitively via the integrated control panel or fully a
 
 The unit features an intuitive 3-button control panel with 9 status LEDs (dimmable, with auto-dimming after 30 seconds of inactivity and diagnostic blink codes).
 
-- **Power (I/O)**: Short press toggles ventilation ON/OFF; long press (>5s) enters Light Sleep; very long press (>10s) triggers reboot.
+- **Power (I/O)**: Press toggles the room between `Aus` and the last active mode; very long press (>10s) triggers reboot.
 - **Mode (M)**: Cycles through `Auto` → `Heat Recovery` → `Ventilation` → `Boost Ventilation` → `Off`.
 - **Level (+)**: Cycles through 10 fan speed levels (press) or continuous level cycling (hold).
 - **Feedback**: Visualized via 5 Intensity LEDs (fill-bar with 50%/100% brightness steps), 2 Mode LEDs (`LED_WRG` / `LED_VEN`), Power LED, and Master diagnostic LED.
@@ -475,10 +475,10 @@ The ventilation system supports 5 operating modes, which can be selected via the
 | **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Manual push-pull heat recovery (50s–70s per direction, level-dependent), up to 85% heat recovery (manufacturer figure) | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Continuous unidirectional draft (Phase A in, Phase B out) for passive night cooling | `select.luefter_modus` → `Durchlüften` |
 | **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | 15 min one-way air renewal followed by a 105 min core regeneration pause | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all climate sensors & web UI remain online for data logging | `select.luefter_modus` → `Aus` |
+| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fans of the room stopped (0 RPM); all climate sensors & web UI remain online for data logging | `select.luefter_modus` → `Aus` |
 
 > 📖 **Comprehensive Operating Modes Guide:**  
-> For full technical details on the PID control logic, real-world timing examples, enthalpy-based dehumidification, summer cooling hysteresis, and Light Sleep power saving, see the **[📄 Operating Modes & Logic Guide](documentation/en/en_operating-modes.md)**.
+> For full technical details on the PID control logic, real-world timing examples, enthalpy-based dehumidification, summer cooling hysteresis, and the room-wide Off mode, see the **[📄 Operating Modes & Logic Guide](documentation/en/en_operating-modes.md)**.
 
 ---
 

@@ -84,7 +84,6 @@ namespace auto_mode {
  */
 inline bool is_system_ready() {
   if (auto_mode_active == nullptr || !auto_mode_active->value()) return false;
-  if (system_on == nullptr || !system_on->value()) return false;
   if (ventilation_enabled == nullptr || !ventilation_enabled->value()) return false;
   
   return (ventilation_ctrl != nullptr && 

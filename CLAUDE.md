@@ -153,7 +153,7 @@ Pure logic belongs in `components/ventilation_logic/` (no ESPHome dependencies) 
 | Heat recovery | `Wärmerückgewinnung` | `MODE_ECO_RECOVERY` | Alternating push-pull cycles (70 s at level 1 → 50 s at level 10) |
 | Cross-ventilation | `Durchlüften` | `MODE_VENTILATION` | Continuous one-directional ventilation with optional timer |
 | Boost ventilation | `Stoßlüftung` | `MODE_STOSSLUEFTUNG` | 2 h cycle: 15 min one-way burst (A in / B out) / 105 min pause, direction inverted every 2nd burst |
-| Off | `Aus` | `MODE_OFF` | Fan stopped, standby |
+| Off | `Aus` | `MODE_OFF` | Fan stopped, room-wide like every mode; Wi-Fi/sensors stay on (no sleep state) |
 
 The German strings are the values of the HA select **and** the HA fan preset modes.
 LED behaviour per mode: `documentation/en/en_operating-modes.md`.
@@ -174,7 +174,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 - **Discovery:** broadcast `ROOM_DISC` on boot → matching Floor + Room ID → unicast pairing.
 - **Peer cache:** LRU, capped at 10 peers (`VentilationController::peers`).
 - **Master/Slave authority:** device ID 1 is Master. Slaves mirror mode and — in Smart-Automatik — the
-  Master's **fan level**. Consequence: the Master decides for the whole room, so every demand must reach it.
+  Master's **fan level**. `Aus` is a room mode like the others: a device in `MODE_OFF` still follows the room
+  (no "autonomy" exception since 0.10.26), so switching on is as room-wide as switching off.
+  Consequence: the Master decides for the whole room, so every demand must reach it.
 - **Stoßlüftung schedule:** `remaining_duration_ms` carries the remaining time of the 4 h super-cycle (two bursts);
   slaves re-align to the **Master** only (`stoss_misaligned` in `ventilation_group.h`), so a rebooted slave never
   restarts the room's schedule and push-pull pairs never blow in the same direction.
@@ -286,6 +288,9 @@ Complex YAML lambda logic is extracted into focused header files:
   publishes (intake: outdoor, exhaust: indoor); the other one freezes at its last value. Never use it —
   `get_effective_temperatures()` falls back to peers / `HeldReading` (≤ 30 min) and `guard_summer_bypass()`
   returns to heat recovery to re-measure.
+- **No power-off / sleep state:** `system_on`, the Wi-Fi-off long press and `system_sleep` were removed in 0.10.26
+  (rev. 1 PCB cannot wake from deep sleep). `api.reboot_timeout: 0s` keeps standalone devices (no HA client) from
+  rebooting every 15 min. The Power button toggles `Aus` ↔ `last_active_mode_index`.
 - **`vent_timer` = 0 means continuous** (`ventilation_duration_ms = 0`); only values > 0 are clamped to 1–1440 min.
 - **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
   whole firmware — they persist across mode switches and are not per-instance.

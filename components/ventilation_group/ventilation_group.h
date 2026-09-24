@@ -268,8 +268,6 @@ public:
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
       false; ///< tracks if state has been synced from peer after boot
-  uint32_t sync_timeout_ms = 
-      0; ///< millis() deadline for receiving master state after boot/wake
 
   // --- INTERNAL ---
   uint32_t last_sync_tx = 0;     ///< millis() of last sync broadcast.
@@ -486,19 +484,7 @@ public:
       jitter = esphome::random_uint32() % 5000; // New jitter for next cycle
     }
 
-
-    // 4. Fallback Sync Watchdog
-    // If a device wakes up and mutes its broadcast to await the Master's state,
-    // this watchdog guarantees that it won't stay isolated forever if the Master is offline.
-    // FIXED K-2/H-3: Evaluate via time delta to survive millis() overflow gracefully
-    if (sync_timeout_ms != 0 && !is_state_synced && (now - sync_timeout_ms > 30000)) {
-      ESP_LOGW("vent", "Sync timeout reached! Did not receive master state within 30s. Forcing fallback group sync.");
-      sync_timeout_ms = 0; // Prevent repetitive firing
-      is_state_synced = true; // Give up waiting
-      pending_broadcast = true;
-    }
-
-    // 5. Cleanup old peers (15 minutes timeout)
+    // 4. Cleanup old peers (15 minutes timeout)
     auto it = peers.begin();
     while (it != peers.end()) {
       if (now >= it->last_seen_ms && now - it->last_seen_ms > PEER_TIMEOUT_MS) {
@@ -693,14 +679,9 @@ public:
       }
     }
 
-    if (should_sync) {
-      // 1. Explicit Autonomy Check: If we are in "Aus" (MODE_OFF), we ignore group commands
-      // to avoid being woken up by peers.
-      if (state_machine.current_mode == MODE_OFF) {
-        ESP_LOGD("vent_sync", "Local device is MODE_OFF. Ignoring peer command to maintain autonomy.");
-        should_sync = false;
-      }
-    }
+    // "Aus" is a room-wide mode like every other: a device in MODE_OFF follows
+    // the room (MSG_STATE from any device, Master heartbeat) — switching on is
+    // as room-wide as switching off.
 
     if (should_sync) {
       // 1. Time sync (aligns direction cycle phase) — Master only for MSG_SYNC

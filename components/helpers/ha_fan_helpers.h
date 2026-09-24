@@ -25,10 +25,10 @@
 //              re-triggering between card input and system state sync.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-05-16
+// Modified:    2026-09-24
 //
 // Dependencies: globals.h (MODE_NAMES, MODE_NAME_OFF, MODE_NAME_AUTO,
-//                           system_on, ventilation_enabled,
+//                           ventilation_enabled, last_active_mode_index,
 //                           current_mode_index, fan_intensity_level)
 //               automation_helpers.h (set_operating_mode_select,
 //                                     set_fan_intensity_slider)
@@ -176,30 +176,15 @@ inline void ha_fan_on_preset_set(const std::string &preset) {
 /**
  * @brief Handles turn-on from the ventosync-card or HA service call.
  *
- * Resumes the last active preset mode. If no preset was set or
- * the last preset was "Aus", defaults to Smart-Automatik.
- * Also ensures the system globals (ventilation_enabled, system_on)
- * are set to true.
+ * Resumes the last active (non-"Aus") mode — the same one the Power button
+ * restores. Switching on is room-wide like every mode change.
  */
 inline void ha_fan_on_turn_on() {
     if (ha_fan_guard_active()) return;
 
-    // Determine target mode: resume last preset or default to Auto
-    std::string target_mode = MODE_NAME_AUTO;
-
-    auto &fan = id(ventosync_hrv_fan);
-    if (fan.has_preset_mode()) {
-        std::string last = fan.get_preset_mode().str();
-        if (last != MODE_NAME_OFF) {
-            target_mode = last;
-        }
-    }
-
-    // Ensure system is enabled
-    if (!id(ventilation_enabled)) {
-        id(ventilation_enabled) = true;
-        id(system_on) = true;
-    }
+    int idx = id(last_active_mode_index);
+    if (idx < 0 || idx >= MODE_INDEX_AUS) idx = 0;  // Smart-Automatik
+    const std::string target_mode = MODE_NAMES[idx];
 
     set_operating_mode_select(target_mode);
     ESP_LOGI("ha_fan", "Turned ON → mode: %s", target_mode.c_str());
@@ -249,7 +234,7 @@ inline void ha_fan_sync_state() {
     }
 
     // ── Phase 1: Read current system state ──
-    bool sys_on = id(system_on) && id(ventilation_enabled);
+    bool sys_on = id(ventilation_enabled);
     const int mode_idx = id(current_mode_index);
 
     // Mode index 4 = "Aus" → system is logically off

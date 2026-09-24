@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.26] - 2026-09-24
+
+### Fixed
+
+- **Power button could not switch on after "Aus":** switching off (Power button, HA, Mode button) stored mode index 4; the next short press "restored the last mode" — i.e. "Aus" again — so the fan stayed off. The last active mode is now kept in `last_active_mode_index` (0–3, restored after reboot) and restored by the Power button and the HA fan *turn on*.
+- **"Aus" was only half room-wide:** switching off reached all peers, but a device in `MODE_OFF` ignored every group command ("autonomy" check in `on_packet_received()`), so after a room-wide off every device had to be switched on individually, and a slave switched on while the Master was off was turned off again by the next heartbeat. `Aus` is now a normal room mode: switching on at any device (Power button, HA, dashboard) starts the whole room with the last active mode.
+- **Standalone devices rebooted every 15 minutes:** without a Home Assistant client the ESPHome API rebooted the device after its default `reboot_timeout` (15 min). Set to `0s`; Wi-Fi loss is still handled by `wifi.reboot_timeout`.
+- **Peer LEDs in "Aus":** a device switched off by a peer turned off all LEDs incl. the power LED, while a locally switched-off device kept it lit. Both now behave the same (power LED on, mode LEDs off).
+
+### Removed
+
+- **Long press (> 5 s) "Light Sleep":** it only switched off Wi-Fi (and with it ESP-NOW) and the panel LEDs — CPU, sensors and radar kept running, the documented "< 0.1 W / radar off" was never true — and it ended by itself after 15 minutes (API reboot timeout) with the fan running again in the previous mode. The rev. 1 PCB cannot wake the ESP32 from deep sleep with a button, so there is no sleep state any more. Removed `handle_button_power_long_click()`, the `system_sleep` / `system_wakeup` scripts, the `system_on` global and the wake-up sync watchdog (`sync_timeout_ms`). A press shorter than 10 s now always toggles; > 10 s still restarts the device (mode kept).
+
+### Changed
+
+- Operating-modes docs (EN/DE), Off: room-wide behaviour, Power button, no sleep mode (hardware limitation); control-panel docs, READMEs, CLAUDE.md updated accordingly.
+
 ## [0.10.25] - 2026-09-24
 
 ### Changed

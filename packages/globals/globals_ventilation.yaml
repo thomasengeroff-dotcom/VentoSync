@@ -24,7 +24,7 @@
 #              what the ventilation system is currently doing.
 # Author:      Thomas Engeroff
 # Created:     2026-05-16
-# Modified:    2026-05-16
+# Modified:    2026-09-24
 # ==========================================================================
 
 globals:
@@ -32,14 +32,8 @@ globals:
   # SYSTEM POWER STATE
   # ---------------------------------------------------------
 
-  # Master power switch – when false, the entire ventilation system is off.
-  # Controlled via HA or physical button long-press.
-  - id: system_on
-    type: bool
-    initial_value: "true"
-
-  # Ventilation enabled state (referenced by button logic).
-  # Separate from system_on to allow "system on but fan paused" states.
+  # Ventilation enabled state: false only in mode "Aus" (fan stopped, sensors,
+  # Wi-Fi and ESP-NOW stay active). There is no separate power-off / sleep state.
   - id: ventilation_enabled
     type: bool
     initial_value: "true"
@@ -63,6 +57,13 @@ globals:
   # 4 = Aus (Off)
   # Maps to MODE_NAMES[] array in globals.h
   - id: current_mode_index
+    type: int
+    initial_value: "0"
+    restore_value: true
+
+  # Last active (non-"Aus") mode index 0–3. The Power button and the HA fan
+  # turn_on restore it when switching on from "Aus".
+  - id: last_active_mode_index
     type: int
     initial_value: "0"
     restore_value: true

@@ -219,15 +219,15 @@ inline void handle_button_mode_click() {
 /**
  * @brief   Handles short-press logic for the power button.
  *
- * @details Toggles the system state. If turning ON, it restores the last known
- *          mode but waits for a network sync before broadcasting its own state
- *          to avoid "State Whiplash" (where a booting node overwrites a running group).
+ * @details Toggles between "Aus" and the last active mode (last_active_mode_index,
+ *          default Smart-Automatik). Goes through set_operating_mode_select(), so
+ *          the change is room-wide exactly like a mode selected in HA or with
+ *          the Mode button (MSG_STATE to all peers).
  *
- * @see     cycle_operating_mode()
+ * @see     set_operating_mode_select()
  */
 inline void handle_button_power_short_click() {
-  if (ventilation_ctrl == nullptr || ventilation_enabled == nullptr || current_mode_index == nullptr || 
-      fan_speed_update == nullptr || ui_timeout_script == nullptr) return;
+  if (current_mode_index == nullptr) return;
 
   // Child Protection Mode: Block physical button input when locked.
   if (child_lock_active != nullptr && child_lock_active->value()) {
@@ -236,73 +236,14 @@ inline void handle_button_power_short_click() {
     return;
   }
 
-  if (!ventilation_enabled->value()) {
-    if (system_on != nullptr && !system_on->value()) {
-      if (system_wakeup != nullptr) {
-        system_wakeup->execute();
-      }
-    }
-    ventilation_enabled->value() = true;
-    ESP_LOGI("power", "System turned ON by short press - restoring mode %d locally, awaiting network sync",
-             current_mode_index->value());
-    cycle_operating_mode(current_mode_index->value());
-    
-    // Mute the outgoing state broadcast to prevent overwriting the group with our slept state.
-    // Instead we arm the sync flag to adopt the Master's mode when WiFi connects.
-    if (ventilation_ctrl != nullptr) {
-      ventilation_ctrl->pending_broadcast = false;
-      ventilation_ctrl->is_state_synced = false;
-      // FIXED K-2: Setup a relative start timer instead of an absolute timestamp logic
-      ventilation_ctrl->sync_timeout_ms = millis(); // Bootstart / Start-Zeitpunkt for timeout comparison
-    }
-    
-    fan_speed_update->execute();
-    ui_timeout_script->execute();
+  if (current_mode_index->value() == MODE_INDEX_AUS) {
+    int target = (last_active_mode_index != nullptr) ? last_active_mode_index->value() : 0;
+    if (target < 0 || target >= MODE_INDEX_AUS) target = 0; // Smart-Automatik
+    ESP_LOGI("power", "Power button: ON -> %s (room-wide)", MODE_NAMES[target]);
+    set_operating_mode_select(MODE_NAMES[target]);
   } else {
-    ESP_LOGI("power", "System turned OFF by short press");
-    cycle_operating_mode(4); // Mode index 4 is "Aus", triggers system_sleep via cycle_operating_mode
-    sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
-    ui_timeout_script->execute();
-  }
-}
-
-/**
- * @brief   Enforces a full system-stop via long-press (>=5s).
- *
- * @details This is a safety/maintenance override. It halts the fan using 50% PWM
- *          (neutral for bidirectional drivers) and puts the device into
- *          low-power sleep.
- *
- * @warning Bypasses standard transition ramps for immediate halt.
- */
-inline void handle_button_power_long_click() {
-  // FIXED H-4: Removed lueftung_fan from the guard since long press must work even if fan is undefined
-  if (ventilation_enabled == nullptr || system_on == nullptr || 
-      ventilation_ctrl == nullptr || 
-      fan_pwm_primary == nullptr || ui_timeout_script == nullptr) return;
-
-  // Child Protection Mode: Block physical button input when locked.
-  if (child_lock_active != nullptr && child_lock_active->value()) {
-    if (flash_leds_child_lock_3x != nullptr) flash_leds_child_lock_3x->execute();
-    ESP_LOGI("button", "Power long press BLOCKED by child lock");
-    return;
-  }
-
-  if (ventilation_enabled->value()) {
-    system_on->value() = false;
-    ventilation_enabled->value() = false;
-    ESP_LOGI("power", "System turned OFF by long press (>5s)");
-    auto *v = ventilation_ctrl;
-    v->set_mode(esphome::MODE_OFF);
-    sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
-    // 50% PWM = true motor stop (bidirectional driver).
-    // lueftung_fan->turn_off() is intentionally omitted as it would send 0.0f (full reverse).
-    fan_pwm_primary->set_level(0.5f);
-    if (system_sleep != nullptr)
-      system_sleep->execute();
-    ui_timeout_script->execute();
-  } else {
-    ESP_LOGD("power", "System already OFF, ignoring long press");
+    ESP_LOGI("power", "Power button: OFF (room-wide)");
+    set_operating_mode_select(MODE_NAME_OFF);
   }
 }
 

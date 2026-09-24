@@ -21,7 +21,7 @@
 // Description: Visual system status feedback via physical LEDs.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-04-01
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -218,14 +218,12 @@ inline void update_leds_logic(bool force) {
   }
 
   const int current_mode = v->state_machine.current_mode;
-  const bool is_on = (system_on != nullptr) ? system_on->value() : true;
   const bool is_ui_active = (ui_active != nullptr) ? ui_active->value() : true;
   const float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
   const bool is_auto = (auto_mode_active != nullptr) ? auto_mode_active->value() : false;
   const int intensity = (fan_intensity_level != nullptr) ? static_cast<int>(fan_intensity_level->value()) : 1;
 
   // FIXED: State tracking to prevent log spam and I2C flooding
-  static bool  last_system_on  = false;
   static bool  last_ui_active  = false;
   static int   last_mode       = -1;
   static int   last_intensity  = -1;
@@ -235,12 +233,11 @@ inline void update_leds_logic(bool force) {
   static bool initialized = false;
   if (!initialized) {
       initialized = true;
-      last_system_on = !is_on;
       last_ui_active = !is_ui_active;
       last_auto      = !is_auto;
   }
 
-  bool changed = force || (is_on != last_system_on) || (is_ui_active != last_ui_active) || 
+  bool changed = force || (is_ui_active != last_ui_active) || 
                  (current_mode != last_mode) || (intensity != last_intensity) || 
                  (std::abs(max_b - last_max_b) > 0.01f) || (is_auto != last_auto);
 
@@ -249,18 +246,11 @@ inline void update_leds_logic(bool force) {
   }
 
   // Store new state
-  last_system_on = is_on;
   last_ui_active = is_ui_active;
   last_mode = current_mode;
   last_intensity = intensity;
   last_max_b = max_b;
   last_auto = is_auto;
-
-  // 0. Case: System is OFF
-  if (!is_on) {
-    led_guard::turn_off_all_leds();
-    return;
-  }
 
   // 1. Case: UI Inactive (Dimming/Night mode)
   if (!is_ui_active) {
@@ -271,7 +261,7 @@ inline void update_leds_logic(bool force) {
     return;
   }
 
-  // 2. Case: UI Active and System On (Normal operation)
+  // 2. Case: UI Active (normal operation; in "Aus" only the power LED)
   led_guard::turn_on_safe(status_led_power, max_b);
 
   // Mode LEDs
