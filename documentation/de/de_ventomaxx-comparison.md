@@ -28,7 +28,7 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 | **Wärmerückgewinnung (WRG)** | Statischer Zyklus: **70 Sek.** (fix) | **Dynamischer Zyklus**: 50s – 90s (je nach Stufe/Temp) | ✅ **Höhere Effizienz** durch angepasste Zykluszeiten |
 | **Querlüftung (Sommer)** | ✅ Ja | ✅ Ja (via App/Panel/Automatik) | ⚖️ Gleichwertig |
 | **Auto-Sommerbetrieb** | ❌ Nein (manuell umschalten) | ✅ **Automatische Querlüftung** wenn Außentemp. < Innentemp. (NTC + ESP-NOW Gruppendaten) | ✅ **Kein manuelles Umschalten nötig** |
-| **Stoßlüftung** | 15 Min. Intensiv, dann Pause | ✅ Ja (Konfigurierbar: Zeit/Stufe) | ✅ **Flexibler** |
+| **Stoßlüftung** | 15 Min. in eine Richtung, dann 105 Min. Pause | ✅ Ja (gleicher 15/105-min-Zyklus in eine Richtung; Stufe frei wählbar 1–10, raumweit synchronisiert) | ✅ **Flexibler** |
 | **Lüfterregelung** | 5 feste Stufen | **10 Stufen (diskrete PID-Regelung)** (Stufen 1 - 6 sind feiner abgestimmt als die höheren Stufen, um die Lautstärke in den unteren Stufen zu optimieren) | ✅ **Feingranular** |
 | **Automatik (CO2)** | ❌ Nein (nur optionale VOC-Schätzung) | ✅ **SCD43 (echtes CO2)**: Stufenlose PID-Regelung mit Deadband-Hysterese, konfigurierbarem Min/Max-Level | ✅ **Präzise & leise** mit Präzisionssensor |
 | **Automatik (Feuchte)** | Schwellwerte fest: 55%, 65%, 75% r.F. | ✅ **PID-Regler** mit konfigurierbarem Grenzwert (40-100%), Outdoor-Feuchte-Vergleich, Deadband-Hysterese (±2%) | ✅ **Präzise & leise** mit Präzisionssensor + Outdoor-Check |

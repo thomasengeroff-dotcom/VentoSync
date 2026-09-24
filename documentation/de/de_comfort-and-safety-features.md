@@ -35,7 +35,7 @@ $$\text{Neue verbleibende Zeit} = \text{Neue Gesamtdauer} \times \left(1 - \frac
 Zur Schonung der Motorelektronik und zur akustischen Optimierung werden alle Drehzahländerungen über einen Software-Slew-Rate-Limiter gefiltert.
 
 * **Rampen-Geschwindigkeit**: ca. **5 % PWM pro Sekunde**
-* **Sanfte Richtungsumkehr**: Beim Richtungswechsel (Wärmerückgewinnung / Stoßlüftung) wird der Lüfter über eine sanfte 5-Sekunden-Brems- und Anlauframpe geführt.
+* **Sanfte Richtungsumkehr**: Beim Richtungswechsel (Wärmerückgewinnung) sowie zu Beginn und am Ende jedes Stoßlüftungs-Durchgangs wird der Lüfter über eine sanfte 5-Sekunden-Brems- und Anlauframpe geführt.
 * **Vorteil**: Verhindert Stromspitzen auf der 12V-Schiene und eliminiert störende Lastwechselgeräusche im Wohnraum.
 
 ---

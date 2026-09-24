@@ -9,9 +9,9 @@ This file lists all Home Assistant entities provided by the `ventosync.yaml` con
 
 These entities are for primary control of the fan and operating mode.
 
-* **`select.ventilation_mode`** ("Ventilation Mode")
+* **`select.luefter_modus`** ("Lüftermodus")
   * *Type:* Select
-  * *Documentation:* Allows selecting the primary operating mode: `Heat Recovery`, `Boost Ventilation`, `Cross Ventilation`, `Automatic`, `Off`.
+  * *Documentation:* Selects the operating mode: `Smart-Automatik`, `Wärmerückgewinnung` (heat recovery), `Durchlüften` (cross-ventilation), `Stoßlüftung` (boost ventilation), `Aus` (off). Details: [Operating Modes](en_operating-modes.md).
 * **`number.fan_intensity_display`** ("Fan Intensity")
   * *Type:* Number (Slider)
   * *Documentation:* Manual setting of the fan level (1 to 10). Overwritten in Automatic mode.
@@ -21,9 +21,6 @@ These entities are for primary control of the fan and operating mode.
 * **`text_sensor.direction_display`** ("Current Direction")
   * *Type:* Text Sensor
   * *Documentation:* Shows the current direction of the airflow: "Supply (In)", "Extract (Out)", or "Standstill".
-* **`sensor.ventilation_timer_remaining`** ("Remaining Time")
-  * *Type:* Sensor
-  * *Documentation:* Shows how much time is left in timed modes (e.g., Boost).
 
 ## 2. Automation & Regulation (Sensor-driven)
 

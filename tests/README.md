@@ -36,12 +36,12 @@ Currently, the following scenarios are automatically verified:
 2.  **WRG Efficiency**: Verification of efficiency calculation based on room, intake, and exhaust temperatures.
 3.  **Fan Logic**: Testing the PWM mapping function (level 1-10) and bidirectional motor control (50% stop threshold).
 4.  **Mode OFF**: Ensuring the fan safely remains at 50% PWM (hardware stop) in the OFF state.
-5.  **Ventilation Timer**: Validation of automatic switching back after the boost ventilation timer expires.
+5.  **Ventilation Timer**: Validation of the cross-ventilation (`Durchlüften`) timer: continuous operation for 0, fallback to heat recovery on expiry.
 6.  **Sync Time (ESP-NOW)**: Verification of cycle synchronization between Master and Slaves.
-7.  **Boost Ventilation Cycle**: Testing rotation ramping (gentle spin-up) during an intensive cycle.
+7.  **Boost Ventilation Cycle**: 15 min burst / 105 min pause and the direction inversion of the second burst (one-way bursts and Master schedule sync: T-7t).
 8.  **Phase Logic**: Correct calculation of rotation direction based on Phase A/B assignment.
 9.  **Smart Climate Control (HVAC Coordinator)**: T-7a–T-7j — disabled transparency, standby, throttled profile (CO2-only, level cap, ECO lock), CO2 emergency hysteresis, emergency margin guard, AC release debounce, fail-safe unknown AC state, suspension without CO2, mold guard, latch reset.
-10. **Room-wide fusion & Smart Climate Control inputs**: T-7k–T-7s — room CO2 / demand / humidity fusion (freshness, no feedback loop), AC state sources (HA push expiry, API link, peer flag), configuration ranges and fusion window, Smart-Automatik level mapping that always enforces the level window (HVAC cap regression), window state (T-7q) and room-wide radar presence hold (T-7r), held readings for unmeasurable NTCs in continuous ventilation (T-7s).
+10. **Room-wide fusion & Smart Climate Control inputs**: T-7k–T-7t — room CO2 / demand / humidity fusion (freshness, no feedback loop), AC state sources (HA push expiry, API link, peer flag), configuration ranges and fusion window, Smart-Automatik level mapping that always enforces the level window (HVAC cap regression), window state (T-7q) and room-wide radar presence hold (T-7r), held readings for unmeasurable NTCs in continuous ventilation (T-7s), Stoßlüftung one-way bursts and schedule alignment incl. rebooted slave and `millis()` wrap (T-7t).
 
 ## Adding New Tests
 

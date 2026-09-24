@@ -11,7 +11,7 @@ Diese Entitäten dienen der primären Steuerung des Lüfters und des Betriebsmod
 
 * **`select.luefter_modus`** ("Lüftermodus")
   * *Typ:* Select
-  * *Dokumentation:* Ermöglicht die Auswahl des primären Betriebsmodus: `Wärmerückgewinnung`, `Stoßlüftung`, `Durchlüften`, `Automatik`, `Aus`.
+  * *Dokumentation:* Auswahl des Betriebsmodus: `Smart-Automatik`, `Wärmerückgewinnung`, `Durchlüften`, `Stoßlüftung`, `Aus`. Details: [Betriebsmodi](de_operating-modes.md).
 * **`number.fan_intensity_display`** ("Lüfter Intensität")
   * *Typ:* Number (Slider)
   * *Dokumentation:* Manuelle Einstellung der Lüfterstufe (1 bis 10). Wird im Automatik-Modus durch den PID-Regler gesteuert.
@@ -24,9 +24,6 @@ Diese Entitäten dienen der primären Steuerung des Lüfters und des Betriebsmod
 * **`text_sensor.direction_display`** ("Aktuelle Luftrichtung")
   * *Typ:* Text Sensor
   * *Dokumentation:* Zeigt die momentane Richtung des Luftstroms an: "Zuluft (Rein)", "Abluft (Raus)" oder "Stillstand".
-* **`sensor.ventilation_timer_remaining`** ("Verbleibende Zeit")
-  * *Typ:* Sensor
-  * *Dokumentation:* Zeigt die Restlaufzeit des aktiven Timers (Stoßlüftung/Durchlüften) an.
 
 ## 2. Automatik & Regelung (Sensoren-getrieben)
 

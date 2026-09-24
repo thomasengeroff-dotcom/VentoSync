@@ -55,22 +55,21 @@ bool VentilationStateMachine::update(uint32_t now) {
         }
     }
 
-    // 2. Handle Stoßlüftung Cycle
+    // 2. Handle Stoßlüftung Cycle (15 min burst / 105 min pause, direction
+    //    inverted every second burst — derived from the super-cycle position)
     if (current_mode == MODE_STOSSLUEFTUNG) {
-        uint32_t elapsed = now - stoss_cycle_start;
-        if (stoss_active_phase) {
-            if (elapsed >= STOSS_ACTIVE_MS) {
-                stoss_active_phase = false;
-                stoss_cycle_start = now;
-                dirty = true;
-            }
-        } else {
-            if (elapsed >= STOSS_PAUSE_MS) {
-                stoss_active_phase = true;
-                stoss_direction_flip = !stoss_direction_flip;
-                stoss_cycle_start = now;
-                dirty = true;
-            }
+        // Keep the anchor close to now so (now - anchor) never wraps.
+        const uint32_t elapsed = now - stoss_cycle_start;
+        if (elapsed >= STOSS_SUPER_CYCLE_MS) {
+            stoss_cycle_start += (elapsed / STOSS_SUPER_CYCLE_MS) * STOSS_SUPER_CYCLE_MS;
+        }
+        const uint32_t pos = get_stoss_pos(now);
+        const bool active = (pos % STOSS_CYCLE_MS) < STOSS_ACTIVE_MS;
+        const bool flip = pos >= STOSS_CYCLE_MS;
+        if (active != stoss_active_phase || flip != stoss_direction_flip) {
+            stoss_active_phase = active;
+            stoss_direction_flip = flip;
+            dirty = true;
         }
     }
 
@@ -94,8 +93,24 @@ bool VentilationStateMachine::update(uint32_t now) {
  * @param[in] mode      Target mode (MODE_OFF, MODE_ECO_RECOVERY, etc.).
  * @param[in] now       Current system time in milliseconds.
  * @param[in] duration  For MODE_VENTILATION: auto-stop duration in ms (0 = infinite).
+ *                      For MODE_STOSSLUEFTUNG: 0 = start a new schedule unless one
+ *                      is running, > 0 = peer's remaining super-cycle time to align with.
  */
 void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint32_t duration) {
+    // Stoßlüftung: re-selecting keeps the running schedule; a duration is a
+    // peer's schedule position, not a timer (ventilation_duration_ms stays 0).
+    if (mode == MODE_STOSSLUEFTUNG) {
+        if (current_mode != MODE_STOSSLUEFTUNG) {
+            current_mode = MODE_STOSSLUEFTUNG;
+            ventilation_duration_ms = 0;
+            stoss_cycle_start = now;
+            stoss_active_phase = true;
+            stoss_direction_flip = false;
+        }
+        if (duration > 0) sync_stoss(now, duration);
+        return;
+    }
+
     // FIXED K-3: Removed dead variable 'changed'; simplified early-return.
     // NOTE: This is intentional for timed modes (MODE_VENTILATION, MODE_STOSSLUEFTUNG):
     // re-selecting the same mode with the same duration does NOT restart the timer.
@@ -108,11 +123,6 @@ void VentilationStateMachine::set_mode(VentilationMode mode, uint32_t now, uint3
 
     if (mode == MODE_VENTILATION) {
         ventilation_start_time = now;
-    }
-    if (mode == MODE_STOSSLUEFTUNG) {
-        stoss_cycle_start = now;
-        stoss_active_phase = true;
-        stoss_direction_flip = false;
     }
 }
 
@@ -198,11 +208,38 @@ void VentilationStateMachine::sync_time(uint32_t now, uint32_t target_pos_ms) {
 }
 
 /**
- * @brief   Returns the remaining time for MODE_VENTILATION in milliseconds.
+ * @brief   Aligns the Stoßlüftung schedule with a peer's super-cycle position.
+ * @param[in] now           Current system time in milliseconds.
+ * @param[in] remaining_ms  Peer's remaining super-cycle time (1 … STOSS_SUPER_CYCLE_MS).
+ */
+void VentilationStateMachine::sync_stoss(uint32_t now, uint32_t remaining_ms) {
+    if (remaining_ms == 0 || remaining_ms > STOSS_SUPER_CYCLE_MS) return;
+    const uint32_t pos = (STOSS_SUPER_CYCLE_MS - remaining_ms) % STOSS_SUPER_CYCLE_MS;
+    stoss_cycle_start = now - pos;
+    stoss_active_phase = (pos % STOSS_CYCLE_MS) < STOSS_ACTIVE_MS;
+    stoss_direction_flip = pos >= STOSS_CYCLE_MS;
+}
+
+/**
+ * @brief   Returns the position in the Stoßlüftung super-cycle.
  * @param[in] now  Current system time in milliseconds.
- * @return  Remaining duration in milliseconds (0 if expired or infinite).
+ * @return  Position in ms within [0, STOSS_SUPER_CYCLE_MS).
+ */
+uint32_t VentilationStateMachine::get_stoss_pos(uint32_t now) const {
+    return (now - stoss_cycle_start) % STOSS_SUPER_CYCLE_MS;
+}
+
+/**
+ * @brief   Returns the remaining time of the timed modes in milliseconds.
+ * @details MODE_VENTILATION: remaining timer. MODE_STOSSLUEFTUNG: remaining
+ *          time in the super-cycle (peers align their bursts with it).
+ * @param[in] now  Current system time in milliseconds.
+ * @return  Remaining duration in milliseconds (0 if expired, infinite or untimed).
  */
 uint32_t VentilationStateMachine::get_remaining_duration(uint32_t now) const {
+    if (current_mode == MODE_STOSSLUEFTUNG) {
+        return STOSS_SUPER_CYCLE_MS - get_stoss_pos(now);
+    }
     if (ventilation_duration_ms == 0) return 0;
     uint32_t elapsed = now - ventilation_start_time;
     if (elapsed >= ventilation_duration_ms) return 0;
@@ -254,13 +291,14 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
         return state;
     }
 
-    // --- Ramping Logic (for WRG and Stoßlüftung) ---
-    // Only apply ramping in modes that have cyclic direction changes
+    // --- Ramping Logic (WRG only) ---
+    // Only apply ramping in modes that have cyclic direction changes.
+    // Stoßlüftung runs one-way during a burst (see burst ramp below).
     // FIXED K-2: Guard against RAMP_DURATION_MS == 0 (defense-in-depth,
     //   currently constexpr 5000) and ramp overlap when half-cycle is
     //   shorter than 2× ramp duration.
     // FIXED S-1: Removed dead variable 'full'.
-    if ((current_mode == MODE_ECO_RECOVERY || current_mode == MODE_STOSSLUEFTUNG) &&
+    if (current_mode == MODE_ECO_RECOVERY &&
         RAMP_DURATION_MS > 0 && cycle_duration_ms >= 2 * RAMP_DURATION_MS) {
         const uint32_t pos = get_cycle_pos(now);
         const uint32_t half = cycle_duration_ms;
@@ -281,12 +319,11 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
     }
 
     // --- Stoßlüftung Burst Ramp (soft-start from pause, soft-stop before pause) ---
-    // FIXED CR-3: The direction-change ramp above handles direction flips within
-    // the burst. This additional ramp smooths the pause↔active transitions to
-    // avoid abrupt mechanical stress on the fan motor after 105 min of standstill.
-    // Uses std::min with the direction ramp to always pick the gentler factor.
+    // FIXED CR-3: Smooths the pause↔active transitions to avoid abrupt
+    // mechanical stress on the fan motor after 105 min of standstill. The
+    // direction only changes during the pause, so no other ramp is needed.
     if (current_mode == MODE_STOSSLUEFTUNG && stoss_active_phase && RAMP_DURATION_MS > 0) {
-        const uint32_t burst_elapsed = now - stoss_cycle_start;
+        const uint32_t burst_elapsed = get_stoss_pos(now) % STOSS_CYCLE_MS;
         if (burst_elapsed < RAMP_DURATION_MS) {
             // Ramp-up at start of active burst
             float burst_ramp = static_cast<float>(burst_elapsed)
@@ -307,12 +344,9 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
     if (current_mode == MODE_VENTILATION) {
         state.direction_in = is_phase_a;
     } else if (current_mode == MODE_STOSSLUEFTUNG) {
-        // Active phase
-        if (global_phase) {
-            state.direction_in = stoss_direction_flip ? !is_phase_a : is_phase_a;
-        } else {
-            state.direction_in = stoss_direction_flip ? is_phase_a : !is_phase_a;
-        }
+        // One-way burst: Phase A in / Phase B out, inverted every second burst
+        // (the flip happens during the pause, never under load).
+        state.direction_in = stoss_direction_flip ? !is_phase_a : is_phase_a;
     } else {
         // ECO_RECOVERY
         if (global_phase) {

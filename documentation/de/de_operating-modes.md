@@ -25,7 +25,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 | **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Dynamischer PID (Stufen 1–10) basierend auf CO2 & Feuchte | 50s – 70s dynamisch | `select.luefter_modus` → `Smart-Automatik` |
 | **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Konstante manuelle Stufe (1–10) mit Pendellüftung / Wärmetausch | 50s – 70s dynamisch | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter Luftstrom ohne Richtungswechsel (Phase A rein, Phase B raus) | Dauerhaft / Timer | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | Intensive Lüftung (15 min Betrieb, 105 min Pause) | Dauerhaft (15 min) | `select.luefter_modus` → `Stoßlüftung` |
+| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | Lüften in eine Richtung auf der manuellen Stufe (Phase A rein, Phase B raus), danach Pause; Richtung jeden zweiten Durchgang getauscht | 2-h-Zyklus (15 min Lüften / 105 min Pause) | `select.luefter_modus` → `Stoßlüftung` |
 | **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Sensoren & Web-UI bleiben voll aktiv | — | `select.luefter_modus` → `Aus` |
 
 ---
@@ -120,12 +120,15 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 ### 4. 💨 Stoßlüftung — `LED_VEN` 🟢 (dauerhaft an)
 
 - **HA-Entität:** `select.luefter_modus` → `Stoßlüftung`
-- **Funktion:** Intensive Intervalllüftung für schnellen Luftaustausch (z.B. nach dem Kochen oder Duschen).
+- **Funktion:** Intervalllüftung für schnellen Luftaustausch (z. B. nach dem Kochen oder Duschen). Läuft, bis ein anderer Modus gewählt wird.
 - **2-Stunden-Ablauf:**
-  - **15 Minuten:** Lüftung mit hoher Intensität auf der konfigurierten Boost-Stufe.
-  - **105 Minuten:** Pause (0 RPM), damit sich der Keramikkern regenerieren und Feuchtigkeit abbauen kann.
-  - **Wiederholung:** Wiederholt sich automatisch alle 2 Stunden, bis der Modus beendet wird.
-- **Wechselnde Startrichtung:** Jeder Stoßlüftungszyklus wechselt die Startrichtung, um die thermische Balance des Keramikkerns zu erhalten.
+  - **15 Minuten Lüften:** Der Lüfter läuft in **eine Richtung** — wie bei `Durchlüften` blasen Geräte mit Phase A hinein, Geräte mit Phase B saugen ab. Während des Durchgangs gibt es keinen Wechselbetrieb: Die Luft verlässt den Raum direkt, dadurch wird mehr Luft ausgetauscht und Feuchte besser abgeführt als bei der Wärmerückgewinnung (während des Durchgangs keine Wärmerückgewinnung).
+  - **105 Minuten Pause:** Lüfter steht (0 RPM), der Keramikkern regeneriert sich.
+  - **Sanfter Anlauf / Auslauf:** 5-Sekunden-Rampe zu Beginn und am Ende jedes Durchgangs.
+- **Stufe:** Der Durchgang läuft auf der **manuell eingestellten Lüfterstufe** (`number.fan_intensity_display`, 1–10) plus dem Radar-Versatz — eine eigene Stoßlüftungs-Stufe gibt es nicht. Für einen intensiven Durchgang eine hohe Stufe wählen; der Urlaubsmodus nutzt den Modus bewusst auf Stufe 1.
+- **Wechselnde Richtung:** Jeder zweite Durchgang tauscht die Richtung (Phase A saugt ab, Phase B bläst hinein), damit Keramikkerne und beide Gebäudeseiten gleichmäßig belastet werden. Die Richtung wechselt nur in der Pause, nie unter Last.
+- **Raum-Synchronisation:** Der Master (Geräte-ID 1) teilt mit jedem Heartbeat seine Position im 4-Stunden-Ablauf (zwei Durchgänge); alle Geräte des Raums pausieren und lüften gemeinsam, Zu-/Abluft-Paare laufen immer gegengleich — auch nach dem Neustart eines Geräts.
+- **Hinweis Winter:** Ohne Wärmerückgewinnung saugt die Zuluftseite 15 von 120 Minuten Außenluft an. Wer das nicht möchte (z. B. im Urlaub im Winter), nutzt stattdessen `Wärmerückgewinnung` (Urlaub: `select.urlaubsmodus_betriebsmodus`).
 
 ---
 

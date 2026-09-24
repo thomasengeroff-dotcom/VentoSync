@@ -107,11 +107,17 @@ public:
       0; ///< Offset applied via sync_time() for peer alignment.
 
   // --- Stoßlüftung Timing ---
+  // The burst schedule is a 4 h super-cycle of two 2 h cycles (15 min burst +
+  // 105 min pause). During a burst the fan runs in ONE direction (Phase A in,
+  // Phase B out); the second burst of the super-cycle inverts both directions.
+  // Active phase and direction are derived from the position in the
+  // super-cycle, so a single number (get_remaining_duration()) is enough to
+  // align all devices of a room (sync_stoss()).
   uint32_t stoss_cycle_start =
-      0; ///< millis() when current Stoß sub-phase started.
-  bool stoss_active_phase = true; ///< true = fan running, false = pause phase.
+      0; ///< millis() anchor of the current Stoß super-cycle.
+  bool stoss_active_phase = true; ///< true = burst (fan running), false = pause.
   bool stoss_direction_flip =
-      false; ///< Alternates direction each active phase.
+      false; ///< false = first burst (A in / B out), true = second burst (inverted).
 
   /// Stoßlüftung constants (15 min active, 105 min pause = 2 h total cycle).
   // FIXED K-2: Use u suffix + static_assert for compile-time overflow verification
@@ -124,6 +130,12 @@ public:
       "STOSS_PAUSE_MS unexpected value — check for multiplication overflow");
   static_assert(STOSS_ACTIVE_MS + STOSS_PAUSE_MS > STOSS_ACTIVE_MS,
       "STOSS total cycle overflows uint32_t");
+  /// One burst + pause (2 h).
+  static constexpr uint32_t STOSS_CYCLE_MS = STOSS_ACTIVE_MS + STOSS_PAUSE_MS;
+  /// Two cycles with opposite burst directions (4 h) — the synced period.
+  static constexpr uint32_t STOSS_SUPER_CYCLE_MS = 2u * STOSS_CYCLE_MS;
+  static_assert(STOSS_SUPER_CYCLE_MS == 14400000u,
+      "STOSS_SUPER_CYCLE_MS unexpected value — check for multiplication overflow");
 
   /**
    * @brief   One-time initialization (reserved for future use).
@@ -145,6 +157,9 @@ public:
    * @param[in] mode      Target VentilationMode.
    * @param[in] now       Current system time in milliseconds.
    * @param[in] duration  For MODE_VENTILATION: auto-stop timer in ms (0 = infinite).
+   *                      For MODE_STOSSLUEFTUNG: 0 = start a new schedule (if not
+   *                      already running), > 0 = peer's remaining super-cycle time
+   *                      to align with (see sync_stoss()).
    */
   void set_mode(VentilationMode mode, uint32_t now, uint32_t duration = 0);
   /**
@@ -160,6 +175,13 @@ public:
    * @param[in] target_pos_ms  Target cycle position (0 to 2xHalfCycle).
    */
   void sync_time(uint32_t now, uint32_t target_pos_ms);
+  /**
+   * @brief   Align the Stoßlüftung schedule with a peer (normally the Master).
+   * @param[in] now           Current system time in milliseconds.
+   * @param[in] remaining_ms  Peer's remaining time in the super-cycle
+   *                          (1 … STOSS_SUPER_CYCLE_MS); 0 or out of range is ignored.
+   */
+  void sync_stoss(uint32_t now, uint32_t remaining_ms);
 
   // --- Getters ---
 
@@ -178,10 +200,17 @@ public:
   /**
    * @brief   Calculates the remaining duration for timed modes.
    *
-   * @details Used for Stoßlüftung and manual ventilation timers.
-   *          Returns 0 for infinite (untimed) modes.
+   * @details MODE_VENTILATION: remaining timer (0 = continuous).
+   *          MODE_STOSSLUEFTUNG: remaining time in the 4 h super-cycle
+   *          (1 … STOSS_SUPER_CYCLE_MS), used by peers to align the bursts.
+   *          Returns 0 for all other modes.
    */
   uint32_t get_remaining_duration(uint32_t now) const;
+  /**
+   * @brief   Position in the Stoßlüftung super-cycle (0 … STOSS_SUPER_CYCLE_MS-1).
+   * @param[in] now  Current system time in milliseconds.
+   */
+  uint32_t get_stoss_pos(uint32_t now) const;
   /**
    * @brief   Returns the current position in the full direction cycle.
    * @param[in] now  Current system time in milliseconds.

@@ -127,7 +127,8 @@ struct __attribute__((packed)) VentilationPacket {
   uint32_t timestamp_ms; ///< Sender's millis() at packet creation.
   uint32_t cycle_pos_ms; ///< Sender's position in the direction cycle.
   uint32_t
-      remaining_duration_ms; ///< Remaining ventilation timer (0 = infinite).
+      remaining_duration_ms; ///< MODE_VENTILATION: remaining timer (0 = infinite);
+                             ///< MODE_STOSSLUEFTUNG: remaining super-cycle time.
   bool phase_state;          ///< Sender's current global phase (A or B).
   float t_in;                ///< Sender's local indoor temperature (or NAN).
   float t_out;               ///< Sender's local outdoor temperature (or NAN).
@@ -709,10 +710,24 @@ public:
       int32_t time_diff =
           (int32_t)pkt->remaining_duration_ms -
           (int32_t)state_machine.get_remaining_duration(now);
+      // Stoßlüftung: align the burst schedule with the Master only (a rebooted
+      // slave must not restart the room's cycle). Circular distance in the
+      // super-cycle, since the remaining time wraps around.
+      bool stoss_misaligned = false;
+      if (pkt->current_mode == MODE_STOSSLUEFTUNG &&
+          state_machine.current_mode == MODE_STOSSLUEFTUNG &&
+          pkt->device_id == 1 && pkt->remaining_duration_ms > 0 &&
+          pkt->remaining_duration_ms <= VentilationStateMachine::STOSS_SUPER_CYCLE_MS) {
+        constexpr uint32_t super = VentilationStateMachine::STOSS_SUPER_CYCLE_MS;
+        const uint32_t d = (pkt->remaining_duration_ms + super -
+                            state_machine.get_remaining_duration(now) % super) % super;
+        stoss_misaligned = std::min(d, super - d) > 2000;
+      }
       if (pkt->current_mode != state_machine.current_mode ||
           (mode_index_global_ != nullptr && pkt->current_mode_index != mode_index_global_->value()) ||
           (pkt->current_mode == MODE_VENTILATION &&
-           std::abs(time_diff) > 2000)) {
+           std::abs(time_diff) > 2000) ||
+          stoss_misaligned) {
 
         ESP_LOGI("vent", "Syncing mode from peer %d (Type: %d): mode=%d idx=%d",
                  pkt->device_id, pkt->msg_type, pkt->current_mode, pkt->current_mode_index);

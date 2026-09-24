@@ -26,7 +26,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 | **1** | **🤖 Smart Automatic** *(Standard)* | 🟢 *(pulses)* / ⚫ | Dynamic PID (Levels 1–10) based on CO2 & Humidity | 50s – 70s dynamic | `select.luefter_modus` → `Smart-Automatik` |
 | **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Constant manual level (1–10) with push-pull heat exchange | 50s – 70s dynamic | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Constant airflow without direction change (Phase A in, Phase B out) | Continuous / Timer | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | Intensive ventilation (15 min run, 105 min pause) | Continuous (15 min) | `select.luefter_modus` → `Stoßlüftung` |
+| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | One-way burst at the manual level (Phase A in, Phase B out), then pause; direction inverted every second burst | 2 h cycle (15 min burst / 105 min pause) | `select.luefter_modus` → `Stoßlüftung` |
 | **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all sensors & web UI remain fully active | — | `select.luefter_modus` → `Aus` |
 
 ---
@@ -121,12 +121,15 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 ### 4. 💨 Boost Ventilation — `LED_VEN` 🟢 (solid)
 
 - **HA Entity:** `select.luefter_modus` → `Stoßlüftung`
-- **Function:** Intensive burst ventilation for rapid air renewal (e.g., after cooking or showering).
+- **Function:** Burst ventilation for rapid air renewal (e.g., after cooking or showering). Runs until another mode is selected.
 - **2-Hour Sequence:**
-  - **15 minutes:** High-intensity ventilation at the configured boost level.
-  - **105 minutes:** Idle pause (0 RPM) allowing the ceramic core to regenerate and moisture to dissipate.
-  - **Cycle Repeat:** Repeats automatically every 2 hours until deactivated.
-- **Alternating Direction:** Each boost burst alternates starting direction to maintain thermal and moisture balance in the ceramic core.
+  - **15 minutes burst:** The fan runs in **one direction** — like `Durchlüften`, Phase A devices blow in, Phase B devices extract. There is no push-pull alternation during the burst: the air leaves the room directly, which exchanges more air and removes moisture better than heat recovery (no heat recovery during the burst).
+  - **105 minutes pause:** Fan stopped (0 RPM), the ceramic core regenerates.
+  - **Soft start / stop:** 5-second ramp at the start and at the end of each burst.
+- **Level:** The burst runs at the **manually set fan level** (`number.fan_intensity_display`, 1–10) plus the radar presence offset — there is no separate boost level. For an intensive burst select a high level; the vacation mode uses this mode deliberately at level 1.
+- **Alternating Direction:** Every second burst inverts the direction (Phase A extracts, Phase B blows in), so the ceramic cores and both sides of the building are loaded evenly. The direction only changes during the pause, never under load.
+- **Room synchronization:** The Master (device ID 1) shares its position in the 4-hour schedule (two bursts) with every heartbeat; all devices of the room pause and burst together and push-pull pairs always run in opposite directions — also after a device restarts.
+- **Winter note:** Without heat recovery the supply side draws in outdoor air for 15 of 120 minutes. If that is undesirable (e.g., during vacation in winter), use `Wärmerückgewinnung` instead (vacation: `select.urlaubsmodus_betriebsmodus`).
 
 ---
 
