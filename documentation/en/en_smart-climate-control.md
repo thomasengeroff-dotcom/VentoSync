@@ -238,7 +238,7 @@ automation:
 
 ## Multi-Device Rooms (ESP-NOW, Protocol v10)
 
-The `VentilationPacket` carries the Smart Climate Control fields `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (since v8) and `room_flags` (since **v10**: bit 0 = room-wide switch, bit 1 = the sender's own HA AC state; bit 2 = its own HA window state for the [Window Guard](en_window-guard-ha-setup.md)). All devices of a room must run the same firmware version — a simultaneous OTA rollout, as with every protocol bump. Five mechanisms keep a room group consistent:
+The `VentilationPacket` carries the Smart Climate Control fields `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (since v8) and `room_flags` (since **v10**: bit 0 = room-wide switch, bit 1 = the sender's own HA AC state; bit 2 = its own HA window state for the [Window Guard](en_window-guard-ha-setup.md); bit 3 = its own radar presence since 0.10.23). All devices of a room must run the same firmware version — a simultaneous OTA rollout, as with every protocol bump. Five mechanisms keep a room group consistent:
 
 1. **Shared CO2:** Every device broadcasts its effective CO2; devices without a sensor evaluate the coordinator with the room's reading (see [Missing CO2 Reading](#3-missing-co2-reading-room-wide)).
 2. **Room-wide settings:** The switch and the three sliders are synchronized through the existing config-sync path (`handle_config_sync()`): a change on any device is sent as `MSG_STATE` to all peers, and the Master's `MSG_SYNC` heartbeat re-asserts the values on slaves.

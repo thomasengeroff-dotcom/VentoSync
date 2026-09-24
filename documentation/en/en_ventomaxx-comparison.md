@@ -28,7 +28,7 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 | **Fan Control** | 3 fixed levels | **10 levels + stepless PID control** (silent, no audible speed jumps) | ✅ **Fine-grained & silent** |
 | **Automation (CO2)** | ❌ No (only optional VOC estimation) | ✅ **SCD43 (Real CO2)**: Stepless PID control with deadband hysteresis, configurable min/max levels | ✅ **Precise & quiet** |
 | **Automation (Humidity)** | Fixed thresholds: 55%, 65%, 75% rH | ✅ **PID controller** with configurable limit (40-100%), outdoor humidity comparison, deadband hysteresis (±2%) | ✅ **Customizable** + Outdoor check |
-| **Presence** | ❌ No | ✅ **mmWave Radar (HLK-LD2450)**: 4 profiles (No adjustment, Intensive, Normal, Low) | ✅ **Demand-based** per room |
+| **Presence** | ❌ No | ✅ **mmWave Radar (HLK-LD2450)**: room-wide level offset (-5 … +5) while occupied (manual modes) | ✅ **Demand-based** per room |
 | **Night Mode** | ❌ No (manual shutdown) | 📋 Planned: Scheduled throttling/dimming | ✅ **Comfort** (in planning) |
 
 ---

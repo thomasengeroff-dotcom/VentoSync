@@ -85,13 +85,17 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 ### 2. ❄️ Wärmerückgewinnung (Eco Recovery) — `LED_WRG` 🟢 (dauerhaft an)
 
 - **HA-Entität:** `select.luefter_modus` → `Wärmerückgewinnung`
-- **Funktion:** Manueller Wärmerückgewinnungsbetrieb ohne automatische PID-Skalierung. Die Drehrichtung wechselt periodisch und gewinnt bis zu 85% der Wärmeenergie zurück.
-- **Zykluszeiten:** Passen sich dynamisch an die gewählte Lüfterstufe an:
-  - Stufe 1: **70 Sekunden**
-  - Stufe 5: **60 Sekunden**
-  - Stufe 10: **50 Sekunden**
-- **Synchronisierung:** Gerätepaare arbeiten im Push-Pull-Verfahren (Phase A fördert Frischluft hinein, während Phase B verbrauchte Luft absaugt), wodurch der Raumdruck ausgeglichen bleibt.
-- **Präsenz-Boost:** Bei aktivierter Radar-Präsenzerkennung kann die Stufe bei Anwesenheit optional um `-5` bis `+5` Stufen angepasst werden.
+- **Funktion:** Manueller Wärmerückgewinnungsbetrieb ohne automatische PID-Skalierung. Die Drehrichtung wechselt periodisch, der Keramikspeicher gewinnt die Wärme der Abluft zurück (Herstellerangabe bis zu 85 %; den tatsächlichen Wert misst die Firmware mit den NTC-Sensoren als `sensor.wrg_effizienz` („WRG Effizienz"), siehe [Wärmerückgewinnungs-Effizienz](de_heat-recovery-and-efficiency.md)).
+- **Lüfterstufe:** Konstante manuelle Stufe (1–10), änderbar über die +/- Tasten, die HA-Fan-Entität oder das Dashboard. Beim Wechsel aus der Smart-Automatik bleibt die zuletzt von der Automatik gesetzte Stufe als Ausgangswert erhalten.
+- **Richtungsintervall:** Die Dauer pro Luftrichtung hängt von der Lüfterstufe ab — `round(70 − (Stufe − 1) · 20/9)` Sekunden:
+
+  | Stufe | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+  | :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+  | Sekunden pro Richtung | 70 | 68 | 66 | 63 | 61 | 59 | 57 | 54 | 52 | 50 |
+
+  Ein vollständiger Push-Pull-Zyklus (hinein **und** hinaus) dauert doppelt so lang (140 s … 100 s). Jede Richtungsphase beginnt mit einem 5-s-Sanftanlauf und endet mit einem 5-s-Auslauf; mit voller Drehzahl läuft der Lüfter also das Intervall minus 10 s.
+- **Synchronisierung:** Gerätepaare arbeiten im Push-Pull-Verfahren (Phase A fördert Frischluft hinein, während Phase B verbrauchte Luft absaugt), wodurch der Raumdruck ausgeglichen bleibt. Der Master (Geräte-ID 1) hält Richtungsphase und Lüfterstufe aller Geräte im Raum per ESP-NOW gleich.
+- **Anwesenheits-Anpassung:** Mit dem Slider `number.radar_lufter_anpassung` („Radar Lüfter-Anpassung", -5 … +5, `0` = aus) wird die Stufe **verschoben, solange Anwesenheit erkannt wird** — z. B. `+2` für mehr Luft bei Anwesenheit, `-2` für leiseren Betrieb bei Anwesenheit. Ohne Anwesenheit wird nichts angewendet. Die Erkennung gilt **raumweit**: Sobald ein beliebiges Gerät des Raums mit LD2450-Radar (Variante `full` / `radar_only`) eine Person erkennt, wenden alle Geräte denselben Versatz an — Zu- und Abluft bleiben ausgeglichen. Die Anwesenheit wird nach der letzten Erkennung 30 s gehalten. Die Anpassung gilt in allen manuellen Modi (Wärmerückgewinnung, Durchlüften, Stoßlüftung), nie in der Smart-Automatik; die Panel-LEDs zeigen weiterhin die Grundstufe.
 
 ---
 

@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-23
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 
@@ -335,6 +335,11 @@ namespace hvac_state {
 namespace window_state {
   /// Window state pushed by Home Assistant (API action `set_window_open`), runtime only.
   inline ventosync::room::HaPushedFlag pushed;
+}
+
+namespace presence_state {
+  /// Own radar presence with 30 s off-delay (broadcast as ROOM_FLAG_PRESENCE).
+  inline ventosync::room::PresenceHold hold;
 }
 /// @}
 

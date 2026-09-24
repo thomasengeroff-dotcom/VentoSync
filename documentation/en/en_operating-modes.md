@@ -86,13 +86,17 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 ### 2. ❄️ Heat Recovery (Eco Recovery) — `LED_WRG` 🟢 (solid)
 
 - **HA Entity:** `select.luefter_modus` → `Wärmerückgewinnung`
-- **Function:** Manual heat recovery operation without automatic PID scaling. The air direction changes periodically, recovering up to 85% of thermal energy.
-- **Cycle Times:** Dynamically match the selected fan level:
-  - Level 1: **70 seconds**
-  - Level 5: **60 seconds**
-  - Level 10: **50 seconds**
-- **Synchronization:** Device pairs operate in push-pull arrangement (Phase A supplies fresh air while Phase B exhausts stale air), keeping room pressure balanced.
-- **Presence Boost:** When presence detection is enabled, the fan speed can optionally adjust by `-5` to `+5` levels based on occupancy.
+- **Function:** Manual heat recovery operation without automatic PID scaling. The air direction changes periodically and the ceramic storage mass recovers the heat of the exhaust air (the manufacturer quotes up to 85 %; the firmware measures the actual value with the NTC sensors as `sensor.wrg_effizienz` ("WRG Effizienz"), see [Heat Recovery Efficiency](en_heat-recovery-and-efficiency.md)).
+- **Fan level:** Constant manual level (1–10), changed via the +/- buttons, the HA fan entity or the dashboard. When switching from Smart Automatic, the level last set by the automatic is kept as the starting point.
+- **Direction interval:** The time per air direction depends on the fan level — `round(70 − (level − 1) · 20/9)` seconds:
+
+  | Level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+  | :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+  | Seconds per direction | 70 | 68 | 66 | 63 | 61 | 59 | 57 | 54 | 52 | 50 |
+
+  A full push-pull cycle (in **and** out) takes twice as long (140 s … 100 s). Each direction phase starts with a 5 s soft ramp-up and ends with a 5 s ramp-down, so the fan runs at full speed for the interval minus 10 s.
+- **Synchronization:** Device pairs operate in push-pull arrangement (Phase A supplies fresh air while Phase B exhausts stale air), keeping room pressure balanced. The Master (device ID 1) keeps the direction phase and the fan level of all devices in the room aligned via ESP-NOW.
+- **Presence adjustment:** With the slider `number.radar_lufter_anpassung` ("Radar Lüfter-Anpassung", -5 … +5, `0` = off) the level is shifted **while presence is detected** — e.g. `+2` for more air while occupied, `-2` for quieter operation while occupied. Nothing is applied without presence. Detection is **room-wide**: as soon as any device of the room with an LD2450 radar (`full` / `radar_only` variant) detects a person, every device applies the same offset, so supply and exhaust stay balanced. Presence is held for 30 s after the last detection. The adjustment applies in all manual modes (Heat Recovery, Cross-Ventilation, Boost), never in Smart Automatic; the panel LEDs keep showing the base level.
 
 ---
 

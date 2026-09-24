@@ -21,7 +21,7 @@
 // Description: Hardware fan speed and direction management.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-03-29
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -70,14 +70,39 @@ inline float level_to_speed(float level) {
 }
 
 /**
- * @brief Extracts base parameters for manual speed calculations (with presence compensation).
- * @param base_intensity Current UI slider intensity
+ * @brief   True if radar presence is detected anywhere in the room.
+ *
+ * @details Own radar (held 30 s, `presence_local`, refreshed by
+ *          refresh_local_room_flags()) OR any fresh peer reporting its own
+ *          presence (ROOM_FLAG_PRESENCE). Room-wide so every device of a
+ *          push-pull pair applies the same offset — a per-device offset
+ *          would unbalance supply vs. exhaust airflow.
+ */
+inline bool room_presence_detected(uint32_t now) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr) {
+    return radar_presence != nullptr && radar_presence->has_state() && radar_presence->state;
+  }
+  return v->presence_local ||
+         ventosync::room::any_fresh_peer_presence(
+             v->peers, now, ventosync::room::fusion_max_age_ms(v->sync_interval_ms, PEER_TIMEOUT_MS));
+}
+
+/**
+ * @brief   Applies the presence offset (manual modes only).
+ *
+ * @details While presence is detected anywhere in the room, the room-wide
+ *          slider `auto_presence_val` (-5…+5, 0 = off) is added to the base
+ *          level. Nothing is applied without presence. The base level shown
+ *          on the panel LEDs / HA stays unchanged; only the fan speed changes.
+ *
+ * @param base_intensity Current base level (1-10)
  */
 inline float calculate_manual_demand(float base_intensity) {
   float intensity = base_intensity;
   float comp = 0.0f;
   
-  if (radar_presence != nullptr && radar_presence->has_state() && radar_presence->state) {
+  if (room_presence_detected(millis())) {
     if (auto_presence_val != nullptr) {
       comp = static_cast<float>(auto_presence_val->value());
       if (comp != 0.0f) {
