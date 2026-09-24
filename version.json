@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.26",
+    "project_version": "0.10.27",
     "project_date": "2026-09-24",
-    "project_description": "Aus: room-wide on/off, Power button restores the last mode, Wi-Fi-off long press removed, no API reboot without HA."
+    "project_description": "Child lock survives reboots, vacation mode led by the Master (no wrong restore in multi-device rooms), comfort docs corrected."
 }
