@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.24",
+    "project_version": "0.10.25",
     "project_date": "2026-09-24",
-    "project_description": "Durchlüften: timer 0 = continuous, UI follows timer expiry, summer bypass no longer uses frozen NTC temperatures."
+    "project_description": "Stoßlüftung: one-way bursts, schedule synchronized room-wide with the Master."
 }
