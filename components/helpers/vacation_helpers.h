@@ -23,7 +23,7 @@
 //              operating parameters.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-05-16
+// Modified:    2026-09-24
 //
 // Dependencies: globals.h (MODE_NAMES, MODE_NAME_BOOST, MODE_NAME_AUTO)
 //               automation_helpers.h (set_operating_mode_select,
@@ -48,8 +48,40 @@ static constexpr float INTENSITY_MAX = 10.0f;
 /// Default fallback intensity when HA entity is uninitialized or out of range.
 static constexpr float INTENSITY_FALLBACK = 1.0f;
 
+/// Values of the persistent `vacation_state` global.
+static constexpr int VACATION_INACTIVE  = 0;
+static constexpr int VACATION_FOLLOWING = 1;  ///< Active, the room leader applied it
+static constexpr int VACATION_LEADING   = 2;  ///< Active, this device applied it
+
 }  // namespace vacation
 }  // namespace ventosync
+
+// ---------------------------------------------------------
+// ROOM LEADERSHIP
+// ---------------------------------------------------------
+
+/**
+ * @brief True if this device applies/restores vacation mode for the room.
+ *
+ * Every device of a room receives the HA vacation toggle at almost the same
+ * time. If every device snapshotted and restored on its own, a peer's
+ * MSG_STATE could switch a device into the vacation mode *before* its own
+ * trigger — it would snapshot the vacation state and restore it (and
+ * broadcast it room-wide) at the end of the vacation. Therefore only the
+ * Master (device ID 1) acts; the other devices follow its MSG_STATE. A slave
+ * acts on its own only while no Master of the room is reachable.
+ */
+inline bool vacation_is_room_leader() {
+    auto *v = ventilation_ctrl;
+    if (v == nullptr || v->device_id == 1) return true;
+    const uint32_t now = millis();
+    for (const auto &peer : v->peers) {
+        if (peer.device_id == 1 && now - peer.last_seen_ms < PEER_TIMEOUT_MS) {
+            return false;  // Master present — it leads the room
+        }
+    }
+    return true;  // No Master reachable — act locally
+}
 
 // ---------------------------------------------------------
 // VACATION MODE – ACTIVATION
@@ -69,20 +101,33 @@ static constexpr float INTENSITY_FALLBACK = 1.0f;
  *   4. Applies the vacation configuration via the unified setters.
  *
  * @note Called from script `handle_vacation_mode_on` in logic_automation.yaml.
- * @note This function is idempotent – calling it multiple times while already
- *       in vacation mode simply re-snapshots the (already vacation) state.
- *       The YAML layer should guard against redundant calls.
+ * @note Idempotent via the persistent `vacation_state`. Every device takes a
+ *       snapshot (fallback), but only the room leader (vacation_is_room_leader())
+ *       applies the vacation mode; the other devices follow its MSG_STATE.
  */
 inline void activate_vacation_mode() {
     using namespace ventosync::vacation;
 
-    // ── 1. Snapshot current state for restoration on deactivation ──
+    // Idempotent: a repeated trigger must never re-snapshot the vacation state.
+    if (id(vacation_state) != VACATION_INACTIVE) {
+        ESP_LOGD("vacation", "Vacation mode already active — ignoring trigger");
+        return;
+    }
+
+    // ── 1. Snapshot current state (used by the leader; fallback for the others) ──
     id(pre_vacation_mode_index) = id(current_mode_index);
     id(pre_vacation_intensity)  = id(fan_intensity_level);
 
     ESP_LOGD("vacation", "State snapshot: mode_index=%d, intensity=%d",
              id(current_mode_index),
              static_cast<int>(id(fan_intensity_level)));
+
+    if (!vacation_is_room_leader()) {
+        id(vacation_state) = VACATION_FOLLOWING;
+        ESP_LOGI("vacation", "Vacation Mode ACTIVATED — following the Master's room state");
+        return;
+    }
+    id(vacation_state) = VACATION_LEADING;
 
     // ── 2. Read configured vacation parameters from HA entities ──
     std::string target_mode = id(vacation_mode_select).current_option();
@@ -128,8 +173,27 @@ inline void activate_vacation_mode() {
  *       safest default for unattended operation.
  *
  * @note Called from script `handle_vacation_mode_off` in logic_automation.yaml.
+ * @note Restores only on the device that applied the vacation mode or, if the
+ *       Master is unreachable, on the device that has to lead now; the other
+ *       devices follow its MSG_STATE.
  */
 inline void deactivate_vacation_mode() {
+    using namespace ventosync::vacation;
+
+    const int state = id(vacation_state);
+    if (state == VACATION_INACTIVE) {
+        ESP_LOGD("vacation", "Vacation mode not active — ignoring trigger");
+        return;
+    }
+    id(vacation_state) = VACATION_INACTIVE;
+
+    // Restore if this device applied the vacation mode, or if it has to lead
+    // now (Master unreachable). Otherwise the leader's MSG_STATE restores it.
+    if (state != VACATION_LEADING && !vacation_is_room_leader()) {
+        ESP_LOGI("vacation", "Vacation Mode DEACTIVATED — following the Master's room state");
+        return;
+    }
+
     const int mode_idx = id(pre_vacation_mode_index);
     const int saved_intensity = static_cast<int>(id(pre_vacation_intensity));
 

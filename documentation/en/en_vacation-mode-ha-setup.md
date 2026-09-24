@@ -28,5 +28,6 @@ input_boolean:
 
 ## How it works
 - **Logic:** Switching this toggle to `on` triggers the Vacation Mode globally.
-- **VentoSync Reaction:** All your VentoSync fans instantly save their current operating mode and fan intensity, and then safely drop into **Boost Ventilation (Stoßlüftung)** on the lowest intensity **Level 1** for maximum energy saving while keeping a baseline air exchange.
-- **Resume:** When you return from your vacation and switch the toggle back to `off`, every unit seamlessly restores its previously active operating mode and speed level.
+- **VentoSync Reaction:** The **Master** (device ID 1) of each room saves its current operating mode and fan intensity and switches the whole room into the vacation preset — by default **Boost Ventilation (Stoßlüftung)** on the lowest intensity **Level 1** for maximum energy saving while keeping a baseline air exchange. The other devices follow the Master over ESP-NOW (a device only acts on its own if no Master of its room is reachable).
+- **Resume:** When you return from your vacation and switch the toggle back to `off`, the Master restores the previously active operating mode and speed level for the whole room.
+- **Robust:** The vacation state is stored on the device, so a reboot or HA restart during the vacation never overwrites the saved state. Configure the preset (`select.urlaubsmodus_betriebsmodus`, `number.urlaubsmodus_intensitat`) on the Master.

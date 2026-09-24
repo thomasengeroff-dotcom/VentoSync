@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.27] - 2026-09-24
+
+### Fixed
+
+- **Child lock cleared on every reboot:** `switch.kindersicherung` had no `restore_mode`; ESPHome's default `ALWAYS_OFF` ran its turn_off action at boot and set `child_lock_active` to false — after every OTA update or power loss the panel was unlocked although the docs promised persistence. Now `restore_mode: DISABLED` (state comes from the NVS global only).
+- **Vacation mode could restore the wrong state in multi-device rooms:** every device snapshotted and applied the vacation preset on its own. A peer's MSG_STATE could switch a device into the vacation mode before its own HA trigger arrived, so it saved the vacation state as its "previous" state; on deactivation all devices restored and broadcast their snapshots and the last one won — the room could stay in Stoßlüftung level 1. Now only the room leader (Master, or a device without a reachable Master — `vacation_is_room_leader()`) applies and restores; the other devices follow its MSG_STATE. The persistent `vacation_state` (0 inactive / 1 following / 2 leading) makes repeated triggers idempotent and lets a device that led the activation restore even if the Master is back by then. Devices that are in vacation mode while updating: toggle the helper off and on once.
+
+### Changed
+
+- Comfort & safety docs (EN/DE): slew rate is 10 % of full speed per second (≈ 2.8 % PWM/s, not 5 % PWM/s); cycle example corrected (level 2 = 68 s, level 6 = 59 s per direction); virtual RPM = speed fraction × 4200, tacho is display only (no closed loop); direction sensor is `text_sensor.lufter_richtung` with German values; child lock is toggled by holding the **Mode** button alone (not Mode + Level), 8 LEDs flash, dashboard stays unblocked; vacation mode led by the Master. Child-lock implementation docs (EN/DE) and `Readme_de.md` corrected accordingly; vacation setup guides updated.
+
 ## [0.10.26] - 2026-09-24
 
 ### Fixed
