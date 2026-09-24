@@ -280,6 +280,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **Re-broadcasting fused values** creates latching feedback loops (see ESP-NOW section, CHANGELOG 0.10.21).
 - **Template switch mirroring a global** (`lambda: return id(x);` + turn_on/off actions): set
   `restore_mode: DISABLED`, otherwise the boot-time restore runs the turn_off action and overwrites the global
+  (e.g. `switch.kindersicherung` cleared the child lock on every reboot until 0.10.27)
   (and, for room-wide settings, broadcasts it).
 - **Compile-time `${room_id}` ≠ runtime room:** the room is configured at runtime (`config_room_id`, NVS); never
   derive per-room HA entity IDs from the substitution — push room data via API actions instead (see
@@ -291,6 +292,8 @@ Complex YAML lambda logic is extracted into focused header files:
 - **No power-off / sleep state:** `system_on`, the Wi-Fi-off long press and `system_sleep` were removed in 0.10.26
   (rev. 1 PCB cannot wake from deep sleep). `api.reboot_timeout: 0s` keeps standalone devices (no HA client) from
   rebooting every 15 min. The Power button toggles `Aus` ↔ `last_active_mode_index`.
+- **Vacation mode is led by the Master:** only device ID 1 (or a device without a reachable Master) snapshots,
+  applies and restores (`vacation_is_room_leader()`); `vacation_state` (NVS) makes triggers idempotent.
 - **`vent_timer` = 0 means continuous** (`ventilation_duration_ms = 0`); only values > 0 are clamped to 1–1440 min.
 - **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
   whole firmware — they persist across mode switches and are not per-instance.

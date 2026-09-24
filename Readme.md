@@ -174,7 +174,7 @@ All devices in a room find each other automatically upon startup or room change 
   - 📈 **Phase Continuity & Soft Start**: Proportional cycle scaling during speed changes and smooth speed transitions (~5%/s) for minimal wear and quiet operation.
   - 🔄 **Real-Time Diagnostics**: Plain-text airflow direction (*Supply Air*, *Exhaust Air*, *Standstill*) and virtual speed calculation (4200 RPM @ 100%).
   - 🌴 **Vacation Mode**: Automated energy-saving mode with configurable presets during extended absences.
-  - 🔒 **Child Protection Mode**: Locks physical panel buttons via Home Assistant or on-device combo (5s hold) with LED feedback.
+  - 🔒 **Child Protection Mode**: Locks physical panel buttons via Home Assistant or holding the Mode button for 5s with LED feedback.
   > 👉 *For complete details, entities & configuration, see [📄 Comfort & Safety Features](documentation/en/en_comfort-and-safety-features.md).*  
 
 ### ⚡ Extremely Low Power Consumption

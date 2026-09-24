@@ -172,7 +172,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
   - 📈 **Phasen-Kontinuität & Sanftanlauf**: Proportionalskalierung bei Stufenwechseln und sanfte Geschwindigkeitsübergänge (~5%/s) für minimalen Verschleiß und leisen Betrieb.
   - 🔄 **Echtzeit-Diagnose**: Klartext-Richtungsanzeige (*Zuluft*, *Abluft*, *Stillstand*) und virtuelle Drehzahlberechnung (4200 RPM @ 100%).
   - 🌴 **Urlaubsmodus**: Automatischer Energiesparbetrieb mit konfigurierbarem Modus/Stufe bei längerer Abwesenheit.
-  - 🔒 **Kindersicherung**: Sperrung der Gerätetasten über Home Assistant oder per Tastenkombination (5s Modus/Stufe halten) mit LED-Feedback.
+  - 🔒 **Kindersicherung**: Sperrung der Gerätetasten über Home Assistant oder per Tastendruck (Modus-Taste 5s halten) mit LED-Feedback.
   > 👉 *Ausführliche Dokumentation, Parameter & Funktionsweise siehe [📄 Komfort- und Sicherheitsfunktionen](documentation/de/de_comfort-and-safety-features.md).*
 
 ### ⚡ Extrem niedriger Stromverbrauch

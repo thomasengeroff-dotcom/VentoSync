@@ -20,13 +20,13 @@ Dieses Dokument beschreibt die erweiterten Steuerungs-, Komfort- und Schutzfunkt
 
 ## 📈 Phasen-Kontinuität & Dynamische Zyklusanpassung
 
-Bei einem Wechsel der Lüfterstufe (z. B. von Stufe 2 auf Stufe 6 im Automatik- oder Manuellbetrieb) ändert sich die Gesamtdauer des Wärmerückgewinnungszyklus (z. B. von 65s auf 50s). 
+In der Wärmerückgewinnung wechselt der Lüfter nach einer festen Zeit **pro Richtung** die Drehrichtung; diese hängt von der Stufe ab (70 s bei Stufe 1 → 50 s bei Stufe 10; z. B. Stufe 2 = 68 s, Stufe 6 = 59 s). Bei einem Stufenwechsel ändert sich diese Dauer.
 
-Um ein abruptes Zurücksetzen oder ein vorzeitiges Umschalten der Drehrichtung zu verhindern, verwendet VentoSync eine **proportionale Skalierung**:
+Um ein abruptes Zurücksetzen oder ein vorzeitiges Umschalten der Drehrichtung zu verhindern, behält VentoSync die **relative Position innerhalb der aktuellen Richtung** bei und skaliert sie auf die neue Dauer:
 
-$$\text{Neue verbleibende Zeit} = \text{Neue Gesamtdauer} \times \left(1 - \frac{\text{Verstrichene Zeit}}{\text{Alte Gesamtdauer}}\right)$$
+$$\text{Neue verbleibende Zeit} = \text{Neue Dauer pro Richtung} \times \left(1 - \frac{\text{Verstrichene Zeit}}{\text{Alte Dauer pro Richtung}}\right)$$
 
-* **Vorteil**: Der Lüfter setzt seinen aktuellen Wärmespeicherungs- bzw. Wärmeabgabezyklus nahtlos und kontinuierlich fort, ohne den thermischen Regenerator aus dem Takt zu bringen.
+* **Vorteil**: Der Lüfter setzt seine aktuelle Wärmespeicherungs- bzw. Wärmeabgabephase nahtlos fort, ohne den thermischen Regenerator aus dem Takt zu bringen. Der Master hält die Phasen aller Geräte des Raums synchron.
 
 ---
 
@@ -34,7 +34,7 @@ $$\text{Neue verbleibende Zeit} = \text{Neue Gesamtdauer} \times \left(1 - \frac
 
 Zur Schonung der Motorelektronik und zur akustischen Optimierung werden alle Drehzahländerungen über einen Software-Slew-Rate-Limiter gefiltert.
 
-* **Rampen-Geschwindigkeit**: ca. **5 % PWM pro Sekunde**
+* **Rampen-Geschwindigkeit**: **10 % der vollen Geschwindigkeit pro Sekunde** (≈ 2,8 % PWM pro Sekunde) — von Stufe 1 auf Stufe 10 in etwa 9 s.
 * **Sanfte Richtungsumkehr**: Beim Richtungswechsel (Wärmerückgewinnung) sowie zu Beginn und am Ende jedes Stoßlüftungs-Durchgangs wird der Lüfter über eine sanfte 5-Sekunden-Brems- und Anlauframpe geführt.
 * **Vorteil**: Verhindert Stromspitzen auf der 12V-Schiene und eliminiert störende Lastwechselgeräusche im Wohnraum.
 
@@ -42,10 +42,11 @@ Zur Schonung der Motorelektronik und zur akustischen Optimierung werden alle Dre
 
 ## ⚙️ Virtuelle Drehzahlberechnung & Tachometer
 
-Nicht alle verbauten Lüfter verfügen über ein physisches Tachosignal (z. B. der 3-PIN ebm-papst 4412 F/2 GLL). 
+Nicht alle verbauten Lüfter verfügen über ein physisches Tachosignal (z. B. der 3-PIN ebm-papst 4412 F/2 GLL).
 
-* **Virtuelle Berechnung**: Für 3-PIN-Lüfter ohne Tachosignal berechnet VentoSync anhand der nichtlinearen Ventomaxx-Kennlinie die zu erwartende Drehzahl (bis zu 4200 RPM @ 100 %).
-* **Physisches Tachosignal**: Bei Verwendung moderner 4-PIN-Lüfter (z. B. AxiRev) wird das Tachosignal über GPIO20 (Pulse Counter) in Echtzeit erfasst und für Closed-Loop-Überwachung bereitgestellt.
+* **Virtuelle Berechnung**: Ohne Tachosignal schätzt VentoSync die Drehzahl als *Geschwindigkeitsanteil × 4200 RPM* (der Geschwindigkeitsanteil folgt der nichtlinearen Stufenkurve: Stufe 1 = 10 %, Stufe 6 = 50 %, Stufe 10 = 100 %), einschließlich der 5-s-Rampen.
+* **Physisches Tachosignal**: Bei einem 4-PIN-Lüfter mit Tachoausgang (z. B. AxiRev) werden die Impulse an GPIO20 (Hardware-Pulse-Counter) verwendet. Der Wert dient der Anzeige und Diagnose — die Drehzahl wird nicht geregelt (kein Closed-Loop).
+* **Entität**: `sensor.lufter_drehzahl` („Lüfter Drehzahl“), negativ bei Abluft.
 
 ---
 
@@ -53,24 +54,27 @@ Nicht alle verbauten Lüfter verfügen über ein physisches Tachosignal (z. B. d
 
 Für eine einfache Diagnose und Überwachung der ESP-NOW-Gruppensynchronisation stellt VentoSync eine Klartext-Sensor-Entität in Home Assistant bereit:
 
-* `sensor.luefter_richtung` / `sensor.fan_direction`:
-  * 🟢 **„Zuluft (Rein)“** / `Supply Air (In)`
-  * 🔵 **„Abluft (Raus)** / `Exhaust Air (Out)`
-  * ⚫ **„Stillstand“** / `Standstill`
+* `text_sensor.lufter_richtung` („Lüfter Richtung“):
+  * 🟢 **„Zuluft (Rein)“**
+  * 🔵 **„Abluft (Raus)“**
+  * ⚫ **„Stillstand“**
 
 ---
 
 ## 🌴 Urlaubsmodus (Vacation Mode)
 
-Der Urlaubsmodus ist ein konfigurierbarer Energiesparmodus für längere Abwesenheiten.
+Der Urlaubsmodus ist ein konfigurierbarer Energiesparmodus für längere Abwesenheiten und wird über einen Home-Assistant-Toggle-Helper geschaltet (Standard `input_boolean.ventosync_vacation_mode`, Substitution `vacation_sensor_id`).
 
 ### Funktionsweise
-1. **Zustandsspeicherung**: Beim Aktivieren sichert VentoSync den vorherigen Betriebsmodus und die Lüfterstufe aller Geräte im Raum.
-2. **Umschaltung**: Alle synchronisierten Geräte wechseln in den konfigurierten Urlaubsmodus (Standard: *Stoßlüftung auf Stufe 1*).
-3. **Wiederherstellung**: Nach Deaktivierung des Urlaubsmodus kehren alle Geräte automatisch in ihren vorherigen Zustand zurück.
+1. **Aktivierung (raumweit)**: Der **Master** (Geräte-ID 1) jedes Raums sichert seinen aktuellen Betriebsmodus und seine Lüfterstufe und schaltet den Raum in den konfigurierten Urlaubsmodus (Standard: *Stoßlüftung auf Stufe 1*). Die übrigen Geräte folgen dem Master per ESP-NOW — sie schalten nicht selbst um, sodass kein Gerät versehentlich den Urlaubszustand als „vorherigen“ Zustand sichert.
+2. **Wiederherstellung**: Beim Deaktivieren stellt der Master den gesicherten Modus und die Stufe für den ganzen Raum wieder her.
+3. **Ohne erreichbaren Master** schaltet und stellt ein Gerät den Urlaubsmodus selbst her. Der Urlaubszustand wird dauerhaft gespeichert (`vacation_state`); ein Neustart oder ein wiederholter Auslöser während des Urlaubs überschreibt den gesicherten Zustand nie.
+
+> [!NOTE]
+> Geräte, die sich beim Update auf 0.10.27 bereits im Urlaubsmodus befinden, kennen den laufenden Urlaub noch nicht: den Helper einmal aus- und wieder einschalten oder den Modus nach dem Urlaub manuell zurückstellen.
 
 ### Home Assistant Konfiguration
-Die Parameter sind direkt in den Home Assistant Geräteeinstellungen unter *Konfiguration* anpassbar:
+Die Parameter sind in den Geräteeinstellungen unter *Konfiguration* anpassbar (am Master einstellen — er schaltet den Raum):
 
 | Entität | Typ | Standard | Beschreibung |
 | :--- | :--- | :--- | :--- |
@@ -84,21 +88,21 @@ Die Parameter sind direkt in den Home Assistant Geräteeinstellungen unter *Konf
 
 ## 🔒 Kindersicherung (Child Protection Mode)
 
-Die Kindersicherung verhindert versehentliche oder unerwünschte Änderungen über die physischen Tasten am Lüftungsgerät.
+Die Kindersicherung verhindert versehentliche oder unerwünschte Änderungen über die physischen Tasten am Lüftungsgerät. Sie gilt pro Gerät.
 
 ### Steuerung & Bedienung
 
 * **Via Home Assistant**:
   * Entität: `switch.kindersicherung` (in der *Konfiguration* des Geräts).
-  * Das Steuern über Home Assistant bleibt bei aktiver Kindersicherung **vollständig uneingeschränkt möglich**.
+  * Die Steuerung über Home Assistant und das Web-Dashboard bleibt **vollständig uneingeschränkt möglich**.
 
 * **Am Gerät selbst**:
-  * **Aktivieren / Deaktivieren**: **Modus-** und **Stufen-Taste** für **5 Sekunden gleichzeitig gedrückt halten**.
-  * **Quittierung**: Alle 9 LEDs blinken **2-mal** zur Bestätigung des neuen Status.
+  * **Aktivieren / Deaktivieren**: Die **Modus-Taste** etwa **5 Sekunden** gedrückt halten (bestätigt nach 4,5 s durchgehendem Halten).
+  * **Quittierung**: Die 8 Panel-LEDs (Power, beide Modus-LEDs, 5 Stufen-LEDs) blinken **2-mal** zur Bestätigung.
 
 * **Feedback bei gesperrtem Tastendruck**:
-  * Wird bei aktiver Sperre eine Taste gedrückt, wird die Eingabe ignoriert und alle LEDs blinken **3-mal** als optischer Hinweis.
+  * Wird bei aktiver Sperre eine Taste gedrückt, wird die Eingabe ignoriert und die LEDs blinken **3-mal** als optischer Hinweis.
 
 ### Technische Absicherung
-* Der Zustand wird im Flash-Speicher (NVS) gespeichert (`restore_value: true`) und bleibt auch nach einem Stromausfall oder Neustart erhalten.
-* Ein integrierter Combo-Cooldown (500 ms) verhindert unbeabsichtigte Tastenklicks direkt nach dem Entsperren.
+* Der Zustand wird im Flash-Speicher gespeichert (`child_lock_active`, `restore_value: true`) und bleibt nach Stromausfall, Neustart und OTA-Update erhalten (der HA-Schalter nutzt `restore_mode: DISABLED` und überschreibt den gespeicherten Zustand beim Booten nicht mehr — behoben in 0.10.27).
+* Ein Combo-Cooldown (500 ms) unterdrückt ein veraltetes Tasten-Event direkt nach dem Umschalten.

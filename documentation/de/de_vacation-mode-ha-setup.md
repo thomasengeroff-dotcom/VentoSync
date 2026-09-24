@@ -28,5 +28,6 @@ input_boolean:
 
 ## Wie es funktioniert
 - **Logik:** Wird dieser Schalter auf `an` (on) gesetzt, geht das System global in den Urlaubsmodus über.
-- **VentoSync Reaktion:** All deine VentoSync Lüfter merken sich sofort ihren momentanen Modus sowie die eingestellte Lüfterstufe. Daraufhin wechseln sie in die stromsparende **Stoßlüftung** auf der niedrigsten **Stufe 1**, um den minimalen Luftaustausch bei Abwesenheit sicherzustellen.
-- **Resume:** Kommst du aus dem Urlaub zurück und stellst den Schalter auf `aus` (off), stellt jedes Gerät nahtlos wieder exakt den vorherigen Modus samt Intensität her.
+- **VentoSync Reaktion:** Der **Master** (Geräte-ID 1) jedes Raums merkt sich seinen momentanen Modus sowie die Lüfterstufe und schaltet den ganzen Raum in den Urlaubsmodus — standardmäßig die stromsparende **Stoßlüftung** auf der niedrigsten **Stufe 1**, um den minimalen Luftaustausch bei Abwesenheit sicherzustellen. Die übrigen Geräte folgen dem Master per ESP-NOW (ein Gerät schaltet nur selbst, wenn kein Master seines Raums erreichbar ist).
+- **Resume:** Kommst du aus dem Urlaub zurück und stellst den Schalter auf `aus` (off), stellt der Master den vorherigen Modus samt Intensität für den ganzen Raum wieder her.
+- **Robust:** Der Urlaubszustand wird im Gerät gespeichert; ein Neustart oder HA-Neustart während des Urlaubs überschreibt den gesicherten Zustand nicht. Die Urlaubs-Einstellungen (`select.urlaubsmodus_betriebsmodus`, `number.urlaubsmodus_intensitat`) am Master einstellen.
