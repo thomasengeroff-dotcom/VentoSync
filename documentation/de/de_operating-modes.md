@@ -42,7 +42,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 | :--- | :--- | :--- |
 | ✅ **CO2-Regelung (PID)** | SCD43 (`sensor.scd41_co2`) | `number.auto_co2_threshold` (Sollwert, z.B. 1000 ppm) |
 | ✅ **Feuchtemanagement (PID)** | SCD43 (`sensor.scd41_humidity`) + HA `sensor.outdoor_humidity` | Entfeuchtung via Enthalpie-Check (absolute Feuchte) |
-| ✅ **Sommerkühlung** | NTC-Sensoren + ESP-NOW Gruppentemperatur | 22°C Raumtemperaturschwelle |
+| ✅ **Sommerkühlung** | NTC-Sensoren + ESP-NOW Gruppentemperatur + HA `binary_sensor.sommerbetrieb` | Raumtemperatur-Schwelle per Slider (Standard 22°C), außen ≥ 1,5°C kühler |
 | ✅ **Gruppen-Unicast-Sync** | ESP-NOW | Synchronisiert Lüfterstufen und Bedarfsanforderungen aller Geräte im Raum |
 
 #### Logik im Detail
@@ -101,10 +101,19 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ### 3. 🌬️ Durchlüften (Sommerbetrieb) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (dauerhaft an)
 
-- **HA-Entität:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` (Timer, 0 = unbegrenzt)
-- **Funktion:** Konstanter unidirektionaler Luftstrom ohne Richtungswechsel.
+- **HA-Entität:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` („Durchlüften Dauer (min)", 0–120 min in 5-min-Schritten, Standard 30, **0 = Dauerbetrieb**)
+- **Funktion:** Konstanter unidirektionaler Luftstrom ohne Richtungswechsel (keine 5-s-Richtungsrampen).
 - **Betrieb:** Phase-A-Geräte ziehen kontinuierlich Außenluft ein, während Phase-B-Geräte Innenluft ausblasen. Dadurch entsteht ein Querlüftungseffekt zur passiven Nachtkühlung.
-- **Automatischer Trigger:** Im Smart-Automatik Modus schaltet das System in Sommernächten automatisch auf Durchlüften, wenn die Raumtemperatur über 22°C liegt und die Außenluft um mindestens 1.5°C kühler ist.
+- **Lüfterstufe:** Manuelle Stufe (1–10); die raumweite Anwesenheits-Anpassung wirkt (siehe Wärmerückgewinnung).
+- **Timer:** Der Timer startet mit der Auswahl des Modus. Nach Ablauf kehrt der Raum in die **Wärmerückgewinnung** zurück — HA-Auswahl, Fan-Preset und Panel-LEDs wechseln entsprechend auf `Wärmerückgewinnung`. Mit `0` läuft der Modus, bis ein anderer Modus gewählt wird. Eine Timer-Änderung während des Betriebs gilt ab dem ursprünglichen Start.
+- **Automatischer Trigger (nur Smart-Automatik):** Die Smart-Automatik schaltet selbstständig auf dauerhaftes Durchlüften (ohne Timer; das Panel zeigt weiter die pulsierende `LED_WRG`), wenn **alle** Bedingungen erfüllt sind:
+  - der HA-Binärsensor `binary_sensor.sommerbetrieb` ist `on` (HA-Template: April–Oktober **und** außen > 18 °C; ohne HA gilt er als aus → kein Bypass),
+  - Raumtemperatur > Slider „Smart-Automatik: Sommerkühlung Schwelle" (18–30 °C, Standard **22 °C**),
+  - Außentemperatur mindestens **1,5 °C** unter der Raumtemperatur,
+  - die Klima-Koordination meldet keine aktive Klimaanlage (bei laufender Klimaanlage wird Wärmerückgewinnung erzwungen).
+
+  Zurück in die Wärmerückgewinnung geht es, wenn `sommerbetrieb` ausgeht, außen ≥ innen − 0,5 °C wird oder innen < Schwelle − 0,5 °C fällt. Eine Uhrzeit-Bedingung gibt es nicht — die „Nachtkühlung" ergibt sich aus der Temperaturbedingung.
+- **Temperaturen während des Durchlüftens:** Bei konstantem Luftstrom kann jedes Gerät nur einen seiner beiden NTCs messen (ansaugende Geräte: außen, ausblasende Geräte: innen). Der fehlende Wert kommt von einem Peer des Raums, sonst wird die letzte eigene Messung bis zu 30 min verwendet. Ist gar keine Temperatur verfügbar (z. B. einzelnes Phase-B-Gerät), kehrt die Automatik für mindestens 5 min in die Wärmerückgewinnung zurück, misst beide Temperaturen neu und darf erst dann wieder in den Bypass wechseln.
 
 ---
 

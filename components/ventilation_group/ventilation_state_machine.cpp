@@ -21,7 +21,7 @@
 // Description: Implementation of the ventilation state machine.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-03-19
+// Modified:    2026-09-24
 // ==========================================================================
 #include "ventilation_state_machine.h"
 #include <climits>
@@ -50,6 +50,7 @@ bool VentilationStateMachine::update(uint32_t now) {
     if (current_mode == MODE_VENTILATION && ventilation_duration_ms > 0) {
         if (now - ventilation_start_time > ventilation_duration_ms) {
             set_mode(MODE_ECO_RECOVERY, now);
+            ventilation_timer_expired = true; // consumed by the UI glue
             dirty = true;
         }
     }

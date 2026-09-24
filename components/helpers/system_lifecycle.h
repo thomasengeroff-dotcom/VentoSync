@@ -21,7 +21,7 @@
 // Description: System-wide mode orchestration and lifecycle hooks.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-03-29
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 #include <esp_system.h>
@@ -136,16 +136,19 @@ inline void cycle_operating_mode(int mode_index) {
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     if (vent_timer != nullptr) {
-      // FIXED K-1: Clamp before cast and limits defined 
+      // vent_timer: 0 = continuous (no timer), otherwise 1-1440 min.
+      // FIXED K-1: Clamp before cast and limits defined
       constexpr float MAX_VENT_MIN = 1440.0f;
       constexpr float MIN_VENT_MIN = 1.0f;
-      
-      const float timer_min = std::clamp(vent_timer->state, MIN_VENT_MIN, MAX_VENT_MIN);
-      if (vent_timer->state != timer_min) {
+
+      uint32_t duration_ms = 0; // continuous
+      if (!std::isnan(vent_timer->state) && vent_timer->state > 0.0f) {
+        const float timer_min = std::clamp(vent_timer->state, MIN_VENT_MIN, MAX_VENT_MIN);
+        if (vent_timer->state != timer_min) {
           ESP_LOGW("mode", "vent_timer clamped: %.1f -> %.1f min", vent_timer->state, timer_min);
+        }
+        duration_ms = static_cast<uint32_t>(timer_min * 60.0f * 1000.0f);
       }
-      
-      const uint32_t duration_ms = static_cast<uint32_t>(timer_min * 60.0f * 1000.0f);
       v->set_mode(esphome::MODE_VENTILATION, duration_ms);
     } else {
       v->set_mode(esphome::MODE_VENTILATION);
@@ -197,6 +200,36 @@ inline void cycle_operating_mode(int mode_index) {
   }
 
   ESP_LOGI("mode", "Mode changed to index %d", mode_index);
+}
+
+/**
+ * @brief   Reflects an expired Durchlüften timer in the UI and the room.
+ *
+ * @details The pure state machine falls back to MODE_ECO_RECOVERY when the
+ *          MODE_VENTILATION timer expires but cannot reach the UI. Without this
+ *          the HA select / fan preset kept showing "Durchlüften", the mode
+ *          button continued from the wrong index and the Master heartbeat
+ *          distributed a stale mode index. Called every second
+ *          (logic_automation.yaml).
+ */
+inline void handle_ventilation_timer_expiry() {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || !v->state_machine.ventilation_timer_expired) return;
+  v->state_machine.ventilation_timer_expired = false;
+
+  // Only the manual Durchlüften mode uses a timer (the Smart-Automatik summer
+  // bypass runs without one) — never touch the UI while the automatic runs.
+  if (auto_mode_active != nullptr && auto_mode_active->value()) return;
+
+  ESP_LOGI("mode", "Durchlüften timer expired -> Wärmerückgewinnung");
+  if (current_mode_index != nullptr) current_mode_index->value() = 1;
+  const std::string mode_str = MODE_NAMES[1];
+  if (luefter_modus != nullptr && std::string(luefter_modus->current_option()) != mode_str) {
+    luefter_modus->publish_state(mode_str);
+  }
+  ha_fan_sync_state();
+  if (update_leds != nullptr) update_leds->execute();
+  v->pending_broadcast = true; // peers get the new mode index with the next MSG_SYNC
 }
 
 

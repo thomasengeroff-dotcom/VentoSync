@@ -242,6 +242,34 @@ struct PresenceHold {
   }
 };
 
+/// A last valid measurement may stand in for a sensor that cannot measure
+/// right now (e.g. the outdoor NTC of an exhaust-only device in continuous
+/// ventilation) for at most this long.
+constexpr uint32_t HELD_READING_MAX_AGE_MS = 1800000u; // 30 min
+
+/**
+ * @brief   Last valid reading with its timestamp (NaN inputs are ignored).
+ */
+struct HeldReading {
+  float value = NAN;
+  uint32_t update_ms = 0;
+  bool has_value = false;
+
+  /// @brief Stores `v` if it is a valid number.
+  void store(float v, uint32_t now_ms) {
+    if (std::isnan(v)) return;
+    value = v;
+    update_ms = now_ms;
+    has_value = true;
+  }
+
+  /// @brief The held value if not older than `max_age_ms`, else NaN (wrap-safe).
+  float get(uint32_t now_ms, uint32_t max_age_ms = HELD_READING_MAX_AGE_MS) const {
+    if (!has_value || static_cast<uint32_t>(now_ms - update_ms) > max_age_ms) return NAN;
+    return value;
+  }
+};
+
 /// A boolean pushed by Home Assistant via an API action is trusted for at
 /// most this long; the HA automation re-sends it periodically (every 5 min).
 constexpr uint32_t HA_PUSH_MAX_AGE_MS = 900000u;

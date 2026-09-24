@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.23",
+    "project_version": "0.10.24",
     "project_date": "2026-09-24",
-    "project_description": "Radar presence offset is room-wide (push-pull pairs stay balanced); operating-modes docs corrected."
+    "project_description": "Durchlüften: timer 0 = continuous, UI follows timer expiry, summer bypass no longer uses frozen NTC temperatures."
 }

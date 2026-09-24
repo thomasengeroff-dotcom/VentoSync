@@ -76,6 +76,10 @@ static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR = 22.0f;
 static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS = 21.5f;
 static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
 static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
+/// After the summer bypass ended because a temperature was not measurable,
+/// stay in heat recovery at least this long so both NTCs publish fresh values
+/// (> 2 full push-pull cycles incl. NTC stabilisation) before re-entering.
+static constexpr uint32_t SUMMER_COOLING_REMEASURE_MS = 300000u;
 
 
 
