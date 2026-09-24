@@ -21,7 +21,7 @@
 # Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-04-21
+# Modified:    2026-09-24
 # ==========================================================================
 
 substitutions:
@@ -99,6 +99,10 @@ deep_sleep:
 # Native API for direct integration with Home Assistant (faster/better than MQTT)
 api:
   max_connections: 8
+  # Never reboot for lack of an API client (ESPHome default: 15 min). Standalone
+  # installations (web dashboard + ESP-NOW, no Home Assistant) would otherwise
+  # restart every 15 minutes. Wi-Fi loss is still handled by wifi.reboot_timeout.
+  reboot_timeout: 0s
   encryption:
     key: !secret api_encryption_key
 

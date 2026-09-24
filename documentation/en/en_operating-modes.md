@@ -27,7 +27,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 | **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Constant manual level (1–10) with push-pull heat exchange | 50s – 70s dynamic | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Constant airflow without direction change (Phase A in, Phase B out) | Continuous / Timer | `select.luefter_modus` → `Durchlüften` |
 | **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | One-way burst at the manual level (Phase A in, Phase B out), then pause; direction inverted every second burst | 2 h cycle (15 min burst / 105 min pause) | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all sensors & web UI remain fully active | — | `select.luefter_modus` → `Aus` |
+| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM), room-wide; all sensors, Wi-Fi & web UI remain fully active | — | `select.luefter_modus` → `Aus` |
 
 ---
 
@@ -133,12 +133,14 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ---
 
-### 5. ⭕ Off (Monitoring Mode) — both LEDs ⚫
+### 5. ⭕ Off (Monitoring Mode) — both mode LEDs ⚫
 
-- **HA Entity:** `select.luefter_modus` → `Aus`
-- **Function:** The fan motor and PWM drive are completely shut down (0 RPM).
-- **Active Sensors:** Environmental sensors (SCD43 CO2/temp/humidity, BMP390, BME680, Radar presence) and the local web dashboard remain active for uninterrupted data collection in Home Assistant.
-- **Ultra-Low-Power Light Sleep:** Long-pressing the physical Power button for **> 5s** enters deep light sleep (disables Wi-Fi, LEDs, and radar; power consumption < 0.1W). A single short press immediately wakes the unit and reconnects to the network.
+- **HA Entity:** `select.luefter_modus` → `Aus` (or HA fan entity *off*)
+- **Function:** The fan motor is stopped (50 % PWM = standstill, 0 RPM). Only the power LED stays lit (dimmed after 30 s).
+- **Room-wide:** Like every other mode, `Aus` applies to the **whole room** — switching off on any device (HA, web dashboard, Mode or Power button) stops all devices of the room, and switching on on any device starts them all again.
+- **Active Sensors:** Wi-Fi, Home Assistant API, web dashboard, ESP-NOW and all sensors (SCD43, BMP390, BME680, radar, NTCs) stay active for uninterrupted data collection; the device keeps sharing its sensor data with the room.
+- **Power button:** A press (< 10 s) toggles between `Aus` and the **last active mode** (default `Smart-Automatik`) — room-wide. The HA fan entity's *turn on* restores the same mode. A very long press (> 10 s) restarts the device; the mode is kept.
+- **No sleep mode:** The hardware (rev. 1 PCB) cannot wake the ESP32 from deep sleep with a button, so there is no power-saving sleep state. The former long press (> 5 s, Wi-Fi off) was removed in 0.10.26 — it saved almost nothing (CPU, sensors and radar kept running) and ended by itself after 15 minutes.
 
 ---
 

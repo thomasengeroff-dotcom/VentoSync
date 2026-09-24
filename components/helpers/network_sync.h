@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-23
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -947,12 +947,8 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
   //    already mutated by on_packet_received() before this function is called.
   //    This ordering dependency is by design — the caller must invoke
   //    on_packet_received() first.
-  if (v->state_machine.current_mode == esphome::MODE_OFF) {
-    if (ventilation_enabled) ventilation_enabled->value() = false;
-    if (system_on) system_on->value() = false;
-  } else {
-    if (ventilation_enabled) ventilation_enabled->value() = true;
-    if (system_on) system_on->value() = true;
+  if (ventilation_enabled) {
+    ventilation_enabled->value() = (v->state_machine.current_mode != esphome::MODE_OFF);
   }
 
   // 2. Map the peer's UI mode index to a local text state and set auto_mode.
@@ -978,6 +974,7 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
   if (current_mode_index != nullptr && (new_mode_idx != current_mode_index->value() || force)) {
     current_mode_index->value() = new_mode_idx;
   }
+  remember_active_mode(new_mode_idx); // Power button restores the room's last mode
 
   if (luefter_modus != nullptr &&
       std::string(luefter_modus->current_option()) != mode_str) {

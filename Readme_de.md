@@ -134,7 +134,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
 - 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Während die automatische CO2- und Feuchteregelung inaktiv ist, kann eine irgendwo im Raum erkannte Radar-Anwesenheit die Lüfterstufe aller Geräte um einen einstellbaren Versatz (-5 … +5) verschieben.
 - 💨 **Querlüftung (Sommerbetrieb)**: Konstanter Luftstrom ohne Richtungswechsel (Phase-A-Geräte saugen an, Phase-B-Geräte blasen gleichzeitig ab für einen spürbaren Durchzug zur passiven Nachtkühlung). Flexibel konfigurierbar via Timer oder als Dauerbetrieb.
 - 🚀 **Stoßlüftung**: Intervalllüftung für schnellen Luftaustausch. Das Gerät lüftet für 15 Minuten **in eine Richtung** (Phase A rein, Phase B raus) mit der **manuell gewählten Intensität** und pausiert anschließend für 105 Minuten, um Feuchtigkeit effektiv abzuführen und den Keramikspeicher zu regenerieren. Danach wiederholt sich der Zyklus; jeder zweite Durchgang tauscht die Richtung. Alle Geräte eines Raums folgen dem Ablauf des Masters.
-- 🌡️ **Aus (Monitoring-Modus)**: Der Lüfter wird gestoppt (0 RPM), aber alle Sensoren (CO2, Temp, Radar) und das Web-Dashboard bleiben für lückenlose Messdaten in Home Assistant aktiv. *(Hinweis: Der extrem stromsparende Light-Sleep mit deaktiviertem WLAN wird per langem Tastendruck >5s auf den Power-Button aktiviert).*
+- 🌡️ **Aus (Monitoring-Modus)**: Die Lüfter des ganzen Raums werden gestoppt (0 RPM), aber alle Sensoren (CO2, Temp, Radar), WLAN und das Web-Dashboard bleiben für lückenlose Messdaten in Home Assistant aktiv. Einschalten an einem beliebigen Gerät (Power-Taste, HA, Dashboard) stellt für den ganzen Raum den zuletzt aktiven Modus wieder her.
 
 ### 🛡️ Präzisions-Sensorik & Monitoring
 
@@ -451,7 +451,7 @@ Die Steuerung erfolgt intuitiv über das integrierte Bedienpanel oder vollautoma
 
 Das Gerät verfügt über ein 3-Tasten-Bedienpanel mit 9 Status-LEDs (dimmbar, mit Auto-Dimming nach 30 Sekunden Inaktivität und Diagnose-Blinkcodes).
 
-- **Power (I/O)**: Kurzer Druck schaltet die Lüftung EIN/AUS; langer Druck (>5s) aktiviert den Light Sleep; sehr langer Druck (>10s) startet das Gerät neu.
+- **Power (I/O)**: Ein Druck schaltet den Raum zwischen `Aus` und dem zuletzt aktiven Modus um; sehr langer Druck (>10s) startet das Gerät neu.
 - **Modus (M)**: Zykliert durch `Automatik` → `Wärmerückgewinnung` → `Durchlüften` → `Stoßlüftung` → `Aus`.
 - **Stufe (+)**: Zykliert durch 10 Lüfterstufen (kurzer Druck) oder läuft die Stufen fortlaufend durch (gedrückt halten).
 - **Feedback**: 5 Intensitäts-LEDs (Balkenanzeige mit 50%/100%-Helligkeitsstufen), 2 Modus-LEDs (`LED_WRG` / `LED_VEN`), Power-LED und Master-Diagnose-LED.
@@ -473,10 +473,10 @@ Die Lüftungsanlage unterstützt 5 Betriebsmodi, die über die physische **Modus
 | **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Manueller Push-Pull-Betrieb (50s–70s pro Richtung, stufenabhängig), bis zu 85% Wärmerückgewinnung (Herstellerangabe) | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter unidirektionaler Luftzug (Phase A rein, Phase B raus) zur passiven Nachtkühlung | `select.luefter_modus` → `Durchlüften` |
 | **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | 15 min Lüften in eine Richtung, danach 105 min Regenerationspause des Keramikkerns | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Klimasensoren & Web-UI bleiben für die Datenaufzeichnung online | `select.luefter_modus` → `Aus` |
+| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter des Raums gestoppt (0 RPM); alle Klimasensoren & Web-UI bleiben für die Datenaufzeichnung online | `select.luefter_modus` → `Aus` |
 
 > 📖 **Ausführlicher Betriebsmodi-Guide:**  
-> Alle technischen Details zur PID-Regellogik, Praxisbeispiele mit Zeitverlauf, enthalpiebasierte Entfeuchtung, Sommerkühlungs-Hysterese und der Light-Sleep-Energiesparmodus stehen im **[📄 Betriebsmodi & Programmlogik](documentation/de/de_operating-modes.md)**.
+> Alle technischen Details zur PID-Regellogik, Praxisbeispiele mit Zeitverlauf, enthalpiebasierte Entfeuchtung, Sommerkühlungs-Hysterese und der raumweite Aus-Modus stehen im **[📄 Betriebsmodi & Programmlogik](documentation/de/de_operating-modes.md)**.
 
 ---
 

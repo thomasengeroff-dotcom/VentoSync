@@ -26,7 +26,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 | **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Konstante manuelle Stufe (1–10) mit Pendellüftung / Wärmetausch | 50s – 70s dynamisch | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter Luftstrom ohne Richtungswechsel (Phase A rein, Phase B raus) | Dauerhaft / Timer | `select.luefter_modus` → `Durchlüften` |
 | **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | Lüften in eine Richtung auf der manuellen Stufe (Phase A rein, Phase B raus), danach Pause; Richtung jeden zweiten Durchgang getauscht | 2-h-Zyklus (15 min Lüften / 105 min Pause) | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Sensoren & Web-UI bleiben voll aktiv | — | `select.luefter_modus` → `Aus` |
+| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM), raumweit; alle Sensoren, WLAN & Web-UI bleiben voll aktiv | — | `select.luefter_modus` → `Aus` |
 
 ---
 
@@ -132,12 +132,14 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ---
 
-### 5. ⭕ Aus (Monitoring-Modus) — beide LEDs ⚫
+### 5. ⭕ Aus (Monitoring-Modus) — beide Modus-LEDs ⚫
 
-- **HA-Entität:** `select.luefter_modus` → `Aus`
-- **Funktion:** Lüftermotor und PWM-Ansteuerung sind komplett abgeschaltet (0 RPM).
-- **Aktive Sensoren:** Umweltsensoren (SCD43 CO2/Temp/Feuchte, BMP390, BME680, Radar-Präsenz) sowie das lokale Web-Dashboard bleiben für lückenlose Messwerterfassung in Home Assistant aktiv.
-- **Ultra-Low-Power Light Sleep:** Langes Drücken der physischen Power-Taste für **> 5s** versetzt das Gerät in den Deep-Light-Sleep (deaktiviert WLAN, LEDs und Radar; Leistungsaufnahme < 0.1W). Ein kurzer Tastendruck weckt das Gerät sofort wieder auf und verbindet es erneut mit dem Netzwerk.
+- **HA-Entität:** `select.luefter_modus` → `Aus` (oder HA-Fan-Entität *aus*)
+- **Funktion:** Der Lüftermotor steht (50 % PWM = Stillstand, 0 RPM). Nur die Power-LED leuchtet (nach 30 s gedimmt).
+- **Raumweit:** Wie jeder andere Modus gilt `Aus` für den **ganzen Raum** — Ausschalten an einem beliebigen Gerät (HA, Web-Dashboard, Modus- oder Power-Taste) stoppt alle Geräte des Raums, Einschalten an einem beliebigen Gerät startet sie alle wieder.
+- **Aktive Sensoren:** WLAN, Home-Assistant-API, Web-Dashboard, ESP-NOW und alle Sensoren (SCD43, BMP390, BME680, Radar, NTCs) bleiben für lückenlose Messwerterfassung aktiv; das Gerät teilt seine Sensordaten weiter mit dem Raum.
+- **Power-Taste:** Ein Druck (< 10 s) schaltet zwischen `Aus` und dem **zuletzt aktiven Modus** (Standard `Smart-Automatik`) um — raumweit. Das *Einschalten* der HA-Fan-Entität stellt denselben Modus wieder her. Ein sehr langer Druck (> 10 s) startet das Gerät neu; der Modus bleibt erhalten.
+- **Kein Schlafmodus:** Die Hardware (Platine Rev. 1) kann den ESP32 nicht per Taste aus dem Deep Sleep wecken, daher gibt es keinen Energiespar-Schlafzustand. Der frühere lange Druck (> 5 s, WLAN aus) wurde in 0.10.26 entfernt — er sparte kaum etwas (CPU, Sensoren und Radar liefen weiter) und endete nach 15 Minuten von selbst.
 
 ---
 

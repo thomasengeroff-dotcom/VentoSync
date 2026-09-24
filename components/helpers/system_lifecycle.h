@@ -30,11 +30,11 @@
 /**
  * @brief   Tracks operating hours for the ventilation filter.
  *
- * @details Increments the counter whenever the system is powered and enabled.
+ * @details Increments the counter whenever the ventilation runs (any mode but "Aus").
  *          This data is used to trigger maintenance alarms in Home Assistant.
  */
 inline void update_filter_analytics() {
-  if (system_on == nullptr || ventilation_enabled == nullptr || filter_operating_hours == nullptr) return;
+  if (ventilation_enabled == nullptr || filter_operating_hours == nullptr) return;
 
   static uint32_t last_update_ms = 0;
   const uint32_t now_ms = millis();
@@ -44,7 +44,7 @@ inline void update_filter_analytics() {
     return;
   }
 
-  if (system_on->value() && ventilation_enabled->value()) {
+  if (ventilation_enabled->value()) {
     const uint32_t elapsed_ms = now_ms - last_update_ms;
     // FIXED H-1: Accumulate in uint32_t to avoid float precision loss
     static uint32_t filter_ms_accumulator = 0;
@@ -99,7 +99,6 @@ inline void cycle_operating_mode(int mode_index) {
 
   switch (mode_index) {
   case 0: // Automatik
-    if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     if (auto_mode_active != nullptr) auto_mode_active->value() = true;
     
@@ -125,14 +124,12 @@ inline void cycle_operating_mode(int mode_index) {
     break;
 
   case 1: // Heat Recovery (manual)
-    if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     v->set_mode(esphome::MODE_ECO_RECOVERY);
     break;
 
   case 2: // Ventilation — timer from vent_timer number component
-    if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     if (vent_timer != nullptr) {
@@ -156,16 +153,14 @@ inline void cycle_operating_mode(int mode_index) {
     break;
 
   case 3: // Boost ventilation
-    if (system_on != nullptr) system_on->value() = true;
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = true;
     
     v->set_mode(esphome::MODE_STOSSLUEFTUNG);
     break;
 
-  case 4: // Aus
-    // Mod: Stay "ON" but ventilation is disabled to keep motor stopped at 50%.
-    // This keeps WLAN/API active.
-    if (system_on != nullptr) system_on->value() = true;
+  case 4: // Aus — room-wide like every other mode
+    // Ventilation disabled, motor stopped at 50% PWM. Wi-Fi, API, sensors and
+    // ESP-NOW stay active (there is no separate sleep state).
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = false;
     
     v->set_mode(esphome::MODE_OFF);
@@ -186,6 +181,7 @@ inline void cycle_operating_mode(int mode_index) {
   if (current_mode_index != nullptr) {
     current_mode_index->value() = mode_index;
   }
+  remember_active_mode(mode_index);
 
   // Sync HA select dropdown
   if (mode_index >= 0 && mode_index < 5) {
@@ -223,6 +219,7 @@ inline void handle_ventilation_timer_expiry() {
 
   ESP_LOGI("mode", "Durchlüften timer expired -> Wärmerückgewinnung");
   if (current_mode_index != nullptr) current_mode_index->value() = 1;
+  remember_active_mode(1);
   const std::string mode_str = MODE_NAMES[1];
   if (luefter_modus != nullptr && std::string(luefter_modus->current_option()) != mode_str) {
     luefter_modus->publish_state(mode_str);

@@ -103,6 +103,8 @@ static constexpr const char *MODE_NAMES[] = {
 };
 static_assert(sizeof(MODE_NAMES) / sizeof(MODE_NAMES[0]) == 5,
               "MODE_NAMES array size must match number of operating modes");
+/// @brief Mode index of "Aus" (fan stopped, room-wide like every other mode).
+static constexpr int MODE_INDEX_AUS = 4;
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.
@@ -158,11 +160,11 @@ inline std::queue<PeerEvent> peer_event_queue;
 /// @name Global variables
 /// @{
 extern esphome::globals::GlobalsComponent<bool>
-    *const system_on; ///< Master power state.
-extern esphome::globals::GlobalsComponent<bool>
     *const ventilation_enabled; ///< Ventilation enabled flag.
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *const current_mode_index; ///< Active mode index (0–3).
+    *const current_mode_index; ///< Active mode index (0–4, 4 = "Aus").
+extern esphome::globals::RestoringGlobalsComponent<int>
+    *const last_active_mode_index; ///< Last non-"Aus" mode index (0–3).
 extern esphome::globals::RestoringGlobalsComponent<int>
     *const fan_intensity_level; ///< Fan intensity (1–10).
 extern esphome::globals::RestoringGlobalsComponent<int>
@@ -262,8 +264,6 @@ extern esphome::script::RestartScript<>
     *const flash_leds_child_lock_3x; ///< 3x LED flash for child lock reject.
 extern esphome::script::RestartScript<>
     *const flash_leds_child_lock_2x; ///< 2x LED flash for child lock toggle ack.
-extern esphome::script::RestartScript<> *const system_sleep;
-extern esphome::script::RestartScript<> *const system_wakeup;
 /// @}
 
 /// @name Fan hardware
@@ -493,8 +493,6 @@ inline void set_operating_mode_select(const std::string &x);
 inline void handle_button_mode_click();
 /** @brief Toggles power on button short-click. */
 inline void handle_button_power_short_click();
-/** @brief Shuts down system on button long-click. */
-inline void handle_button_power_long_click();
 /** @brief Cycles intensity on button click. */
 inline void handle_button_level_click();
 /** @brief Cycles intensity on button hold. */
@@ -505,6 +503,16 @@ inline void evaluate_auto_mode(bool force = false);
 inline void update_filter_analytics();
 /** @brief Orchestrates a mode transition. */
 inline void cycle_operating_mode(int mode_index);
+/**
+ * @brief Remembers a non-"Aus" mode (0–3) — restored by the Power button and
+ *        the HA fan turn_on when switching on from "Aus".
+ */
+inline void remember_active_mode(int mode_index) {
+  if (last_active_mode_index != nullptr && mode_index >= 0 && mode_index < MODE_INDEX_AUS &&
+      last_active_mode_index->value() != mode_index) {
+    last_active_mode_index->value() = mode_index;
+  }
+}
 /** @brief Syncs YAML config to C++ controller. */
 inline void sync_config_to_controller();
 /** @brief Main system boot sequence. */

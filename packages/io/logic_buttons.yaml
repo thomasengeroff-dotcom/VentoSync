@@ -24,7 +24,7 @@
 #              child lock combo, and LED flash feedback.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-05-16
+# Modified:    2026-09-24
 # ==========================================================================
 
 # ---------------------------------------------------------
@@ -47,21 +47,15 @@ binary_sensor:
       - delayed_on: 25ms  # Ignores bouncing shorter than 25ms
       - delayed_off: 25ms # Prevents ghost presses on release
     on_click:
-      # Short press: Toggle system on/off
+      # Press < 10 s: toggle "Aus" <-> last active mode (room-wide)
       - min_length: 50ms
-        max_length: 4999ms
-        then:
-          - lambda: "handle_button_power_short_click();"
-      # Long press (5-10s): Power off with feedback
-      - min_length: 5000ms
         max_length: 9999ms
         then:
-          - lambda: "handle_button_power_long_click();"
-      # Very long press (10-60s): Force restart (recovery)
+          - lambda: "handle_button_power_short_click();"
+      # Very long press (10-60 s): restart (recovery); the mode is kept
       - min_length: 10000ms
         max_length: 60000ms
         then:
-          - lambda: "handle_button_power_long_click();"
           - button.press: force_restart_button
 
   # Button Mode (left) - Mode Control (MCP23017 GPA1)
