@@ -13,7 +13,7 @@ The **Window Guard** feature automatically pauses all ventilation units in a roo
 - 🔄 **Automatic Resume**: The system preserves its current operating mode (e.g., Automatic, Heat Recovery, etc.) and resumes operation seamlessly as soon as all windows are closed.
 - 🔆 **Visual Feedback (35s Limit)**: A distinct pulsing pattern on the Master LED (1s ON, 2s OFF) indicates the "Paused by Window" state. To avoid light pollution at night, the pulsing starts after 5 seconds and stops after 35 seconds while the fan remains safely stopped.
 - 📊 **HA Status Entity**: A dedicated text sensor (`text_sensor.fenstersperre_aktiv`, `Ja` / `Nein`) provides real-time visibility of the lock status in Home Assistant.
-- 🎛️ **Per-Device Bypass Switch**: Includes an **"Ignore Window Guard" switch** (`switch.ignore_window_guard` / `switch.fenstersperre_ignorieren`) to bypass the lock for specific individual units if needed.
+- 🎛️ **Per-Device Bypass Switch**: Includes an **"Ignore Window Guard" switch** (`switch.fenstersperre_ignorieren` / `switch.fenstersperre_ignorieren`) to bypass the lock for specific individual units if needed.
 
 ---
 

@@ -455,8 +455,8 @@ The unit features an intuitive 3-button control panel with 9 status LEDs (dimmab
 
 - **Power (I/O)**: Press toggles the room between `Aus` and the last active mode; very long press (>10s) triggers reboot.
 - **Mode (M)**: Cycles through `Auto` → `Heat Recovery` → `Ventilation` → `Boost Ventilation` → `Off`.
-- **Level (+)**: Cycles through 10 fan speed levels (press) or continuous level cycling (hold).
-- **Feedback**: Visualized via 5 Intensity LEDs (fill-bar with 50%/100% brightness steps), 2 Mode LEDs (`LED_WRG` / `LED_VEN`), Power LED, and Master diagnostic LED.
+- **Level (+)**: Cycles through 10 fan speed levels (press) or continuous level cycling (hold) — room-wide. In Smart-Automatik the automatic takes the level back over within its next evaluation cycles (every 10 s).
+- **Feedback**: Visualized via 5 Intensity LEDs (fill-bar, dimmed (20 %) for odd and full for even levels), 2 Mode LEDs (`LED_WRG` / `LED_VEN`), Power LED, and Master diagnostic LED.
 
 > 📖 **Complete Control Panel Guide:**  
 > For full details on button operations, the 10-level LED fill-bar logic, diagnostic blink patterns (Master LED), and group wake-up behavior, see the **[📄 Control Panel Operation Guide](documentation/en/en_control-panel-operation.md)**.
@@ -471,11 +471,11 @@ The ventilation system supports 5 operating modes, which can be selected via the
 
 | # | Mode | Panel LEDs (`WRG` / `VEN`) | Operation & Core Function | HA Entity / Selection |
 | :-: | :--- | :---: | :--- | :--- |
-| **1** | **🤖 Smart Automatic** *(Default)* | 🟢 *(pulses)* / ⚫ | Fully autonomous PID control based on CO2, humidity, and outdoor air conditions | `select.luefter_modus` → `Smart-Automatik` |
-| **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Manual push-pull heat recovery (50s–70s per direction, level-dependent), up to 85% heat recovery (manufacturer figure) | `select.luefter_modus` → `Wärmerückgewinnung` |
-| **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Continuous unidirectional draft (Phase A in, Phase B out) for passive night cooling | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | 15 min one-way air renewal followed by a 105 min core regeneration pause | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fans of the room stopped (0 RPM); all climate sensors & web UI remain online for data logging | `select.luefter_modus` → `Aus` |
+| **1** | **🤖 Smart Automatic** *(Default)* | 🟢 *(pulses)* / ⚫ | Fully autonomous PID control based on CO2, humidity, and outdoor air conditions | `select.luftermodus` → `Smart-Automatik` |
+| **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Manual push-pull heat recovery (50s–70s per direction, level-dependent), up to 85% heat recovery (manufacturer figure) | `select.luftermodus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Continuous unidirectional cross-ventilation (Phase A in, Phase B out) for fast air exchange and passive cooling; optional timer | `select.luftermodus` → `Durchlüften` |
+| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | 15 min one-way air renewal followed by a 105 min core regeneration pause | `select.luftermodus` → `Stoßlüftung` |
+| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fans of the room stopped (0 RPM); all climate sensors & web UI remain online for data logging | `select.luftermodus` → `Aus` |
 
 > 📖 **Comprehensive Operating Modes Guide:**  
 > For full technical details on the PID control logic, real-world timing examples, enthalpy-based dehumidification, summer cooling hysteresis, and the room-wide Off mode, see the **[📄 Operating Modes & Logic Guide](documentation/en/en_operating-modes.md)**.
@@ -488,11 +488,13 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 
 #### Available Controls
 
+> Entity IDs are shown without the device prefix — Home Assistant prepends the device name (e.g. `select.wohnzimmer_luftermodus`).
+
 - **Fan**: `fan.ventosync_hrv` — 10-step slider (10 % … 100 %, 0 % = off) matching the 10 levels of the control panel
-- **Mode**: `select.luefter_modus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (the same values are available as presets on the fan entity)
-- **Timer**: `number.vent_timer` — duration of `Durchlüften` in minutes (0–120, default: 30; 0 = continuous); afterwards the room returns to `Wärmerückgewinnung`
-- **LED Brightness**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, default: 80 %) to limit the maximum panel brightness.
-- **CO2 Limit**: `number.auto_co2_threshold` (400–2000 ppm, default: 1000; always active in Smart-Automatik mode)
+- **Mode**: `select.luftermodus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (the same values are available as presets on the fan entity)
+- **Timer**: `number.durchluften_dauer_min` — duration of `Durchlüften` in minutes (0–120, default: 30; 0 = continuous); afterwards the room returns to `Wärmerückgewinnung`
+- **LED Brightness**: `number.maximale_led_helligkeit` ("Maximale LED Helligkeit", 5–100 %, default: 80 %) to limit the maximum panel brightness.
+- **CO2 Limit**: `number.smart_automatik_co2_grenzwert` (400–2000 ppm, default: 1000; always active in Smart-Automatik mode)
 - **Smart Climate Control** *(Configuration)*:
   - `switch.klima_koordination` — Enable HVAC coordination, **room-wide** (default: off)
   - `number.klima_koordination_co2_grenzwert` — Relaxed CO2 target while the AC is active, 800–1500 ppm (default: `1200`)
@@ -505,6 +507,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Fan intensity when vacation is active, 1–10 (default: `1`)
+  > Set both on the **Master** (device ID 1) — it applies and restores the vacation mode for the whole room.
 
 👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Entities_Documentation.md](documentation/en/en_home-assistant-entities.md)**.
 
@@ -533,12 +536,12 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 
 The RPM range is optimized to allow for finer steps at low levels (Levels 1-6) for even quieter operation, while the power increases more rapidly at higher levels.
 
-> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM at 50% = stop). In Smart automatic mode (PID), the speed is regulated in discrete steps (Levels 1-10) between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
+> ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM at 50% = stop). In Smart automatic mode (PID), the speed is regulated in discrete steps (Levels 1-10) between "Smart-Automatik Min Lüfterstufe" and "Smart-Automatik Max Lüfterstufe" (`number.smart_automatik_min_lufterstufe` / `…_max_lufterstufe`).
 > 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery) and at the start / end of each Boost Ventilation burst, the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.
 
 #### Automatic Functions
 
-- **Stealth Mode**: The LEDs are automatically switched off when the device is not being operated — this especially prevents disturbing light in bedrooms at night.
+- **Stealth Mode**: 30 s after the last interaction the mode and level LEDs switch off and the power LED dims to 10 % — this especially prevents disturbing light in bedrooms at night.
 - **Filter Change Alarm**: Intelligent predictive maintenance tracking active fan runtime (**>365 operating days / 8,760h**) and calendar aging (**>3 years**) to protect hardware and ensure air hygiene. Includes a one-click reset entity once cleaned or replaced.
 
 > 👉 *For entity details, automation blueprints, and push notification setup in Home Assistant, see [📄 Filter Change Alarm Setup Guide](documentation/en/en_filter-change-alarm-ha-setup.md).*
@@ -551,7 +554,7 @@ The RPM range is optimized to allow for finer steps at low levels (Levels 1-6) f
 
 VentoSync uses a high-capacity **ceramic regenerator** (regenerative heat accumulator) to retain indoor thermal energy during ventilation:
 
-- **Cyclic Push-Pull Operation**: The fan alternates between exhaust mode (storing thermal energy from outgoing room air into the ceramic core) and supply mode (pre-heating incoming fresh outdoor air) in adaptive **50s to 70s cycles**.
+- **Cyclic Push-Pull Operation**: The fan alternates between exhaust mode (storing thermal energy from outgoing room air into the ceramic core) and supply mode (pre-heating incoming fresh outdoor air) in adaptive **50 s to 70 s per direction** (level-dependent).
 - **Synchronized Pair Operation**: Units operating in the same room pair up via **ESP-NOW unicast**. One unit supplies fresh air while the partner unit exhausts stale air, ensuring continuous air exchange without pressure differentials or draft effects.
 - **Phase-Aware NTC Temperature Stabilization**: Dedicated indoor and outdoor NTC thermistors employ a C++ phase-lock filter pipeline (`filter_ntc_combined`) with thermal settling delays and seasonal min/max selection to provide accurate room and outdoor temperatures.
 - **DIN EN 13141-8 Energy-Based Efficiency**: Unlike basic systems that evaluate instantaneous points in time, VentoSync uses numerical **trapezoidal integration** over full cycles to compute the true thermodynamic heat recovery efficiency ($\eta_{WRG}$ up to ~85%) and calculates the actual **recovered thermal energy in Watt-hours (Wh)** based on calibrated volumetric airflow curves.
@@ -565,7 +568,7 @@ VentoSync uses a high-capacity **ceramic regenerator** (regenerative heat accumu
 
 Detailed technical information about sensor optimizations, ESPHome YAML syntax, I²C configuration, and other technical aspects can be found in the separate documentation:
 
-📄 **[Technical-Details-Optimizations_en.md](EasyEDA-Pro/documentation/Technical-Details-Optimizations_en.md)** / **[Automatic-Mode-Logic.md](documentation/en/en_smart-automatic-logic.md)**
+📄 **[Technical-Details-Optimizations_en.md](EasyEDA-Pro/documentation/Technical-Details-Optimizations_en.md)** / **[Smart-Automatik Logic](documentation/en/en_smart-automatic-logic.md)**
 
 This documentation contains:
 
@@ -581,11 +584,11 @@ This documentation contains:
 
 ```text
 VentoSync/
-├── .github/workflows/         # CI/CD (GitHub Actions) for automated build & release
+├── .github/                   # CI/CD workflows (build, lint, CodeQL, secret scan, version guard) + scripts/
 ├── components/                # Custom ESPHome C++ external components & helper libraries
 │   ├── helpers/               # Modular C++ headers (PID logic, ESP-NOW sync, IAQ engine, NTC filters)
 │   ├── ventilation_group/     # Core group state machine & multi-device coordination
-│   ├── ventilation_logic/     # IAQ classification, comfort logic & mathematical helpers
+│   ├── ventilation_logic/     # Pure, unit-tested logic: fan curve/PWM, HVAC coordinator, room fusion
 │   └── wrg_dashboard/         # Built-in Web UI dashboard (Tailwind CSS & Chart.js)
 ├── documentation/             # Technical deep-dive guides, datasheets & HA setup tutorials
 │   ├── en/                    # English documentation
@@ -595,6 +598,8 @@ VentoSync/
 ├── EasyEDA-Pro/               # PCB hardware files (Schematics, Gerber, BOM, Photos)
 ├── ESPHome-VentoMaxx-Analyser/# Hardware analysis & PWM oscilloscope verification tools
 ├── ha_integration_example/    # Home Assistant dashboard templates & master-node configs
+├── images/                    # Images used by the READMEs
+├── include -> components/helpers  # Symlink for IDE / PlatformIO include paths
 ├── json/                      # Deployment manifests & GitHub release templates
 ├── packages/                  # Modular YAML configuration packages
 │   ├── actuators/             # PID controllers, automations, safety & vacation logic
@@ -612,6 +617,7 @@ VentoSync/
 ├── ventosync_nosensor.yaml    # Hardware variant: Core HRV fan control without sensors
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
 ├── upload_all.sh              # Multi-device batch compilation & OTA flash script
+├── version_bump.py            # Local build version bump (not used by CI)
 └── version.json               # Current semantic release version & metadata
 ```
 
@@ -624,7 +630,7 @@ VentoSync/
 To guarantee 24/7 reliability, long-term maintainability, and clean code quality, VentoSync employs a strictly decoupled, layered software architecture:
 
 - **Strict YAML Modularization (`packages/`)**: The firmware is split into 8 specialized domain packages (`base`, `communication`, `globals`, `io`, `sensors`, `actuators`, `integration`, `ui`). Sensor mocks (`mock_*.yaml`) provide graceful compilation fallbacks and zero log noise for optional hardware variants.
-- **Native C++ Helper Core (`components/helpers/`)**: All complex lambdas are banished from YAML into modular, type-safe C++ headers (PID regulation, ESP-NOW state synchronization, IAQ engines, button/LED handlers), enabling native unit testing and zero CPU overhead.
+- **Native C++ Helper Core (`components/helpers/`)**: All complex lambdas are moved from YAML into modular, type-safe C++ headers (PID regulation, ESP-NOW state synchronization, IAQ engines, button/LED handlers). Hardware-independent logic lives in `components/ventilation_logic/` and the state machine, which are covered by native C++ unit tests (ASan/UBSan) in CI; the ESPHome-bound helpers are verified by the firmware builds.
 - **Technical & Runtime Excellence**: Thread-safe HTTP event handling with `std::lock_guard`, move semantics, NaN-safe PID control, flash wear-leveling (8h NVS buffering), and unified NTC filtering (`filter_ntc_combined`).
 - **Deterministic Boot Sequence**: Staged initialization sequence (`on_boot` priority -10) with cached peer restoration, delayed mesh discovery broadcasts, and LED hardware self-test.
 
@@ -634,12 +640,14 @@ To guarantee 24/7 reliability, long-term maintainability, and clean code quality
 
 ## 🚀 Automated Release & Versioning
 
-To ensure reliable maintenance and full traceability of every change, the project utilizes an automated release workflow:
+Every merge into `master` publishes a firmware release; the version is managed per pull request:
 
-- **AI-Driven Changelogs**: Every release is preceded by an automated analysis of code changes. An AI assistant generates detailed entries for the `CHANGELOG.md` and updates the firmware description in `version.json`.
-- **Automatic Version Bump**: The versioning follows a strict pattern where the patch version (e.g., `0.10.14` → `0.10.15`) is automatically incremented during the build process.
-- **Git Integration**: Successful builds are automatically committed and pushed to the repository, ensuring the GitHub manifest and binary releases are always in sync with the local development state.
-- **Continuous Transparency**: The current version is available as a sensor in Home Assistant and displayed on the local web dashboard for easy verification.
+- **One version per PR**: `version.json` is the single source of truth. Each firmware PR bumps it once and adds the matching top entry to `CHANGELOG.md`; pure documentation/tooling PRs carry the label `no-release` instead.
+- **Version Guard**: A required PR check (`.github/scripts/check_version.py`) verifies that the version is higher than on `master`, matches the top CHANGELOG entry and that its tag does not exist yet.
+- **CI builds**: Pull requests run the unit tests, the YAML validation of all variants and the `ventosync-full` firmware build; after the merge all 6 variants are built.
+- **Release**: The merge creates the GitHub release `v<version>` with `.ota.bin` / `.factory.bin` and an OTA manifest per variant; the release notes are the top CHANGELOG section. An existing tag is never overwritten.
+- **OTA & transparency**: Devices find updates via their variant manifest (`update.firmware_update`); the version is shown in Home Assistant (`text_sensor.projektversion`) and on the local web dashboard.
+- **Local builds**: `version_bump.py` only bumps the version for local builds (`esphome compile`, `upload_all.sh`) — such bumps are never committed.
 
 ---
 

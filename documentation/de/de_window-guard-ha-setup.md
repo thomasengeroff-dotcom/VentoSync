@@ -13,7 +13,7 @@ Die **Fenstersperre (Window Guard)** pausiert automatisch alle Lüftungsgeräte 
 - 🔄 **Automatisches Fortsetzen**: Das System behält seinen aktuellen Betriebsmodus (z. B. Automatik oder Manuell) bei und nimmt den Betrieb nahtlos wieder auf, sobald alle Fenster geschlossen sind.
 - 🔆 **Visuelles Feedback (35s Limit)**: Ein markantes Pulsieren der Master-LED (1s An, 2s Aus) signalisiert den Zustand "Pause durch Fenster". Zur Vermeidung von Lichtstörungen nachts stoppt das Pulsieren nach 35 Sekunden, während der Lüfter weiterhin sicher gestoppt bleibt.
 - 📊 **HA Status-Entität**: Ein dedizierter Textsensor (`text_sensor.fenstersperre_aktiv`, `Ja` / `Nein`) bietet direkte Sichtbarkeit des Sperrstatus in Home Assistant.
-- 🎛️ **Individueller Bypass-Schalter**: Über den Schalter **"Fenstersperre ignorieren"** (`switch.ignore_window_guard` / `switch.fenstersperre_ignorieren`) können einzelne Geräte bei Bedarf von der Raumsperre ausgenommen werden.
+- 🎛️ **Individueller Bypass-Schalter**: Über den Schalter **"Fenstersperre ignorieren"** (`switch.fenstersperre_ignorieren` / `switch.fenstersperre_ignorieren`) können einzelne Geräte bei Bedarf von der Raumsperre ausgenommen werden.
 
 ---
 

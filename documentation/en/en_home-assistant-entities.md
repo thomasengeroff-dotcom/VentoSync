@@ -3,170 +3,152 @@
 [![Language: DE](https://img.shields.io/badge/Language-DE-red.svg)](../de/de_home-assistant-entities.md)
 
 
-This file lists all Home Assistant entities provided by the `ventosync.yaml` configuration (and its included packages). It is conceptually grouped by topics to provide a basis for clean naming and integration into dashboards.
+This file lists the Home Assistant entities provided by the VentoSync firmware (`ventosync.yaml` and its packages), grouped by topic.
 
-## 1. Control & Operating Mode (Ventilation)
+> [!IMPORTANT]
+> **Entity IDs:** Home Assistant builds the entity ID from the **device name + entity name** (umlauts become plain letters: `ü` → `u`). The IDs below are shown **without the device prefix** — on a device named "Wohnzimmer" the mode select is `select.wohnzimmer_luftermodus`, not `select.luftermodus`. The German names in quotes are the entity names as shown in HA; the YAML ID is only needed when editing the firmware.
+>
+> Entities depending on missing hardware are hidden in the reduced variants (`internal: true`): climate sensors without SCD43/BME680, NTC and efficiency sensors in `nosensor`.
 
-These entities are for primary control of the fan and operating mode.
+## 1. Control & Operating Mode
 
-* **`select.luefter_modus`** ("Lüftermodus")
+* **`fan.ventosync_hrv`** ("VentoSync HRV", YAML ID `ventosync_hrv_fan`)
+  * *Type:* Fan (10 speed steps, presets = operating modes)
+  * *Documentation:* Standard HA fan entity for dashboards and voice assistants: on/off (room-wide, *on* restores the last active mode), 10 speed steps (10 % … 100 % = level 1 … 10), preset = operating mode.
+* **`select.luftermodus`** ("Lüftermodus", YAML ID `luefter_modus`)
   * *Type:* Select
-  * *Documentation:* Selects the operating mode: `Smart-Automatik`, `Wärmerückgewinnung` (heat recovery), `Durchlüften` (cross-ventilation), `Stoßlüftung` (boost ventilation), `Aus` (off). Details: [Operating Modes](en_operating-modes.md).
-* **`number.fan_intensity_display`** ("Fan Intensity")
-  * *Type:* Number (Slider)
-  * *Documentation:* Manual setting of the fan level (1 to 10). Overwritten in Automatic mode.
-* **`sensor.fan_rpm`** ("Fan Speed")
-  * *Type:* Sensor
-  * *Documentation:* Shows the fan speed in RPM. If no physical tacho sensor (4-pin fan) is connected, a calculated value based on the power level is output (100% = 4200 RPM).
-* **`text_sensor.direction_display`** ("Current Direction")
+  * *Documentation:* Operating mode: `Smart-Automatik`, `Wärmerückgewinnung`, `Durchlüften`, `Stoßlüftung`, `Aus` — room-wide. Details: [Operating Modes](en_operating-modes.md).
+* **`number.lufter_intensitat`** ("Lüfter Intensität", YAML ID `fan_intensity_display`)
+  * *Type:* Number (1–10)
+  * *Documentation:* Manual fan level. In Smart-Automatik it is set by the automatic.
+* **`sensor.lufter_drehzahl`** ("Lüfter Drehzahl", YAML ID `fan_rpm`)
+  * *Type:* Sensor (RPM, negative while extracting)
+  * *Documentation:* Tacho RPM of a 4-pin fan, otherwise estimated as speed fraction × 4200 RPM.
+* **`sensor.lufter_pwm`** ("Lüfter PWM", YAML ID `fan_pwm_percent`)
+  * *Type:* Sensor (%)
+  * *Documentation:* Current PWM duty cycle (50 % = standstill, < 50 % extract, > 50 % supply).
+* **`text_sensor.lufter_richtung`** ("Lüfter Richtung", YAML ID `direction_display`)
   * *Type:* Text Sensor
-  * *Documentation:* Shows the current direction of the airflow: "Supply (In)", "Extract (Out)", or "Standstill".
+  * *Documentation:* Current airflow direction: `Zuluft (Rein)`, `Abluft (Raus)` or `Stillstand`.
+* **`number.durchluften_dauer_min`** ("Durchlüften Dauer (min)", YAML ID `vent_timer`)
+  * *Type:* Number (0–120 min, step 5, default 30), room-wide
+  * *Documentation:* Duration of the manual `Durchlüften` mode; afterwards the room returns to `Wärmerückgewinnung` (0 = continuous operation). Not used by `Stoßlüftung` (fixed 15/105 min cycle) or by the automatic summer bypass.
 
-## 2. Automation & Regulation (Sensor-driven)
+## 2. Smart-Automatik (Sensor-driven Regulation)
 
-These entities configure the behavior of the "Automatic" mode.
-
-* **`number.auto_co2_threshold`** ("Automatic: CO2 Threshold")
-  * *Type:* Number (Slider)
-  * *Documentation:* Sets the target CO2 value (setpoint) in ppm for the PID controller. The CO2 regulation is always active in Automatic mode and has priority over humidity regulation.
-* **`number.auto_humidity_threshold`** ("Automatic: Humidity Threshold")
-  * *Type:* Number (Slider)
-  * *Documentation:* An optional humidity threshold (%), above which the ventilation also increases.
-* **`number.automatic_min_fan_level`** ("Automatic Min Fan Level")
-  * *Type:* Number (Slider)
-  * *Documentation:* Basic ventilation (mold protection) in automatic mode, below which the fan does not drop (Level 1-10).
-* **`number.automatic_max_fan_level`** ("Automatic Max Fan Level")
-  * *Type:* Number (Slider)
-  * *Documentation:* Upper limit (e.g., for noise protection) for automatic mode (Level 1-10).
+* **`number.smart_automatik_co2_grenzwert`** ("Smart-Automatik: CO2 Grenzwert", YAML ID `auto_co2_threshold`)
+  * *Type:* Number (400–2000 ppm, step 50, default 1000), room-wide
+  * *Documentation:* CO2 setpoint of the PID controller. CO2 regulation is always active in Smart-Automatik and has priority over humidity.
+* **`number.smart_automatik_feuchte_grenzwert`** ("Smart-Automatik: Feuchte Grenzwert", YAML ID `auto_humidity_threshold`)
+  * *Type:* Number (40–100 %, step 5, default 60), room-wide
+  * *Documentation:* Relative humidity above which the ventilation increases (suppressed when the outdoor air is more humid, enthalpy guard).
+* **`number.smart_automatik_min_lufterstufe`** ("Smart-Automatik Min Lüfterstufe", YAML ID `automatik_min_luefterstufe`)
+  * *Type:* Number (1–3, default 2), room-wide
+  * *Documentation:* Basic ventilation (mold protection) — the automatic never goes below this level.
+* **`number.smart_automatik_max_lufterstufe`** ("Smart-Automatik Max Lüfterstufe", YAML ID `automatik_max_luefterstufe`)
+  * *Type:* Number (5–10, default 7), room-wide
+  * *Documentation:* Upper limit (e.g. noise protection) for the automatic.
+* **`number.smart_automatik_sommerkuhlung_schwelle`** ("Smart-Automatik: Sommerkühlung Schwelle", YAML ID `auto_summer_cooling_threshold`)
+  * *Type:* Number (18–30 °C, default 22), config, per device
+  * *Documentation:* Indoor temperature above which the summer bypass (free cooling via `Durchlüften`) may start. Details: [Smart-Automatik Logic](en_smart-automatic-logic.md).
 * **`number.radar_lufter_anpassung`** ("Radar Lüfter-Anpassung", YAML ID `auto_presence_slider`)
-  * *Type:* Number (Slider, -5 … +5, `0` = off), room-wide
-  * *Documentation:* Levels added to the base level in the **manual** modes while radar presence is detected anywhere in the room (any device's LD2450, shared via ESP-NOW). Not applied without presence and never in Smart Automatic.
+  * *Type:* Number (-5 … +5, `0` = off), config, room-wide
+  * *Documentation:* Levels added to the base level in the **manual** modes while radar presence is detected anywhere in the room (any device's LD2450, shared via ESP-NOW). Not applied without presence and never in Smart-Automatik.
+
+**Inputs from Home Assistant** (must exist in HA; read by the firmware, not created by it): `sensor.outdoor_humidity` (outdoor relative humidity for the enthalpy guard) and `binary_sensor.sommerbetrieb` (summer mode switch for the summer bypass).
 
 ### Smart Climate Control (HVAC Coordination)
 
 Modifier for `Smart-Automatik` while the room air conditioner is active. Full description: [📄 Smart Climate Control — HVAC Coordination](en_smart-climate-control.md).
 
 * **`switch.klima_koordination`** ("Klima-Koordination", YAML ID `smart_climate_control`)
-  * *Type:* Switch (Config, persisted), room-wide
-  * *Documentation:* Enables the HVAC coordination for the whole room (synchronized to all peers over ESP-NOW). While Home Assistant reports the AC as active (API action `set_ac_active`, pushed to any device of the room), the automatic mode switches to a CO2-only loop with a relaxed setpoint, a fan level cap and enforced heat recovery. Default: off.
+  * *Type:* Switch (config, persisted), room-wide
+  * *Documentation:* Enables the HVAC coordination for the whole room. While Home Assistant reports the AC as active (API action `set_ac_active`, pushed to any device of the room), the automatic switches to a CO2-only loop with a relaxed setpoint, a fan level cap and enforced heat recovery. Default: off.
 * **`number.klima_koordination_co2_grenzwert`** ("Klima-Koordination: CO2 Grenzwert", YAML ID `hvac_co2_threshold`)
-  * *Type:* Number (Slider, 800–1500 ppm), room-wide
-  * *Documentation:* Relaxed CO2 setpoint while the AC is active (default 1200 ppm). Also the release threshold of the CO2 emergency. Like the other two HVAC sliders this is a **room-wide** value: a change on any device is synchronized to all peers of the room over ESP-NOW.
+  * *Type:* Number (800–1500 ppm, default 1200), config, room-wide
+  * *Documentation:* Relaxed CO2 setpoint while the AC is active; also the release threshold of the CO2 emergency.
 * **`number.klima_koordination_max_lufterstufe`** ("Klima-Koordination: Max Lüfterstufe", YAML ID `hvac_max_fan_level`)
-  * *Type:* Number (Slider, 1–5)
-  * *Documentation:* Hard fan level cap while the AC is active (default 3). The minimum is always Level 1.
+  * *Type:* Number (1–5, default 3), config, room-wide
+  * *Documentation:* Hard fan level cap while the AC is active.
 * **`number.klima_koordination_co2_notfallgrenze`** ("Klima-Koordination: CO2 Notfallgrenze", YAML ID `hvac_emergency_co2`)
-  * *Type:* Number (Slider, 1200–2000 ppm)
-  * *Documentation:* CO2 level at which the normal automatic regulation resumes regardless of the AC state (default 1500 ppm, kept at least 100 ppm above the relaxed setpoint).
+  * *Type:* Number (1200–2000 ppm, default 1500), config, room-wide
+  * *Documentation:* CO2 level at which the normal automatic regulation resumes regardless of the AC state (kept at least 100 ppm above the relaxed setpoint).
 * **`text_sensor.klima_koordination_status`** ("Klima-Koordination Status", YAML ID `hvac_status`)
-  * *Type:* Text Sensor (Diagnostic)
-  * *Documentation:* Current coordinator state: `Deaktiviert`, `Inaktiv (kein Smart-Automatik)`, `Bereit (Klima aus)`, `Aktiv (gedrosselt)`, `Notfall (CO2)`, `Notfall (Feuchte)`, `Ausgesetzt (kein CO2-Wert im Raum)`. Devices without a CO2 sensor use the CO2 reading shared by a peer over ESP-NOW.
+  * *Type:* Text Sensor (diagnostic)
+  * *Documentation:* `Deaktiviert`, `Inaktiv (kein Smart-Automatik)`, `Bereit (Klima aus)`, `Aktiv (gedrosselt)`, `Notfall (CO2)`, `Notfall (Feuchte)`, `Ausgesetzt (kein CO2-Wert im Raum)`.
 * **`binary_sensor.klima_aktiv_ha_signal`** ("Klima aktiv (HA-Signal)", YAML ID `hvac_ac_active`)
-  * *Type:* Binary Sensor (Diagnostic)
-  * *Documentation:* AC state last pushed by Home Assistant to this device via the API action `set_ac_active` (expires after 15 min without a new push). The coordinator also honours the AC state that a peer of the room received.
+  * *Type:* Binary Sensor (diagnostic)
+  * *Documentation:* AC state last pushed by HA to this device (expires after 15 min without a new push). The coordinator also honours the AC state a peer of the room received.
 
 ### Window Guard
 
 Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Setup](en_window-guard-ha-setup.md).
 
 * **`binary_sensor.fenster_offen_ha_signal`** ("Fenster offen (HA-Signal)", YAML ID `window_locked`)
-  * *Type:* Binary Sensor (Diagnostic)
-  * *Documentation:* Window state last pushed by Home Assistant to this device via the API action `set_window_open` (expires after 15 min without a new push → treated as closed). The guard also honours the window state that a peer of the room received.
+  * *Type:* Binary Sensor (diagnostic)
+  * *Documentation:* Window state last pushed by HA via the API action `set_window_open` (expires after 15 min → treated as closed). Peers' window states are honoured as well.
 * **`text_sensor.fenstersperre_aktiv`** ("Fenstersperre Aktiv", YAML ID `window_guard_status`)
   * *Type:* Text Sensor (`Ja` / `Nein`)
   * *Documentation:* Resulting room-wide lock (engaged after 5 s of "open").
 * **`switch.fenstersperre_ignorieren`** ("Fenstersperre ignorieren", YAML ID `ignore_window_guard_switch`)
-  * *Type:* Switch (Config, persisted, per device)
+  * *Type:* Switch (config, persisted, per device)
   * *Documentation:* Excludes this device from the window lock.
 
-## 3. Times & Intervals
+## 3. Sensor Data & Climate
 
-* **`number.vent_timer`** ("Durchlüften Dauer (min)")
-  * *Type:* Number (0–120 min, step 5, default 30), room-wide
-  * *Documentation:* Duration of the manual `Durchlüften` mode; afterwards the room returns to `Wärmerückgewinnung` (0 = continuous operation). Not used by `Stoßlüftung` (fixed 15/105 min cycle) or by the automatic summer bypass.
-* **`number.sync_interval_config`** ("Sync Interval")
-  * *Type:* Number
-  * *Documentation:* Defines the rhythm for synchronizing device groups via WiFi / ESP-NOW.
+### Combined & Calculated Values
+* **`sensor.effektiver_co2_wert`** ("Effektiver CO2 Wert", YAML ID `effective_co2`) — CO2 used by the regulation: SCD43 (NDIR), BME680 CO2 estimate as fallback.
+* **`text_sensor.co2_bewertung`** ("CO2 Bewertung", YAML ID `effective_co2_bewertung`) — qualitative rating of the CO2 value.
+* **`sensor.wrg_effizienz`** ("WRG Effizienz", YAML ID `heat_recovery_efficiency`) — measured heat recovery efficiency (%), see [Heat Recovery & Efficiency](en_heat-recovery-and-efficiency.md).
+* **`sensor.wrg_effizienz_zyklus`** ("WRG Effizienz (Zyklus)") / **`sensor.wrg_energie_zyklus`** ("WRG Energie (Zyklus)") — efficiency and recovered energy (Wh) of the last push-pull cycle.
+* **`text_sensor.wrg_referenz_messpunkt`** ("WRG Referenz-Messpunkt", YAML ID `wrg_reference_sensor`) — which sensor currently provides the room temperature reference.
 
-## 4. Sensor Data & Climate
+### Hardware Sensors
+* **SCD43** (precision CO2): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
+* **BME680** (environment & IAQ): `sensor.bme680_temperatur`, `sensor.bme680_luftdruck_relativ`, `sensor.bme680_taupunkt`, `sensor.bme680_absolute_feuchtigkeit`, `sensor.bme680_gas_basiswert`, `sensor.bme680_luftqualitat_co2eq`, `sensor.bme680_iaq_trend`, `binary_sensor.bme680_sensor_health`, `text_sensor.bme680_iaq_bewertung`, `text_sensor.bme680_iaq_trendrichtung`, `text_sensor.bme680_sensor_status`
+* **BMP390** (precision pressure): `sensor.bmp390_luftdruck`, `sensor.bmp390_temperatur`
+* **NTC thermistors** (air in the tube): `sensor.temp_abluft_innen` ("Temp. Abluft (Innen)"), `sensor.temp_zuluft_aussen` ("Temp. Zuluft (Außen)"), plus the diagnostic `…_raw` values
 
-These entities represent values read from hardware sensors.
+## 4. Radar / Presence (HLK-LD2450)
 
-* **`sensor.scd41_temperature`** ("SCD43 Temperature")
-  * *Type:* Sensor (SCD4x)
-  * *Documentation:* Indoor temperature at the control unit.
-* **`sensor.scd41_humidity`** ("SCD43 Humidity")
-  * *Type:* Sensor (SCD4x)
-  * *Documentation:* Indoor humidity at the control unit.
-* **`sensor.scd41_co2`** ("SCD43 CO2")
-  * *Type:* Sensor (SCD4x)
-  * *Documentation:* Real CO2 measurement (ppm).
-* **`text_sensor.scd41_co2_evaluation`** ("SCD43 CO2 Evaluation")
-  * *Type:* Text Sensor
-  * *Documentation:* Provides CO2 quality in text form (e.g., "Excellent", "Poor").
-* **`sensor.temp_supply_air`** ("Temperature Supply Air (Indoor)")
-  * *Type:* Sensor (NTC)
-  * *Documentation:* Monitors the supply air temperature in the tube.
-* **`sensor.temp_extract_air`** ("Temperature Extract Air (Outdoor)")
-  * *Type:* Sensor (NTC)
-  * *Documentation:* Monitors the extract air temperature towards the outer wall.
-* **`sensor.heat_recovery_efficiency`** ("Heat Recovery Efficiency")
-  * *Type:* Sensor (Template)
-  * *Documentation:* Continuously calculates the theoretical efficiency (%) based on indoor, outdoor, and tube temperature differentials.
-* **`sensor.temperature`** ("BMP390 Temperature") / **`sensor.pressure`** ("BMP390 Air Pressure")
-  * *Type:* Sensor
-  * *Documentation:* Optional sensor for air pressure (used for auto-calibration of the CO2 sensor at specific altitudes).
+* **`binary_sensor.radar_anwesenheit`** ("Radar Anwesenheit") — presence detected
+* `binary_sensor.radar_bewegung` ("Radar Bewegung"), `binary_sensor.radar_stillstand` ("Radar Stillstand"), `sensor.radar_anzahl_ziele` ("Radar Anzahl Ziele")
 
-## 5. Radar / Presence (HLK-LD2450)
+## 5. Maintenance & Hardware
 
-* **`binary_sensor.radar_presence`** ("Radar Presence")
-  * *Type:* Binary Sensor
-  * *Documentation:* General motion detection (Active/Inactive).
-* **Further Targets:**
-  * `binary_sensor.radar_moving_target`
-  * `binary_sensor.radar_still_target`
-  * `sensor.radar_total_target_count`
+* **`binary_sensor.filterwechsel_alarm`** ("Filterwechsel Alarm", YAML ID `filter_change_alarm`) — on after 8,760 fan operating hours or 3 years since the last filter change. Setup: [Filter Change Alarm](en_filter-change-alarm-ha-setup.md).
+* **`sensor.filter_betriebstage`** ("Filter Betriebstage", YAML ID `filter_operating_days_sensor`) — operating days since the last filter change (diagnostic).
+* **`button.filterwechsel_reset`** ("Filterwechsel (Reset)", YAML ID `filter_reset_btn`) — resets the counter after a filter change (config).
+* **`button.bme680_basiswert_zurucksetzen`** ("BME680 Basiswert zurücksetzen") — resets the BME680 gas baseline (new burn-in phase).
+* **`button.esp_neustart_erzwingen`** ("ESP Neustart erzwingen", YAML ID `force_restart_button`) — restarts the ESP32 (config).
+* **`number.maximale_led_helligkeit`** ("Maximale LED Helligkeit", YAML ID `led_max_brightness_config`) — maximum panel LED brightness, 5–100 % (default 80 %), room-wide.
+* **`switch.kindersicherung`** ("Kindersicherung", YAML ID `child_lock_switch`) — locks the panel buttons of this device (config, persisted). See [Comfort & Safety](en_comfort-and-safety-features.md#-child-protection-mode).
 
-## 6. Maintenance & Hardware
+The panel LEDs themselves are driven by the firmware and are **not** exposed as light entities.
 
-* **`binary_sensor.filter_change_alarm`** ("Filter Change Alarm")
-  * *Type:* Binary Sensor
-  * *Documentation:* Becomes active as soon as the calculated operating days exceed the maintenance interval.
-* **`sensor.filter_operating_days_sensor`** ("Filter Operating Days")
-  * *Type:* Sensor (Template)
-  * *Documentation:* Counter of active operating days since the last filter change.
-* **`button.filter_reset_btn`** ("Filter Changed (Reset)")
-  * *Type:* Button
-  * *Documentation:* Resets the operating days counter to 0 after a physical filter replacement.
-* **`button.system_reboot`** ("System Reboot")
-  * *Type:* Button
-  * *Documentation:* Triggers a restart of the ESP32.
+## 6. Vacation Mode
 
-## 7. Status LEDs & Visual Feedback
+* **`select.urlaubsmodus_betriebsmodus`** ("Urlaubsmodus Betriebsmodus") — mode during vacation (default `Stoßlüftung`), config.
+* **`number.urlaubsmodus_intensitat`** ("Urlaubsmodus Intensität") — level during vacation (1–10, default 1), config.
+* Switched by the HA helper `input_boolean.ventosync_vacation_mode` (substitution `vacation_sensor_id`); the Master applies it for the room. Setup: [Vacation Mode](en_vacation-mode-ha-setup.md).
 
-Physical LEDs on the controller interface.
+## 7. Setup, Network & Diagnostics
 
-* `light.status_led_power` ("Status LED Power")
-* `light.status_led_master` ("Status LED Master" - with "Error Blink" warnings)
-* `light.status_led_mode_wrg` ("Status LED Mode HRV" - with "Automatic Pulse")
-* `light.status_led_mode_vent` ("Status LED Mode Vent")
-* `light.status_led_l1` to `light.status_led_l5` ("Status LED L1" - "L5" for intensity display)
+(Mainly needed for the initial configuration after installing the hardware.)
 
-## 8. Setup & Device Configuration
+* **`number.id_stockwerk`**, **`number.id_raum`**, **`number.id_gerat`** ("ID Stockwerk" / "ID Raum" / "ID Gerät", config) — floor, room and device ID. Devices with the same floor + room form a room group; device ID 1 is the Master.
+* **`select.gerate_phase_a_b`** ("Geräte-Phase (A|B)", YAML ID `config_phase`) — Phase A starts with supply air, Phase B with extract air (push-pull pairs need one of each).
+* **`button.auf_standardwerte_zurucksetzen`** ("Auf Standardwerte zurücksetzen", config) — resets floor, room and device ID.
+* **`button.force_espnow_discovery`** ("Force ESPNOW Discovery", diagnostic) — searches for peers of the room.
+* **`number.sync_intervall`** ("Sync Intervall", YAML ID `sync_interval_config`) — Master heartbeat interval over ESP-NOW (1–360 min, default 1).
+* **`text_sensor.gerate_konfiguration`** ("Geräte-Konfiguration"), **`sensor.id_stockwerk`**, **`sensor.id_raum`**, **`sensor.id_gerat`** — active IDs and phase (diagnostic).
+* **`text_sensor.esp_now_peers`** ("ESP-NOW Peers") and **`switch.esp_now_peerprufung`** ("ESP-NOW Peerprüfung") — known peers of the room.
+* System: `sensor.wlan_signal`, `sensor.wlan_kanal`, `sensor.laufzeit`, `sensor.freier_speicher_ram`, `sensor.watchdog_restarts`, `sensor.internal_esp32_c6_temperature`, `text_sensor.ip_adresse`, `text_sensor.wlan_ssid`, `text_sensor.esphome_version`, `text_sensor.projektversion`, `update.firmware_update`.
 
-(Note: These entities are primarily intended for initial configuration after installing the hardware)
+## 8. Flash Memory & Lifetime (NVS)
 
-* **`number.config_floor_id`**, **`number.config_room_id`**, **`number.config_device_id`**
-  * *Type:* Number
-  * *Documentation:* Address configuration of the device for group synchronization via ESP-NOW. Devices with the same Floor+Room form a multi-device group.
-* **`switch.config_phase`** ("Device Phase (A/B)")
-  * *Type:* Switch
-  * *Documentation:* Changes the initial fan rhythm for push-pull pairs (Phase A starts blowing, Phase B starts sucking).
-* **`button.device_config_summary`** ("Device Configuration")
-  * *Type:* Button
-  * *Documentation:* Saves and applies the group IDs configured above (Device Builder Helper).
-* **`button.reset_to_defaults`** ("Reset to Defaults")
-  * *Type:* Button
-  * *Documentation:* Resets EEPROM/VLAN values of the room assignments.
+To protect the ESP32 flash from premature wear, high-frequency data is buffered in RAM:
 
-*(Additionally, the project provides standard sensors for WiFi, uptime, and IP information as diagnostic entities).*
+* **Filter operating hours:** written to NVS at most every **8 hours** (after a sudden power loss at most the last 8 h of runtime are lost).
+* **BME680 baseline:** saved at most once per hour and only after a change of ≥ 2 %.
+* **Settings** (mode, sliders, switches): stored when they change.

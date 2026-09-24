@@ -20,7 +20,7 @@ The system automatically tracks the operating hours of the fan and triggers an a
 | --- | --- | --- |
 | `binary_sensor.filterwechsel_alarm` | Binary Sensor | `ON` = filter change recommended |
 | `sensor.filter_betriebstage` | Sensor | Fan runtime in days since last change |
-| `button.filter_gewechselt_reset` | Button | Press after filter change → resets counter |
+| `button.filterwechsel_reset` | Button | Press after filter change → resets counter |
 
 **Example: Push notification via HA Automation**
 
