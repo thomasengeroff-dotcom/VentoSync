@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.25",
+    "project_version": "0.10.26",
     "project_date": "2026-09-24",
-    "project_description": "Stoßlüftung: one-way bursts, schedule synchronized room-wide with the Master."
+    "project_description": "Aus: room-wide on/off, Power button restores the last mode, Wi-Fi-off long press removed, no API reboot without HA."
 }
