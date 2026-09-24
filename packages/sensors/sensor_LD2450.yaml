@@ -23,7 +23,7 @@
 #              The UART is defined in hardware_io.yaml (id: uart_ld2450)
 # Author:      Thomas Engeroff
 # Created:     2026-03-28
-# Modified:    2026-04-21
+# Modified:    2026-09-24
 # ==========================================================================
 
 ld2450:
@@ -42,6 +42,10 @@ binary_sensor:
     has_target:
       name: "Radar Anwesenheit"
       id: radar_presence
+      # Share presence with the room immediately (ROOM_FLAG_PRESENCE);
+      # the 30 s off-delay is applied in refresh_local_room_flags().
+      on_state:
+        - lambda: "auto_mode::refresh_local_room_flags(millis());"
     has_moving_target:
       name: "Radar Bewegung"
     has_still_target:

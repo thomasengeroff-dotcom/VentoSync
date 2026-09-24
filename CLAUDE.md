@@ -165,7 +165,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 - **Protocol version:** `v10` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 10` in `ventilation_group.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
-  window state).
+  window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged).
 - **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
@@ -181,7 +181,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   applied in `handle_config_sync()` only inside the HA slider ranges, and re-asserted by the Master heartbeat.
 - **Room-wide fusion** (`components/ventilation_logic/room_fusion.h`, `ventosync::room`):
   - Devices broadcast **only their own inputs**: `pid_demand` (NaN without sensors), `room_co2`,
-    `room_humidity`, the HA-pushed AC / window state (`ROOM_FLAG_AC_ACTIVE`, `ROOM_FLAG_WINDOW_OPEN`).
+    `room_humidity`, the HA-pushed AC / window state (`ROOM_FLAG_AC_ACTIVE`, `ROOM_FLAG_WINDOW_OPEN`), the own
+    radar presence held 30 s (`ROOM_FLAG_PRESENCE`).
     **Never re-broadcast a fused/adopted value** —
     two devices would latch each other at a high level (feedback loop, CHANGELOG 0.10.21).
   - Receivers fuse the maximum (or OR) over all fresh peers — not only the last received packet. Freshness:
@@ -235,7 +236,7 @@ Complex YAML lambda logic is extracted into focused header files:
     configuration ranges (`CO2_THRESHOLD_*`, `EMERGENCY_CO2_*`, `MAX_FAN_LEVEL_CONFIG_*`) that must match the
     HA sliders in `ui_controls.yaml`.
   - `room_fusion.h` (`ventosync::room`): room-wide max of CO2 / humidity / peer demand, OR of the peers' AC /
-    window flags (freshness ≥ 5 min), `HaPushedFlag` for expiring HA-pushed inputs.
+    window / presence flags (freshness ≥ 5 min), `HaPushedFlag` for expiring HA-pushed inputs, `PresenceHold`.
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices
@@ -293,6 +294,9 @@ Complex YAML lambda logic is extracted into focused header files:
 - **Conflict resolution (hysteresis):** CO2 grabs exclusive priority at `co2_demand >= 0.01`, releases at
   `< 0.005`; while CO2 controls, the higher of both demands is used.
 - **Room fusion:** effective demand = max(local sensor demand, freshest peer demands) — see ESP-NOW section.
+- **Presence offset** (`auto_presence_val`, -5…+5, room-wide setting): applied only in the **manual** modes while
+  radar presence is detected anywhere in the room (`room_presence_detected()` in `automation_helpers.h`), never
+  in Smart-Automatik. Room-wide so push-pull pairs stay balanced.
 - **Soft rate limiting:** at most ±1 level per 10-second evaluation cycle (±2 right after a mode change).
 - **Dynamic limits:** `automatik_min_luefterstufe` (default 2) … `automatik_max_luefterstufe` (default 7).
 - **Enthalpy guard (Magnus formula):** humidity demand is suppressed when outdoor absolute humidity (g/m³)

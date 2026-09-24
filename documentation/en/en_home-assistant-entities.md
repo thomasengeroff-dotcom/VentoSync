@@ -41,9 +41,9 @@ These entities configure the behavior of the "Automatic" mode.
 * **`number.automatic_max_fan_level`** ("Automatic Max Fan Level")
   * *Type:* Number (Slider)
   * *Documentation:* Upper limit (e.g., for noise protection) for automatic mode (Level 1-10).
-* **`number.auto_presence_slider`** ("Presence Fan Adjustment")
-  * *Type:* Number (Slider)
-  * *Documentation:* Allows setting (from -5 to +5) how many levels the ventilation should be increased/decreased when the radar sensor detects a person in the room.
+* **`number.radar_lufter_anpassung`** ("Radar Lüfter-Anpassung", YAML ID `auto_presence_slider`)
+  * *Type:* Number (Slider, -5 … +5, `0` = off), room-wide
+  * *Documentation:* Levels added to the base level in the **manual** modes while radar presence is detected anywhere in the room (any device's LD2450, shared via ESP-NOW). Not applied without presence and never in Smart Automatic.
 
 ### Smart Climate Control (HVAC Coordination)
 

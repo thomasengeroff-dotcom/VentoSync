@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-09-23
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 
@@ -103,6 +103,10 @@ static constexpr uint8_t PROTOCOL_VERSION = 10; // Bumped: room_flags (HVAC swit
 static constexpr uint8_t ROOM_FLAG_HVAC_ENABLED = 0x01; ///< Room-wide "Klima-Koordination" switch (setting, synced like the sliders).
 static constexpr uint8_t ROOM_FLAG_AC_ACTIVE = 0x02;    ///< Sender's OWN Home Assistant AC state (fresh) — never a fused value.
 static constexpr uint8_t ROOM_FLAG_WINDOW_OPEN = 0x04;  ///< Sender's OWN Home Assistant window state (fresh) — never a fused value.
+/// Sender's OWN radar presence (held 30 s) — never a fused value. Added in
+/// 0.10.23 without a protocol bump: same layout, older v10 firmware simply
+/// never sets it (its presence is then not shared).
+static constexpr uint8_t ROOM_FLAG_PRESENCE = 0x08;
 /// @}
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
@@ -181,6 +185,7 @@ struct PeerState {
   float room_humidity;
   bool hvac_ac_active; ///< Peer's own HA AC state (ROOM_FLAG_AC_ACTIVE).
   bool window_open;    ///< Peer's own HA window state (ROOM_FLAG_WINDOW_OPEN).
+  bool presence;       ///< Peer's own radar presence (ROOM_FLAG_PRESENCE).
 };
 
 // ---------------------------------------------------------
@@ -254,6 +259,9 @@ public:
   /// Window state Home Assistant pushed to THIS device (fresh, API connected).
   /// Broadcast as ROOM_FLAG_WINDOW_OPEN; set by auto_mode.h. Never fused.
   bool window_local_open = false;
+  /// Radar presence of THIS device (held 30 s, see PresenceHold). Broadcast
+  /// as ROOM_FLAG_PRESENCE; set by auto_mode.h. Never fused.
+  bool presence_local = false;
 
   // --- PEER TRACKING (dashboard + room-wide sensor/demand fusion) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
@@ -639,6 +647,7 @@ public:
       peer.room_humidity = pkt->room_humidity;
       peer.hvac_ac_active = (pkt->room_flags & ROOM_FLAG_AC_ACTIVE) != 0;
       peer.window_open = (pkt->room_flags & ROOM_FLAG_WINDOW_OPEN) != 0;
+      peer.presence = (pkt->room_flags & ROOM_FLAG_PRESENCE) != 0;
     };
 
     bool found_peer = false;
@@ -870,6 +879,7 @@ public:
     if (hvac_enabled_global_ != nullptr && hvac_enabled_global_->value()) pkt.room_flags |= ROOM_FLAG_HVAC_ENABLED;
     if (hvac_local_ac_active) pkt.room_flags |= ROOM_FLAG_AC_ACTIVE;    // own HA state only
     if (window_local_open) pkt.room_flags |= ROOM_FLAG_WINDOW_OPEN;     // own HA state only
+    if (presence_local) pkt.room_flags |= ROOM_FLAG_PRESENCE;           // own radar only
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

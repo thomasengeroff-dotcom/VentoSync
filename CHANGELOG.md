@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.23] - 2026-09-24
+
+### Fixed
+
+- **Presence offset unbalanced push-pull pairs** (`automation_helpers.h`, `room_fusion.h`): the radar presence offset (`auto_presence_val`, "Radar Lüfter-Anpassung") was evaluated per device — if only one device of a push-pull pair saw a person, it ran e.g. at level 5+3 while its partner stayed at 5, so supply and exhaust airflow no longer matched. Presence is now **room-wide**: each device shares its own LD2450 presence (`ROOM_FLAG_PRESENCE`, bit 3 of `room_flags`, held 30 s against flicker, broadcast immediately on change) and every device applies the offset while presence is detected anywhere in the room. Backward compatible (same packet layout, no protocol bump): devices still on 0.10.22 just don't share their presence.
+
+### Changed
+
+- Operating-modes docs (EN/DE), Heat Recovery: exact direction interval per level (level 5 = 61 s, was documented as 60 s), clarified that 50–70 s is the time **per direction** (full cycle 100–140 s) with 5 s ramps, fan level kept when switching from Smart Automatic, presence adjustment described correctly (only while occupied, all manual modes, room-wide, never in Smart Automatic), 85 % marked as manufacturer figure with a pointer to the measured `sensor.wrg_effizienz`.
+- Corrected the presence slider description in the entity docs (actual entity name "Radar Lüfter-Anpassung"), the VentoMaxx comparison and the misleading `auto_presence_val` comment in `globals_automation.yaml`.
+
+### Added
+
+- Unit test T-7r (presence hold, peer presence fusion).
+
 ## [0.10.22] - 2026-09-23
 
 > **Breaking (Smart Climate Control, Window Guard):** ESP-NOW protocol **v10** — flash **all devices of a room** together. AC state and window state now come from Home Assistant **automations** calling the API actions `set_ac_active` / `set_window_open` (the imported `binary_sensor.ventosync_hvac_active_room_<room_id>` and `binary_sensor.ventosync_window_lock_room_<room_id>` are no longer read — existing HA helpers can serve as the automations' triggers). The "Klima-Koordination" switch starts **off** after the update — switch it on once per room. Setup: `documentation/en/en_smart-climate-control.md`, `documentation/en/en_window-guard-ha-setup.md`.

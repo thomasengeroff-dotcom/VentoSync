@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-23
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -478,8 +478,9 @@ inline void fill_ac_inputs(ventosync::hvac::Inputs &in, uint32_t now) {
  * @brief   Refreshes the room flags this device broadcasts to its peers.
  *
  * @details AC state (`set_ac_active`) and window state (`set_window_open`)
- *          as pushed by Home Assistant to THIS device — only the local push
- *          is broadcast (never the room-wide OR), so the flags cannot latch
+ *          as pushed by Home Assistant to THIS device, plus the own radar
+ *          presence (held 30 s) — only local inputs are broadcast (never the
+ *          room-wide OR), so the flags cannot latch
  *          between devices. Both expire (HA re-sends every 5 min) and read
  *          as false while the API link is down. Called every 10 s regardless
  *          of the operating mode and on every HA push; a change triggers an
@@ -493,9 +494,13 @@ inline void refresh_local_room_flags(uint32_t now) {
   fill_ac_inputs(in, now);
   const bool ac = ventosync::hvac::local_ac_active(in);
   const bool window = window_state::pushed.active(now, in.ha_connected);
-  if (ac != v->hvac_local_ac_active || window != v->window_local_open) {
+  // Own radar presence (LD2450; mock = false), held 30 s against flicker.
+  const bool raw_presence = (radar_presence != nullptr) && radar_presence->has_state() && radar_presence->state;
+  const bool presence = presence_state::hold.update(raw_presence, now);
+  if (ac != v->hvac_local_ac_active || window != v->window_local_open || presence != v->presence_local) {
     v->hvac_local_ac_active = ac;
     v->window_local_open = window;
+    v->presence_local = presence;
     v->pending_broadcast = true; // MSG_SYNC: peers only refresh their PeerState
   }
 }

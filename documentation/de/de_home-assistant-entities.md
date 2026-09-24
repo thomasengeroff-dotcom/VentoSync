@@ -44,9 +44,9 @@ Mit diesen Entitäten wird das Verhalten des "Smart-Automatik" Modus konfigurier
 * **`number.automatik_co2_max_luefterstufe`** ("Automatik Max Lüfterstufe")
   * *Typ:* Number (Slider)
   * *Dokumentation:* Obergrenze (z. B. als Lärmschutz) für den Automatikmodus (Stufe 1-10).
-* **`number.auto_presence_slider`** ("Anwesenheit Lüfter-Anpassung")
-  * *Typ:* Number (Slider)
-  * *Dokumentation:* Ermöglicht die Einstellung (von -5 bis +5), wie viele Stufen die Lüftung erhöht/gesenkt werden soll, wenn der Radar-Sensor eine Person im Raum erkennt.
+* **`number.radar_lufter_anpassung`** ("Radar Lüfter-Anpassung", YAML-ID `auto_presence_slider`)
+  * *Typ:* Number (Slider, -5 … +5, `0` = aus), raumweit
+  * *Dokumentation:* Stufen, die in den **manuellen** Modi zur Grundstufe addiert werden, solange irgendwo im Raum Radar-Anwesenheit erkannt wird (LD2450 eines beliebigen Geräts, per ESP-NOW geteilt). Ohne Anwesenheit keine Anpassung, in der Smart-Automatik nie.
 
 ### Klima-Koordination (Smart Climate Control)
 

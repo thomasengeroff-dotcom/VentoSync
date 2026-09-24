@@ -419,6 +419,7 @@ struct TestPeer {
   float room_temp;
   bool hvac_ac_active = false;
   bool window_open = false;
+  bool presence = false;
 };
 
 // T-7k: Room-wide CO2 fusion — max of local + fresh peers, stale/mock values rejected
@@ -660,6 +661,29 @@ bool test_window_guard_inputs() {
   peers.push_back({now - 500u, nan, nan, nan, nan, true, true});
   TEST_ASSERT(any_fresh_peer_window_open(peers, now));
   TEST_ASSERT(any_fresh_peer_ac_active(peers, now));
+  return true;
+}
+
+// T-7r: Room-wide radar presence — off-delay hold and peer flag
+bool test_room_presence() {
+  using namespace ventosync::room;
+  PresenceHold h;
+  TEST_ASSERT(!h.update(false, 1000u));                 // never seen
+  TEST_ASSERT(h.update(true, 2000u));                   // rising edge immediate
+  TEST_ASSERT(h.update(false, 2000u + PRESENCE_HOLD_MS - 1u)); // still held
+  TEST_ASSERT(!h.update(false, 2000u + PRESENCE_HOLD_MS));     // released
+  PresenceHold wrap;
+  wrap.update(true, 0xFFFFFF00u);
+  TEST_ASSERT(wrap.update(false, 0x00000100u));         // millis() wrap-safe
+
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const uint32_t now = 1000000u;
+  std::vector<TestPeer> peers = {{now - 1000u, nan, nan, nan, nan, false, false, false}};
+  TEST_ASSERT(!any_fresh_peer_presence(peers, now));
+  peers.push_back({now - PEER_DATA_MAX_AGE_MS - 1u, nan, nan, nan, nan, false, false, true});
+  TEST_ASSERT(!any_fresh_peer_presence(peers, now));    // stale peer
+  peers.push_back({now - 500u, nan, nan, nan, nan, false, false, true});
+  TEST_ASSERT(any_fresh_peer_presence(peers, now));
   return true;
 }
 
@@ -1309,6 +1333,7 @@ int main() {
     {"T-7o: HVAC config ranges + fusion window", test_hvac_config_ranges},
     {"T-7p: Auto level mapping enforces the window (HVAC cap)", test_auto_target_level},
     {"T-7q: Window Guard inputs (HA push expiry, peers)", test_window_guard_inputs},
+    {"T-7r: Room-wide radar presence (hold, peers)", test_room_presence},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

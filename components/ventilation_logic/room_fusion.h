@@ -21,7 +21,7 @@
 // Description: Pure room-wide sensor/demand fusion helpers (ESP-NOW peers).
 // Author:      Thomas Engeroff
 // Created:     2026-09-23
-// Modified:    2026-09-23
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 
@@ -208,6 +208,39 @@ inline bool any_fresh_peer_window_open(const Peers &peers, uint32_t now_ms,
                                        uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
   return any_fresh_peer(peers, now_ms, [](const auto &p) { return p.window_open; }, max_age_ms);
 }
+
+/// @brief True if any fresh peer reports radar presence (its own sensor, held).
+template <typename Peers>
+inline bool any_fresh_peer_presence(const Peers &peers, uint32_t now_ms,
+                                    uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  return any_fresh_peer(peers, now_ms, [](const auto &p) { return p.presence; }, max_age_ms);
+}
+
+/// Radar presence is held this long after the last detection before it is
+/// cleared (local use and broadcast). Absorbs flicker of the LD2450 target
+/// flag so the room does not toggle the fan level / flood ESP-NOW.
+constexpr uint32_t PRESENCE_HOLD_MS = 30000u;
+
+/**
+ * @brief   Radar presence with an off-delay (hold).
+ *
+ * @details Rising edge is immediate; the flag drops only after
+ *          PRESENCE_HOLD_MS without a detection. Wrap-safe.
+ */
+struct PresenceHold {
+  bool seen = false;
+  uint32_t last_ms = 0;
+
+  /// @brief Feeds the raw sensor value; returns the held presence.
+  bool update(bool raw, uint32_t now_ms) {
+    if (raw) {
+      seen = true;
+      last_ms = now_ms;
+      return true;
+    }
+    return seen && static_cast<uint32_t>(now_ms - last_ms) < PRESENCE_HOLD_MS;
+  }
+};
 
 /// A boolean pushed by Home Assistant via an API action is trusted for at
 /// most this long; the HA automation re-sends it periodically (every 5 min).
