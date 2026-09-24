@@ -453,8 +453,8 @@ Das Gerät verfügt über ein 3-Tasten-Bedienpanel mit 9 Status-LEDs (dimmbar, m
 
 - **Power (I/O)**: Ein Druck schaltet den Raum zwischen `Aus` und dem zuletzt aktiven Modus um; sehr langer Druck (>10s) startet das Gerät neu.
 - **Modus (M)**: Zykliert durch `Automatik` → `Wärmerückgewinnung` → `Durchlüften` → `Stoßlüftung` → `Aus`.
-- **Stufe (+)**: Zykliert durch 10 Lüfterstufen (kurzer Druck) oder läuft die Stufen fortlaufend durch (gedrückt halten).
-- **Feedback**: 5 Intensitäts-LEDs (Balkenanzeige mit 50%/100%-Helligkeitsstufen), 2 Modus-LEDs (`LED_WRG` / `LED_VEN`), Power-LED und Master-Diagnose-LED.
+- **Stufe (+)**: Zykliert durch 10 Lüfterstufen (kurzer Druck) oder läuft die Stufen fortlaufend durch (gedrückt halten) — raumweit. In der Smart-Automatik übernimmt die Automatik die Stufe in ihren nächsten Regelzyklen (alle 10 s) wieder.
+- **Feedback**: 5 Intensitäts-LEDs (Balkenanzeige: gedimmt (20 %) bei ungerader, voll bei gerader Stufe), 2 Modus-LEDs (`LED_WRG` / `LED_VEN`), Power-LED und Master-Diagnose-LED.
 
 > 📖 **Vollständige Bedienungsanleitung:**  
 > Alle Details zu Tastenfunktionen, der 10-stufigen LED-Balkenlogik, den Diagnose-Blinkmustern (Master-LED) und dem Gruppen-Wake-Up findest du in der **[📄 Bedienungsanleitung Lüftungsgerät](documentation/de/de_control-panel-operation.md)**.
@@ -469,11 +469,11 @@ Die Lüftungsanlage unterstützt 5 Betriebsmodi, die über die physische **Modus
 
 | # | Modus | Panel-LEDs (`WRG` / `VEN`) | Betrieb & Kernfunktion | HA-Entität / Auswahl |
 | :-: | :--- | :---: | :--- | :--- |
-| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Vollautonome PID-Regelung auf Basis von CO2, Feuchte und Außenluftbedingungen | `select.luefter_modus` → `Smart-Automatik` |
-| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Manueller Push-Pull-Betrieb (50s–70s pro Richtung, stufenabhängig), bis zu 85% Wärmerückgewinnung (Herstellerangabe) | `select.luefter_modus` → `Wärmerückgewinnung` |
-| **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter unidirektionaler Luftzug (Phase A rein, Phase B raus) zur passiven Nachtkühlung | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | 15 min Lüften in eine Richtung, danach 105 min Regenerationspause des Keramikkerns | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter des Raums gestoppt (0 RPM); alle Klimasensoren & Web-UI bleiben für die Datenaufzeichnung online | `select.luefter_modus` → `Aus` |
+| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Vollautonome PID-Regelung auf Basis von CO2, Feuchte und Außenluftbedingungen | `select.luftermodus` → `Smart-Automatik` |
+| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Manueller Push-Pull-Betrieb (50s–70s pro Richtung, stufenabhängig), bis zu 85% Wärmerückgewinnung (Herstellerangabe) | `select.luftermodus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstante Querlüftung in eine Richtung (Phase A rein, Phase B raus) für schnellen Luftaustausch und passive Kühlung; optionaler Timer | `select.luftermodus` → `Durchlüften` |
+| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | 15 min Lüften in eine Richtung, danach 105 min Regenerationspause des Keramikkerns | `select.luftermodus` → `Stoßlüftung` |
+| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter des Raums gestoppt (0 RPM); alle Klimasensoren & Web-UI bleiben für die Datenaufzeichnung online | `select.luftermodus` → `Aus` |
 
 > 📖 **Ausführlicher Betriebsmodi-Guide:**  
 > Alle technischen Details zur PID-Regellogik, Praxisbeispiele mit Zeitverlauf, enthalpiebasierte Entfeuchtung, Sommerkühlungs-Hysterese und der raumweite Aus-Modus stehen im **[📄 Betriebsmodi & Programmlogik](documentation/de/de_operating-modes.md)**.
@@ -486,11 +486,13 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 
 #### Verfügbare Steuerungen
 
+> Entitäts-IDs sind ohne Geräte-Präfix angegeben — Home Assistant stellt den Gerätenamen voran (z. B. `select.wohnzimmer_luftermodus`).
+
 - **Lüfter**: `fan.ventosync_hrv` — 10-Stufen-Slider (10 % … 100 %, 0 % = aus), entspricht den 10 Stufen des Bedienpanels
-- **Modus**: `select.luefter_modus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (dieselben Werte stehen als Presets an der Fan-Entität bereit)
-- **Timer**: `number.vent_timer` — Dauer für `Durchlüften` in Minuten (0–120, Standard: 30; 0 = Dauerbetrieb); danach kehrt der Raum in die `Wärmerückgewinnung` zurück
-- **LED-Helligkeit**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
-- **CO2-Grenzwert**: `number.auto_co2_threshold` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
+- **Modus**: `select.luftermodus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (dieselben Werte stehen als Presets an der Fan-Entität bereit)
+- **Timer**: `number.durchluften_dauer_min` — Dauer für `Durchlüften` in Minuten (0–120, Standard: 30; 0 = Dauerbetrieb); danach kehrt der Raum in die `Wärmerückgewinnung` zurück
+- **LED-Helligkeit**: `number.maximale_led_helligkeit` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
+- **CO2-Grenzwert**: `number.smart_automatik_co2_grenzwert` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
 - **Klima-Koordination** *(Konfiguration)*:
   - `switch.klima_koordination` — HVAC-Koordination aktivieren, **raumweit** (Standard: aus)
   - `number.klima_koordination_co2_grenzwert` — Gelockerter CO2-Sollwert bei aktiver Klimaanlage, 800–1500 ppm (Standard: `1200`)
@@ -502,6 +504,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)
+  > Beide am **Master** (Geräte-ID 1) einstellen — er schaltet und stellt den Urlaubsmodus für den ganzen Raum wieder her.
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
 👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/de/de_home-assistant-entities.md)**.
@@ -525,12 +528,12 @@ Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **ein
 | **10** | 100 % | 5.0 % | 95.0 % | 4200 |
 
 Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen (Stufe 1-6) eine feinere Abstufung ermöglicht, um akustisch noch dezenter zu bleiben, während in den höheren Stufen die Leistung schneller ansteigt.
-> ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl in **10 Stufen** zwischen `co2_min_fan_level` und `co2_max_fan_level` geregelt.
+> ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl in **10 Stufen** zwischen „Smart-Automatik Min Lüfterstufe“ und „Smart-Automatik Max Lüfterstufe“ (`number.smart_automatik_min_lufterstufe` / `…_max_lufterstufe`) geregelt.
 > 🔄 **Software-Fan-Ramping:** Bei jedem Richtungswechsel (WRG) sowie zu Beginn und am Ende jedes Stoßlüftungs-Durchgangs führt das System eine **5-sekündige sanfte Abbrems- und Anlauframpe** durch. Dies schont den Motor und minimiert Umschaltgeräusche. Die Intensitäts-LEDs zeigen währenddessen bereits den Zielwert an.
 
 #### Automatische Funktionen
 
-- **Unauffälligkeitsmodus (Stealth Mode)**: Die LEDs werden bei Nichtbedienung automatisch abgedunkelt/ausgeschaltet — das verhindert insbesondere störendes Licht in Schlaf- und Wohnräumen bei Nacht.
+- **Unauffälligkeitsmodus (Stealth Mode)**: 30 s nach der letzten Bedienung gehen Modus- und Stufen-LEDs aus, die Power-LED wird auf 10 % gedimmt — das verhindert insbesondere störendes Licht in Schlaf- und Wohnräumen bei Nacht.
 - **Filterwechsel-Alarm**: Intelligente vorausschauende Wartung auf Basis aktiver Lüfterlaufzeit (**>365 Betriebstage / 8.760h**) und kalendarischer Alterung (**>3 Jahre**), um Hardware und Lufthygiene zu schützen. Inklusive Ein-Klick-Reset nach dem Filtertausch.
 
 > 👉 *Ausführliche Entitäten-Übersicht, Automations-Beispiele und Push-Benachrichtigungen in Home Assistant siehe [📄 Filterwechsel-Alarm Setup Guide](documentation/de/de_filter-change-alarm-ha-setup.md).*
@@ -543,7 +546,7 @@ Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen (Stufe 1-6) e
 
 VentoSync nutzt einen hocheffizienten **Keramik-Wärmespeicher** (regenerativer Rekuperator), um wertvolle Heizenergie beim Lüften im Raum zu halten:
 
-- **Zyklischer Push-Pull-Betrieb**: Der Lüfter wechselt zyklisch in adaptiven **50s bis 70s Phasen** zwischen Abluft (Wärmespeicherung im Keramikkern) und Zuluft (Erwärmung der frischen Außenluft).
+- **Zyklischer Push-Pull-Betrieb**: Der Lüfter wechselt zyklisch in adaptiven **50 s bis 70 s pro Richtung** (stufenabhängig) zwischen Abluft (Wärmespeicherung im Keramikkern) und Zuluft (Erwärmung der frischen Außenluft).
 - **Synchronisierter Paarbetrieb**: Geräte im selben Raum synchronisieren sich über **ESP-NOW Unicast**. Während ein Gerät frische Luft zuführt, führt das Partnergerät verbrauchte Luft ab – für einen kontinuierlichen, zugfreien Luftaustausch ohne Druckschwankungen.
 - **Phasen-synchrone NTC-Temperaturstabilisierung**: Innen- und Außen-NTC-Thermistoren nutzen eine optimierte C++ Filter-Pipeline (`filter_ntc_combined`) mit thermischer Einschwingzeit und saisonaler Min/Max-Selektion für verlässliche Temperaturwerte.
 - **Energiebasierte Effizienzberechnung (DIN EN 13141-8)**: Anstelle ungenauer Momentanwerte berechnet das System den thermodynamischen Wirkungsgrad ($\eta_{WRG}$ bis zu ~85%) über eine **numerische Trapez-Integration** über den gesamten Zyklus und ermittelt die tatsächlich **rückgewonnene Wärmeenergie in Wattstunden (Wh)** anhand kalibrierter Volumenstrom-Kennlinien.
@@ -573,11 +576,11 @@ Diese Dokumentation enthält:
 
 ```text
 VentoSync/
-├── .github/workflows/         # CI/CD (GitHub Actions) für automatisierte Builds & Releases
+├── .github/                   # CI/CD-Workflows (Build, Lint, CodeQL, Secret-Scan, Version Guard) + scripts/
 ├── components/                # Eigene ESPHome C++ Komponenten & Hilfsbibliotheken
 │   ├── helpers/               # Modulare C++ Header (PID-Regelung, ESP-NOW Sync, IAQ-Engine, NTC-Filter)
 │   ├── ventilation_group/     # Zentrale Gruppen-Statemachine & Multi-Device-Koordination
-│   ├── ventilation_logic/     # IAQ-Klassifizierung, Komfort-Logik & mathematische Helfer
+│   ├── ventilation_logic/     # Reine, unit-getestete Logik: Lüfterkurve/PWM, HVAC-Koordinator, Raum-Fusion
 │   └── wrg_dashboard/         # Integriertes Web-UI-Dashboard (Tailwind CSS & Chart.js)
 ├── documentation/             # Detaillierte technische Anleitungen, Datenblätter & Setups
 │   ├── de/                    # Deutsche Dokumentation
@@ -587,6 +590,8 @@ VentoSync/
 ├── EasyEDA-Pro/               # PCB-Hardware-Dateien (Schaltpläne, Gerber, BOM, Fotos)
 ├── ESPHome-VentoMaxx-Analyser/# Hardware-Analyse & PWM-Oszilloskop-Messtools
 ├── ha_integration_example/    # Home Assistant Dashboard-Vorlagen & Master-Node-Configs
+├── images/                    # Bilder für die READMEs
+├── include -> components/helpers  # Symlink für IDE-/PlatformIO-Include-Pfade
 ├── json/                      # Deployment-Manifeste & GitHub-Release-Vorlagen
 ├── packages/                  # Modulare YAML-Konfigurationspakete
 │   ├── actuators/             # PID-Regler, Automationen, Schutz- & Urlaubslogik
@@ -604,6 +609,7 @@ VentoSync/
 ├── ventosync_nosensor.yaml    # Hardware-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_NTConly.yaml     # Hardware-Variante: Basis-Lüftersteuerung nur mit NTCs
 ├── upload_all.sh              # Batch-Kompilierungs- & OTA-Upload-Skript für alle Geräte
+├── version_bump.py            # Versionserhöhung bei lokalen Builds (nicht in der CI)
 └── version.json               # Aktuelle semantische Firmware-Version & Release-Metadaten
 ```
 
@@ -616,7 +622,7 @@ VentoSync/
 Um dauerhafte 24/7-Stabilität, langfristige Wartbarkeit und saubere Codequalität zu gewährleisten, setzt VentoSync auf eine strikt entkoppelte Schichtenarchitektur:
 
 - **Strikte YAML-Modularisierung (`packages/`)**: Aufteilung in 8 thematische Domänenpakete (`base`, `communication`, `globals`, `io`, `sensors`, `actuators`, `integration`, `ui`). Sensor-Mocks (`mock_*.yaml`) sorgen für saubere Fallbacks ohne Kompilierfehler oder Log-Spamming bei verschiedenen Hardware-Varianten.
-- **Nativer C++ Hilfsbibliotheks-Kern (`components/helpers/`)**: Komplexe Lambdas wurden vollständig aus dem YAML-Code in typensichere C++ Header ausgelagert (PID-Regelung, ESP-NOW Status-Synchronisation, IAQ-Engines, Taster-/LED-Handler) – für maximale Ausführungsgeschwindigkeit und native Testbarkeit.
+- **Nativer C++ Hilfsbibliotheks-Kern (`components/helpers/`)**: Komplexe Lambdas wurden aus dem YAML-Code in typensichere C++ Header ausgelagert (PID-Regelung, ESP-NOW Status-Synchronisation, IAQ-Engines, Taster-/LED-Handler). Hardware-unabhängige Logik liegt in `components/ventilation_logic/` und der State-Machine und wird in der CI durch native C++ Unit-Tests (ASan/UBSan) abgedeckt; die an ESPHome gebundenen Helper prüfen die Firmware-Builds.
 - **Laufzeit- & Performance-Optimierungen**: Thread-sichere Eventverarbeitung mit `std::lock_guard`, Move-Semantik, NaN-sicherer PID-Regler, Flash-Schonung (8h NVS-Pufferung) und kombinierte NTC-Filterung (`filter_ntc_combined`).
 - **Deterministischer Boot-Ablauf**: Mehrstufige Initialisierungssequenz (`on_boot` Priorität -10) mit Peer-Wiederherstellung aus dem Cache, verzögertem Discovery-Broadcast und LED-Hardware-Selbsttest.
 
@@ -626,12 +632,14 @@ Um dauerhafte 24/7-Stabilität, langfristige Wartbarkeit und saubere Codequalit�
 
 ## 🚀 Automatisierte Release & Versionierung
 
-Um eine zuverlässige Software-Pflege und vollständige Nachvollziehbarkeit jeder Änderung sicherzustellen, nutzt das Projekt einen automatisierten Release-Workflow:
+Jeder Merge in `master` veröffentlicht ein Firmware-Release; die Version wird pro Pull Request gepflegt:
 
-- **KI-gestützte Changelogs**: Jedem Release geht eine automatisierte Analyse der Code-Änderungen voraus. Ein KI-Assistent generiert detaillierte Einträge für die `CHANGELOG.md` und aktualisiert die Firmware-Beschreibung in `version.json`.
-- **Automatischer Version-Bump**: Die Versionierung folgt einem strengen Muster, bei dem die Patch-Version (z. B. `0.8.251` → `0.8.252`) während des Build-Prozesses automatisch erhöht wird.
-- **Git Integration**: Erfolgreiche Builds werden automatisch committed und in das Repository gepusht, wodurch sichergestellt wird, dass das GitHub-Manifest und die Binär-Releases immer synchron mit dem lokalen Entwicklungsstand sind.
-- **Kontinuierliche Transparenz**: Die aktuelle Version ist als Sensor in Home Assistant verfügbar und wird zur einfachen Überprüfung auf dem lokalen Web-Dashboard angezeigt.
+- **Eine Version pro PR**: `version.json` ist die einzige Quelle der Wahrheit. Jeder Firmware-PR erhöht sie einmal und ergänzt den passenden obersten Eintrag in `CHANGELOG.md`; reine Doku-/Tooling-PRs tragen stattdessen das Label `no-release`.
+- **Version Guard**: Ein verpflichtender PR-Check (`.github/scripts/check_version.py`) prüft, dass die Version höher als auf `master` ist, zum obersten CHANGELOG-Eintrag passt und ihr Tag noch nicht existiert.
+- **CI-Builds**: Pull Requests führen die Unit-Tests, die YAML-Validierung aller Varianten und den Firmware-Build `ventosync-full` aus; nach dem Merge werden alle 6 Varianten gebaut.
+- **Release**: Der Merge erzeugt das GitHub-Release `v<version>` mit `.ota.bin` / `.factory.bin` und einem OTA-Manifest pro Variante; die Release-Notes sind der oberste CHANGELOG-Abschnitt. Ein bestehender Tag wird nie überschrieben.
+- **OTA & Transparenz**: Die Geräte finden Updates über ihr Varianten-Manifest (`update.firmware_update`); die Version wird in Home Assistant (`text_sensor.projektversion`) und im lokalen Web-Dashboard angezeigt.
+- **Lokale Builds**: `version_bump.py` erhöht die Version nur bei lokalen Builds (`esphome compile`, `upload_all.sh`) — solche Erhöhungen werden nie committet.
 
 ---
 

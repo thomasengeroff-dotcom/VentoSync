@@ -23,11 +23,11 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 | # | Mode | Panel LEDs (`WRG` / `VEN`) | Fan Behavior | Cycle Time | HA Entity / Selection |
 | :-: | :--- | :---: | :--- | :--- | :--- |
-| **1** | **🤖 Smart Automatic** *(Standard)* | 🟢 *(pulses)* / ⚫ | Dynamic PID (Levels 1–10) based on CO2 & Humidity | 50s – 70s dynamic | `select.luefter_modus` → `Smart-Automatik` |
-| **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Constant manual level (1–10) with push-pull heat exchange | 50s – 70s dynamic | `select.luefter_modus` → `Wärmerückgewinnung` |
-| **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Constant airflow without direction change (Phase A in, Phase B out) | Continuous / Timer | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | One-way burst at the manual level (Phase A in, Phase B out), then pause; direction inverted every second burst | 2 h cycle (15 min burst / 105 min pause) | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM), room-wide; all sensors, Wi-Fi & web UI remain fully active | — | `select.luefter_modus` → `Aus` |
+| **1** | **🤖 Smart Automatic** *(Standard)* | 🟢 *(pulses)* / ⚫ | Dynamic PID (Levels 1–10) based on CO2 & Humidity | 50s – 70s dynamic | `select.luftermodus` → `Smart-Automatik` |
+| **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Constant manual level (1–10) with push-pull heat exchange | 50s – 70s dynamic | `select.luftermodus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Constant airflow without direction change (Phase A in, Phase B out) | Continuous / Timer | `select.luftermodus` → `Durchlüften` |
+| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | One-way burst at the manual level (Phase A in, Phase B out), then pause; direction inverted every second burst | 2 h cycle (15 min burst / 105 min pause) | `select.luftermodus` → `Stoßlüftung` |
+| **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM), room-wide; all sensors, Wi-Fi & web UI remain fully active | — | `select.luftermodus` → `Aus` |
 
 ---
 
@@ -41,8 +41,8 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 | Feature | Sensor(s) | Threshold / Control Method |
 | :--- | :--- | :--- |
-| ✅ **CO2 Control (PID)** | SCD43 (`sensor.scd41_co2`) | `number.auto_co2_threshold` (Target, e.g. 800 ppm) |
-| ✅ **Humidity Management (PID)** | SCD43 (`sensor.scd41_humidity`) + HA `sensor.outdoor_humidity` | Dehumidification via absolute humidity check |
+| ✅ **CO2 Control (PID)** | SCD43 (`sensor.scd41_co2`) | `number.smart_automatik_co2_grenzwert` (Target, e.g. 800 ppm) |
+| ✅ **Humidity Management (PID)** | SCD43 (`sensor.scd41_luftfeuchtigkeit`) + HA `sensor.outdoor_humidity` | Dehumidification via absolute humidity check |
 | ✅ **Summer Cooling Function** | NTC sensors + ESP-NOW group temperature + HA `binary_sensor.sommerbetrieb` | Indoor threshold slider (default 22°C), outdoor ≥ 1.5°C cooler |
 | ✅ **Group Unicast Sync** | ESP-NOW | Synchronizes fan levels and sensor demand across all units in the room |
 
@@ -85,7 +85,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ### 2. ❄️ Heat Recovery (Eco Recovery) — `LED_WRG` 🟢 (solid)
 
-- **HA Entity:** `select.luefter_modus` → `Wärmerückgewinnung`
+- **HA Entity:** `select.luftermodus` → `Wärmerückgewinnung`
 - **Function:** Manual heat recovery operation without automatic PID scaling. The air direction changes periodically and the ceramic storage mass recovers the heat of the exhaust air (the manufacturer quotes up to 85 %; the firmware measures the actual value with the NTC sensors as `sensor.wrg_effizienz` ("WRG Effizienz"), see [Heat Recovery Efficiency](en_heat-recovery-and-efficiency.md)).
 - **Fan level:** Constant manual level (1–10), changed via the +/- buttons, the HA fan entity or the dashboard. When switching from Smart Automatic, the level last set by the automatic is kept as the starting point.
 - **Direction interval:** The time per air direction depends on the fan level — `round(70 − (level − 1) · 20/9)` seconds:
@@ -102,7 +102,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ### 3. 🌬️ Cross-Ventilation / Ventilation (Summer Mode) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (solid)
 
-- **HA Entity:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` ("Durchlüften Dauer (min)", 0–120 min in 5-min steps, default 30, **0 = continuous**)
+- **HA Entity:** `select.luftermodus` → `Durchlüften` + `number.durchluften_dauer_min` ("Durchlüften Dauer (min)", 0–120 min in 5-min steps, default 30, **0 = continuous**)
 - **Function:** Unidirectional constant airflow without periodic direction reversal (no 5 s direction ramps).
 - **Operation:** Phase-A units continuously pull outside air in, while Phase-B units continuously blow inside air out, creating an effective cross-draft through the living area for passive night cooling.
 - **Fan level:** Manual level (1–10); the room-wide presence adjustment applies (see Heat Recovery).
@@ -120,13 +120,13 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ### 4. 💨 Boost Ventilation — `LED_VEN` 🟢 (solid)
 
-- **HA Entity:** `select.luefter_modus` → `Stoßlüftung`
+- **HA Entity:** `select.luftermodus` → `Stoßlüftung`
 - **Function:** Burst ventilation for rapid air renewal (e.g., after cooking or showering). Runs until another mode is selected.
 - **2-Hour Sequence:**
   - **15 minutes burst:** The fan runs in **one direction** — like `Durchlüften`, Phase A devices blow in, Phase B devices extract. There is no push-pull alternation during the burst: the air leaves the room directly, which exchanges more air and removes moisture better than heat recovery (no heat recovery during the burst).
   - **105 minutes pause:** Fan stopped (0 RPM), the ceramic core regenerates.
   - **Soft start / stop:** 5-second ramp at the start and at the end of each burst.
-- **Level:** The burst runs at the **manually set fan level** (`number.fan_intensity_display`, 1–10) plus the radar presence offset — there is no separate boost level. For an intensive burst select a high level; the vacation mode uses this mode deliberately at level 1.
+- **Level:** The burst runs at the **manually set fan level** (`number.lufter_intensitat`, 1–10) plus the radar presence offset — there is no separate boost level. For an intensive burst select a high level; the vacation mode uses this mode deliberately at level 1.
 - **Alternating Direction:** Every second burst inverts the direction (Phase A extracts, Phase B blows in), so the ceramic cores and both sides of the building are loaded evenly. The direction only changes during the pause, never under load.
 - **Room synchronization:** The Master (device ID 1) shares its position in the 4-hour schedule (two bursts) with every heartbeat; all devices of the room pause and burst together and push-pull pairs always run in opposite directions — also after a device restarts.
 - **Winter note:** Without heat recovery the supply side draws in outdoor air for 15 of 120 minutes. If that is undesirable (e.g., during vacation in winter), use `Wärmerückgewinnung` instead (vacation: `select.urlaubsmodus_betriebsmodus`).
@@ -135,7 +135,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ### 5. ⭕ Off (Monitoring Mode) — both mode LEDs ⚫
 
-- **HA Entity:** `select.luefter_modus` → `Aus` (or HA fan entity *off*)
+- **HA Entity:** `select.luftermodus` → `Aus` (or HA fan entity *off*)
 - **Function:** The fan motor is stopped (50 % PWM = standstill, 0 RPM). Only the power LED stays lit (dimmed after 30 s).
 - **Room-wide:** Like every other mode, `Aus` applies to the **whole room** — switching off on any device (HA, web dashboard, Mode or Power button) stops all devices of the room, and switching on on any device starts them all again.
 - **Active Sensors:** Wi-Fi, Home Assistant API, web dashboard, ESP-NOW and all sensors (SCD43, BMP390, BME680, radar, NTCs) stay active for uninterrupted data collection; the device keeps sharing its sensor data with the room.

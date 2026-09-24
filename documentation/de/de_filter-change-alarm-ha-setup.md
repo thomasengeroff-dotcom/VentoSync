@@ -20,7 +20,7 @@ Das System trackt automatisch die Betriebsstunden des Lüfters und löst einen A
 | --- | --- | --- |
 | `binary_sensor.filterwechsel_alarm` | Binary Sensor | `ON` = Filterwechsel empfohlen |
 | `sensor.filter_betriebstage` | Sensor | Lüfter-Laufzeit in Tagen seit letztem Wechsel |
-| `button.filter_gewechselt_reset` | Button | Nach Filterwechsel drücken → setzt Zähler zurück |
+| `button.filterwechsel_reset` | Button | Nach Filterwechsel drücken → setzt Zähler zurück |
 
 **Beispiel: Push-Benachrichtigung via HA Automation**
 

@@ -29,7 +29,7 @@ Das Panel besitzt 9 grüne LEDs für die Systemzustandsanzeige:
 
 | LED | Anzahl | Position | Verhalten |
 | :--- | :---: | :--- | :--- |
-| **Power** | 🟢 1x | Oben | Leuchtet im Normalbetrieb hell. Dimmt nach 30s Inaktivität auf 20% Resthelligkeit ab. |
+| **Power** | 🟢 1x | Oben | Leuchtet im Normalbetrieb hell. Dimmt nach 30s Inaktivität auf 10% Resthelligkeit ab. |
 | **Master** | 🟢 1x | Mitte | Leuchtet gedimmt auf dem Master-Gerät (Geräte-ID = 1). Signalisiert Störungen und Sonderzustände über Blinkmuster (siehe unten). |
 | **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert langsam** im Smart-Automatik-Modus. Leuchtet dauerhaft bei Wärmerückgewinnung und Durchlüften. |
 | **Modus R** (`LED_VEN`) | 🟢 1x | Rechts | Leuchtet dauerhaft bei Stoßlüftung und Durchlüften. |
@@ -51,17 +51,17 @@ Das Panel besitzt 9 grüne LEDs für die Systemzustandsanzeige:
 
 ### 📶 Intensitäts-Balkenanzeige (10 Stufen über 5 LEDs)
 
-Jede LED deckt genau 2 Lüftungsstufen ab (50% Helligkeit bei ungerader Stufe, 100% bei gerader Stufe):
+Jede LED deckt genau 2 Lüftungsstufen ab (20% Helligkeit bei ungerader Stufe, 100% bei gerader Stufe):
 
-* **Stufe 1**:  ◖ ◯ ◯ ◯ ◯  *(LED 1 @ 50%)*
+* **Stufe 1**:  ◖ ◯ ◯ ◯ ◯  *(LED 1 @ 20%)*
 * **Stufe 2**:  ⬤ ◯ ◯ ◯ ◯  *(LED 1 @ 100%)*
-* **Stufe 3**:  ⬤ ◖ ◯ ◯ ◯  *(LED 2 startet @ 50%)*
+* **Stufe 3**:  ⬤ ◖ ◯ ◯ ◯  *(LED 2 startet @ 20%)*
 * **Stufe 4**:  ⬤ ⬤ ◯ ◯ ◯  *(LED 2 @ 100%)*
-* **Stufe 5**:  ⬤ ⬤ ◖ ◯ ◯  *(LED 3 startet @ 50%)*
+* **Stufe 5**:  ⬤ ⬤ ◖ ◯ ◯  *(LED 3 startet @ 20%)*
 * **Stufe 6**:  ⬤ ⬤ ⬤ ◯ ◯  *(LED 3 @ 100%)*
-* **Stufe 7**:  ⬤ ⬤ ⬤ ◖ ◯  *(LED 4 startet @ 50%)*
+* **Stufe 7**:  ⬤ ⬤ ⬤ ◖ ◯  *(LED 4 startet @ 20%)*
 * **Stufe 8**:  ⬤ ⬤ ⬤ ⬤ ◯  *(LED 4 @ 100%)*
-* **Stufe 9**:  ⬤ ⬤ ⬤ ⬤ ◖  *(LED 5 startet @ 50%)*
+* **Stufe 9**:  ⬤ ⬤ ⬤ ⬤ ◖  *(LED 5 startet @ 20%)*
 * **Stufe 10**: ⬤ ⬤ ⬤ ⬤ ⬤  *(LED 5 @ 100%)*
 
 ---
@@ -82,4 +82,4 @@ Tritt eine Störung oder ein Sonderzustand auf, signalisiert die mittlere **Mast
 ## ✨ Gruppen-Synchronisation & Auto-Dimming
 
 * **Echtzeit Wake-Up Effekt**: Ändert ein Gerät im Raum den Modus oder die Stufe, wachen die LEDs aller Partner-Geräte (Peers) im Raum sofort auf und zeigen den neuen Status für 30 Sekunden synchron an.
-* **30 Sekunden Auto-Dimming**: Alle Status-LEDs blenden 30 Sekunden nach der letzten Bedienung sanft aus (`ui_timeout_script` in `packages/ui/ui_controls.yaml`). Die **Power-LED** bleibt auf 20% Resthelligkeit gedimmt, um Betriebsbereitschaft diskret anzuzeigen.
+* **30 Sekunden Auto-Dimming**: Alle Status-LEDs blenden 30 Sekunden nach der letzten Bedienung sanft aus (`ui_timeout_script` in `packages/ui/ui_controls.yaml`). Die **Power-LED** bleibt auf 10% Resthelligkeit gedimmt, um Betriebsbereitschaft diskret anzuzeigen.

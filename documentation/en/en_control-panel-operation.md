@@ -29,7 +29,7 @@ The panel features 9 green LEDs providing real-time system state feedback:
 
 | LED | Quantity | Position | Behavior |
 | :--- | :---: | :--- | :--- |
-| **Power** | 🟢 1x | Panel Top | Illuminates bright during active operation. Dims to 20% brightness after the 30s inactivity timeout. |
+| **Power** | 🟢 1x | Panel Top | Illuminates bright during active operation. Dims to 10% brightness after the 30s inactivity timeout. |
 | **Master** | 🟢 1x | Center | Lights up solid (dimmed) on the Master Device (Device ID = 1). Signals diagnostic error states via pulse blink patterns (see below). |
 | **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses slowly** in Smart Automatic mode. Stays permanently ON for Heat Recovery and Ventilation. |
 | **Mode R** (`LED_VEN`) | 🟢 1x | Right | Permanently ON for Boost Ventilation and Ventilation. |
@@ -51,17 +51,17 @@ The panel features 9 green LEDs providing real-time system state feedback:
 
 ### 📶 Intensity LED Fill Bar (10 Levels via 5 LEDs)
 
-Each LED represents 2 speed levels (50% brightness for the odd level, 100% brightness for the even level), providing a clean volume-bar style visual:
+Each LED represents 2 speed levels (20% brightness for the odd level, 100% brightness for the even level), providing a clean volume-bar style visual:
 
-* **Level 1**:  ◖ ◯ ◯ ◯ ◯  *(LED 1 @ 50%)*
+* **Level 1**:  ◖ ◯ ◯ ◯ ◯  *(LED 1 @ 20%)*
 * **Level 2**:  ⬤ ◯ ◯ ◯ ◯  *(LED 1 @ 100%)*
-* **Level 3**:  ⬤ ◖ ◯ ◯ ◯  *(LED 2 starts @ 50%)*
+* **Level 3**:  ⬤ ◖ ◯ ◯ ◯  *(LED 2 starts @ 20%)*
 * **Level 4**:  ⬤ ⬤ ◯ ◯ ◯  *(LED 2 @ 100%)*
-* **Level 5**:  ⬤ ⬤ ◖ ◯ ◯  *(LED 3 starts @ 50%)*
+* **Level 5**:  ⬤ ⬤ ◖ ◯ ◯  *(LED 3 starts @ 20%)*
 * **Level 6**:  ⬤ ⬤ ⬤ ◯ ◯  *(LED 3 @ 100%)*
-* **Level 7**:  ⬤ ⬤ ⬤ ◖ ◯  *(LED 4 starts @ 50%)*
+* **Level 7**:  ⬤ ⬤ ⬤ ◖ ◯  *(LED 4 starts @ 20%)*
 * **Level 8**:  ⬤ ⬤ ⬤ ⬤ ◯  *(LED 4 @ 100%)*
-* **Level 9**:  ⬤ ⬤ ⬤ ⬤ ◖  *(LED 5 starts @ 50%)*
+* **Level 9**:  ⬤ ⬤ ⬤ ⬤ ◖  *(LED 5 starts @ 20%)*
 * **Level 10**: ⬤ ⬤ ⬤ ⬤ ⬤  *(LED 5 @ 100%)*
 
 ---
@@ -82,6 +82,6 @@ When a malfunction or special operational state occurs, the center **Master LED*
 ## ✨ Group Synchronization & Auto-Dimming
 
 * **Real-time Peer Wake-Up**: When a user changes the mode or speed level on any unit in the room, all partner units in the group wake up their displays immediately and show the updated status for 30 seconds.
-* **30s Auto-Dimming**: To prevent light pollution in living spaces and bedrooms, all status LEDs (Mode, Intensity, Master) smoothly fade out 30 seconds after the last interaction (`ui_timeout_script` in `packages/ui/ui_controls.yaml`). The **Power LED** stays dimmed at 20% to indicate operational readiness.
+* **30s Auto-Dimming**: To prevent light pollution in living spaces and bedrooms, all status LEDs (Mode, Intensity, Master) smoothly fade out 30 seconds after the last interaction (`ui_timeout_script` in `packages/ui/ui_controls.yaml`). The **Power LED** stays dimmed at 10% to indicate operational readiness.
 * **Instant Reactivation**: Pressing any button immediately reactivates all status LEDs.
 * **Persistent Diagnostic Feedback**: The **Master LED continues to signal error states and diagnostic blink codes** (e.g. Wi-Fi loss, peer sync lost, overheat warning), even while other LEDs are in the dimmed/timeout state.

@@ -330,12 +330,14 @@ Triggered on push and pull request to `master`:
 
 - **`build.yaml`**
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
-  - *Build* matrix (6 variants): `ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`,
-    `nosensor-mqtt` (generated), ESPHome pinned to `2026.8.0`, secret-free OTA configs.
+  - *Build* matrix: **pull requests build only `ventosync-full`**; push to `master` / `workflow_dispatch` build all
+    6 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `nosensor-mqtt` (generated)),
+    ESPHome pinned to `2026.8.0`, secret-free OTA configs. The release job needs all 6 builds.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).
-- **`lint.yaml`**: `esphome config` validation of the YAML (dummy secrets).
+- **`lint.yaml`**: `esphome config` validation of **all** variants incl. the generated MQTT one (dummy secrets) —
+  catches YAML errors of the variants that PRs no longer compile.
 - **`codeql.yaml`**: CodeQL analysis of the C/C++ code.
 - **`security.yaml`**: TruffleHog secret scanner.
 - **`version-guard.yaml`** (PRs only): runs `.github/scripts/check_version.py` — `version.json` must be

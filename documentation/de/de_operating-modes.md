@@ -22,11 +22,11 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 | # | Modus | Panel-LEDs (`WRG` / `VEN`) | Lüfterverhalten | Zykluszeit | HA-Entität / Auswahl |
 | :-: | :--- | :---: | :--- | :--- | :--- |
-| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Dynamischer PID (Stufen 1–10) basierend auf CO2 & Feuchte | 50s – 70s dynamisch | `select.luefter_modus` → `Smart-Automatik` |
-| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Konstante manuelle Stufe (1–10) mit Pendellüftung / Wärmetausch | 50s – 70s dynamisch | `select.luefter_modus` → `Wärmerückgewinnung` |
-| **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter Luftstrom ohne Richtungswechsel (Phase A rein, Phase B raus) | Dauerhaft / Timer | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | Lüften in eine Richtung auf der manuellen Stufe (Phase A rein, Phase B raus), danach Pause; Richtung jeden zweiten Durchgang getauscht | 2-h-Zyklus (15 min Lüften / 105 min Pause) | `select.luefter_modus` → `Stoßlüftung` |
-| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM), raumweit; alle Sensoren, WLAN & Web-UI bleiben voll aktiv | — | `select.luefter_modus` → `Aus` |
+| **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Dynamischer PID (Stufen 1–10) basierend auf CO2 & Feuchte | 50s – 70s dynamisch | `select.luftermodus` → `Smart-Automatik` |
+| **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Konstante manuelle Stufe (1–10) mit Pendellüftung / Wärmetausch | 50s – 70s dynamisch | `select.luftermodus` → `Wärmerückgewinnung` |
+| **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter Luftstrom ohne Richtungswechsel (Phase A rein, Phase B raus) | Dauerhaft / Timer | `select.luftermodus` → `Durchlüften` |
+| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | Lüften in eine Richtung auf der manuellen Stufe (Phase A rein, Phase B raus), danach Pause; Richtung jeden zweiten Durchgang getauscht | 2-h-Zyklus (15 min Lüften / 105 min Pause) | `select.luftermodus` → `Stoßlüftung` |
+| **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM), raumweit; alle Sensoren, WLAN & Web-UI bleiben voll aktiv | — | `select.luftermodus` → `Aus` |
 
 ---
 
@@ -40,8 +40,8 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 | Funktion | Sensor(en) | Schwellwert / Regelmethode |
 | :--- | :--- | :--- |
-| ✅ **CO2-Regelung (PID)** | SCD43 (`sensor.scd41_co2`) | `number.auto_co2_threshold` (Sollwert, z.B. 1000 ppm) |
-| ✅ **Feuchtemanagement (PID)** | SCD43 (`sensor.scd41_humidity`) + HA `sensor.outdoor_humidity` | Entfeuchtung via Enthalpie-Check (absolute Feuchte) |
+| ✅ **CO2-Regelung (PID)** | SCD43 (`sensor.scd41_co2`) | `number.smart_automatik_co2_grenzwert` (Sollwert, z.B. 1000 ppm) |
+| ✅ **Feuchtemanagement (PID)** | SCD43 (`sensor.scd41_luftfeuchtigkeit`) + HA `sensor.outdoor_humidity` | Entfeuchtung via Enthalpie-Check (absolute Feuchte) |
 | ✅ **Sommerkühlung** | NTC-Sensoren + ESP-NOW Gruppentemperatur + HA `binary_sensor.sommerbetrieb` | Raumtemperatur-Schwelle per Slider (Standard 22°C), außen ≥ 1,5°C kühler |
 | ✅ **Gruppen-Unicast-Sync** | ESP-NOW | Synchronisiert Lüfterstufen und Bedarfsanforderungen aller Geräte im Raum |
 
@@ -84,7 +84,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ### 2. ❄️ Wärmerückgewinnung (Eco Recovery) — `LED_WRG` 🟢 (dauerhaft an)
 
-- **HA-Entität:** `select.luefter_modus` → `Wärmerückgewinnung`
+- **HA-Entität:** `select.luftermodus` → `Wärmerückgewinnung`
 - **Funktion:** Manueller Wärmerückgewinnungsbetrieb ohne automatische PID-Skalierung. Die Drehrichtung wechselt periodisch, der Keramikspeicher gewinnt die Wärme der Abluft zurück (Herstellerangabe bis zu 85 %; den tatsächlichen Wert misst die Firmware mit den NTC-Sensoren als `sensor.wrg_effizienz` („WRG Effizienz"), siehe [Wärmerückgewinnungs-Effizienz](de_heat-recovery-and-efficiency.md)).
 - **Lüfterstufe:** Konstante manuelle Stufe (1–10), änderbar über die +/- Tasten, die HA-Fan-Entität oder das Dashboard. Beim Wechsel aus der Smart-Automatik bleibt die zuletzt von der Automatik gesetzte Stufe als Ausgangswert erhalten.
 - **Richtungsintervall:** Die Dauer pro Luftrichtung hängt von der Lüfterstufe ab — `round(70 − (Stufe − 1) · 20/9)` Sekunden:
@@ -101,7 +101,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ### 3. 🌬️ Durchlüften (Sommerbetrieb) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (dauerhaft an)
 
-- **HA-Entität:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` („Durchlüften Dauer (min)", 0–120 min in 5-min-Schritten, Standard 30, **0 = Dauerbetrieb**)
+- **HA-Entität:** `select.luftermodus` → `Durchlüften` + `number.durchluften_dauer_min` („Durchlüften Dauer (min)", 0–120 min in 5-min-Schritten, Standard 30, **0 = Dauerbetrieb**)
 - **Funktion:** Konstanter unidirektionaler Luftstrom ohne Richtungswechsel (keine 5-s-Richtungsrampen).
 - **Betrieb:** Phase-A-Geräte ziehen kontinuierlich Außenluft ein, während Phase-B-Geräte Innenluft ausblasen. Dadurch entsteht ein Querlüftungseffekt zur passiven Nachtkühlung.
 - **Lüfterstufe:** Manuelle Stufe (1–10); die raumweite Anwesenheits-Anpassung wirkt (siehe Wärmerückgewinnung).
@@ -119,13 +119,13 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ### 4. 💨 Stoßlüftung — `LED_VEN` 🟢 (dauerhaft an)
 
-- **HA-Entität:** `select.luefter_modus` → `Stoßlüftung`
+- **HA-Entität:** `select.luftermodus` → `Stoßlüftung`
 - **Funktion:** Intervalllüftung für schnellen Luftaustausch (z. B. nach dem Kochen oder Duschen). Läuft, bis ein anderer Modus gewählt wird.
 - **2-Stunden-Ablauf:**
   - **15 Minuten Lüften:** Der Lüfter läuft in **eine Richtung** — wie bei `Durchlüften` blasen Geräte mit Phase A hinein, Geräte mit Phase B saugen ab. Während des Durchgangs gibt es keinen Wechselbetrieb: Die Luft verlässt den Raum direkt, dadurch wird mehr Luft ausgetauscht und Feuchte besser abgeführt als bei der Wärmerückgewinnung (während des Durchgangs keine Wärmerückgewinnung).
   - **105 Minuten Pause:** Lüfter steht (0 RPM), der Keramikkern regeneriert sich.
   - **Sanfter Anlauf / Auslauf:** 5-Sekunden-Rampe zu Beginn und am Ende jedes Durchgangs.
-- **Stufe:** Der Durchgang läuft auf der **manuell eingestellten Lüfterstufe** (`number.fan_intensity_display`, 1–10) plus dem Radar-Versatz — eine eigene Stoßlüftungs-Stufe gibt es nicht. Für einen intensiven Durchgang eine hohe Stufe wählen; der Urlaubsmodus nutzt den Modus bewusst auf Stufe 1.
+- **Stufe:** Der Durchgang läuft auf der **manuell eingestellten Lüfterstufe** (`number.lufter_intensitat`, 1–10) plus dem Radar-Versatz — eine eigene Stoßlüftungs-Stufe gibt es nicht. Für einen intensiven Durchgang eine hohe Stufe wählen; der Urlaubsmodus nutzt den Modus bewusst auf Stufe 1.
 - **Wechselnde Richtung:** Jeder zweite Durchgang tauscht die Richtung (Phase A saugt ab, Phase B bläst hinein), damit Keramikkerne und beide Gebäudeseiten gleichmäßig belastet werden. Die Richtung wechselt nur in der Pause, nie unter Last.
 - **Raum-Synchronisation:** Der Master (Geräte-ID 1) teilt mit jedem Heartbeat seine Position im 4-Stunden-Ablauf (zwei Durchgänge); alle Geräte des Raums pausieren und lüften gemeinsam, Zu-/Abluft-Paare laufen immer gegengleich — auch nach dem Neustart eines Geräts.
 - **Hinweis Winter:** Ohne Wärmerückgewinnung saugt die Zuluftseite 15 von 120 Minuten Außenluft an. Wer das nicht möchte (z. B. im Urlaub im Winter), nutzt stattdessen `Wärmerückgewinnung` (Urlaub: `select.urlaubsmodus_betriebsmodus`).
@@ -134,7 +134,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 ### 5. ⭕ Aus (Monitoring-Modus) — beide Modus-LEDs ⚫
 
-- **HA-Entität:** `select.luefter_modus` → `Aus` (oder HA-Fan-Entität *aus*)
+- **HA-Entität:** `select.luftermodus` → `Aus` (oder HA-Fan-Entität *aus*)
 - **Funktion:** Der Lüftermotor steht (50 % PWM = Stillstand, 0 RPM). Nur die Power-LED leuchtet (nach 30 s gedimmt).
 - **Raumweit:** Wie jeder andere Modus gilt `Aus` für den **ganzen Raum** — Ausschalten an einem beliebigen Gerät (HA, Web-Dashboard, Modus- oder Power-Taste) stoppt alle Geräte des Raums, Einschalten an einem beliebigen Gerät startet sie alle wieder.
 - **Aktive Sensoren:** WLAN, Home-Assistant-API, Web-Dashboard, ESP-NOW und alle Sensoren (SCD43, BMP390, BME680, Radar, NTCs) bleiben für lückenlose Messwerterfassung aktiv; das Gerät teilt seine Sensordaten weiter mit dem Raum.
