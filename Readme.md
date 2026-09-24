@@ -136,7 +136,7 @@ All devices in a room find each other automatically upon startup or room change 
 - 🤖 **Smart automatic**: Fully automatic control for maximum comfort and efficiency. Standard operation in heat recovery (push-pull) with dynamic PID-based adjustment to CO2 and humidity, taking outdoor air conditions into account. In summer, cross-ventilation for passive nightly cooling is automatically activated when it is cooler outside than inside. CO2 and humidity regulation work **room-wide**: every unit shares the demand of its own sensors, and the room follows the **highest demand** (Room-wide Demand Fusion). This means even devices without local sensors adjust their ventilation intensity correctly when another unit in the room detects high CO2 or humidity. *→ [Full details and timing examples in 📄 Operating-Modes.md](documentation/en/en_operating-modes.md)*
 - 🔄 **Efficient Heat Recovery**: Cyclic, bidirectional operation (push-pull) to maximize energy efficiency. While automatic CO2 and humidity control are inactive in manual mode, radar presence detected anywhere in the room can shift the fan level of all devices by a configurable offset (-5 … +5).
 - 💨 **Cross-Ventilation (Summer Mode)**: Constant airflow without changing direction (Phase-A units blow in, Phase-B units blow out simultaneously to create an effective cross-draft for passive night cooling). Flexibly configurable via timer or as continuous operation.
-- 🚀 **Boost Ventilation**: Intensive ventilation for quick air exchange. The device ventilates for 15 minutes with the **manually selected intensity** and then pauses for 105 minutes to effectively remove moisture and regenerate the ceramic heat exchanger. The cycle then repeats.
+- 🚀 **Boost Ventilation**: Burst ventilation for quick air exchange. The device ventilates for 15 minutes **in one direction** (Phase A in, Phase B out) with the **manually selected intensity** and then pauses for 105 minutes to effectively remove moisture and regenerate the ceramic heat exchanger. The cycle then repeats; every second burst inverts the direction. All devices of a room follow the Master's schedule.
 - 🌡️ **Off (Monitoring Mode)**: The fan is switched off (0 RPM) but all sensors (CO2, Temp, Radar) and the web dashboard remain fully active to ensure gap-less measurement data in Home Assistant. *(Note: Ultra-low-power Light Sleep with Wi-Fi turned off is available via long-press on the Power button >5s).*
 
 ### 🛡️ Precision Sensors & Monitoring
@@ -474,7 +474,7 @@ The ventilation system supports 5 operating modes, which can be selected via the
 | **1** | **🤖 Smart Automatic** *(Default)* | 🟢 *(pulses)* / ⚫ | Fully autonomous PID control based on CO2, humidity, and outdoor air conditions | `select.luefter_modus` → `Smart-Automatik` |
 | **2** | **❄️ Heat Recovery** *(Eco)* | 🟢 / ⚫ | Manual push-pull heat recovery (50s–70s per direction, level-dependent), up to 85% heat recovery (manufacturer figure) | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Cross-Ventilation** *(Summer)* | 🟢 / 🟢 | Continuous unidirectional draft (Phase A in, Phase B out) for passive night cooling | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | Intensive 15 min rapid air renewal followed by a 105 min core regeneration pause | `select.luefter_modus` → `Stoßlüftung` |
+| **4** | **💨 Boost Ventilation** | ⚫ / 🟢 | 15 min one-way air renewal followed by a 105 min core regeneration pause | `select.luefter_modus` → `Stoßlüftung` |
 | **5** | **⭕ Off** *(Monitoring)* | ⚫ / ⚫ | Fan stopped (0 RPM); all climate sensors & web UI remain online for data logging | `select.luefter_modus` → `Aus` |
 
 > 📖 **Comprehensive Operating Modes Guide:**  
@@ -534,7 +534,7 @@ The original VentoMaxx fan (**ebm-papst 4412 F/2 GLL**) is controlled via a **si
 The RPM range is optimized to allow for finer steps at low levels (Levels 1-6) for even quieter operation, while the power increases more rapidly at higher levels.
 
 > ⚙️ **Minimum Speed:** Level 1 corresponds to 10% speed (PWM at 50% = stop). In Smart automatic mode (PID), the speed is regulated in discrete steps (Levels 1-10) between `automatik_min_luefterstufe` and `automatik_max_luefterstufe`.
-> 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery/Boost Ventilation), the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.
+> 🔄 **Software Fan Ramping:** With every change of direction (Heat Recovery) and at the start / end of each Boost Ventilation burst, the system performs a **5-second gentle braking and soft-start ramp**. This protects the motor and minimizes switching noise. The intensity LEDs show the target value in the meantime.
 
 #### Automatic Functions
 

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.25] - 2026-09-24
+
+### Changed
+
+- **Stoßlüftung runs one-way** (`ventilation_state_machine.cpp`): during the 15 min burst the fan now runs in one direction like `Durchlüften` (Phase A in, Phase B out) instead of push-pull alternation every 50–70 s — more air exchanged (no ramps, no back-and-forth of the air in the core) and better moisture removal. Every second burst inverts the direction; the flip happens during the pause, never under load. This matches the original VentoMaxx control (direction change after every 2 h cycle). Soft start / stop (5 s) at both ends of each burst remain. The burst level is the manual fan level (plus radar offset) — there is no separate boost level.
+- Operating-modes docs (EN/DE), Boost Ventilation: one-way bursts, manual level instead of a non-existent "boost level", real direction change, room synchronization, winter note (no heat recovery during the burst; vacation mode can use `Wärmerückgewinnung`); overview table cycle "2 h (15 / 105 min)" instead of "Continuous (15 min)".
+- Entity docs (EN/DE): removed the non-existent `sensor.ventilation_timer_remaining`; EN mode select corrected to `select.luefter_modus` with its real German options. VentoMaxx comparison: time is fixed (15/105 min), only the level is selectable. READMEs, comfort features and component README: ramps apply at direction changes (heat recovery) and burst start/end.
+
+### Fixed
+
+- **Stoßlüftung schedule not aligned across the room:** each device ran its 2 h burst/pause schedule on its own timer and the sync only compared the `Durchlüften` timer. A restarted device began a new burst while its partner paused, and once the per-burst direction counters diverged, both devices of a push-pull pair blew in the same direction — until the mode was changed. The schedule is now a 4 h super-cycle (two bursts) derived from one anchor; its remaining time is sent in the existing `remaining_duration_ms` field and slaves re-align to the **Master** when they differ by more than 2 s (a rebooted slave never restarts the room's schedule). Same packet layout, no protocol bump — **flash all devices of a room** for the alignment to take effect.
+
+### Added
+
+- Unit test T-7t (one-way bursts, direction inversion, Master schedule sync incl. rebooted slave, `millis()` wrap).
+
 ## [0.10.24] - 2026-09-24
 
 ### Fixed

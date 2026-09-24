@@ -133,7 +133,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
 - 🤖 **Smart-Automatik**: Vollautomatische Steuerung für maximalen Komfort und Effizienz. Standardbetrieb in Wärmerückgewinnung (Push-Pull) mit dynamischer PID-Regelung für CO2 und Luftfeuchtigkeit unter Einbezug aktueller Außenluftbedingungen. Im Sommer wird Querlüftung zur passiven nächtlichen Kühlung automatisch aktiviert, wenn es außen kühler ist als innen. CO2- und Feuchteregelung arbeiten dabei **raumweit**: Jedes Gerät teilt den Bedarf seiner eigenen Sensoren, und der Raum folgt dem **höchsten Bedarf** (Raumweite Bedarfsfusion). Dadurch regeln auch Geräte ohne eigene Sensoren ihre Lüftungsintensität korrekt hoch, wenn ein anderes Gerät im Raum hohe CO2- oder Feuchtewerte erkennt. *→ [Vollständige Details und Zeitbeispiele in 📄 Betriebsmodi & Programmlogik](documentation/de/de_operating-modes.md)*
 - 🔄 **Effiziente Wärmerückgewinnung**: Zyklischer, bidirektionaler Betrieb (Push-Pull) zur Maximierung der Energieeffizienz. Während die automatische CO2- und Feuchteregelung inaktiv ist, kann eine irgendwo im Raum erkannte Radar-Anwesenheit die Lüfterstufe aller Geräte um einen einstellbaren Versatz (-5 … +5) verschieben.
 - 💨 **Querlüftung (Sommerbetrieb)**: Konstanter Luftstrom ohne Richtungswechsel (Phase-A-Geräte saugen an, Phase-B-Geräte blasen gleichzeitig ab für einen spürbaren Durchzug zur passiven Nachtkühlung). Flexibel konfigurierbar via Timer oder als Dauerbetrieb.
-- 🚀 **Stoßlüftung**: Intensivlüftung für schnellen Luftaustausch. Das Gerät lüftet für 15 Minuten mit der **manuell gewählten Intensität** und pausiert anschließend für 105 Minuten, um Feuchtigkeit effektiv abzuführen und den Keramikspeicher zu regenerieren. Danach wiederholt sich der Zyklus.
+- 🚀 **Stoßlüftung**: Intervalllüftung für schnellen Luftaustausch. Das Gerät lüftet für 15 Minuten **in eine Richtung** (Phase A rein, Phase B raus) mit der **manuell gewählten Intensität** und pausiert anschließend für 105 Minuten, um Feuchtigkeit effektiv abzuführen und den Keramikspeicher zu regenerieren. Danach wiederholt sich der Zyklus; jeder zweite Durchgang tauscht die Richtung. Alle Geräte eines Raums folgen dem Ablauf des Masters.
 - 🌡️ **Aus (Monitoring-Modus)**: Der Lüfter wird gestoppt (0 RPM), aber alle Sensoren (CO2, Temp, Radar) und das Web-Dashboard bleiben für lückenlose Messdaten in Home Assistant aktiv. *(Hinweis: Der extrem stromsparende Light-Sleep mit deaktiviertem WLAN wird per langem Tastendruck >5s auf den Power-Button aktiviert).*
 
 ### 🛡️ Präzisions-Sensorik & Monitoring
@@ -472,7 +472,7 @@ Die Lüftungsanlage unterstützt 5 Betriebsmodi, die über die physische **Modus
 | **1** | **🤖 Smart-Automatik** *(Standard)* | 🟢 *(pulsiert)* / ⚫ | Vollautonome PID-Regelung auf Basis von CO2, Feuchte und Außenluftbedingungen | `select.luefter_modus` → `Smart-Automatik` |
 | **2** | **❄️ Wärmerückgewinnung** *(Eco)* | 🟢 / ⚫ | Manueller Push-Pull-Betrieb (50s–70s pro Richtung, stufenabhängig), bis zu 85% Wärmerückgewinnung (Herstellerangabe) | `select.luefter_modus` → `Wärmerückgewinnung` |
 | **3** | **🌬️ Durchlüften** *(Sommer)* | 🟢 / 🟢 | Konstanter unidirektionaler Luftzug (Phase A rein, Phase B raus) zur passiven Nachtkühlung | `select.luefter_modus` → `Durchlüften` |
-| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | 15 min Intensivlüftung, danach 105 min Regenerationspause des Keramikkerns | `select.luefter_modus` → `Stoßlüftung` |
+| **4** | **💨 Stoßlüftung** | ⚫ / 🟢 | 15 min Lüften in eine Richtung, danach 105 min Regenerationspause des Keramikkerns | `select.luefter_modus` → `Stoßlüftung` |
 | **5** | **⭕ Aus** *(Monitoring)* | ⚫ / ⚫ | Lüfter gestoppt (0 RPM); alle Klimasensoren & Web-UI bleiben für die Datenaufzeichnung online | `select.luefter_modus` → `Aus` |
 
 > 📖 **Ausführlicher Betriebsmodi-Guide:**  
@@ -526,7 +526,7 @@ Der original VentoMaxx Lüfter (**ebm-papst 4412 F/2 GLL**) wird über ein **ein
 
 Das Drehzahlband ist so optimiert, dass es in den niedrigen Stufen (Stufe 1-6) eine feinere Abstufung ermöglicht, um akustisch noch dezenter zu bleiben, während in den höheren Stufen die Leistung schneller ansteigt.
 > ⚙️ **Mindestdrehzahl:** Stufe 1 entspricht 10 % Drehzahl (PWM nie auf 50 % = Stopp). Im Automatik-Modus (PID) wird die Drehzahl in **10 Stufen** zwischen `co2_min_fan_level` und `co2_max_fan_level` geregelt.
-> 🔄 **Software-Fan-Ramping:** Bei jedem Richtungswechsel (WRG/Stoßlüftung) führt das System eine **5-sekündige sanfte Abbrems- und Anlauframpe** durch. Dies schont den Motor und minimiert Umschaltgeräusche. Die Intensitäts-LEDs zeigen währenddessen bereits den Zielwert an.
+> 🔄 **Software-Fan-Ramping:** Bei jedem Richtungswechsel (WRG) sowie zu Beginn und am Ende jedes Stoßlüftungs-Durchgangs führt das System eine **5-sekündige sanfte Abbrems- und Anlauframpe** durch. Dies schont den Motor und minimiert Umschaltgeräusche. Die Intensitäts-LEDs zeigen währenddessen bereits den Zielwert an.
 
 #### Automatische Funktionen
 

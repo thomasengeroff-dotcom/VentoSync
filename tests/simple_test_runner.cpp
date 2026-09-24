@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-03-23
+// Modified:    2026-09-24
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -702,6 +702,89 @@ bool test_held_reading() {
   return true;
 }
 
+// ============================================================
+// T-7t: Stoßlüftung — one-way bursts, direction inverted every second burst,
+// schedule alignment via the remaining super-cycle time (Master sync).
+// ============================================================
+bool test_stoss_one_way_and_sync() {
+  using SM = esphome::VentilationStateMachine;
+  constexpr uint32_t MIN = 60u * 1000u;
+  const uint32_t t0 = 500000u;
+
+  SM a; a.setup(); a.is_phase_a = true;  a.cycle_duration_ms = 60000;
+  SM b; b.setup(); b.is_phase_a = false; b.cycle_duration_ms = 60000;
+  a.set_mode(esphome::MODE_STOSSLUEFTUNG, t0);
+  b.set_mode(esphome::MODE_STOSSLUEFTUNG, t0);
+
+  // 1. First burst: one direction for the whole 15 min (no push-pull), A in / B out
+  for (uint32_t t = t0 + 10000u; t < t0 + 15u * MIN - 10000u; t += 7000u) {
+    a.update(t); b.update(t);
+    esphome::HardwareState sa = a.get_target_state(t), sb = b.get_target_state(t);
+    TEST_ASSERT(sa.fan_enabled && sb.fan_enabled);
+    TEST_ASSERT(sa.direction_in == true);
+    TEST_ASSERT(sb.direction_in == false);
+    TEST_ASSERT(sa.ramp_factor > 0.99f);  // no direction ramps inside the burst
+  }
+  // Soft start / soft stop of the burst remain
+  TEST_ASSERT(a.get_target_state(t0 + 1000u).ramp_factor < 0.5f);
+  TEST_ASSERT(a.get_target_state(t0 + 15u * MIN - 1000u).ramp_factor < 0.5f);
+
+  // 2. Pause
+  a.update(t0 + 60u * MIN);
+  TEST_ASSERT(a.get_target_state(t0 + 60u * MIN).fan_enabled == false);
+
+  // 3. Second burst: inverted (A out / B in), third burst back to A in
+  a.update(t0 + 125u * MIN); b.update(t0 + 125u * MIN);
+  TEST_ASSERT(a.stoss_active_phase && a.stoss_direction_flip);
+  TEST_ASSERT(a.get_target_state(t0 + 125u * MIN).direction_in == false);
+  TEST_ASSERT(b.get_target_state(t0 + 125u * MIN).direction_in == true);
+  a.update(t0 + 245u * MIN);
+  TEST_ASSERT(a.stoss_active_phase && !a.stoss_direction_flip);
+  TEST_ASSERT(a.get_target_state(t0 + 245u * MIN).direction_in == true);
+
+  // 4. Remaining time encodes the super-cycle position
+  TEST_ASSERT(a.get_remaining_duration(t0 + 245u * MIN) == SM::STOSS_SUPER_CYCLE_MS - 5u * MIN);
+  TEST_ASSERT(a.get_remaining_duration(t0 + 245u * MIN) <= SM::STOSS_SUPER_CYCLE_MS);
+
+  // 5. Rebooted slave (fresh schedule) aligns with the running schedule (second burst);
+  //    b was not advanced past t1, so its anchor is still valid for these timestamps
+  const uint32_t t1 = t0 + 125u * MIN;
+  SM c; c.setup(); c.is_phase_a = false; c.cycle_duration_ms = 60000;
+  c.set_mode(esphome::MODE_STOSSLUEFTUNG, t1);          // restored after reboot
+  TEST_ASSERT(c.stoss_direction_flip == false);           // unsynced: B out, same as A
+  c.set_mode(esphome::MODE_STOSSLUEFTUNG, t1, b.get_remaining_duration(t1));
+  TEST_ASSERT(c.stoss_active_phase && c.stoss_direction_flip);
+  TEST_ASSERT(c.get_target_state(t1).direction_in == true);  // B in while A out
+  TEST_ASSERT(c.get_remaining_duration(t1) == b.get_remaining_duration(t1));
+
+  // 6. Sync into the Master's pause
+  const uint32_t t2 = t0 + 60u * MIN;
+  c.set_mode(esphome::MODE_STOSSLUEFTUNG, t2, b.get_remaining_duration(t2));
+  TEST_ASSERT(!c.stoss_active_phase);
+  TEST_ASSERT(c.get_target_state(t2).fan_enabled == false);
+
+  // 7. Re-selecting Stoßlüftung without a position keeps the running schedule
+  const uint32_t before = c.stoss_cycle_start;
+  c.set_mode(esphome::MODE_STOSSLUEFTUNG, t2 + 1000u);
+  TEST_ASSERT(c.stoss_cycle_start == before);
+  TEST_ASSERT(c.ventilation_duration_ms == 0);
+
+  // 8. Invalid positions are ignored
+  c.sync_stoss(t2, 0);
+  c.sync_stoss(t2, SM::STOSS_SUPER_CYCLE_MS + 1u);
+  TEST_ASSERT(c.stoss_cycle_start == before);
+
+  // 9. millis() wrap: long-running schedule stays continuous
+  SM w; w.setup(); w.is_phase_a = true; w.cycle_duration_ms = 60000;
+  const uint32_t tw = UINT32_MAX - 10u * MIN;
+  w.set_mode(esphome::MODE_STOSSLUEFTUNG, tw);
+  for (uint32_t k = 1; k <= 30; ++k) w.update(tw + k * MIN);   // crosses the wrap
+  TEST_ASSERT(!w.stoss_active_phase);                             // 30 min in → pause
+  TEST_ASSERT(w.get_remaining_duration(tw + 30u * MIN) == SM::STOSS_SUPER_CYCLE_MS - 30u * MIN);
+
+  return true;
+}
+
 // T-7j: Disabling the switch clears all latches; AC off clears emergencies
 bool test_hvac_latch_reset() {
   using namespace ventosync::hvac;
@@ -1366,6 +1449,7 @@ int main() {
     {"T-7q: Window Guard inputs (HA push expiry, peers)", test_window_guard_inputs},
     {"T-7r: Room-wide radar presence (hold, peers)", test_room_presence},
     {"T-7s: Held reading (unmeasurable NTC in continuous ventilation)", test_held_reading},
+    {"T-7t: Stoßlüftung one-way bursts + Master schedule sync", test_stoss_one_way_and_sync},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

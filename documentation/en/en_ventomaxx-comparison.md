@@ -24,7 +24,7 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 | **Heat Recovery (HRV)** | Static cycle: **70 sec.** (fixed) | **Dynamic cycle**: 50s – 90s (depending on level/temp) | ✅ **Higher efficiency** through adjusted cycle times |
 | **Cross Ventilation (Summer)** | Only possible in paired configuration | ✅ Yes (via App/Panel/Automation) | ⚖️ Equivalent |
 | **Auto Summer Mode** | ❌ No (manual switch required) | ✅ **Automatic cross ventilation** when outdoor temp < indoor temp (NTC + ESP-NOW group data) | ✅ **No manual switching necessary** |
-| **Boost Ventilation** | 15 min. intensive, then pause | ✅ Yes (Configurable: time/level) | ✅ **More flexible** |
+| **Boost Ventilation** | 15 min. one-way, then 105 min pause | ✅ Yes (same 15/105 min cycle, one-way bursts; level freely selectable 1–10, synchronized room-wide) | ✅ **More flexible** |
 | **Fan Control** | 3 fixed levels | **10 levels + stepless PID control** (silent, no audible speed jumps) | ✅ **Fine-grained & silent** |
 | **Automation (CO2)** | ❌ No (only optional VOC estimation) | ✅ **SCD43 (Real CO2)**: Stepless PID control with deadband hysteresis, configurable min/max levels | ✅ **Precise & quiet** |
 | **Automation (Humidity)** | Fixed thresholds: 55%, 65%, 75% rH | ✅ **PID controller** with configurable limit (40-100%), outdoor humidity comparison, deadband hysteresis (±2%) | ✅ **Customizable** + Outdoor check |

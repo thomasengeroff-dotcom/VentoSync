@@ -152,7 +152,7 @@ Pure logic belongs in `components/ventilation_logic/` (no ESPHome dependencies) 
 | Smart automatic | `Smart-Automatik` | `auto_mode_active` flag on top of `MODE_ECO_RECOVERY` / `MODE_VENTILATION` | Sensor-driven PID demand (CO2, humidity/enthalpy), summer bypass |
 | Heat recovery | `Wärmerückgewinnung` | `MODE_ECO_RECOVERY` | Alternating push-pull cycles (70 s at level 1 → 50 s at level 10) |
 | Cross-ventilation | `Durchlüften` | `MODE_VENTILATION` | Continuous one-directional ventilation with optional timer |
-| Boost ventilation | `Stoßlüftung` | `MODE_STOSSLUEFTUNG` | 2 h cycle: 15 min active / 105 min pause |
+| Boost ventilation | `Stoßlüftung` | `MODE_STOSSLUEFTUNG` | 2 h cycle: 15 min one-way burst (A in / B out) / 105 min pause, direction inverted every 2nd burst |
 | Off | `Aus` | `MODE_OFF` | Fan stopped, standby |
 
 The German strings are the values of the HA select **and** the HA fan preset modes.
@@ -175,6 +175,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 - **Peer cache:** LRU, capped at 10 peers (`VentilationController::peers`).
 - **Master/Slave authority:** device ID 1 is Master. Slaves mirror mode and — in Smart-Automatik — the
   Master's **fan level**. Consequence: the Master decides for the whole room, so every demand must reach it.
+- **Stoßlüftung schedule:** `remaining_duration_ms` carries the remaining time of the 4 h super-cycle (two bursts);
+  slaves re-align to the **Master** only (`stoss_misaligned` in `ventilation_group.h`), so a rebooted slave never
+  restarts the room's schedule and push-pull pairs never blow in the same direction.
 - **Heartbeat:** `sync_interval_config` (default 60 s). **Peer timeout:** `PEER_TIMEOUT_MS = 900000` (15 min)
   for mode/level following and the dashboard.
 - **Room-wide settings** (sliders, HVAC switch): a change is sent as `MSG_STATE` (`sync_settings_to_peers()`),

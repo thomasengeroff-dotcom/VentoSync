@@ -35,7 +35,7 @@ $$\text{New Remaining Time} = \text{New Total Duration} \times \left(1 - \frac{\
 To protect the motor electronics and minimize acoustic disruption, all speed transitions are regulated via a software slew-rate limiter.
 
 * **Ramp Speed**: ~**5% PWM per second**
-* **Smooth Reversals**: During directional changes (Heat Recovery / Boost Ventilation), the fan follows a smooth 5-second deceleration and acceleration curve.
+* **Smooth Reversals**: During directional changes (Heat Recovery) and at the start / end of each Boost Ventilation burst, the fan follows a smooth 5-second deceleration and acceleration curve.
 * **Benefit**: Prevents voltage dips and current spikes on the 12V rail and eliminates audible load jumps.
 
 ---
