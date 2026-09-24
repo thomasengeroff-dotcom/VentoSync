@@ -17,7 +17,10 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Create dummy secrets.yaml
-        run: cp secrets_example.yaml secrets.yaml
+        run: |
+          cp secrets_example.yaml secrets.yaml
+          # MQTT secrets are commented out in the example (optional package)
+          printf 'mqtt_broker: "127.0.0.1"\nmqtt_port: "1883"\nmqtt_username: "ci_dummy"\nmqtt_password: "ci_dummy"\n' >> secrets.yaml
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -27,5 +30,18 @@ jobs:
       - name: Install ESPHome
         run: pip install esphome==2026.8.0
 
-      - name: Verify Configuration
-        run: esphome config ventosync.yaml
+      # All variants are validated here on every PR — the firmware build of a
+      # PR only compiles ventosync-full (build.yaml), the other variants are
+      # compiled after the merge.
+      - name: Verify Configuration (all variants)
+        run: |
+          set -euo pipefail
+          cp ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml
+          echo '  mqtt_integration: !include packages/integration/mqtt.yaml' >> ventosync_nosensor_mqtt.yaml
+          for f in ventosync.yaml ventosync_bme680_only.yaml ventosync_radar_only.yaml \
+                   ventosync_NTConly.yaml ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml; do
+            echo "::group::esphome config $f"
+            esphome config "$f" > /dev/null
+            echo "::endgroup::"
+            echo "✅ $f"
+          done

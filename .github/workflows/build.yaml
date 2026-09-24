@@ -3,7 +3,8 @@
 # =============================================================
 # Jobs:
 #   1. unit-tests   → C++ Unit Tests mit ASan/UBSan
-#   2. build        → ESPHome Matrix-Build (6 Varianten)
+#   2. build        → ESPHome Matrix-Build (PR: nur ventosync-full,
+#                     push/workflow_dispatch: alle 6 Varianten)
 #   3. release      → GitHub Release + OTA Manifeste
 #                     (übersprungen, wenn der Tag v<version.json> schon
 #                     existiert; Überschreiben nur per workflow_dispatch
@@ -86,7 +87,12 @@ jobs:
 
   # ==================================================================
   # JOB 2 – FIRMWARE BUILD (MATRIX)
-  # Baut alle 5 Hardware-Varianten parallel.
+  # Pull Requests: only "Build ventosync-full" (fast PR feedback; the
+  #   other variants share the same C++ code, their YAML is validated by
+  #   lint.yaml on every PR).
+  # Push to master / workflow_dispatch: all 6 variants — the release job
+  #   needs all of them, so a variant that breaks after the merge blocks
+  #   the release instead of publishing incomplete assets.
   # fail-fast: false stellt sicher, dass ein fehlgeschlagener Build
   # die anderen Varianten nicht abbricht — wir wollen alle Ergebnisse.
   # ==================================================================
@@ -98,20 +104,17 @@ jobs:
     strategy:
       fail-fast: false # Alle Varianten durchlaufen, auch wenn eine fehlschlägt
       matrix:
-        include:
-          - yaml: ventosync.yaml
-            name: ventosync-full
-          - yaml: ventosync_nosensor.yaml
-            name: ventosync-nosensor
-          - yaml: ventosync_radar_only.yaml
-            name: ventosync-radar-only
-          - yaml: ventosync_bme680_only.yaml
-            name: ventosync-bme680-only
-          - yaml: ventosync_NTConly.yaml
-            name: ventosync-ntconly
-          - yaml: ventosync_nosensor_mqtt.yaml
-            name: ventosync-nosensor-mqtt
-            mqtt_enabled: true
+        include: >-
+          ${{ github.event_name == 'pull_request'
+              && fromJSON('[{"yaml":"ventosync.yaml","name":"ventosync-full"}]')
+              || fromJSON('[
+                   {"yaml":"ventosync.yaml","name":"ventosync-full"},
+                   {"yaml":"ventosync_nosensor.yaml","name":"ventosync-nosensor"},
+                   {"yaml":"ventosync_radar_only.yaml","name":"ventosync-radar-only"},
+                   {"yaml":"ventosync_bme680_only.yaml","name":"ventosync-bme680-only"},
+                   {"yaml":"ventosync_NTConly.yaml","name":"ventosync-ntconly"},
+                   {"yaml":"ventosync_nosensor_mqtt.yaml","name":"ventosync-nosensor-mqtt","mqtt_enabled":true}
+                 ]') }}
 
     steps:
       - name: Checkout Repository
@@ -497,6 +500,7 @@ jobs:
           | \`ventosync-radar-only.ota.bin\` | Nur LD2450 Radar |
           | \`ventosync-bme680-only.ota.bin\` | Nur BME680 Sensor |
           | \`ventosync-ntconly.ota.bin\` | Nur NTC Sensoren (Wärmerückgewinnung) |
+          | \`ventosync-nosensor-mqtt.ota.bin\` | Ohne Sensoren, MQTT statt Home-Assistant-API |
 
           ### OTA Update
 
