@@ -41,7 +41,7 @@ Currently, the following scenarios are automatically verified:
 7.  **Boost Ventilation Cycle**: Testing rotation ramping (gentle spin-up) during an intensive cycle.
 8.  **Phase Logic**: Correct calculation of rotation direction based on Phase A/B assignment.
 9.  **Smart Climate Control (HVAC Coordinator)**: T-7a–T-7j — disabled transparency, standby, throttled profile (CO2-only, level cap, ECO lock), CO2 emergency hysteresis, emergency margin guard, AC release debounce, fail-safe unknown AC state, suspension without CO2, mold guard, latch reset.
-10. **Room-wide fusion & Smart Climate Control inputs**: T-7k–T-7r — room CO2 / demand / humidity fusion (freshness, no feedback loop), AC state sources (HA push expiry, API link, peer flag), configuration ranges and fusion window, Smart-Automatik level mapping that always enforces the level window (HVAC cap regression), window state (T-7q) and room-wide radar presence hold (T-7r).
+10. **Room-wide fusion & Smart Climate Control inputs**: T-7k–T-7s — room CO2 / demand / humidity fusion (freshness, no feedback loop), AC state sources (HA push expiry, API link, peer flag), configuration ranges and fusion window, Smart-Automatik level mapping that always enforces the level window (HVAC cap regression), window state (T-7q) and room-wide radar presence hold (T-7r), held readings for unmeasurable NTCs in continuous ventilation (T-7s).
 
 ## Adding New Tests
 

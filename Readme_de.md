@@ -488,7 +488,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 
 - **Lüfter**: `fan.ventosync_hrv` — 10-Stufen-Slider (10 % … 100 %, 0 % = aus), entspricht den 10 Stufen des Bedienpanels
 - **Modus**: `select.luefter_modus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (dieselben Werte stehen als Presets an der Fan-Entität bereit)
-- **Timer**: `number.vent_timer` — Dauer für `Durchlüften` / `Stoßlüftung` in Minuten (0–120, Standard: 30; 0 = Dauerbetrieb)
+- **Timer**: `number.vent_timer` — Dauer für `Durchlüften` in Minuten (0–120, Standard: 30; 0 = Dauerbetrieb); danach kehrt der Raum in die `Wärmerückgewinnung` zurück
 - **LED-Helligkeit**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
 - **CO2-Grenzwert**: `number.auto_co2_threshold` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
 - **Klima-Koordination** *(Konfiguration)*:

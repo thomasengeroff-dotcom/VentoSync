@@ -134,23 +134,31 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
   };
 
   if (internal_mode == esphome::MODE_VENTILATION) {
+    // Continuous one-directional airflow: the phase-locked NTC filter
+    // (climate.h) only ever publishes the NTC facing its own air stream, the
+    // other one freezes at its last value. Use only the measurable one:
+    // intake device -> outdoor NTC, exhaust device -> indoor NTC. The frozen
+    // value is neither used nor broadcast; peers / the held reading fill in.
     if (is_intake) {
         local_out = read_sensor(temp_zuluft);
-        if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
-    } else {
-        local_out = read_sensor(temp_zuluft);
-        if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
+    } else if (std::isnan(local_in)) {
+        local_in = read_sensor(temp_abluft);
     }
   } else if (internal_mode == esphome::MODE_ECO_RECOVERY) {
     local_out = read_sensor(temp_zuluft);
     if (std::isnan(local_in)) local_in = read_sensor(temp_abluft);
   }
 
-  // Update controller state for networking
+  // Update controller state for networking (only currently measurable values)
   v->local_t_in = local_in;
   v->local_t_out = local_out;
 
-  // 3. Sensor Fusion (Peer fallback if local is missing)
+  // Remember the last valid local readings (stand-in for max. 30 min)
+  static ventosync::room::HeldReading held_in, held_out;
+  held_in.store(local_in, now);
+  held_out.store(local_out, now);
+
+  // 3. Sensor Fusion: local -> fresh peer -> own held reading (<= 30 min)
   eff_in = local_in;
   eff_out = local_out;
 
@@ -162,6 +170,8 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
       (now - v->last_peer_t_out_time < PEER_TIMEOUT_MS)) {
     eff_out = v->last_peer_t_out;
   }
+  if (std::isnan(eff_in)) eff_in = held_in.get(now);
+  if (std::isnan(eff_out)) eff_out = held_out.get(now);
 }
 
 /**
@@ -220,6 +230,46 @@ inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, floa
     }
     return esphome::MODE_VENTILATION;
   }
+}
+
+/**
+ * @brief   Summer bypass re-measure guard.
+ *
+ * @details In continuous ventilation an exhaust-only device cannot measure
+ *          the outdoor temperature (and an intake-only one the indoor NTC).
+ *          If neither a peer nor the held reading (<= 30 min) can provide it,
+ *          the bypass returns to heat recovery — where both NTCs are measured
+ *          again — and re-entering the bypass is blocked for
+ *          SUMMER_COOLING_REMEASURE_MS so the NTCs publish fresh values first.
+ *          Without this, determine_auto_operating_mode() would keep the bypass
+ *          running forever on missing data.
+ *
+ * @param[in] current  Current mode.
+ * @param[in] target   Mode proposed by determine_auto_operating_mode().
+ * @param[in] eff_in   Effective indoor temperature (NaN = unknown).
+ * @param[in] eff_out  Effective outdoor temperature (NaN = unknown).
+ * @param[in] now      Current millis().
+ */
+inline esphome::VentilationMode guard_summer_bypass(esphome::VentilationMode current,
+                                                    esphome::VentilationMode target,
+                                                    float eff_in, float eff_out, uint32_t now) {
+  static bool blocked = false;
+  static uint32_t blocked_since_ms = 0;
+
+  if (current == esphome::MODE_VENTILATION && (std::isnan(eff_in) || std::isnan(eff_out))) {
+    ESP_LOGI("auto_mode", "Sommer-Kühlung beendet: Temperatur nicht messbar -> WRG zum Nachmessen");
+    blocked = true;
+    blocked_since_ms = now;
+    return esphome::MODE_ECO_RECOVERY;
+  }
+  if (blocked) {
+    if (now - blocked_since_ms < SUMMER_COOLING_REMEASURE_MS) {
+      if (target == esphome::MODE_VENTILATION) return esphome::MODE_ECO_RECOVERY;
+    } else {
+      blocked = false;
+    }
+  }
+  return target;
 }
 
 /**
@@ -634,6 +684,7 @@ inline void evaluate_auto_mode(bool force) {
   // 3. Mode Management (Summer Cooling) — heat recovery enforced while AC active
   esphome::VentilationMode target_mode = auto_mode::determine_auto_operating_mode(eff_in, eff_out, current_mode,
                                                                                   hvac.lock_eco_mode);
+  target_mode = auto_mode::guard_summer_bypass(current_mode, target_mode, eff_in, eff_out, now);
   
   if (current_mode != target_mode) {
     v->set_mode(target_mode);

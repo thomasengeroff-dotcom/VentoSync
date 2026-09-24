@@ -88,8 +88,8 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 ## 3. Zeiten & Intervalle
 
 * **`number.vent_timer`** ("Durchlüften Dauer (min)")
-  * *Typ:* Number
-  * *Dokumentation:* Stellt ein, wie lange (in Minuten) der Timer für die Stoß- bzw. Sommer-Querlüftung läuft, bevor das Gerät in den vorherigen Modus zurückkehrt (0 = Dauerbetrieb).
+  * *Typ:* Number (0–120 min, Schrittweite 5, Standard 30), raumweit
+  * *Dokumentation:* Dauer des manuellen Modus `Durchlüften`; danach kehrt der Raum in die `Wärmerückgewinnung` zurück (0 = Dauerbetrieb). Wird von `Stoßlüftung` (fester 15/105-min-Zyklus) und vom automatischen Sommer-Bypass nicht verwendet.
 * **`number.sync_interval_config`** ("Sync Intervall")
   * *Typ:* Number
   * *Dokumentation:* Definiert den Rhythmus zum Abgleich der Gerätegruppen über WLAN / ESP-NOW (in Minuten).

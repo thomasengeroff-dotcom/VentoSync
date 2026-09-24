@@ -490,7 +490,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 
 - **Fan**: `fan.ventosync_hrv` — 10-step slider (10 % … 100 %, 0 % = off) matching the 10 levels of the control panel
 - **Mode**: `select.luefter_modus` — `Smart-Automatik` / `Wärmerückgewinnung` / `Durchlüften` / `Stoßlüftung` / `Aus` (the same values are available as presets on the fan entity)
-- **Timer**: `number.vent_timer` — duration for `Durchlüften` / `Stoßlüftung` in minutes (0–120, default: 30; 0 = continuous)
+- **Timer**: `number.vent_timer` — duration of `Durchlüften` in minutes (0–120, default: 30; 0 = continuous); afterwards the room returns to `Wärmerückgewinnung`
 - **LED Brightness**: `number.led_max_brightness_config` ("Maximale LED Helligkeit", 5–100 %, default: 80 %) to limit the maximum panel brightness.
 - **CO2 Limit**: `number.auto_co2_threshold` (400–2000 ppm, default: 1000; always active in Smart-Automatik mode)
 - **Smart Climate Control** *(Configuration)*:

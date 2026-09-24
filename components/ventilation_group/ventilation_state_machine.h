@@ -21,7 +21,7 @@
 // Description: State machine for ventilation modes and timing.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-03-19
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 
@@ -98,6 +98,11 @@ public:
   // --- Internal Timing ---
   uint32_t ventilation_start_time =
       0; ///< millis() when MODE_VENTILATION started.
+  /// Set by update() when the MODE_VENTILATION timer expired and the machine
+  /// fell back to MODE_ECO_RECOVERY. The ESPHome glue consumes (clears) it to
+  /// update the UI mode index / HA select, which the pure state machine
+  /// cannot reach.
+  bool ventilation_timer_expired = false;
   int32_t time_offset_ms =
       0; ///< Offset applied via sync_time() for peer alignment.
 

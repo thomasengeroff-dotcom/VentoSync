@@ -43,7 +43,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 | :--- | :--- | :--- |
 | ✅ **CO2 Control (PID)** | SCD43 (`sensor.scd41_co2`) | `number.auto_co2_threshold` (Target, e.g. 800 ppm) |
 | ✅ **Humidity Management (PID)** | SCD43 (`sensor.scd41_humidity`) + HA `sensor.outdoor_humidity` | Dehumidification via absolute humidity check |
-| ✅ **Summer Cooling Function** | NTC sensors + ESP-NOW group temperature | 22°C indoor temperature threshold |
+| ✅ **Summer Cooling Function** | NTC sensors + ESP-NOW group temperature + HA `binary_sensor.sommerbetrieb` | Indoor threshold slider (default 22°C), outdoor ≥ 1.5°C cooler |
 | ✅ **Group Unicast Sync** | ESP-NOW | Synchronizes fan levels and sensor demand across all units in the room |
 
 #### Logic in Detail
@@ -102,10 +102,19 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 ### 3. 🌬️ Cross-Ventilation / Ventilation (Summer Mode) — `LED_WRG` 🟢 + `LED_VEN` 🟢 (solid)
 
-- **HA Entity:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` (Timer, 0 = continuous)
-- **Function:** Unidirectional constant airflow without periodic direction reversal.
+- **HA Entity:** `select.luefter_modus` → `Durchlüften` + `number.vent_timer` ("Durchlüften Dauer (min)", 0–120 min in 5-min steps, default 30, **0 = continuous**)
+- **Function:** Unidirectional constant airflow without periodic direction reversal (no 5 s direction ramps).
 - **Operation:** Phase-A units continuously pull outside air in, while Phase-B units continuously blow inside air out, creating an effective cross-draft through the living area for passive night cooling.
-- **Automatic Trigger:** In Smart Automatic mode, cross-ventilation activates automatically during summer nights when indoor temperature exceeds 22°C and outdoor temperature is lower by at least 1.5°C.
+- **Fan level:** Manual level (1–10); the room-wide presence adjustment applies (see Heat Recovery).
+- **Timer:** The timer starts when the mode is selected. When it expires, the room returns to **Heat Recovery** — the HA select, the fan preset and the panel LEDs switch to `Wärmerückgewinnung` accordingly. With `0` the mode runs until another mode is selected. Changing the timer while the mode runs takes effect relative to the original start.
+- **Automatic trigger (Smart Automatic only):** Smart Automatic switches to continuous cross-ventilation on its own (no timer; the panel keeps the pulsing `LED_WRG`) when **all** of the following hold:
+  - the HA binary sensor `binary_sensor.sommerbetrieb` is `on` (HA template: April–October **and** outdoor > 18 °C; without HA it counts as off → no bypass),
+  - indoor temperature > the slider "Smart-Automatik: Sommerkühlung Schwelle" (18–30 °C, default **22 °C**),
+  - outdoor temperature at least **1.5 °C** below indoor,
+  - Smart Climate Control does not report an active AC (heat recovery is enforced while the AC runs).
+
+  It switches back to heat recovery when `sommerbetrieb` turns off, outdoor ≥ indoor − 0.5 °C, or indoor < threshold − 0.5 °C. There is no time-of-day condition — "night cooling" results from the temperature condition.
+- **Temperatures during cross-ventilation:** With constant airflow each unit can measure only one of its two NTCs (intake units: outdoor, exhaust units: indoor). The missing value comes from a peer of the room, otherwise the unit's last measurement is used for up to 30 min. If no temperature is available at all (e.g. a single Phase-B unit), the automatic returns to heat recovery for at least 5 min to re-measure both temperatures before it may re-enter the bypass.
 
 ---
 

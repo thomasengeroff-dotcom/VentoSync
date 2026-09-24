@@ -70,9 +70,11 @@ interval:
           then:
             - script.execute: espnow_discovery
 
-  # Process pending ESP-NOW state broadcasts
+  # Process pending ESP-NOW state broadcasts (after reflecting an expired
+  # Durchlüften timer in the UI, so the broadcast carries the new mode index)
   - interval: 1s
     then:
+      - lambda: "handle_ventilation_timer_expiry();"
       - lambda: "process_pending_broadcast();"
 
   # Periodic controller config sync (catch HA state drift)

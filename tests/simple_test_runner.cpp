@@ -687,6 +687,21 @@ bool test_room_presence() {
   return true;
 }
 
+// T-7s: Held reading — stand-in for a temporarily unmeasurable temperature
+bool test_held_reading() {
+  using namespace ventosync::room;
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  HeldReading r;
+  TEST_ASSERT(std::isnan(r.get(1000u)));            // nothing stored
+  r.store(18.5f, 1000u);
+  r.store(nan, 5000u);                              // NaN is ignored
+  TEST_ASSERT(std::abs(r.get(1000u + HELD_READING_MAX_AGE_MS) - 18.5f) < 1e-6f);
+  TEST_ASSERT(std::isnan(r.get(1001u + HELD_READING_MAX_AGE_MS)));  // expired
+  r.store(21.0f, 0xFFFFFF00u);
+  TEST_ASSERT(std::abs(r.get(0x00000100u) - 21.0f) < 1e-6f);        // wrap-safe
+  return true;
+}
+
 // T-7j: Disabling the switch clears all latches; AC off clears emergencies
 bool test_hvac_latch_reset() {
   using namespace ventosync::hvac;
@@ -753,6 +768,22 @@ bool test_ventilation_timer() {
   sm.set_mode(esphome::MODE_VENTILATION, start, 0);
   remaining = sm.get_remaining_duration(start + 10000);
   TEST_ASSERT(remaining == 0);
+
+  // Infinite timer never expires and raises no expiry event
+  sm.ventilation_timer_expired = false;
+  sm.update(start + 48u * 3600u * 1000u);
+  TEST_ASSERT(sm.current_mode == esphome::MODE_VENTILATION);
+  TEST_ASSERT(!sm.ventilation_timer_expired);
+
+  // Timer expiry: falls back to heat recovery and raises the UI event once
+  esphome::VentilationStateMachine sm2;
+  sm2.setup();
+  sm2.set_mode(esphome::MODE_VENTILATION, start, duration_ms);
+  sm2.update(start + duration_ms / 2);
+  TEST_ASSERT(!sm2.ventilation_timer_expired);
+  sm2.update(start + duration_ms + 1u);
+  TEST_ASSERT(sm2.current_mode == esphome::MODE_ECO_RECOVERY);
+  TEST_ASSERT(sm2.ventilation_timer_expired);
 
   return true;
 }
@@ -1334,6 +1365,7 @@ int main() {
     {"T-7p: Auto level mapping enforces the window (HVAC cap)", test_auto_target_level},
     {"T-7q: Window Guard inputs (HA push expiry, peers)", test_window_guard_inputs},
     {"T-7r: Room-wide radar presence (hold, peers)", test_room_presence},
+    {"T-7s: Held reading (unmeasurable NTC in continuous ventilation)", test_held_reading},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

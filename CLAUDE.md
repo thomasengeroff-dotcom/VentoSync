@@ -279,6 +279,11 @@ Complex YAML lambda logic is extracted into focused header files:
 - **Compile-time `${room_id}` ≠ runtime room:** the room is configured at runtime (`config_room_id`, NVS); never
   derive per-room HA entity IDs from the substitution — push room data via API actions instead (see
   `set_ac_active`, `set_window_open`).
+- **Phase-locked NTCs in `MODE_VENTILATION`:** with one-way airflow only the NTC facing its own air stream
+  publishes (intake: outdoor, exhaust: indoor); the other one freezes at its last value. Never use it —
+  `get_effective_temperatures()` falls back to peers / `HeldReading` (≤ 30 min) and `guard_summer_bypass()`
+  returns to heat recovery to re-measure.
+- **`vent_timer` = 0 means continuous** (`ventilation_duration_ms = 0`); only values > 0 are clamped to 1–1440 min.
 - **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
   whole firmware — they persist across mode switches and are not per-instance.
 - **`effective_co2` may be a BME680 eCO2 estimate** (VOC-based) in the `bme680_only` variant; room-wide

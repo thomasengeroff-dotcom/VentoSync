@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.24] - 2026-09-24
+
+### Fixed
+
+- **Durchlüften timer `0` ran for 1 minute:** `set_ventilation_timer()` and `cycle_operating_mode()` clamped the timer to ≥ 1 min, so the documented "0 = continuous" ended the mode after 60 s. `0` now means continuous operation; only values > 0 are clamped to 1–1440 min.
+- **UI kept showing "Durchlüften" after the timer expired:** the state machine fell back to heat recovery, but the mode index, the HA select, the fan preset and the Master heartbeat still said "Durchlüften" (the mode button then jumped to "Stoßlüftung"). The state machine now raises `ventilation_timer_expired`; `handle_ventilation_timer_expiry()` (1 s interval) switches the UI to "Wärmerückgewinnung" and broadcasts the new mode index.
+- **Summer bypass used a frozen temperature:** in continuous ventilation the phase-locked NTC filter only publishes the NTC facing its own air stream, the other one froze — but `get_effective_temperatures()` kept using (and broadcasting) it. A Phase-B Master therefore kept its night-time outdoor temperature and the bypass could not end on "outdoor ≥ indoor − 0.5 °C", drawing in warm morning air. Now only the measurable NTC is used; the missing value comes from a peer or the device's last reading (≤ 30 min, `ventosync::room::HeldReading`), and if none is available `guard_summer_bypass()` returns to heat recovery and blocks re-entry for 5 min to re-measure.
+
+### Changed
+
+- Operating-modes docs (EN/DE), Cross-Ventilation: timer range/semantics, return to heat recovery, the real summer-bypass conditions (HA `sommerbetrieb`, threshold slider, AC lock, release hysteresis — no time-of-day condition), temperature handling during one-way flow. Smart-automatic-logic docs, entity docs and READMEs: `vent_timer` applies only to `Durchlüften` (not `Stoßlüftung`) and returns to heat recovery (not "the previous mode"); AC state wording updated to the HA action.
+
+### Added
+
+- Unit tests: timer-expiry event and continuous timer in "Ventilation Timer", T-7s (held reading).
+
 ## [0.10.23] - 2026-09-24
 
 ### Fixed

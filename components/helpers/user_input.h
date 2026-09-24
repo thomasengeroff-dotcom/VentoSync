@@ -21,7 +21,7 @@
 // Description: Processing of physical button and slider interactions.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-03-29
+// Modified:    2026-09-24
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -47,17 +47,20 @@ inline void set_ventilation_timer(float value) {
   if (std::isnan(value) || ventilation_ctrl == nullptr) return;
   auto *v = ventilation_ctrl;
 
-  // FIXED K-1: Clamp float to safe, physically sensible domain boundaries before cast
+  // 0 (or less) = continuous operation (no timer); otherwise clamp to a
+  // physically sensible domain before the cast (FIXED K-1).
   constexpr float MIN_TIMER_MIN = 1.0f;
   constexpr float MAX_TIMER_MIN = 1440.0f; // 24 hours
-  
-  if (value < MIN_TIMER_MIN || value > MAX_TIMER_MIN) {
-      ESP_LOGW("input", "Timer value out of range: %.1f min (valid: %.0f-%.0f)", 
+
+  uint32_t ms = 0; // continuous
+  if (value > 0.0f) {
+    if (value < MIN_TIMER_MIN || value > MAX_TIMER_MIN) {
+      ESP_LOGW("input", "Timer value out of range: %.1f min (valid: 0 = continuous, %.0f-%.0f)",
                value, MIN_TIMER_MIN, MAX_TIMER_MIN);
       value = std::clamp(value, MIN_TIMER_MIN, MAX_TIMER_MIN);
+    }
+    ms = static_cast<uint32_t>(value) * 60u * 1000u;
   }
-
-  const uint32_t ms = static_cast<uint32_t>(value) * 60u * 1000u;
   if (v->state_machine.ventilation_duration_ms == ms)
     return;
 

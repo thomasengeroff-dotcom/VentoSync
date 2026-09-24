@@ -84,9 +84,9 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 
 ## 3. Times & Intervals
 
-* **`number.vent_timer`** ("Ventilation Duration (min)")
-  * *Type:* Number
-  * *Documentation:* Sets how long (in minutes) the timer for boost or summer cross-ventilation runs before the device returns to the previous mode (0 = continuous operation).
+* **`number.vent_timer`** ("Durchlüften Dauer (min)")
+  * *Type:* Number (0–120 min, step 5, default 30), room-wide
+  * *Documentation:* Duration of the manual `Durchlüften` mode; afterwards the room returns to `Wärmerückgewinnung` (0 = continuous operation). Not used by `Stoßlüftung` (fixed 15/105 min cycle) or by the automatic summer bypass.
 * **`number.sync_interval_config`** ("Sync Interval")
   * *Type:* Number
   * *Documentation:* Defines the rhythm for synchronizing device groups via WiFi / ESP-NOW.

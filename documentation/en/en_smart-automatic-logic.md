@@ -93,8 +93,10 @@ Two independent PID controllers run in the background (defined in [`logic_pid.ya
 
 ### 4. Summer Cooling (Bypass Simulation)
 Since decentralized units typically lack a physical bypass flap, the logic simulates a bypass by disabling the reversing cycle.
-- **Condition**: Indoor Temp > 22°C AND Outdoor Temp < (Indoor - 1.5°C) AND HA "Sommerbetrieb" is ON.
-- **Action**: Switch to `MODE_VENTILATION` (one-way flow).
+- **Condition**: Indoor Temp > threshold (slider, default 22°C) AND Outdoor Temp < (Indoor - 1.5°C) AND HA "Sommerbetrieb" is ON AND no active AC (Smart Climate Control).
+- **Release**: "Sommerbetrieb" OFF, or Outdoor ≥ Indoor − 0.5°C, or Indoor < threshold − 0.5°C.
+- **Action**: Switch to `MODE_VENTILATION` (one-way flow, no timer).
+- **Temperatures**: In one-way flow only the NTC facing its own air stream is measurable (intake: outdoor, exhaust: indoor). The other value comes from a peer, else from the device's last reading (≤ 30 min); if still unknown, `guard_summer_bypass()` returns to heat recovery and blocks re-entry for 5 min (`SUMMER_COOLING_REMEASURE_MS`) to re-measure.
 - **Benefit**: Draws in cool night air efficiently without warming it up in the ceramic heat exchanger.
 
 ### 5. Master/Slave Synchronization (Room Authority)
@@ -104,7 +106,7 @@ To avoid different fans in the same room running at different speeds (which caus
 - **Soft Ramping**: All devices apply a max transition of **+/- 1 level per 10 seconds** for silent and motor-friendly speed changes.
 
 ### 6. Smart Climate Control (HVAC Coordination)
-An optional modifier evaluated at the start of every 10-second cycle (`auto_mode::evaluate_hvac_coordination()`). While the `Klima-Koordination` switch is on **and** the imported AC state is active, the cycle runs with a restricted profile:
+An optional modifier evaluated at the start of every 10-second cycle (`auto_mode::evaluate_hvac_coordination()`). While the room-wide `Klima-Koordination` switch is on **and** Home Assistant reports the AC as active (API action `set_ac_active`, shared room-wide), the cycle runs with a restricted profile:
 - **CO2-only loop**: the humidity PID demand is ignored, the CO2 PID setpoint is switched to `hvac_co2_threshold` (default 1200 ppm) and re-asserted every cycle.
 - **Level window**: `[1, hvac_max_fan_level]` (default 1–3) replaces `automatik_min/max_fan_level`.
 - **Mode lock**: `determine_auto_operating_mode()` always returns heat recovery — no summer bypass while the AC runs.
