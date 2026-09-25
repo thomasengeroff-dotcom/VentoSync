@@ -38,7 +38,7 @@ This directory contains the modularized ESPHome configuration files (packages). 
 ### 🌐 Communication (`communication/`)
 | File | Description |
 | :--- | :--- |
-| **`esp_now.yaml`** | Low-latency ESP-NOW v10 mesh protocol setup and wireless peer synchronization. |
+| **`esp_now.yaml`** | Low-latency ESP-NOW v11 mesh protocol setup and wireless peer synchronization. |
 
 ### 🔗 Integration (`integration/`)
 | File | Description |

@@ -19,7 +19,7 @@ The **Window Guard** feature automatically pauses all ventilation units in a roo
 
 ## 🛠️ Home Assistant Setup
 
-Since **0.10.22** Home Assistant **pushes** the window state to the ventilation units with the API action **`set_window_open`** (data `window_open: true/false`). The state is shared with all devices of the room over ESP-NOW (protocol v10), so HA has to reach **at least one** device of the room — independent of the room ID configured on the device. A pushed state is trusted for **15 minutes**; an expired or never pushed state reads as **closed** (the ventilation can never stay stopped forever), so the automation re-sends it every 5 minutes.
+Since **0.10.22** Home Assistant **pushes** the window state to the ventilation units with the API action **`set_window_open`** (data `window_open: true/false`). The state is shared with all devices of the room over ESP-NOW (protocol v11), so HA has to reach **at least one** device of the room — independent of the room ID configured on the device. A pushed state is trusted for **15 minutes**; an expired or never pushed state reads as **closed** (the ventilation can never stay stopped forever), so the automation re-sends it every 5 minutes.
 
 ### Step 1: Group the window contacts (optional)
 

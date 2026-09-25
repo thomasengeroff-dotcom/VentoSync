@@ -147,7 +147,7 @@ Details, state machine and HA setup: [📄 Smart Climate Control — HVAC Coordi
 
 ## ⚙️ Configuration Entities
 
-| HA Entity (German UI name) | Entity ID | Global (C++) | Default | Purpose |
+| HA Entity (German UI name) | YAML ID | Global (C++) | Default | Purpose |
 | :--- | :--- | :--- | :---: | :--- |
 | `Smart-Automatik Min Lüfterstufe` | `automatik_min_luefterstufe` | `automatik_min_fan_level` | 2 | Minimum speed (moisture base protection). |
 | `Smart-Automatik Max Lüfterstufe` | `automatik_max_luefterstufe` | `automatik_max_fan_level` | 7 | Maximum speed (noise limiter for nights). |
@@ -160,7 +160,7 @@ Details, state machine and HA setup: [📄 Smart Climate Control — HVAC Coordi
 | `Klima-Koordination: Max Lüfterstufe` | `hvac_max_fan_level` | `hvac_max_fan_level_val` | 3 | Fan level cap while the AC is active. |
 | `Klima-Koordination: CO2 Notfallgrenze` | `hvac_emergency_co2` | `hvac_emergency_co2_val` | 1500 ppm | CO2 emergency override threshold. |
 
-All sliders and the HVAC switch are room-wide settings: a change on any device is sent to its peers as `MSG_STATE` and re-asserted by the Master's heartbeat.
+The HA entity IDs are derived from the display names (e.g. `number.smart_automatik_min_lufterstufe`) — see [📄 Home Assistant Entities](en_home-assistant-entities.md). All sliders and the HVAC switch are room-wide settings: a change on any device is sent to its peers as `MSG_STATE` and re-asserted by the Master's heartbeat.
 
 ---
 

@@ -15,7 +15,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
   naming — do not rename to `scd43_*`.
-- Communication: ESP-NOW (protocol v10) for multi-device sync (no Wi-Fi router required between units),
+- Communication: ESP-NOW (protocol v11) for multi-device sync (no Wi-Fi router required between units),
   ESPHome Native API to Home Assistant (optional MQTT variant)
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names,
   UI labels, and user-facing strings remain in **German**.
@@ -162,10 +162,11 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v10` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 10` in `ventilation_group.h`;
+- **Protocol version:** `v11` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 11` in `ventilation_group.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
-  window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged).
+  window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
+  v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot).
 - **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
@@ -192,6 +193,11 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
     two devices would latch each other at a high level (feedback loop, CHANGELOG 0.10.21).
   - Receivers fuse the maximum (or OR) over all fresh peers — not only the last received packet. Freshness:
     `fusion_max_age_ms()` = max(5 min, two heartbeats), capped at `PEER_TIMEOUT_MS`.
+  - **Vacation snapshot** (`leader_vacation_snapshot()`): the exception to "only own inputs" — while the room
+    leader is in vacation mode it broadcasts the mode/level it saved *before* the vacation, so followers can
+    restore the room state even if the leader is replaced or reboots without NVS. Followers adopt it only in
+    `VACATION_FOLLOWING`, never re-broadcast it (they send `VACATION_SNAPSHOT_NONE`), and pick the lowest
+    device ID among fresh peers, so exactly one snapshot wins.
 - **HA-pushed room inputs** (API actions in `packages/integration/homeassistant.yaml`): `set_ac_active`,
   `set_window_open`. Stored as `ventosync::room::HaPushedFlag` (expires after 15 min, false while the API is
   down), shared room-wide via `room_flags`; a local change triggers an immediate `MSG_SYNC`
@@ -223,7 +229,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v10 mesh communication, packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v11 mesh communication, packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock
@@ -294,6 +300,8 @@ Complex YAML lambda logic is extracted into focused header files:
   rebooting every 15 min. The Power button toggles `Aus` ↔ `last_active_mode_index`.
 - **Vacation mode is led by the Master:** only device ID 1 (or a device without a reachable Master) snapshots,
   applies and restores (`vacation_is_room_leader()`); `vacation_state` (NVS) makes triggers idempotent.
+  Followers take the leader's snapshot from the packet (`vacation_adopt_leader_snapshot()`, protocol v11), so a
+  device that joins or is promoted mid-vacation still restores the room's pre-vacation mode and level.
 - **`vent_timer` = 0 means continuous** (`ventilation_duration_ms = 0`); only values > 0 are clamped to 1–1440 min.
 - **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
   whole firmware — they persist across mode switches and are not per-instance.

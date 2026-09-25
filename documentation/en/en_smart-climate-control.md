@@ -38,7 +38,7 @@ Home Assistant **pushes** the AC state to the ventilation units with the API act
 | :--- | :--- | :--- |
 | `esphome.<device_name>_set_ac_active` | `active: true` / `false` | `true` = the AC is switched on in a conditioning mode. |
 
-* **Room-wide:** the pushed state is shared with all devices of the room over ESP-NOW (protocol v10 flag). HA therefore has to reach **at least one** device of the room; calling the action on every device adds redundancy. Each device broadcasts only the state HA pushed to *it* (never the room-wide result), so the flag cannot latch.
+* **Room-wide:** the pushed state is shared with all devices of the room over ESP-NOW (protocol v11 flag). HA therefore has to reach **at least one** device of the room; calling the action on every device adds redundancy. Each device broadcasts only the state HA pushed to *it* (never the room-wide result), so the flag cannot latch.
 * **Independent of the room ID:** unlike an imported entity, the action does not depend on a compile-time `room_id` substitution — the runtime room configuration (`config_room_id`) decides which devices share the state.
 * **Expiry:** a pushed state is trusted for **15 minutes** (`AC_STATE_MAX_AGE_MS`). The HA automation re-sends it periodically (recommended every 5 min, see [Home Assistant Setup](#️-home-assistant-setup)); this also covers device reboots and HA restarts.
 * **Diagnostics:** the last pushed value is shown as `binary_sensor.klima_aktiv_ha_signal` ("Klima aktiv (HA-Signal)").
@@ -236,7 +236,7 @@ automation:
 
 ---
 
-## Multi-Device Rooms (ESP-NOW, Protocol v10)
+## Multi-Device Rooms (ESP-NOW, Protocol v11)
 
 The `VentilationPacket` carries the Smart Climate Control fields `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (since v8) and `room_flags` (since **v10**: bit 0 = room-wide switch, bit 1 = the sender's own HA AC state; bit 2 = its own HA window state for the [Window Guard](en_window-guard-ha-setup.md); bit 3 = its own radar presence since 0.10.23). All devices of a room must run the same firmware version — a simultaneous OTA rollout, as with every protocol bump. Five mechanisms keep a room group consistent:
 
