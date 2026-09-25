@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.29",
+    "project_version": "0.10.30",
     "project_date": "2026-09-25",
-    "project_description": "ESP-NOW protocol v11: the room leader shares its pre-vacation snapshot, so a follower no longer restores the vacation state itself; NaN vacation intensity fixed."
+    "project_description": "ESPHome 2026.9.0: CI and local builds pinned to the new release, version-scoped build cache, local version check in upload_all.sh."
 }
