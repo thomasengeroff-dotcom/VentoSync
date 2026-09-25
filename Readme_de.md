@@ -335,14 +335,14 @@ Schließe das Lüfterkabel an die dedizierte **FAN**-Buchse auf dem PCB an. Das 
 Für eine stabile Entwicklungsumgebung wird dringend empfohlen, ESPHome in einer **virtuellen Python-Umgebung** (`venv`) zu installieren. Dies vermeidet Konflikte mit systemweiten Paketen und ist die einzige offiziell unterstützte manuelle Installationsmethode unter Linux.
 
 ```bash
-# 1. Virtuelle Umgebung erstellen
+# 1. Virtuelle Umgebung erstellen (ESPHome 2026.9 benötigt Python 3.12–3.14)
 python3 -m venv venv
 
 # 2. Umgebung aktivieren
 source venv/bin/activate
 
-# 3. ESPHome installieren
-pip install --upgrade esphome
+# 3. ESPHome installieren (dieselbe Version wie die CI-/Release-Builds)
+pip install esphome==2026.9.0
 ```
 
 *(Hinweis: Denke immer daran, `source venv/bin/activate` auszuführen, bevor du den Befehl `esphome` in einer neuen Terminal-Sitzung verwendest.)*
@@ -356,9 +356,11 @@ Um deine Entwicklungsumgebung auf dem neuesten Stand zu halten, verwende die fol
 ```bash
 # Sicherstellen, dass venv aktiv ist
 source venv/bin/activate
-# Auf die neueste Version aktualisieren
-pip install --upgrade esphome
+# Auf die von der CI gepinnte Version aktualisieren (ESPHOME_VERSION in .github/workflows/build.yaml)
+pip install esphome==2026.9.0
 ```
+
+`upload_all.sh` bricht ab, wenn die installierte ESPHome-Version davon abweicht (Übersteuern: `ALLOW_ESPHOME_MISMATCH=1`).
 
 **Vollständiges System- & Python-Update (Linux):**
 

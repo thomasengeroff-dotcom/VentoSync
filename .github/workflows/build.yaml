@@ -44,6 +44,13 @@ on:
 permissions:
   contents: read
 
+# ------------------------------------------------------------------
+# ESPHome-Version: einzige Stelle im Build-Workflow. Muss mit
+# lint.yaml und ESPHOME_VERSION in upload_all.sh übereinstimmen.
+# ------------------------------------------------------------------
+env:
+  ESPHOME_VERSION: "2026.9.0"
+
 # ==================================================================
 # JOB 1 – UNIT TESTS
 # Kompiliert und führt C++ Unit Tests mit AddressSanitizer und
@@ -210,14 +217,15 @@ jobs:
       # Cache für pip-Pakete und PlatformIO.
       # ESPHome-Erstinstallation: ~2–3 Min. PlatformIO-Toolchain: ~5–8 Min.
       # Mit Cache: ~20–30 Sekunden bei Cache-Hit.
-      # Cache-Key enthält den ESPHome-Version-Hash der YAML-Dateien,
-      # sodass bei YAML-Änderungen der Cache automatisch invalidiert wird.
+      # Cache-Keys enthalten die ESPHome-Version (kein Restore von Build-
+      # Verzeichnissen/Toolchains einer anderen ESPHome-Version) und den
+      # Hash der Quelldateien, sodass Änderungen den Cache invalidieren.
       # ----------------------------------------------------------------
       - name: Cache pip packages
         uses: actions/cache@v6
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-esphome-2026.8.0
+          key: pip-${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}
           restore-keys: |
             pip-${{ runner.os }}-esphome-
 
@@ -228,15 +236,15 @@ jobs:
             ~/.cache/esphome
             ~/.platformio
             .esphome/build/${{ matrix.name }}
-          key: pio-${{ runner.os }}-${{ matrix.name }}-${{ hashFiles('**/*.yaml', '**/*.h', '**/*.cpp') }}
+          key: pio-${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-${{ matrix.name }}-${{ hashFiles('**/*.yaml', '**/*.h', '**/*.cpp') }}
           restore-keys: |
-            pio-${{ runner.os }}-${{ matrix.name }}-
-            pio-${{ runner.os }}-
+            pio-${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-${{ matrix.name }}-
+            pio-${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-
 
       - name: Install ESPHome and compile firmware
         run: |
           set -euo pipefail
-          pip install wheel esphome==2026.8.0
+          pip install wheel "esphome==${ESPHOME_VERSION}"
           esphome compile ${{ matrix.yaml }}
 
       # ----------------------------------------------------------------

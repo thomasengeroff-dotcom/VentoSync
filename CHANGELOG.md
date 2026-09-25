@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.30] - 2026-09-25
+
+### Changed
+
+- **ESPHome 2026.8.0 → 2026.9.0** (`.github/workflows/build.yaml`, `.github/workflows/lint.yaml`, `upload_all.sh`):
+  - CI builds and validates with ESPHome `2026.9.0`. All six variants (incl. the generated `nosensor_mqtt`) pass `esphome config` unchanged — no YAML migration needed.
+  - The version is now set once per workflow as `ESPHOME_VERSION` instead of being repeated in the install steps.
+  - The PlatformIO/build cache key and its restore keys now contain the ESPHome version, so a build never restores the build directory or toolchain of another ESPHome release.
+  - `upload_all.sh` aborts if the locally installed ESPHome differs from the CI version (override: `ALLOW_ESPHOME_MISMATCH=1`), so OTA-flashed firmware matches the release binaries. The script was converted from CRLF to LF line endings (required for the new `if` block under `bash`).
+- ESPHome 2026.9 requires **Python 3.12–3.14** for local installs; the install instructions in `Readme.md` / `Readme_de.md` now pin `esphome==2026.9.0` instead of `--upgrade`.
+
 ## [0.10.29] - 2026-09-25
 
 ### Changed

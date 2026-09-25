@@ -7,6 +7,10 @@ on:
     branches: ["master"]
   workflow_dispatch:
 
+# Keep in sync with ESPHOME_VERSION in build.yaml and upload_all.sh.
+env:
+  ESPHOME_VERSION: "2026.9.0"
+
 jobs:
   lint:
     name: Validate YAML Config
@@ -28,7 +32,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install ESPHome
-        run: pip install esphome==2026.8.0
+        run: pip install "esphome==${ESPHOME_VERSION}"
 
       # All variants are validated here on every PR — the firmware build of a
       # PR only compiles ventosync-full (build.yaml), the other variants are

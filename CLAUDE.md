@@ -8,7 +8,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 **Key facts:**
 
-- Platform: ESP32-C6 (RISC-V), ESPHome `2026.8.0`
+- Platform: ESP32-C6 (RISC-V), ESPHome `2026.9.0`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
 - Sensors: Sensirion **SCD43** (CO2 / temperature / humidity), BME680 (IAQ fallback), BMP390 (pressure),
   2× NTC thermistors, HLK-LD2450 (mmWave radar).
@@ -139,7 +139,10 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-f
     -Icomponents && ./simple_test && rm -f simple_test
 ```
 
-Always validate before uploading. CI pins ESPHome to `2026.8.0` — use the same version locally.
+Always validate before uploading. CI pins ESPHome to `2026.9.0` (needs Python 3.12–3.14) — use the same version
+locally; `upload_all.sh` aborts on a mismatch (override `ALLOW_ESPHOME_MISMATCH=1`).
+**ESPHome upgrade:** change `ESPHOME_VERSION` in `.github/workflows/build.yaml`, `.github/workflows/lint.yaml` and
+`upload_all.sh`, plus the version in this file and both READMEs; validate all variants (see `lint.yaml`).
 Pure logic belongs in `components/ventilation_logic/` (no ESPHome dependencies) so it can be unit-tested;
 `components/helpers/` is only compiled by ESPHome and has no native tests.
 
@@ -340,7 +343,7 @@ Triggered on push and pull request to `master`:
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
   - *Build* matrix: **pull requests build only `ventosync-full`**; push to `master` / `workflow_dispatch` build all
     6 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `nosensor-mqtt` (generated)),
-    ESPHome pinned to `2026.8.0`, secret-free OTA configs. The release job needs all 6 builds.
+    ESPHome pinned to `2026.9.0`, secret-free OTA configs. The release job needs all 6 builds.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).
