@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.29] - 2026-09-25
+
+### Changed
+
+- **ESP-NOW protocol v10 → v11** (`components/ventilation_group/ventilation_group.h`, `components/ventilation_group/__init__.py`, `components/ventilation_logic/room_fusion.h`, `packages/base/ventosync_base.yaml`):
+  - `VentilationPacket` gains `vacation_pre_mode_index` and `vacation_pre_intensity` (2 bytes, packet size 76 of the 250 available), the pre-vacation room state of the device that is **leading** the vacation. Every other device sends `VACATION_SNAPSHOT_NONE` (`0xFF`), so an adopted snapshot is never re-broadcast and cannot latch between devices.
+  - New `ventilation_group` config keys `vacation_state_global`, `pre_vacation_mode_index_global` and `pre_vacation_intensity_global`, wired in `ventosync_base.yaml`.
+  - **All devices of a room must be flashed together**, as with every protocol bump — nodes reject packets carrying a different protocol version.
+
+### Fixed
+
+- **Vacation mode restored the vacation state instead of the pre-vacation state** (`components/helpers/vacation_helpers.h`, `components/ventilation_logic/room_fusion.h`): every device snapshots its own mode and fan level when Home Assistant flips the vacation toggle, but the room leader applies the vacation preset and broadcasts `MSG_STATE` immediately — and that packet can reach a follower **before** its own HA push does (both arrive within milliseconds, in whatever order Home Assistant notifies its subscribers). Such a follower saved `Stoßlüftung` / level 1 as its "previous" state and would have restored exactly that if it ever had to act on its own (Master unreachable, or promoted to Master mid-vacation). Followers now adopt the leader's snapshot from the packet (`vacation_adopt_leader_snapshot()`, `leader_vacation_snapshot()`, checked every 10 s); if several devices claim to lead after a Master outage, the lowest device ID wins, deterministically on every device of the room. Writes are free when nothing changed — ESPHome only persists a global on a real value change. Unit test **T-7v** covers the sentinel, the range validation, the freshness window and the split-brain tie-break.
+- **NaN vacation intensity applied the mode without its fan level** (`components/helpers/vacation_helpers.h`): the range check `intensity < 1 || intensity > 10` is false for `NaN` (every comparison with `NaN` is), so an uninitialized `number.urlaubsmodus_intensitat` slipped through and was passed to the fan call as-is. `NaN` is now tested explicitly and falls back to level 1 like any other out-of-range value.
+
+### Documentation
+
+- **Vacation mode guide corrected** (`documentation/en/en_vacation-mode-ha-setup.md`, `documentation/de/de_vacation-mode-ha-setup.md`):
+  - "The Master saves its current mode" was wrong — **every** device snapshots, only the Master *applies* and *restores*; a device acts on its own solely when no Master of its room is reachable.
+  - Added the shared snapshot (protocol v11) with the race it fixes.
+  - Documented that an unavailable helper (e.g. during an HA restart) does not end the vacation — only a real `off` does — and that the vacation preset entities are **not** synchronized room-wide.
+- Corrected the column header of the configuration table in `documentation/en/en_smart-automatic-logic.md` and `documentation/de/de_smart-automatic-logic.md`: it lists **YAML IDs**, not HA entity IDs (introduced in 0.10.28), and now points to the entity guide for the real HA entity IDs.
+- Updated the protocol version references in `CLAUDE.md`, both READMEs, both ESP-NOW guides, both Smart Climate Control guides, both Window Guard guides, both dashboard guides and the component/package READMEs.
+
 ## [0.10.28] - 2026-09-25
 
 ### Fixed
