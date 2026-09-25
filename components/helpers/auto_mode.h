@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-09-25
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -698,21 +698,21 @@ inline void evaluate_auto_mode(bool force) {
   // Guard: After switching into Smart-Automatik the PID outputs are stale for
   // a few cycles (the PID controller's proportional term immediately overwrites
   // the reset-to-zero values set in system_lifecycle.h). Hold the fan at
-  // min_level until the first genuine sensor cycle has completed (~15 s = 1.5
-  // CO2 PID cycles at the SCD4x's ~5-30 s update rate).
-  static uint32_t mode_switch_holdoff_until_ms = 0;
+  // min_level until the first genuine sensor cycle has completed
+  // (MODE_SWITCH_HOLDOFF_MS = 1.5 CO2 PID cycles at the SCD4x's ~5-30 s rate).
+  static ventosync::room::Holdoff mode_switch_holdoff;
   if (force) {
     // evaluate_auto_mode(true) is called from system_lifecycle on mode switch
-    mode_switch_holdoff_until_ms = now + 15000u;
-    ESP_LOGD("auto_mode", "Mode-switch holdoff active for 15 s (until %u ms)", mode_switch_holdoff_until_ms);
+    mode_switch_holdoff.arm(now);
+    ESP_LOGD("auto_mode", "Mode-switch holdoff armed for %u ms", MODE_SWITCH_HOLDOFF_MS);
   }
-  if (mode_switch_holdoff_until_ms > 0) {
-    if (now < mode_switch_holdoff_until_ms) {
-      demand = 0.0f;
-    } else {
-      mode_switch_holdoff_until_ms = 0;
-      ESP_LOGD("auto_mode", "Mode-switch holdoff expired, PID demand active");
-    }
+  if (mode_switch_holdoff.active(now, MODE_SWITCH_HOLDOFF_MS)) {
+    demand = 0.0f;
+    // The room fuses the MAXIMUM of all peer demands, so the distrusted PID
+    // output must not be broadcast either: otherwise this device holds at the
+    // minimum while every peer ramps up on its transient spike. NaN = "no
+    // data", which room_max_peer_demand() skips (peers keep their own value).
+    v->local_pid_demand = NAN;
   }
 
   // FIXED: If demand is NAN (e.g., all sensors offline/unstable), we abort to hold the last state

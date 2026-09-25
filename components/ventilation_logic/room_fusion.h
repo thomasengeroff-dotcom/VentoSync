@@ -21,7 +21,7 @@
 // Description: Pure room-wide sensor/demand fusion helpers (ESP-NOW peers).
 // Author:      Thomas Engeroff
 // Created:     2026-09-23
-// Modified:    2026-09-24
+// Modified:    2026-09-25
 // ==========================================================================
 #pragma once
 
@@ -239,6 +239,36 @@ struct PresenceHold {
       return true;
     }
     return seen && static_cast<uint32_t>(now_ms - last_ms) < PRESENCE_HOLD_MS;
+  }
+};
+
+/**
+ * @brief   One-shot hold-off window (wrap-safe).
+ *
+ * @details Used after a mode switch into Smart-Automatik, where the PID
+ *          outputs are still stale for a few cycles. `active()` disarms
+ *          itself once the window has elapsed, so no separate reset is
+ *          needed. Comparison is `now - start >= duration`, which stays
+ *          correct across the ~49.7 day millis() wrap.
+ */
+struct Holdoff {
+  uint32_t start_ms = 0;
+  bool armed = false;
+
+  /// @brief (Re)starts the hold-off window at `now_ms`.
+  void arm(uint32_t now_ms) {
+    start_ms = now_ms;
+    armed = true;
+  }
+
+  /// @brief True while the window is still running; disarms on expiry.
+  bool active(uint32_t now_ms, uint32_t duration_ms) {
+    if (!armed) return false;
+    if (static_cast<uint32_t>(now_ms - start_ms) >= duration_ms) {
+      armed = false;
+      return false;
+    }
+    return true;
   }
 };
 

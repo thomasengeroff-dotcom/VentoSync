@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.28] - 2026-09-25
+
+### Fixed
+
+- **Mode-switch hold-off no longer leaks the distrusted PID demand into the room** (`components/helpers/auto_mode.h`):
+  - The hold-off introduced in 0.10.15 zeroed only the *local* `demand`, but `calculate_combined_demand()` had already published the same value as `local_pid_demand` — the value the device broadcasts. Peers fuse the **maximum** of all peer demands, so within the hold-off window a transient PID spike ramped the whole room up while the device that switched modes correctly held at its minimum level. `local_pid_demand` is now set to `NaN` ("no data", skipped by `room_max_peer_demand()`) while the hold-off is active.
+  - The window is narrow — the spike can only appear from the second evaluation cycle onwards (~10 s) until the hold-off expires (15 s), and a peer only sees it if a heartbeat or state packet falls into it — but the effect was room-wide.
+- **Hold-off timing is now wrap-safe** (`components/ventilation_logic/room_fusion.h`, `components/helpers/globals.h`): the deadline was computed as `now + 15000`, the one place in the codebase violating the project rule "always `now - last < interval`". Extracted into the pure, unit-tested `ventosync::room::Holdoff` (self-disarming) with the duration as `MODE_SWITCH_HOLDOFF_MS`. Unit test **T-7u** covers the window boundaries, re-arming and the millis() rollover.
+
 ## [0.10.27] - 2026-09-24
 
 ### Fixed
