@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-09-24
+// Modified:    2026-09-25
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -420,6 +420,9 @@ struct TestPeer {
   bool hvac_ac_active = false;
   bool window_open = false;
   bool presence = false;
+  uint8_t device_id = 2;
+  uint8_t vacation_pre_mode_index = ventosync::room::VACATION_SNAPSHOT_NONE;
+  uint8_t vacation_pre_intensity = 0;
 };
 
 // T-7k: Room-wide CO2 fusion — max of local + fresh peers, stale/mock values rejected
@@ -699,6 +702,57 @@ bool test_held_reading() {
   TEST_ASSERT(std::isnan(r.get(1001u + HELD_READING_MAX_AGE_MS)));  // expired
   r.store(21.0f, 0xFFFFFF00u);
   TEST_ASSERT(std::abs(r.get(0x00000100u) - 21.0f) < 1e-6f);        // wrap-safe
+  return true;
+}
+
+// ============================================================
+// T-7v: Vacation snapshot shared by the room leader — a follower may snapshot
+// the vacation state itself (the leader's MSG_STATE can beat its own HA push),
+// so it adopts the leader's snapshot for the "Master gone" restore fallback.
+// ============================================================
+bool test_vacation_snapshot() {
+  using namespace ventosync::room;
+  const uint32_t now = 1000000u;
+
+  // Field validation: only mode 0-4 and level 1-10 count as a snapshot
+  VacationSnapshot v;
+  TEST_ASSERT(!v.valid());                       // sentinel default
+  v.mode_index = 0; v.intensity = 1;  TEST_ASSERT(v.valid());
+  v.mode_index = 4; v.intensity = 10; TEST_ASSERT(v.valid());
+  v.mode_index = 5; v.intensity = 3;  TEST_ASSERT(!v.valid());   // mode out of range
+  v.mode_index = 2; v.intensity = 0;  TEST_ASSERT(!v.valid());   // level out of range
+  v.mode_index = 2; v.intensity = 11; TEST_ASSERT(!v.valid());
+
+  // No peers / only followers (sentinel) -> nothing to adopt
+  std::vector<TestPeer> peers;
+  TEST_ASSERT(!leader_vacation_snapshot(peers, now).valid());
+  peers.push_back({now - 1000u, 0.0f, 0.0f, 0.0f, 0.0f});        // follower, sentinel
+  TEST_ASSERT(!leader_vacation_snapshot(peers, now).valid());
+
+  // One fresh leader -> its snapshot is adopted
+  TestPeer master{now - 1000u, 0.0f, 0.0f, 0.0f, 0.0f};
+  master.device_id = 1; master.vacation_pre_mode_index = 0; master.vacation_pre_intensity = 5;
+  peers.push_back(master);
+  auto got = leader_vacation_snapshot(peers, now);
+  TEST_ASSERT(got.valid() && got.mode_index == 0 && got.intensity == 5);
+
+  // Stale leader is ignored
+  peers.back().last_seen_ms = now - PEER_DATA_MAX_AGE_MS - 1u;
+  TEST_ASSERT(!leader_vacation_snapshot(peers, now).valid());
+  peers.back().last_seen_ms = now - 1000u;                        // fresh again
+
+  // Split brain: two devices claim to lead -> the Master (lowest ID) wins
+  TestPeer other{now - 500u, 0.0f, 0.0f, 0.0f, 0.0f};
+  other.device_id = 3; other.vacation_pre_mode_index = 3; other.vacation_pre_intensity = 9;
+  peers.push_back(other);
+  got = leader_vacation_snapshot(peers, now);
+  TEST_ASSERT(got.valid() && got.mode_index == 0 && got.intensity == 5);
+
+  // A leader broadcasting an out-of-range snapshot is rejected, the other wins
+  peers[1].vacation_pre_mode_index = 7;                           // corrupt master value
+  got = leader_vacation_snapshot(peers, now);
+  TEST_ASSERT(got.valid() && got.mode_index == 3 && got.intensity == 9);
+
   return true;
 }
 
@@ -1490,6 +1544,7 @@ int main() {
     {"T-7s: Held reading (unmeasurable NTC in continuous ventilation)", test_held_reading},
     {"T-7t: Stoßlüftung one-way bursts + Master schedule sync", test_stoss_one_way_and_sync},
     {"T-7u: Mode-switch hold-off (wrap-safe, re-armable)", test_mode_switch_holdoff},
+    {"T-7v: Vacation snapshot from the room leader", test_vacation_snapshot},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

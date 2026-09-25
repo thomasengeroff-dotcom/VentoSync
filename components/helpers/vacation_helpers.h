@@ -23,7 +23,7 @@
 //              operating parameters.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-09-24
+// Modified:    2026-09-25
 //
 // Dependencies: globals.h (MODE_NAMES, MODE_NAME_BOOST, MODE_NAME_AUTO)
 //               automation_helpers.h (set_operating_mode_select,
@@ -33,6 +33,8 @@
 #pragma once
 
 #include "esphome.h"
+
+#include <cmath>
 
 // ---------------------------------------------------------
 // CONSTANTS
@@ -81,6 +83,48 @@ inline bool vacation_is_room_leader() {
         }
     }
     return true;  // No Master reachable — act locally
+}
+
+/**
+ * @brief Adopts the vacation snapshot shared by the room's leader.
+ *
+ * Every device snapshots its own state when Home Assistant switches the
+ * vacation toggle on — but a follower can capture the *vacation* state
+ * instead: the leader applies the mode and broadcasts MSG_STATE immediately
+ * (`set_operating_mode_select()`), and that packet can reach the follower
+ * before its own HA push does (both arrive within milliseconds, and the
+ * order is whatever Home Assistant's subscriber order happens to be).
+ *
+ * The leader therefore shares its snapshot (protocol v11, only while
+ * `vacation_state == VACATION_LEADING`) and followers adopt it. That keeps
+ * the "Master unreachable → restore locally" fallback correct, which is
+ * exactly the path a corrupted snapshot would break.
+ *
+ * Writes to the persistent globals are free when nothing changed:
+ * `RestoringGlobalsComponent` only saves on a real value change.
+ *
+ * @note Called every 10 s from `logic_automation.yaml` — the leader has to be
+ *       reachable while it still leads, so this cannot wait until the restore.
+ */
+inline void vacation_adopt_leader_snapshot() {
+    using namespace ventosync::vacation;
+    auto *v = ventilation_ctrl;
+    if (v == nullptr) return;
+    // Only a follower adopts; a leader owns the authoritative snapshot.
+    if (id(vacation_state) != VACATION_FOLLOWING) return;
+
+    const uint32_t now = millis();
+    const auto snap = ventosync::room::leader_vacation_snapshot(v->peers, now, PEER_TIMEOUT_MS);
+    if (!snap.valid()) return;
+
+    const int idx = static_cast<int>(snap.mode_index);
+    const int lvl = static_cast<int>(snap.intensity);
+    if (id(pre_vacation_mode_index) == idx && id(pre_vacation_intensity) == lvl) return;
+
+    ESP_LOGI("vacation", "Adopted room leader's pre-vacation snapshot: mode_index=%d, intensity=%d "
+             "(was %d/%d)", idx, lvl, id(pre_vacation_mode_index), id(pre_vacation_intensity));
+    id(pre_vacation_mode_index) = idx;
+    id(pre_vacation_intensity) = lvl;
 }
 
 // ---------------------------------------------------------
@@ -140,7 +184,11 @@ inline void activate_vacation_mode() {
         target_mode = MODE_NAME_BOOST;
     }
 
-    if (target_intensity < INTENSITY_MIN || target_intensity > INTENSITY_MAX) {
+    // NaN slips through a plain range check (every comparison with NaN is
+    // false), so it is tested explicitly — an uninitialized HA number would
+    // otherwise apply the vacation mode without its fan level.
+    if (std::isnan(target_intensity) ||
+        target_intensity < INTENSITY_MIN || target_intensity > INTENSITY_MAX) {
         ESP_LOGW("vacation",
                  "Vacation intensity %.1f out of range [%.0f–%.0f], "
                  "falling back to %.0f",
