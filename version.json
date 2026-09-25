@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.28",
+    "project_version": "0.10.29",
     "project_date": "2026-09-25",
-    "project_description": "Mode-switch hold-off no longer broadcasts the distrusted PID demand to the room; hold-off timing made wrap-safe and unit-tested."
+    "project_description": "ESP-NOW protocol v11: the room leader shares its pre-vacation snapshot, so a follower no longer restores the vacation state itself; NaN vacation intensity fixed."
 }

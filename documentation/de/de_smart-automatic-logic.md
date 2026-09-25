@@ -148,7 +148,7 @@ Details, Zustandsautomat und HA-Einrichtung: [📄 Intelligente Klimaanlagen-Koo
 
 ## ⚙️ Konfigurations-Entitäten
 
-| HA-Entität (deutscher UI-Name) | Entity-ID | Global (C++) | Standard | Zweck |
+| HA-Entität (deutscher UI-Name) | YAML-ID | Global (C++) | Standard | Zweck |
 | :--- | :--- | :--- | :---: | :--- |
 | `Smart-Automatik Min Lüfterstufe` | `automatik_min_luefterstufe` | `automatik_min_fan_level` | 2 | Mindestdrehzahl (Grundlüftung zum Feuchteschutz). |
 | `Smart-Automatik Max Lüfterstufe` | `automatik_max_luefterstufe` | `automatik_max_fan_level` | 7 | Maximaldrehzahl (Geräuschbegrenzung für die Nacht). |
@@ -161,7 +161,7 @@ Details, Zustandsautomat und HA-Einrichtung: [📄 Intelligente Klimaanlagen-Koo
 | `Klima-Koordination: Max Lüfterstufe` | `hvac_max_fan_level` | `hvac_max_fan_level_val` | 3 | Lüfterstufen-Obergrenze bei aktiver Klimaanlage. |
 | `Klima-Koordination: CO2 Notfallgrenze` | `hvac_emergency_co2` | `hvac_emergency_co2_val` | 1500 ppm | Schwelle des CO2-Notfall-Overrides. |
 
-Alle Slider und der HVAC-Schalter sind raumweite Einstellungen: Eine Änderung an einem beliebigen Gerät wird als `MSG_STATE` an die Peers gesendet und vom Master-Heartbeat erneut gesetzt.
+Die HA-Entity-IDs leiten sich aus den Anzeigenamen ab (z. B. `number.smart_automatik_min_lufterstufe`) — siehe [📄 Home Assistant Entitäten](de_home-assistant-entities.md). Alle Slider und der HVAC-Schalter sind raumweite Einstellungen: Eine Änderung an einem beliebigen Gerät wird als `MSG_STATE` an die Peers gesendet und vom Master-Heartbeat erneut gesetzt.
 
 ---
 

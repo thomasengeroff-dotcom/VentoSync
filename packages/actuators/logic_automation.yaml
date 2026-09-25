@@ -88,6 +88,7 @@ interval:
     then:
       - lambda: "guard_config_sync();"
       - lambda: "evaluate_auto_mode();"
+      - lambda: "vacation_adopt_leader_snapshot();"
 
   # Fan speed slew-rate tick (must be ≤5s)
   - interval: 1s

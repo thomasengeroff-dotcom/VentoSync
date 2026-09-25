@@ -63,7 +63,7 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protokoll-Architektur & Paketvalidierung (v10)
+## 🔒 Protokoll-Architektur & Paketvalidierung (v11)
 
 * **Magic Header**: Jedes Datenpaket beginnt mit einem festen Prüfbyte (`0x42`), um fremde oder fehlerhafte 2,4-GHz-Pakete sofort zu verwerfen.
 * **Firmware-Versionsprüfung**: Strikte Validierung verhindert Fehlinterpretationen bei unterschiedlichen Firmware-Ständen.

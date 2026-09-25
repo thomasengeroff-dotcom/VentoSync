@@ -242,6 +242,67 @@ struct PresenceHold {
   }
 };
 
+/// Sentinel for "this device is not leading a vacation, no snapshot to share".
+constexpr uint8_t VACATION_SNAPSHOT_NONE = 0xFFu;
+
+/**
+ * @brief   Pre-vacation room state shared by the device leading the vacation.
+ *
+ * @details Every device snapshots its own state when Home Assistant switches
+ *          the vacation toggle on. A follower can snapshot the *vacation*
+ *          state instead, because the leader's MSG_STATE may reach it before
+ *          its own HA push (both arrive within milliseconds). The leader
+ *          therefore shares its snapshot, and followers adopt it — so the
+ *          fallback "restore locally because the Master is gone" uses the
+ *          state the room actually had before the holiday.
+ */
+struct VacationSnapshot {
+  uint8_t mode_index = VACATION_SNAPSHOT_NONE; ///< Operating mode index 0-4.
+  uint8_t intensity = 0;                       ///< Fan level 1-10.
+
+  /// @brief True if both fields are inside their valid ranges.
+  bool valid() const {
+    return mode_index <= 4u && intensity >= 1u && intensity <= 10u;
+  }
+};
+
+/**
+ * @brief   The vacation snapshot of the room's leader, from all fresh peers.
+ *
+ * @details Only a device that is actually leading a vacation broadcasts a
+ *          valid snapshot; every other device sends `VACATION_SNAPSHOT_NONE`.
+ *          A follower never re-broadcasts an adopted snapshot, so the value
+ *          cannot circulate between devices. If more than one device claims
+ *          to lead (split brain after a Master outage), the Master (device
+ *          ID 1) wins, otherwise the lowest device ID — deterministic on
+ *          every device of the room.
+ *
+ * @param[in] peers       Peer records exposing `last_seen_ms`, `device_id`,
+ *                        `vacation_pre_mode_index` and `vacation_pre_intensity`.
+ * @param[in] now_ms      Current millis().
+ * @param[in] max_age_ms  Freshness window.
+ *
+ * @return  The leader's snapshot, or an invalid one if no fresh peer leads.
+ */
+template <typename Peers>
+inline VacationSnapshot leader_vacation_snapshot(const Peers &peers, uint32_t now_ms,
+                                                 uint32_t max_age_ms = PEER_DATA_MAX_AGE_MS) {
+  VacationSnapshot best;
+  uint8_t best_device = 0xFFu;
+  for (const auto &peer : peers) {
+    if (!is_fresh(now_ms, peer.last_seen_ms, max_age_ms)) continue;
+    VacationSnapshot cand;
+    cand.mode_index = peer.vacation_pre_mode_index;
+    cand.intensity = peer.vacation_pre_intensity;
+    if (!cand.valid()) continue;
+    if (!best.valid() || peer.device_id < best_device) {
+      best = cand;
+      best_device = peer.device_id;
+    }
+  }
+  return best;
+}
+
 /**
  * @brief   One-shot hold-off window (wrap-safe).
  *

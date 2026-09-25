@@ -19,7 +19,7 @@ Die **Fenstersperre (Window Guard)** pausiert automatisch alle Lüftungsgeräte 
 
 ## 🛠️ Einrichtung in Home Assistant
 
-Seit **0.10.22** **sendet** Home Assistant den Fensterstatus mit der API-Action **`set_window_open`** (Daten `window_open: true/false`) an die Lüftungsgeräte. Der Status wird per ESP-NOW (Protokoll v10) mit allen Geräten des Raums geteilt; Home Assistant muss daher **mindestens ein** Gerät des Raums erreichen — unabhängig von der am Gerät eingestellten Raum-ID. Ein gesendeter Status gilt **15 Minuten**; ein abgelaufener oder nie gesendeter Status gilt als **geschlossen** (die Lüftung kann nie dauerhaft stehen bleiben), deshalb sendet die Automation ihn alle 5 Minuten erneut.
+Seit **0.10.22** **sendet** Home Assistant den Fensterstatus mit der API-Action **`set_window_open`** (Daten `window_open: true/false`) an die Lüftungsgeräte. Der Status wird per ESP-NOW (Protokoll v11) mit allen Geräten des Raums geteilt; Home Assistant muss daher **mindestens ein** Gerät des Raums erreichen — unabhängig von der am Gerät eingestellten Raum-ID. Ein gesendeter Status gilt **15 Minuten**; ein abgelaufener oder nie gesendeter Status gilt als **geschlossen** (die Lüftung kann nie dauerhaft stehen bleiben), deshalb sendet die Automation ihn alle 5 Minuten erneut.
 
 ### Schritt 1: Fensterkontakte gruppieren (optional)
 

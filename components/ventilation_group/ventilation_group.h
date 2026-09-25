@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-09-24
+// Modified:    2026-09-25
 // ==========================================================================
 #pragma once
 
@@ -96,7 +96,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 10; // Bumped: room_flags (HVAC switch, AC state, window state)
+static constexpr uint8_t PROTOCOL_VERSION = 11; // Bumped: vacation snapshot shared by the room leader
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -163,6 +163,12 @@ struct __attribute__((packed)) VentilationPacket {
 
   // Room flags (v10) — see ROOM_FLAG_*
   uint8_t room_flags;
+
+  // Vacation snapshot (v11) — the pre-vacation room state, sent ONLY by the
+  // device currently leading a vacation; every other device sends
+  // VACATION_SNAPSHOT_NONE. Followers adopt it but never re-broadcast it.
+  uint8_t vacation_pre_mode_index; ///< Mode index 0-4 before the vacation, or 0xFF.
+  uint8_t vacation_pre_intensity;  ///< Fan level 1-10 before the vacation, or 0.
 };
 
 static_assert(sizeof(VentilationPacket) <= 250,
@@ -187,6 +193,8 @@ struct PeerState {
   bool hvac_ac_active; ///< Peer's own HA AC state (ROOM_FLAG_AC_ACTIVE).
   bool window_open;    ///< Peer's own HA window state (ROOM_FLAG_WINDOW_OPEN).
   bool presence;       ///< Peer's own radar presence (ROOM_FLAG_PRESENCE).
+  uint8_t vacation_pre_mode_index; ///< Leader's pre-vacation mode index, else 0xFF.
+  uint8_t vacation_pre_intensity;  ///< Leader's pre-vacation fan level, else 0.
 };
 
 // ---------------------------------------------------------
@@ -301,6 +309,9 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *hvac_co2_threshold_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *hvac_emergency_co2_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *hvac_max_fan_level_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *vacation_state_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_mode_index_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_intensity_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
@@ -330,6 +341,12 @@ public:
   void set_hvac_emergency_co2_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_emergency_co2_global_ = g; }
   /** @brief Sets the global Smart Climate Control fan level cap reference. */
   void set_hvac_max_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_max_fan_level_global_ = g; }
+  /** @brief Sets the persistent vacation state reference (0 = inactive, 2 = leading). */
+  void set_vacation_state_global(esphome::globals::RestoringGlobalsComponent<int> *g) { vacation_state_global_ = g; }
+  /** @brief Sets the pre-vacation mode index reference (shared while leading). */
+  void set_pre_vacation_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_mode_index_global_ = g; }
+  /** @brief Sets the pre-vacation fan level reference (shared while leading). */
+  void set_pre_vacation_intensity_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_intensity_global_ = g; }
   /** @brief Sets the global Smart Climate Control enable flag reference (room-wide switch). */
   void set_hvac_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { hvac_enabled_global_ = g; }
 
@@ -635,6 +652,8 @@ public:
       peer.hvac_ac_active = (pkt->room_flags & ROOM_FLAG_AC_ACTIVE) != 0;
       peer.window_open = (pkt->room_flags & ROOM_FLAG_WINDOW_OPEN) != 0;
       peer.presence = (pkt->room_flags & ROOM_FLAG_PRESENCE) != 0;
+      peer.vacation_pre_mode_index = pkt->vacation_pre_mode_index;
+      peer.vacation_pre_intensity = pkt->vacation_pre_intensity;
     };
 
     bool found_peer = false;
@@ -876,6 +895,22 @@ public:
     if (hvac_local_ac_active) pkt.room_flags |= ROOM_FLAG_AC_ACTIVE;    // own HA state only
     if (window_local_open) pkt.room_flags |= ROOM_FLAG_WINDOW_OPEN;     // own HA state only
     if (presence_local) pkt.room_flags |= ROOM_FLAG_PRESENCE;           // own radar only
+
+    // Vacation snapshot: only the device LEADING a vacation shares its
+    // pre-vacation state (vacation_state == 2). Followers send the sentinel,
+    // so an adopted snapshot is never re-broadcast (no latching between
+    // devices) and exactly one source exists per room.
+    pkt.vacation_pre_mode_index = ventosync::room::VACATION_SNAPSHOT_NONE;
+    pkt.vacation_pre_intensity = 0;
+    if (vacation_state_global_ != nullptr && vacation_state_global_->value() == 2 &&
+        pre_vacation_mode_index_global_ != nullptr && pre_vacation_intensity_global_ != nullptr) {
+      const int idx = pre_vacation_mode_index_global_->value();
+      const int lvl = pre_vacation_intensity_global_->value();
+      if (idx >= 0 && idx <= 4 && lvl >= 1 && lvl <= 10) {
+        pkt.vacation_pre_mode_index = static_cast<uint8_t>(idx);
+        pkt.vacation_pre_intensity = static_cast<uint8_t>(lvl);
+      }
+    }
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

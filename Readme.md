@@ -233,7 +233,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v10 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v11 packets), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -502,7 +502,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
   - `number.klima_koordination_co2_notfallgrenze` — CO2 emergency override, 1200–2000 ppm (default: `1500`)
   - `text_sensor.klima_koordination_status` — Current coordinator state (diagnostic)
   - `binary_sensor.klima_aktiv_ha_signal` — AC state last pushed by Home Assistant (diagnostic)
-  > The switch and the three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v10), so they only have to be set once per room. Home Assistant pushes the AC state with the API action `set_ac_active` to at least one device per room; it is shared room-wide as well. *→ [Setup in 📄 Smart Climate Control](documentation/en/en_smart-climate-control.md#️-home-assistant-setup)*
+  > The switch and the three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v11), so they only have to be set once per room. Home Assistant pushes the AC state with the API action `set_ac_active` to at least one device per room; it is shared room-wide as well. *→ [Setup in 📄 Smart Climate Control](documentation/en/en_smart-climate-control.md#️-home-assistant-setup)*
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)

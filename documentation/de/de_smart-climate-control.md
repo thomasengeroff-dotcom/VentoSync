@@ -38,7 +38,7 @@ Home Assistant **sendet** den Klima-Status mit der API-Action **`set_ac_active`*
 | :--- | :--- | :--- |
 | `esphome.<gerätename>_set_ac_active` | `active: true` / `false` | `true` = Klimaanlage ist in einem konditionierenden Modus eingeschaltet. |
 
-* **Raumweit:** Der gesendete Status wird per ESP-NOW mit allen Geräten des Raums geteilt (Flag in Protokoll v10). Home Assistant muss deshalb **mindestens ein** Gerät des Raums erreichen; die Action an alle Geräte zu senden erhöht die Redundanz. Jedes Gerät sendet nur den Status, den HA an *dieses* Gerät geschickt hat (nie das raumweite Ergebnis) — das Flag kann sich daher nicht gegenseitig festhalten.
+* **Raumweit:** Der gesendete Status wird per ESP-NOW mit allen Geräten des Raums geteilt (Flag in Protokoll v11). Home Assistant muss deshalb **mindestens ein** Gerät des Raums erreichen; die Action an alle Geräte zu senden erhöht die Redundanz. Jedes Gerät sendet nur den Status, den HA an *dieses* Gerät geschickt hat (nie das raumweite Ergebnis) — das Flag kann sich daher nicht gegenseitig festhalten.
 * **Unabhängig von der Raum-ID:** Anders als eine importierte Entität hängt die Action nicht von der Compile-Zeit-Substitution `room_id` ab — die zur Laufzeit eingestellte Raumzuordnung (`config_room_id`) bestimmt, welche Geräte den Status teilen.
 * **Ablauf:** Ein gesendeter Status gilt **15 Minuten** (`AC_STATE_MAX_AGE_MS`). Die HA-Automation sendet ihn regelmäßig erneut (empfohlen alle 5 min, siehe [Home-Assistant-Einrichtung](#️-home-assistant-einrichtung)); das deckt auch Geräteneustarts und HA-Neustarts ab.
 * **Diagnose:** Der zuletzt gesendete Wert erscheint als `binary_sensor.klima_aktiv_ha_signal` („Klima aktiv (HA-Signal)").
@@ -236,7 +236,7 @@ automation:
 
 ---
 
-## Räume mit mehreren Geräten (ESP-NOW, Protokoll v10)
+## Räume mit mehreren Geräten (ESP-NOW, Protokoll v11)
 
 Das `VentilationPacket` trägt die Smart-Climate-Control-Felder `room_co2`, `hvac_co2_threshold`, `hvac_emergency_co2`, `hvac_max_fan_level` (seit v8) und `room_flags` (seit **v10**: Bit 0 = raumweiter Schalter, Bit 1 = eigener HA-Klima-Status des Senders; Bit 2 = eigener HA-Fensterstatus für die [Fenstersperre](de_window-guard-ha-setup.md); Bit 3 = eigene Radar-Anwesenheit seit 0.10.23). Alle Geräte eines Raums müssen dieselbe Firmware-Version fahren — gleichzeitiges OTA-Rollout, wie bei jedem Protokollbump. Fünf Mechanismen halten eine Raumgruppe konsistent:
 
