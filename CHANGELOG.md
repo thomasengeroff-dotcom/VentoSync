@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The window is narrow — the spike can only appear from the second evaluation cycle onwards (~10 s) until the hold-off expires (15 s), and a peer only sees it if a heartbeat or state packet falls into it — but the effect was room-wide.
 - **Hold-off timing is now wrap-safe** (`components/ventilation_logic/room_fusion.h`, `components/helpers/globals.h`): the deadline was computed as `now + 15000`, the one place in the codebase violating the project rule "always `now - last < interval`". Extracted into the pure, unit-tested `ventosync::room::Holdoff` (self-disarming) with the duration as `MODE_SWITCH_HOLDOFF_MS`. Unit test **T-7u** covers the window boundaries, re-arming and the millis() rollover.
 
+### Documentation
+
+- **Smart-Automatik guide brought back in sync with the code** (`documentation/en/en_smart-automatic-logic.md`, `documentation/de/de_smart-automatic-logic.md`):
+  - Added the **room-wide demand fusion** (section 3), which was missing entirely: `max(local, highest fresh peer demand)`, why only the own local-sensor demand is broadcast, and that a Master without sensors therefore regulates the room like the sensor device.
+  - Added the **mode-switch hold-off** and the "demand is NaN → hold the last state" abort.
+  - Completed the **temperature fallback chain** (section 1) with the 4th stage, the own held reading (≤ 30 min), and resolved the contradiction with section 4 about the frozen NTC in continuous ventilation (it is deliberately neither used nor broadcast).
+  - Completed **Master/Slave** (section 5): slaves clamp the Master's level into their own window and fall back to their own calculation when the Master is stale; the ±2 ramp step right after a mode change.
+  - Section 6 now states that the CO2 emergency and mold guard are fed with the **room-wide** worst case, not the local sensor alone.
+  - Reworked the flow diagram: HVAC coordination gating the mode decision, the summer-bypass re-measure guard, hold-off, NaN abort and the level clamp.
+  - Configuration table: corrected the entity display names (`Smart-Automatik …`, not `Automatik …`), split the mixed ID column into entity ID and C++ global, and added the missing `Smart-Automatik: Sommerkühlung Schwelle`.
+- Corrected the stale ESP-NOW protocol version in `components/ventilation_group/Readme.md` (v9 → v10).
+
 ## [0.10.27] - 2026-09-24
 
 ### Fixed
