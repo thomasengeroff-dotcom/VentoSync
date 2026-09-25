@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.27",
-    "project_date": "2026-09-24",
-    "project_description": "Child lock survives reboots, vacation mode led by the Master (no wrong restore in multi-device rooms), comfort docs corrected."
+    "project_version": "0.10.28",
+    "project_date": "2026-09-25",
+    "project_description": "Mode-switch hold-off no longer broadcasts the distrusted PID demand to the room; hold-off timing made wrap-safe and unit-tested."
 }

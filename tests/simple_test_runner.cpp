@@ -703,6 +703,45 @@ bool test_held_reading() {
 }
 
 // ============================================================
+// T-7u: Mode-switch hold-off — the window after switching into Smart-Automatik
+// during which the stale PID output must not drive the fan (and must not be
+// broadcast to the room either). Wrap-safe across the millis() rollover.
+// ============================================================
+bool test_mode_switch_holdoff() {
+  using ventosync::room::Holdoff;
+  constexpr uint32_t DUR = 15000u;
+
+  // Never armed -> never active
+  Holdoff h;
+  TEST_ASSERT(!h.active(0u, DUR));
+  TEST_ASSERT(!h.active(999999u, DUR));
+
+  // Armed -> active for exactly the configured duration
+  h.arm(100000u);
+  TEST_ASSERT(h.active(100000u, DUR));            // same millisecond
+  TEST_ASSERT(h.active(100000u + DUR - 1u, DUR)); // last ms inside the window
+  TEST_ASSERT(!h.active(100000u + DUR, DUR));     // boundary is exclusive
+  TEST_ASSERT(!h.active(100000u + DUR + 5000u, DUR)); // stays disarmed
+
+  // Re-arming restarts the window (every mode switch re-triggers it)
+  h.arm(200000u);
+  TEST_ASSERT(h.active(200000u + 1000u, DUR));
+  h.arm(205000u);
+  TEST_ASSERT(h.active(205000u + DUR - 1u, DUR)); // counted from the re-arm
+  TEST_ASSERT(!h.active(205000u + DUR, DUR));
+
+  // Wrap-safe: armed just before the millis() rollover
+  Holdoff w;
+  const uint32_t near_wrap = 0xFFFFFF00u; // 256 ms before the wrap
+  w.arm(near_wrap);
+  TEST_ASSERT(w.active(near_wrap + 100u, DUR));        // still before the wrap
+  TEST_ASSERT(w.active(static_cast<uint32_t>(near_wrap + 1000u), DUR));  // wrapped, inside
+  TEST_ASSERT(!w.active(static_cast<uint32_t>(near_wrap + DUR), DUR));   // wrapped, expired
+
+  return true;
+}
+
+// ============================================================
 // T-7t: Stoßlüftung — one-way bursts, direction inverted every second burst,
 // schedule alignment via the remaining super-cycle time (Master sync).
 // ============================================================
@@ -1450,6 +1489,7 @@ int main() {
     {"T-7r: Room-wide radar presence (hold, peers)", test_room_presence},
     {"T-7s: Held reading (unmeasurable NTC in continuous ventilation)", test_held_reading},
     {"T-7t: Stoßlüftung one-way bursts + Master schedule sync", test_stoss_one_way_and_sync},
+    {"T-7u: Mode-switch hold-off (wrap-safe, re-armable)", test_mode_switch_holdoff},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

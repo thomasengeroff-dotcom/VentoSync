@@ -12,7 +12,7 @@ Die Logik ist über mehrere Schichten verteilt, um Wartbarkeit und hohe Performa
 
 | Komponente | Datei | Verantwortung |
 | :--- | :--- | :--- |
-| **Hauptschleife** | [`logic_automation.yaml`](../../packages/actuators/logic_automation.yaml) | Triggers the evaluation cycle every 10 seconds. Ruft `evaluate_auto_mode()` auf. |
+| **Hauptschleife** | [`logic_automation.yaml`](../../packages/actuators/logic_automation.yaml) | Stößt den Auswertezyklus alle 10 Sekunden an. Ruft `evaluate_auto_mode()` auf. |
 | **Kernlogik (C++)** | [`auto_mode.h`](../../components/helpers/auto_mode.h) | Die „Engine“. Implementiert Mathematik, Sensorfusion und Modus-Umschaltlogik. |
 | **PID-Regler** | [`logic_pid.yaml`](../../packages/actuators/logic_pid.yaml) | Definiert die internen CO2- und Feuchte-PID-Klimaregler und deren Dummy-Ausgänge. |
 | **Klimasensoren** | [`sensors_climate.yaml`](../../packages/sensors/sensors_climate.yaml) | Definiert Eingangssensoren (SCD43, BME680, Home Assistant Sensoren) und Effizienzmetriken. |
@@ -27,14 +27,19 @@ Alle 10 Sekunden führt die Funktion `evaluate_auto_mode()` folgenden Prozess au
 
 ```mermaid
 graph TD
-    Start([10s Intervall-Trigger]) --> Sync[Sensorfusion: Lokale & Peer-Daten zusammenführen]
-    Sync --> Season{Sommerbetrieb aktiv?}
-    
+    Start([10s Intervall-Trigger]) --> Flags[Raum-Flags auffrischen: Klima / Fenster / Präsenz]
+    Flags --> Sync[Sensorfusion: lokal -. Peer -. gehaltener Messwert]
+    Sync --> HVAC{Klima-Koordination:<br/>Klimaanlage aktiv?}
+
     subgraph Mode_Management [Modus-Entscheidung]
-    Season -- Ja --> Cooling{Innen > Schwelle & Außen kühler?}
-    Cooling -- Ja --> ModeVent[Zielmodus: DURCHLÜFTEN]
-    Cooling -- Nein --> ModeRec[Zielmodus: WÄRMERÜCKGEWINNUNG]
+    HVAC -- Ja --> ModeRec[Zielmodus: WÄRMERÜCKGEWINNUNG erzwungen]
+    HVAC -- Nein --> Season{Sommerbetrieb aktiv?}
     Season -- Nein --> ModeRec
+    Season -- Ja --> Cooling{Innen > Schwelle & Außen kühler?}
+    Cooling -- Nein --> ModeRec
+    Cooling -- Ja --> Guard{Beide Temperaturen<br/>noch messbar?}
+    Guard -- Nein --> ModeRec
+    Guard -- Ja --> ModeVent[Zielmodus: DURCHLÜFTEN]
     end
 
     ModeVent --> Demand[Kombinierten PID-Bedarf berechnen]
@@ -43,20 +48,27 @@ graph TD
     subgraph Demand_Logic [Bedarfsberechnung]
     Demand --> CO2[CO2-PID evaluieren]
     Demand --> Hum[Feuchte-PID evaluieren]
-    CO2 -- "Bedarf >= 0.01" --> Priority["CO2-Priorität: Kontrolle übernehmen"]
-    CO2 -- "Bedarf < 0.005" --> Balanced["Freigabe: CO2 & Feuchte ausgleichen"]
-    CO2 -- "0.005 bis 0.01" --> Hold["Hysteresis-Hold: Aktuellen Zustand halten"]
+    CO2 -- "Bedarf >= 0.01" --> Priority[CO2-Priorität: Kontrolle übernehmen]
+    CO2 -- "Bedarf < 0.005" --> Balanced[Freigabe: CO2 und Feuchte ausgleichen]
+    CO2 -- "0.005 bis 0.01" --> Hold[Hysteresis-Hold: Zustand halten]
+    Priority --> Fuse
+    Balanced --> Fuse
+    Hold --> Fuse[Raumfusion: Maximum aus lokalem und frischem Peer-Bedarf]
     end
 
-    Priority --> Master{Ich bin Master?}
-    Balanced --> Master
-    Hold --> Master
+    Fuse --> Holdoff{Moduswechsel-<br/>Holdoff aktiv?}
+    Holdoff -- Ja --> Zero[Bedarf = 0, Broadcast NaN]
+    Holdoff -- Nein --> NaNChk{Bedarf ist NaN?}
+    NaNChk -- Ja --> HoldState([Letzten Zustand halten, Abbruch])
+    Zero --> Master{Bin ich Master?}
+    NaNChk -- Nein --> Master
 
     subgraph Level_Commit [Stufen-Festlegung]
     Master -- Ja --> CalcLevel[Stufe aus Bedarf + Hysterese berechnen]
-    Master -- Nein --> Follow[Diskreter Stufe des Masters folgen]
-    CalcLevel --> Ramp[Soft-Ramping: Max +/- 1 pro 10s]
-    Follow --> Ramp
+    Master -- Nein --> Follow[Diskrete Stufe des Masters übernehmen]
+    CalcLevel --> Clamp
+    Follow --> Clamp[Auf das lokale Stufenfenster begrenzen]
+    Clamp --> Ramp[Sanfte Rampe: max. +/- 1 pro 10s]
     end
 
     Ramp --> Final([PWM anwenden & Peers benachrichtigen])
@@ -69,8 +81,11 @@ graph TD
 ### 1. Sensorfusion & Fallbacks
 Das System gewährleistet Stabilität, selbst wenn ein lokaler Sensor ausfällt.
 - **CO2-Fallback-Kette** (im Template-Sensor `effective_co2`): Lokaler SCD43 → Lokaler BME680 IAQ eCO2 → Letzten bekannten Wert halten (bis zu 5 min) → NaN.
-- **Temperatur-Fallback-Kette** (in `auto_mode.h`): Lokale SCD43-Temperatur → Phasengekoppelte NTC-Werte → Peer-Daten über ESP-NOW.
-- **Phasengekoppelte NTC-Sensoren**: Die NTC-Sensoren sind fest im Luftkanal verbaut. Ein Phase-Lock-Filter in `climate.h` stellt sicher, dass jeder NTC nur während seiner gültigen Lüftungsphase Messwerte publiziert (Innen-NTC bei Abluft, Außen-NTC bei Zuluft) und andernfalls den letzten gültigen Wert hält. Dadurch repräsentiert `temp_zuluft` stets die Außentemperatur und `temp_abluft` stets die Innentemperatur, unabhängig von der aktuellen Drehrichtung des Lüfters.
+- **Temperatur-Fallback-Kette** (in `auto_mode.h`, `get_effective_temperatures()`): Lokale SCD43-Temperatur → Phasengekoppelte NTC-Werte → **frische Peer-Daten über ESP-NOW** → **letzte eigene gültige Messung** (`HeldReading`, bis zu 30 min) → NaN.
+- **Phasengekoppelte NTC-Sensoren**: Die NTC-Sensoren sind fest im Luftkanal verbaut, die Zuordnung ändert sich also nie: `temp_zuluft` ist der Außensensor, `temp_abluft` der Innensensor. Ein Phase-Lock-Filter in `climate.h` lässt jeden NTC nur in der Lüftungsphase publizieren, in der er tatsächlich in seinem eigenen Luftstrom liegt (Innen-NTC bei Abluft, Außen-NTC bei Zuluft), und friert ihn andernfalls auf dem letzten Wert ein.
+  - Bei **Wärmerückgewinnung** wechselt die Richtung alle 50–70 s, beide Sensoren werden also innerhalb eines Zyklus aufgefrischt und beide Werte genutzt.
+  - Bei **Durchlüften** (Sommer-Bypass) wechselt die Richtung nicht mehr, ein NTC bleibt dauerhaft eingefroren. Dieser eingefrorene Wert wird bewusst **weder verwendet noch gesendet** — die obige Fusionskette füllt die Lücke, und `guard_summer_bypass()` (siehe Abschnitt 4) kehrt zur Wärmerückgewinnung zurück, wenn das nicht gelingt.
+- **Raumweites CO2 und Feuchte**: Für die Schutzmechanismen der Klima-Koordination wird nicht der lokale Sensor allein herangezogen, sondern der **raumweite Worst Case** — der höchste CO2-Wert (`get_room_max_co2()`) und die höchste relative Feuchte (feuchteste Stelle) aus lokalem Sensor und allen frischen Peers.
 
 ### 2. Feuchtemanagement (Enthalpie-Logik)
 VentoSync verhindert Feuchteeintrag an schwülen Sommertagen oder bei Regenwetter.
@@ -90,6 +105,18 @@ Zwei unabhängige PID-Regler laufen im Hintergrund (definiert in [`logic_pid.yam
 - **Hold**: Zwischen 0.5% und 1% wird der aktuelle Zustand gehalten (kein Umschalten), um Oszillationen zu verhindern.
 - **Priorität mit Boost**: Auch während CO2 Priorität hat, gilt als effektiver Bedarf `max(CO2, Feuchte)` — die Feuchte kann die Lüfterstufe über die CO2-Anforderung anheben, sie jedoch nicht absenken. Das garantiert sowohl Luftqualität als auch Feuchteschutz.
 
+**Raumweite Bedarfsfusion**:
+Das obige Ergebnis ist der Bedarf der **lokalen** Sensoren. Darüber hinaus übernimmt jedes Gerät den höchsten Bedarf, den ein frischer Peer meldet: `effektiver Bedarf = max(lokal, höchster frischer Peer-Bedarf)` (`ventosync::room::room_max_peer_demand()`, Frische `max(5 min, zwei Heartbeats)`).
+
+- Peers berechnen ihren Wert mit ihrem vollständigen CO2- **und** Feuchte-PID inklusive Integralanteil, Prioritätshysterese und Enthalpie-Schutz — ein Master **ohne eigene Sensoren** regelt den Raum dadurch exakt wie das Sensorgerät.
+- Jedes Gerät sendet **ausschließlich seinen eigenen lokalen Sensorbedarf** (`local_pid_demand`), nie das fusionierte Ergebnis, und `NaN`, wenn es keinen eigenen Sensor hat. Würde ein fusionierter Wert erneut gesendet, könnten sich zwei Geräte gegenseitig auf einer hohen Stufe festhalten (Rückkopplung, CHANGELOG 0.10.21).
+- Während des Moduswechsel-Holdoffs (siehe unten) sendet das Gerät ebenfalls `NaN`, weil sein eigener PID-Ausgang noch nicht vertrauenswürdig ist.
+
+**Moduswechsel-Holdoff**:
+Direkt nach dem Umschalten **in** die Smart-Automatik sind die PID-Ausgänge noch einige Zyklen lang veraltet (der Proportionalanteil des Reglers überschreibt die von `system_lifecycle.h` auf null gesetzten Werte). Für `MODE_SWITCH_HOLDOFF_MS` (15 s ≈ 1,5 CO2-PID-Zyklen) wird der Bedarf deshalb auf `0` gezwungen, sodass der Lüfter von der Mindeststufe startet und erst hochregelt, wenn ein echter Sensorzyklus abgeschlossen ist.
+
+**Gar keine Daten**: Liefern weder die lokalen Sensoren noch ein Peer einen brauchbaren Bedarf, ist das Ergebnis `NaN` und der Zyklus bricht **ohne Änderung der Lüfterstufe** ab — der letzte Zustand wird gehalten, statt auf einen Standardwert zurückzufallen.
+
 ### 4. Sommerkühlung (Bypass-Simulation)
 Da dezentrale Geräte bauartbedingt keine mechanische Bypass-Klappe besitzen, simuliert die Logik einen Bypass durch Deaktivierung des Reversierzyklus.
 - **Bedingung**: Raumtemperatur > Schwelle (Slider, Standard 22°C) UND Außentemperatur < (Raum - 1.5°C) UND HA „Sommerbetrieb“ ist AKTIV UND keine aktive Klimaanlage (Klima-Koordination).
@@ -100,9 +127,10 @@ Da dezentrale Geräte bauartbedingt keine mechanische Bypass-Klappe besitzen, si
 
 ### 5. Master/Slave-Synchronisierung (Raum-Autorität)
 Um zu verhindern, dass verschiedene Lüfter im selben Raum mit unterschiedlichen Drehzahlen laufen (was Druckungleichgewichte erzeugt), nutzt das System eine **Autoritätsregel**:
-- **Master (ID=1)**: Berechnet die diskrete Zielstufe (1–10) basierend auf dem lokalen/Raumbedarf.
-- **Slaves (ID > 1)**: Ignorieren ihre eigene Bedarfsberechnung und spiegeln die diskrete Stufe des Masters in Echtzeit.
-- **Soft-Ramping**: Alle Geräte wenden einen maximalen Übergang von **+/- 1 Stufe pro 10 Sekunden** für leise und motorshonende Drehzahländerungen an.
+- **Master (ID=1)**: Berechnet die diskrete Zielstufe (1–10) aus dem Raumbedarf (lokal + fusionierter Peer-Bedarf) über `VentilationLogic::calculate_auto_target_level()`.
+- **Slaves (ID > 1)**: Spiegeln die diskrete Stufe des Masters, statt eine eigene aus ihrem Bedarf zu berechnen — begrenzen sie aber weiterhin auf **ihr eigenes Stufenfenster** `[min, max]`. Da Fenstereinstellungen und Klima-Status raumweit gelten, ist dieses Fenster normalerweise identisch mit dem des Masters; es weicht nur vorübergehend ab, etwa bis der nächste Heartbeat einen geänderten Klima-Status überträgt.
+- **Master offline**: Kam innerhalb von `PEER_TIMEOUT_MS` (15 min) kein Paket von Gerät ID 1, berechnet der Slave die Stufe wieder selbst aus dem Bedarf, damit der Raum weiter geregelt wird.
+- **Soft-Ramping**: Alle Geräte wenden einen maximalen Übergang von **+/- 1 Stufe pro 10 Sekunden** an (±2 im Zyklus direkt nach einem Moduswechsel), für leise und motorschonende Drehzahländerungen. Ein schrumpfendes Fenster — etwa die Obergrenze der Klima-Koordination — wird deshalb mit einer Stufe pro Zyklus angefahren, nicht in einem Sprung.
 
 ---
 
@@ -111,7 +139,7 @@ Ein optionaler Modifikator, der zu Beginn jedes 10-Sekunden-Zyklus ausgewertet w
 - **Reine CO2-Regelung**: Die Feuchte-PID-Anforderung wird ignoriert, der CO2-PID-Sollwert wird auf `hvac_co2_threshold` (Standard 1200 ppm) umgeschaltet und in jedem Zyklus erneut gesetzt.
 - **Stufenfenster**: `[1, hvac_max_fan_level]` (Standard 1–3) ersetzt `automatik_min/max_fan_level`.
 - **Modus-Sperre**: `determine_auto_operating_mode()` liefert immer Wärmerückgewinnung — kein Sommer-Bypass bei laufender Klimaanlage.
-- **Gesundheitsschutz**: Ein CO2-Notfall (≥ `hvac_emergency_co2`, Freigabe ≤ `hvac_co2_threshold`) und ein Schimmelschutz (≥ 70 % rH bei trockenerer Außenluft, Freigabe ≤ 65 %) stellen die normalen Grenzen und den Dual-PID wieder her. Ohne CO2-Messwert wird nichts gedrosselt.
+- **Gesundheitsschutz**: Ein CO2-Notfall (≥ `hvac_emergency_co2`, Freigabe ≤ `hvac_co2_threshold`) und ein Schimmelschutz (≥ 70 % rH bei trockenerer Außenluft, Freigabe ≤ 65 %) stellen die normalen Grenzen und den Dual-PID wieder her. Beide werden mit dem **raumweiten Worst Case** gespeist (höchster CO2-Wert / höchste rH aus lokalem Sensor und allen frischen Peers), sodass die schlechteste Luft im Raum entscheidet. Meldet kein Gerät im Raum einen CO2-Wert, wird gar nicht gedrosselt.
 - **Entprellung**: „Klima aus" muss 120 s anhalten, bevor die Einschränkungen aufgehoben werden; die Rückkehr erfolgt mit der Standardrampe von ±1 Stufe pro Zyklus.
 
 Details, Zustandsautomat und HA-Einrichtung: [📄 Intelligente Klimaanlagen-Koordination](de_smart-climate-control.md).
@@ -120,17 +148,20 @@ Details, Zustandsautomat und HA-Einrichtung: [📄 Intelligente Klimaanlagen-Koo
 
 ## ⚙️ Konfigurations-Entitäten
 
-| HA-Entität | YAML-ID | Standard | Zweck |
-| :--- | :--- | :---: | :--- |
-| `Automatik Min Lüfterstufe` | `automatik_min_fan_level` | 2 | Mindestdrehzahl (Grundlüftung zum Feuchteschutz). |
-| `Automatik Max Lüfterstufe` | `automatik_max_fan_level` | 7 | Maximaldrehzahl (Geräuschbegrenzung für die Nacht). |
-| `Automatik: CO2 Grenzwert` | `auto_co2_threshold` | 1000 | Sollwert für den CO2-PID. |
-| `Automatik: Feuchte Grenzwert`| `auto_humidity_threshold` | 60% | Sollwert für den Feuchte-PID. |
-| `Sommerbetrieb` | `sommerbetrieb` | (Binär) | Hauptschalter aus HA zur Aktivierung/Deaktivierung der Kühlung. |
-| `Klima-Koordination` | `smart_climate_control` | Aus | Aktiviert den HVAC-Koordinations-Modifikator (siehe Abschnitt 6). |
-| `Klima-Koordination: CO2 Grenzwert` | `hvac_co2_threshold` | 1200 | Gelockerter CO2-Sollwert bei aktiver Klimaanlage. |
-| `Klima-Koordination: Max Lüfterstufe` | `hvac_max_fan_level` | 3 | Lüfterstufen-Obergrenze bei aktiver Klimaanlage. |
-| `Klima-Koordination: CO2 Notfallgrenze` | `hvac_emergency_co2` | 1500 | Schwelle des CO2-Notfall-Overrides. |
+| HA-Entität (deutscher UI-Name) | Entity-ID | Global (C++) | Standard | Zweck |
+| :--- | :--- | :--- | :---: | :--- |
+| `Smart-Automatik Min Lüfterstufe` | `automatik_min_luefterstufe` | `automatik_min_fan_level` | 2 | Mindestdrehzahl (Grundlüftung zum Feuchteschutz). |
+| `Smart-Automatik Max Lüfterstufe` | `automatik_max_luefterstufe` | `automatik_max_fan_level` | 7 | Maximaldrehzahl (Geräuschbegrenzung für die Nacht). |
+| `Smart-Automatik: CO2 Grenzwert` | `auto_co2_threshold` | `auto_co2_threshold_val` | 1000 ppm | Sollwert für den CO2-PID. |
+| `Smart-Automatik: Feuchte Grenzwert` | `auto_humidity_threshold` | `auto_humidity_threshold_val` | 60 % | Sollwert für den Feuchte-PID. |
+| `Smart-Automatik: Sommerkühlung Schwelle` | `auto_summer_cooling_threshold` | `summer_cooling_threshold` | 22 °C | Raumtemperatur, ab der der Sommer-Bypass greifen darf (Abschnitt 4). |
+| `Sommerbetrieb` | `sommerbetrieb` | — | (binär) | Jahreszeit-Freigabe aus HA; `false` solange HA offline ist (Wärmerückgewinnung bleibt aktiv). |
+| `Klima-Koordination` | `smart_climate_control` | `hvac_enabled_val` | Aus | Aktiviert den HVAC-Koordinations-Modifikator, raumweit (Abschnitt 6). |
+| `Klima-Koordination: CO2 Grenzwert` | `hvac_co2_threshold` | `hvac_co2_threshold_val` | 1200 ppm | Gelockerter CO2-Sollwert bei aktiver Klimaanlage. |
+| `Klima-Koordination: Max Lüfterstufe` | `hvac_max_fan_level` | `hvac_max_fan_level_val` | 3 | Lüfterstufen-Obergrenze bei aktiver Klimaanlage. |
+| `Klima-Koordination: CO2 Notfallgrenze` | `hvac_emergency_co2` | `hvac_emergency_co2_val` | 1500 ppm | Schwelle des CO2-Notfall-Overrides. |
+
+Alle Slider und der HVAC-Schalter sind raumweite Einstellungen: Eine Änderung an einem beliebigen Gerät wird als `MSG_STATE` an die Peers gesendet und vom Master-Heartbeat erneut gesetzt.
 
 ---
 

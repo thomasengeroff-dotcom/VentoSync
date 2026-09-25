@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-09-25
 // ==========================================================================
 #pragma once
 
@@ -80,6 +80,11 @@ static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
 /// stay in heat recovery at least this long so both NTCs publish fresh values
 /// (> 2 full push-pull cycles incl. NTC stabilisation) before re-entering.
 static constexpr uint32_t SUMMER_COOLING_REMEASURE_MS = 300000u;
+
+/// After switching into Smart-Automatik the CO2/humidity PID outputs are still
+/// stale for a few cycles. Hold the fan at the minimum level for this long
+/// (~1.5 CO2 PID cycles at the SCD4x's 5-30 s update rate).
+static constexpr uint32_t MODE_SWITCH_HOLDOFF_MS = 15000u;
 
 
 
