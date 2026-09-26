@@ -441,6 +441,14 @@ esphome upload ventosync_nosensor.yaml --device <IP-Address> --no-logs
    Example of Update process in Home Assistant:
    ![OTA Update in Home Assistant](documentation/screenshots/OTA-Update.png)
 
+#### 🔐 OTA Security (encrypted uploads)
+
+Since 0.10.31, direct uploads to the device (`esphome run` / `esphome upload`, `upload_all.sh`, ESPHome dashboard) are **encrypted and authenticated with the API encryption key** (`api_encryption_key` in `secrets.yaml`). There is no OTA password any more; uploads without the key are rejected, and the web server no longer accepts firmware at `http://<device-ip>/update` (the captive portal keeps its upload page while the fallback hotspot is active).
+
+- **One key for all devices:** the CI builds one binary per variant for everyone, so every device must use the same `api_encryption_key`, and the GitHub repository secret `API_ENCRYPTION_KEY` must contain exactly that key. Release builds fail if the secret is missing. If the key differs, Home Assistant loses the API connection after the update.
+- **Update via Home Assistant / GitHub release** (`update.firmware_update`) is not affected: the device downloads the firmware itself over HTTPS.
+- **Migrating from ≤ 0.10.30:** older firmware only accepts the OTA password, which the ESPHome CLI no longer sends. Install 0.10.31 once **via the Home Assistant update entity** (or via USB); after that, `upload_all.sh` and `esphome run` work again with the key.
+
 ### 🌡️ Calibration of NTC Sensors
 
 The configuration is optimized for the **[ENTC-10K9777-02](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474)** NTC thermistor (10kΩ, B-value 3435). If you use other sensors, you must adapt the `b_constant` and `reference_resistance` values in the YAML code accordingly.
