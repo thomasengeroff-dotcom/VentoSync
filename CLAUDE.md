@@ -316,6 +316,8 @@ Complex YAML lambda logic is extracted into focused header files:
   (ESPHome still warns about it — false positive). All devices and the repository secret `API_ENCRYPTION_KEY` must
   share one key; `build.yaml` refuses to build non-PR firmware without that secret. Never re-add `password:` —
   ESPHome rejects `password` together with `encryption`.
+  The key is compiled into the **public** release binaries, so for release firmware it is not secret (extractable);
+  the encryption only raises the bar. Keep that limitation documented (README "OTA Security").
 
 ---
 
