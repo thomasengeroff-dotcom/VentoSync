@@ -311,6 +311,11 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`effective_co2` may be a BME680 eCO2 estimate** (VOC-based) in the `bme680_only` variant; room-wide
   maxima include it as if it were an NDIR value.
 - **Local builds bump `version.json`** via `version_bump.py` — never commit that local bump.
+- **OTA is encrypted with the api key** (`ota: - platform: esphome` + bare `encryption:`, since 0.10.31): no OTA
+  password, uploads without the key are rejected, `web_server: ota: false` closes the plaintext `/update` endpoint
+  (ESPHome still warns about it — false positive). All devices and the repository secret `API_ENCRYPTION_KEY` must
+  share one key; `build.yaml` refuses to build non-PR firmware without that secret. Never re-add `password:` —
+  ESPHome rejects `password` together with `encryption`.
 
 ---
 
@@ -355,7 +360,9 @@ Triggered on push and pull request to `master`:
   greater than on `master`, match the top `CHANGELOG.md` entry, and its tag must not exist yet.
   Label `no-release` skips the check. Run locally: `python3 .github/scripts/check_version.py`.
 
-Devices use NVS-stored Wi-Fi credentials; secrets are stripped from release binaries.
+Devices use NVS-stored Wi-Fi credentials; secrets are stripped from release binaries — except the api key
+(`API_ENCRYPTION_KEY` repository secret), which also authenticates OTA uploads; push/`workflow_dispatch` builds fail
+without it, PR builds fall back to the public dummy key.
 
 ---
 

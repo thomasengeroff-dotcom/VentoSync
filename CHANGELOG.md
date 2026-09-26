@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.31] - 2026-09-26
+
+### Security / Stability
+
+- **H-1: Unauthenticated OTA uploads closed** (`packages/base/esp32c6_common.yaml`):
+  - The CI removed the OTA password from the release binaries, so every device running a GitHub release accepted firmware on port 3232 from anyone on the LAN. `ota: - platform: esphome` now uses `encryption:` without its own key: ESPHome 2026.9 reuses the api encryption key and **requires** encrypted, authenticated uploads. The OTA password (`otapw`) is gone — ESPHome does not allow `password` together with `encryption`.
+  - `web_server: ota: false`: the local web server no longer accepts firmware at `http://<device-ip>/update` (plaintext, no authentication — it bypassed the OTA encryption). The captive portal keeps its upload page while the fallback hotspot is active. ESPHome 2026.9 still logs "OTA encryption does not cover the web_server OTA platform"; that warning ignores this option.
+  - Updates via the Home Assistant update entity / GitHub release (`http_request`) are unchanged.
+- **Release builds require the `API_ENCRYPTION_KEY` secret** (`.github/workflows/build.yaml`): push and `workflow_dispatch` builds abort instead of silently falling back to the public dummy key, which would now also be the OTA key of every released device. Pull requests (incl. forks) still build with the dummy key and a warning.
+
+### Changed
+
+- Removed the no-longer-needed OTA password patch from `build.yaml` and `otapw` from `secrets_example.yaml`; the example now documents how to generate the api key and that it must match the repository secret.
+
+### Migration
+
+- **All devices must share the api key stored in the repository secret `API_ENCRYPTION_KEY`.**
+- Devices on ≤ 0.10.30 only accept the OTA password, which the ESPHome CLI no longer sends: install 0.10.31 once **via the Home Assistant update entity** (or USB). Afterwards `upload_all.sh` / `esphome run` work again with the key.
+
 ## [0.10.30] - 2026-09-25
 
 ### Changed

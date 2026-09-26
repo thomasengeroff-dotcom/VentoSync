@@ -21,7 +21,7 @@
 # Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-09-24
+# Modified:    2026-09-26
 # ==========================================================================
 
 substitutions:
@@ -109,10 +109,16 @@ api:
 # ---------------------------------------------------------
 # OVER-THE-AIR UPDATES (OTA)
 # ---------------------------------------------------------
-# Allows flashing new firmware wirelessly without USB cable
+# Allows flashing new firmware wirelessly without USB cable.
+# `encryption:` without a key reuses the api encryption key above and makes
+# encrypted uploads mandatory (ESPHome 2026.9+). Every uploader (esphome CLI,
+# upload_all.sh, ESPHome dashboard) authenticates with that key; plaintext and
+# password uploads are rejected. The CI release binaries keep this block, so
+# they are protected by the API_ENCRYPTION_KEY repository secret.
+# The http_request platform (GitHub release updates) is not affected.
 ota:
   - platform: esphome
-    password: !secret otapw
+    encryption:
   - platform: http_request
 
 # ---------------------------------------------------------
@@ -167,6 +173,13 @@ web_server_base:
 web_server:
   port: 80
   local: true
+  # No firmware upload via http://<device-ip>/update: that endpoint is plaintext
+  # and unauthenticated and would bypass the OTA encryption above. The captive
+  # portal keeps its upload page while the fallback hotspot is active (recovery).
+  # ESPHome 2026.9 still logs "OTA encryption does not cover the web_server OTA
+  # platform" — it does not look at this option; the endpoint is disabled
+  # (USE_WEBSERVER_OTA_DISABLED).
+  ota: false
   # auth:
   #   username: !secret webuser
   #   password: !secret webpw
