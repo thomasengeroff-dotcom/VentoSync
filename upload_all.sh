@@ -4,6 +4,20 @@
 # Damit das Skript sofort abbricht, falls ein Upload hart fehlschlägt:
 set -e
 
+# ESPHome version pinned by CI (.github/workflows/build.yaml, lint.yaml).
+# Local builds must use the same version, otherwise the flashed firmware
+# differs from the release binaries. Override: ALLOW_ESPHOME_MISMATCH=1
+ESPHOME_VERSION="2026.9.0"
+installed_esphome=$(esphome version 2>/dev/null | awk '{print $2}')
+if [ "$installed_esphome" != "$ESPHOME_VERSION" ]; then
+    echo "❌ Installed ESPHome: ${installed_esphome:-none}, CI uses ${ESPHOME_VERSION}."
+    echo "   Fix: source venv/bin/activate && pip install esphome==${ESPHOME_VERSION}"
+    if [ "${ALLOW_ESPHOME_MISMATCH:-0}" != "1" ]; then
+        exit 1
+    fi
+    echo "⚠️  ALLOW_ESPHOME_MISMATCH=1 — continuing anyway."
+fi
+
 # Clean up version bump lock file to ensure a fresh version bump
 # for this build session. The lock file prevents re-bumping across
 # multiple variant builds within the same session.
