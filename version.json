@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.30",
-    "project_date": "2026-09-25",
-    "project_description": "ESPHome 2026.9.0: CI and local builds pinned to the new release, version-scoped build cache, local version check in upload_all.sh."
+    "project_version": "0.10.31",
+    "project_date": "2026-09-26",
+    "project_description": "OTA uploads encrypted and authenticated with the api key; plaintext web /update closed; release builds require the API_ENCRYPTION_KEY secret."
 }

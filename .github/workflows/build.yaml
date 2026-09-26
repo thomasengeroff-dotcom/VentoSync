@@ -140,19 +140,27 @@ jobs:
       - name: Create dummy secrets for CI compilation
         env:
           API_KEY: ${{ secrets.API_ENCRYPTION_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
 
-          # FIX 2: Fallback-Logik korrekt in der Shell auflösen.
-          # Der ursprüngliche sed-Ansatz griff nie, weil der Pattern
-          # nie matchte. Stattdessen: Wert in Shell berechnen, dann
-          # sauber ins YAML schreiben.
+          # The api key also authenticates OTA uploads (ota: encryption: in
+          # esp32c6_common.yaml). Firmware that can become a release (push to
+          # master, workflow_dispatch) must never carry the public dummy key,
+          # otherwise anyone could flash devices running it. Pull requests
+          # (incl. forks without access to secrets) may build with the dummy.
+          if [ -z "${API_KEY}" ]; then
+            if [ "${EVENT_NAME}" != "pull_request" ]; then
+              echo "::error::Repository secret API_ENCRYPTION_KEY is not set — refusing to build release firmware with the public dummy key."
+              exit 1
+            fi
+            echo "::warning::API_ENCRYPTION_KEY not available — PR build uses the public dummy key (never released)."
+          fi
           EFFECTIVE_KEY="${API_KEY:-MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}"
 
           cat > secrets.yaml << EOF
           wifi_ssid: "dummy"
           wifi_password: "dummydummydummy"
-          otapw: "dummy"
           appw: "ventosync"
           webuser: "admin"
           webpw: "admin"
@@ -170,7 +178,7 @@ jobs:
       # (sed löscht dann alles ab 'networks:' bis EOF).
       # Lösung: Existenz prüfen bevor sed ausgeführt wird.
       # ----------------------------------------------------------------
-      - name: Prepare OTA build config (swap WiFi, API, OTA to secret-free variants)
+      - name: Prepare OTA build config (secret-free WiFi and hotspot)
         run: |
           set -euo pipefail
 
@@ -184,8 +192,8 @@ jobs:
             echo "⚠️  fast_connect: not found — skipping WiFi block patch"
           fi
 
-          # 2. OTA-Passwort entfernen (unauthentifiziertes OTA für CI)
-          sed -i 's/password: !secret otapw//g' packages/base/esp32c6_common.yaml
+          # 2. OTA stays as configured: encrypted with the api key
+          #    (API_ENCRYPTION_KEY), no password — nothing to patch.
 
           # 3. AP-Passwort auf fixen CI-Wert setzen
           sed -i 's/password: !secret appw/password: "ventosync"/g' \
