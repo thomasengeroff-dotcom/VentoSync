@@ -384,6 +384,10 @@ VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Har
 - **`ventosync_radar_only.yaml`**: Variante mit Radar (ohne Klima-Sensoren)
 - **`ventosync_nosensor.yaml`**: Basis-Lüftungssteuerung ohne Sensoren
 - **`ventosync_NTConly.yaml`**: Basis-Lüftungssteuerung nur mit NTC-Temperatursensoren
+- **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U auf der Platine) – Basis-Lüftungssteuerung ohne Sensoren
+- **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – Variante mit BME680 (ohne SCD43/LD2450)
+
+> Alle Varianten ohne `_v2` sind für **PCB v1.0** (Seeed XIAO ESP32-C6). Flashe die Variante, die zu deiner Platine passt – die Board-Pakete unterscheiden sich bei der Tasteranbindung (MCP23017 vs. native GPIOs) und der Antennen-Initialisierung. PCB-Dokumentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
 
 Nutze das Skript `upload_all.sh` für automatisches Kompilieren und Flashen lokal auf deine Geräte:
 
@@ -619,6 +623,8 @@ VentoSync/
 ├── ventosync_radar_only.yaml  # Hardware-Variante: Nur Radar-Anwesenheitssensor
 ├── ventosync_nosensor.yaml    # Hardware-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_NTConly.yaml     # Hardware-Variante: Basis-Lüftersteuerung nur mit NTCs
+├── ventosync_v2_nosensor.yaml # PCB-v2.0-Variante: Basis-Lüftersteuerung ohne Sensoren
+├── ventosync_v2_bme680_only.yaml # PCB-v2.0-Variante: BME680 Fallback
 ├── upload_all.sh              # Batch-Kompilierungs- & OTA-Upload-Skript für alle Geräte
 ├── version_bump.py            # Versionserhöhung bei lokalen Builds (nicht in der CI)
 └── version.json               # Aktuelle semantische Firmware-Version & Release-Metadaten

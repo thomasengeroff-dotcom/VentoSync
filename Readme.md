@@ -386,6 +386,10 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 - **`ventosync_radar_only.yaml`**: Devices with mmWave presence detection but no climate sensors
 - **`ventosync_nosensor.yaml`**: Basic ventilation control without environmental sensors
 - **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
+- **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U on board) – basic ventilation control without environmental sensors
+- **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – BME680 variant (no SCD43, no LD2450)
+
+> All variants without `_v2` are for **PCB v1.0** (Seeed XIAO ESP32-C6). Flash the variant that matches your board — the board packages differ in the button wiring (MCP23017 vs. native GPIO) and the antenna setup. PCB documentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
 
 Use the provided `upload_all.sh` script to automatically compile and upload the correct variant to all your devices locally:
 
@@ -615,6 +619,7 @@ VentoSync/
 ├── packages/                  # Modular YAML configuration packages
 │   ├── actuators/             # PID controllers, automations, safety & vacation logic
 │   ├── base/                  # ESP32-C6 core, device base config & Wi-Fi/OTA
+│   ├── board/                 # PCB v1.0 / v2.0 board packages (pin mapping, boot hooks)
 │   ├── communication/         # ESP-NOW unicast & broadcast protocols
 │   ├── globals/               # Separated global variables (automation, network, UI, fan)
 │   ├── integration/           # Home Assistant entity exposures & data exchange
@@ -627,6 +632,8 @@ VentoSync/
 ├── ventosync_radar_only.yaml  # Hardware variant: Radar presence only (no climate sensors)
 ├── ventosync_nosensor.yaml    # Hardware variant: Core HRV fan control without sensors
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
+├── ventosync_v2_nosensor.yaml # PCB v2.0 variant: core HRV fan control without sensors
+├── ventosync_v2_bme680_only.yaml # PCB v2.0 variant: BME680 fallback
 ├── upload_all.sh              # Multi-device batch compilation & OTA flash script
 ├── version_bump.py            # Local build version bump (not used by CI)
 └── version.json               # Current semantic release version & metadata

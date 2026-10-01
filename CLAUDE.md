@@ -81,8 +81,16 @@ VentoSync/
 
 ## Hardware Variants & Build Flags
 
-Every top-level YAML includes `packages/base/ventosync_base.yaml` (which always contains the NTC and HRV
-efficiency packages) plus sensor packages or their mocks. Preprocessor flags control conditional
+Every top-level YAML includes a **board base** plus sensor packages or their mocks:
+
+- `packages/base/ventosync_base.yaml` → **PCB v1.0** (Seeed XIAO ESP32-C6, MCP23017 buttons, XIAO RF switch)
+- `packages/base/ventosync_base_v2.yaml` → **PCB v2.0** (ESP32-C6-MINI-1U-H4, buttons on native GPIOs)
+
+Both are thin wrappers: `ventosync_core.yaml` (board-independent logic, always contains the NTC and HRV
+efficiency packages) + a board package `packages/board/pcb_v1.yaml` / `pcb_v2.yaml` (shared
+`hardware_io.yaml` + `logic_buttons.yaml`; v1 adds `hardware_io_mcp23017.yaml`, re-maps the buttons to the
+MCP23017 via `!extend` and runs `init_external_antenna()` at boot priority 900). Never call
+`init_external_antenna()` on PCB v2 — it drives GPIO3 (BTN_MOD) and GPIO14 as outputs. Preprocessor flags control conditional
 compilation in `globals.h`; substitutions control which entities are visible in HA.
 
 | Variant YAML | Build flags | Sensor packages | `hide_ntc_sensors` | Hardware |
@@ -92,6 +100,8 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 | `ventosync_radar_only.yaml` | `NO_SCD41`, `NO_BME680` | LD2450, mock SCD41/BME680 | `false` | Radar presence + NTCs, no climate sensor |
 | `ventosync_NTConly.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `false` | **NTCs fitted** (air temperature before/after fan & ceramic block), no I2C sensors |
 | `ventosync_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **No sensors at all** — not even NTCs |
+| `ventosync_v2_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **PCB v2.0** — as `nosensor` |
+| `ventosync_v2_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | **PCB v2.0** — as `bme680_only` |
 
 (Flags are written without the `-DVENTOSYNC_` prefix, e.g. `NO_SCD41` = `-DVENTOSYNC_NO_SCD41`.)
 
@@ -102,7 +112,9 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   not in the repository.
 - Missing sensors are replaced by `mock_*.yaml` packages that return clean `NaN`/`false` values.
   Never add real sensor YAML without the corresponding mock for the fallback variants.
-- Adding a variant or flag: update this table, `build.yaml` (matrix) and `upload_all.sh`.
+- PCB v2 variants use their own `firmware_variant` (`ventosync-v2-*`) and therefore their own OTA manifest —
+  a v1 device is never offered v2 firmware and vice versa.
+- Adding a variant or flag: update this table, `build.yaml` (matrix), `lint.yaml` and `upload_all.sh`.
 
 ---
 

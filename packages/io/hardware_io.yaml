@@ -18,17 +18,19 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        hardware_io.yaml
-# Description: Definition of hardware pins, LED drivers, and basic sensors.
+# Description: Hardware I/O shared by PCB v1.0 and v2.0: I2C bus, PCA9685 LED
+#              driver, PCA9685 OE and the LD2450 UART. Identical GPIOs on both
+#              boards. PCB v1 adds the MCP23017 in hardware_io_mcp23017.yaml.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-04-21
+# Modified:    2026-10-01
 # ==========================================================================
 # ---------------------------------------------------------
 # I2C BUS CONFIGURATION
 # ---------------------------------------------------------
 i2c:
-  sda: GPIO22 # Pin D4 on XIAO ESP32C6
-  scl: GPIO23 # Pin D5 on XIAO ESP32C6
+  sda: GPIO22 # v1: XIAO D4 · v2: module pin 28 (IO22)
+  scl: GPIO23 # v1: XIAO D5 · v2: module pin 29 (IO23)
   scan: false # Disable after hardware is verified
   id: bus_a
   frequency: 400kHz     # Industrial standard for faster transactions
@@ -36,13 +38,6 @@ i2c:
   # If 10ms still causes timeouts, investigate I2C bus quality
   # (pull-up resistor values, wire length, capacitance)
   # pullup: true        # Usually not necessary as internal pullups are present
-
-# ---------------------------------------------------------
-# MCP23017 I/O EXPANDER
-# ---------------------------------------------------------
-mcp23017:
-  - id: mcp23017_hub
-    address: 0x20
 
 # ---------------------------------------------------------
 # PCA9685 I/O EXPANDER (LED Driver)
@@ -102,21 +97,6 @@ output:
     id: out_led_vent
 
 switch:
-  # MCP23017 Reset (Active Low)
-  # This switch keeps the MCP23017 out of reset state
-  - platform: gpio
-    pin:
-      number: GPIO2
-      mode:
-        output: true
-        pullup: false   # External 10kΩ pull-up to 3.3V required on PCB
-    name: "MCP23017 Reset"
-    id: mcp23017_reset
-    restore_mode: ALWAYS_ON
-    internal: true
-    # WARNING: GPIO2 is LOW during ESP32 boot sequence.
-    # Hardware pull-up resistor (10kΩ) on RESET line is mandatory and installed on PCB.
-
   # PROBLEM:
   # PCA9685 OE (Output Enable) is Active Low.
   # inverted: true means ESPHome "ON" = GPIO LOW = LEDs enabled.
@@ -137,8 +117,8 @@ switch:
 # ---------------------------------------------------------
 uart:
   - id: uart_ld2450
-    tx_pin: GPIO16 # XIAO D7 → connects to LD2450 RX pin
-    rx_pin: GPIO17 # XIAO D6 → connects to LD2450 TX pin
+    tx_pin: GPIO16 # TXD0 (v1: XIAO D7) → LD2450 RX pin
+    rx_pin: GPIO17 # RXD0 (v1: XIAO D6) → LD2450 TX pin
     baud_rate: 256000
     parity: NONE
     stop_bits: 1

@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.31",
-    "project_date": "2026-09-26",
-    "project_description": "OTA uploads encrypted and authenticated with the api key; plaintext web /update closed; release builds require the API_ENCRYPTION_KEY secret."
+    "project_version": "0.10.32",
+    "project_date": "2026-10-01",
+    "project_description": "PCB v2.0 support: new board packages and the variants ventosync-v2-nosensor / ventosync-v2-bme680-only; PCB v1.0 variants unchanged."
 }

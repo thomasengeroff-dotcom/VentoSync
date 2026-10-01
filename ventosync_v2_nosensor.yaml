@@ -17,16 +17,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# File:        ventosync_base.yaml
-# Description: Board base for PCB v1.0 (Seeed XIAO ESP32-C6, MCP23017 button
-#              expander, XIAO RF switch for the external antenna).
-#              Used by all existing variant YAMLs (ventosync*.yaml without _v2).
-#              Board-independent logic lives in ventosync_core.yaml.
+# File:        ventosync_v2_nosensor.yaml
+# Description: PCB v2.0 (ESP32-C6-MINI-1U-H4) variant for devices with no climate/radar
+#              sensors. Same features as ventosync_nosensor.yaml (PCB v1.0).
+#              Controls fan, clusters via ESP-NOW, and integrates with HA.
+#              OTA manifest: manifest-${firmware_variant}.json (never offered to v1).
 # Author:      Thomas Engeroff
-# Created:     2026-01-27
+# Created:     2026-10-01
 # Modified:    2026-10-01
 # ==========================================================================
 
+substitutions:
+  hide_climate_sensors: "true"
+  hide_ntc_sensors: "true"
+  firmware_variant: "ventosync-v2-nosensor"
+
+esphome:
+  build_flags:
+      - "-DVENTOSYNC_NO_SCD41"
+      - "-DVENTOSYNC_NO_BME680"
+      - "-DVENTOSYNC_NO_RADAR"
+
 packages:
-  core: !include ventosync_core.yaml
-  board: !include ../board/pcb_v1.yaml
+  base: !include packages/base/ventosync_base_v2.yaml
+  mock_scd41: !include packages/sensors/mock_scd41.yaml
+  mock_bme680: !include packages/sensors/mock_bme680.yaml
+  mock_radar: !include packages/sensors/mock_radar.yaml

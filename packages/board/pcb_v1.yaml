@@ -1,0 +1,65 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome board package
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        pcb_v1.yaml
+# Description: Board package for PCB v1.0 — Seeed XIAO ESP32-C6 module,
+#              MCP23017 button expander, XIAO RF switch for the U.FL antenna.
+#              Included by packages/base/ventosync_base.yaml.
+# Author:      Thomas Engeroff
+# Created:     2026-10-01
+# Modified:    2026-10-01
+# ==========================================================================
+#
+# GPIO map PCB v1.0 (XIAO pin in brackets)
+#   GPIO0  (D0)  NTC outdoor         GPIO19 (D8)  FAN_PWM
+#   GPIO1  (D1)  NTC indoor          GPIO20 (D9)  FAN_TACHO
+#   GPIO2  (D2)  MCP23017 RESET      GPIO21 (D3)  PCA9685 OE
+#   GPIO3  (–)   XIAO RF switch EN   GPIO22 (D4)  I2C SDA
+#   GPIO14 (–)   XIAO antenna SEL    GPIO23 (D5)  I2C SCL
+#   GPIO16 (D6)  UART TX → LD2450    GPIO17 (D7)  UART RX ← LD2450
+#   Buttons on MCP23017 GPA0 (Power), GPA1 (Mode), GPA2 (Level)
+
+packages:
+  hardware: !include ../io/hardware_io.yaml
+  mcp23017: !include ../io/hardware_io_mcp23017.yaml
+  buttons: !include ../io/logic_buttons.yaml
+
+esphome:
+  on_boot:
+    # ── Priority 900: XIAO RF switch → external U.FL antenna (before WiFi starts) ──
+    # Drives GPIO3/GPIO14 — only valid on the XIAO module (PCB v1.0).
+    - priority: 900
+      then:
+        - lambda: "init_external_antenna();"
+
+# Re-map the front panel buttons from the native GPIOs (PCB v2 default in
+# logic_buttons.yaml) to the MCP23017 expander.
+binary_sensor:
+  - id: !extend button_power
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 0 # GPA0
+  - id: !extend button_mode
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 1 # GPA1
+  - id: !extend button_level
+    pin:
+      mcp23xxx: mcp23017_hub
+      number: 2 # GPA2
