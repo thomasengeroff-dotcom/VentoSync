@@ -1,0 +1,51 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome board package
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        pcb_v2.yaml
+# Description: Board package for PCB v2.0 — ESP32-C6-MINI-1U-H4 on board,
+#              U.FL antenna directly on the module (no RF switch), front panel
+#              buttons on native GPIOs, no MCP23017.
+#              Included by packages/base/ventosync_base_v2.yaml.
+#              Hardware docs: VentoSyncPCB/docs/Bring-Up.md
+# Author:      Thomas Engeroff
+# Created:     2026-10-01
+# Modified:    2026-10-01
+# ==========================================================================
+#
+# GPIO map PCB v2.0 (module pin in brackets)
+#   IO0  (12) NTC_OUT_SIG (ADC1_CH0)   IO19 (25) FAN_PWM
+#   IO1  (13) NTC_IN_SIG  (ADC1_CH1)   IO20 (26) FAN_TACHO
+#   IO2  (5)  BTN_PWR                  IO21 (27) PCA9685_OE
+#   IO3  (6)  BTN_MOD                  IO22 (28) I2C SDA
+#   IO6  (15) BTN_LVL                  IO23 (29) I2C SCL
+#   IO12 (17) USB D−                   TXD0 (31) → RADAR RX
+#   IO13 (18) USB D+                   RXD0 (30) ← RADAR TX
+#   IO4/IO5/IO14/IO15 (9/10/19/20) expansion header GPB0–GPB3 (unused,
+#     IO4/IO5/IO15 are strapping pins – no fixed level at boot)
+#   IO8 (22) reserved, 10k pull-up · IO9 (23) BOOT button · IO7/IO18 free
+#
+# Do NOT call init_external_antenna() on this board: it drives GPIO3
+# (BTN_MOD) and GPIO14 (header) as outputs.
+#
+# Pressure sensor: BMP388 (pin- and driver-compatible with the BMP390 of
+# PCB v1, same address 0x76) — sensor_BMP390.yaml (bmp3xx_i2c) is reused.
+
+packages:
+  hardware: !include ../io/hardware_io.yaml
+  buttons: !include ../io/logic_buttons.yaml

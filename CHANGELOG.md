@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.32] - 2026-10-01
+
+### Added
+
+- **PCB v2.0 support** (ESP32-C6-MINI-1U-H4 on board, no MCP23017, U.FL antenna without RF switch — hardware: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB), pinout in `docs/Bring-Up.md`):
+  - New variants **`ventosync_v2_nosensor.yaml`** and **`ventosync_v2_bme680_only.yaml`** — same features, build flags and sensor packages as `ventosync_nosensor.yaml` / `ventosync_bme680_only.yaml`.
+  - Own `firmware_variant` values `ventosync-v2-nosensor` / `ventosync-v2-bme680-only` → own OTA manifests. A v1 device is never offered v2 firmware and vice versa.
+  - Front panel buttons on native GPIOs: Power **GPIO2**, Mode **GPIO3**, Level **GPIO6** (external 10 kΩ pull-ups on the PCB). All other GPIOs (I2C 22/23, PCA9685 OE 21, fan 19/20, NTC 0/1, radar UART 16/17) are identical to v1.
+  - `init_external_antenna()` is **not** called on PCB v2 — it would drive GPIO3 (BTN_MOD) and GPIO14 (expansion header) as outputs.
+  - The BMP388 of PCB v2 is pin- and driver-compatible with the BMP390 (same address 0x76); `sensor_BMP390.yaml` is reused unchanged, entity names stay the same.
+- CI: both v2 variants are validated in `lint.yaml` and built and released with all other variants; pull requests additionally compile `ventosync-v2-nosensor` (one compile per board package). `upload_all.sh` validates both v2 configs.
+
+### Changed
+
+- **Board abstraction** (`packages/base/`, new `packages/board/`):
+  - `packages/base/ventosync_core.yaml` — board-independent core (former content of `ventosync_base.yaml` without the hardware I/O, the buttons and the RF switch boot hook).
+  - `packages/base/ventosync_base.yaml` is now the **PCB v1.0** board base (`ventosync_core.yaml` + `packages/board/pcb_v1.yaml`); `packages/base/ventosync_base_v2.yaml` is the **PCB v2.0** base (`ventosync_core.yaml` + `packages/board/pcb_v2.yaml`).
+  - MCP23017 hub and reset switch moved from `hardware_io.yaml` to `packages/io/hardware_io_mcp23017.yaml` (v1 only).
+  - `logic_buttons.yaml` defaults to the v2 native GPIOs; `pcb_v1.yaml` re-maps the three buttons to MCP23017 GPA0–GPA2 via `!extend`.
+- **No functional change for PCB v1.0:** the existing variant YAMLs are untouched; `esphome config` of all six v1 variants (incl. the generated `nosensor_mqtt`) renders the same components and settings as 0.10.31 — only the order of top-level component lists and of the `on_boot` entries differs (`on_boot` runs by priority, not list order).
+
 ## [0.10.31] - 2026-09-26
 
 ### Security / Stability

@@ -17,16 +17,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# File:        ventosync_base.yaml
-# Description: Board base for PCB v1.0 (Seeed XIAO ESP32-C6, MCP23017 button
-#              expander, XIAO RF switch for the external antenna).
-#              Used by all existing variant YAMLs (ventosync*.yaml without _v2).
+# File:        ventosync_base_v2.yaml
+# Description: Board base for PCB v2.0 (ESP32-C6-MINI-1U-H4 on board, U.FL
+#              antenna without RF switch, buttons on native GPIOs, no MCP23017).
+#              Used by the ventosync_v2_*.yaml variants.
 #              Board-independent logic lives in ventosync_core.yaml.
+#              Pinout: VentoSyncPCB/docs/Bring-Up.md
 # Author:      Thomas Engeroff
-# Created:     2026-01-27
+# Created:     2026-10-01
 # Modified:    2026-10-01
 # ==========================================================================
 
 packages:
   core: !include ventosync_core.yaml
-  board: !include ../board/pcb_v1.yaml
+  board: !include ../board/pcb_v2.yaml

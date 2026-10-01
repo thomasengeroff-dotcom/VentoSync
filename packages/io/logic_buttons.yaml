@@ -19,23 +19,24 @@
 #
 # File:        logic_buttons.yaml
 # Description: Configuration and logic for the physical control panel
-#              buttons (MCP23017 I/O Expander). Handles Power, Mode,
+#              buttons (v2: native GPIO, v1: MCP23017). Handles Power, Mode,
 #              and Intensity buttons with debouncing, click detection,
 #              child lock combo, and LED flash feedback.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-09-24
+# Modified:    2026-10-01
 # ==========================================================================
 
 # ---------------------------------------------------------
-# CONTROL PANEL BUTTONS (Input via MCP23017 I/O Expander)
+# CONTROL PANEL BUTTONS
+# Pins below are PCB v2.0 (native GPIO). PCB v1.0 re-maps them to the
+# MCP23017 expander via !extend in packages/board/pcb_v1.yaml.
 # ---------------------------------------------------------
 binary_sensor:
-  # Button Power (right) - On/Off (MCP23017 GPA0)
+  # Button Power (right) - On/Off (v2: GPIO2 · v1: MCP23017 GPA0)
   - platform: gpio
     pin:
-      mcp23xxx: mcp23017_hub
-      number: 0 # GPA0
+      number: GPIO2 # PCB v2: native GPIO, external 10k pull-up (RN4) · PCB v1: MCP23017 GPA0 (pcb_v1.yaml)
       mode:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON
@@ -58,11 +59,10 @@ binary_sensor:
         then:
           - button.press: force_restart_button
 
-  # Button Mode (left) - Mode Control (MCP23017 GPA1)
+  # Button Mode (left) - Mode Control (v2: GPIO3 · v1: MCP23017 GPA1)
   - platform: gpio
     pin:
-      mcp23xxx: mcp23017_hub
-      number: 1 # GPA1
+      number: GPIO3 # PCB v2: native GPIO, external 10k pull-up (RN4) · PCB v1: MCP23017 GPA1 (pcb_v1.yaml)
       mode:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON
@@ -82,11 +82,10 @@ binary_sensor:
     on_release:
       - script.stop: child_lock_handler
 
-  # Button Level (Middle) - Speed Level (MCP23017 GPA2)
+  # Button Level (Middle) - Speed Level (v2: GPIO6 · v1: MCP23017 GPA2)
   - platform: gpio
     pin:
-      mcp23xxx: mcp23017_hub
-      number: 2 # GPA2
+      number: GPIO6 # PCB v2: native GPIO, external 10k pull-up (RN4) · PCB v1: MCP23017 GPA2 (pcb_v1.yaml)
       mode:
         input: true
       inverted: true # Pressed = Low -> Inverted = ON

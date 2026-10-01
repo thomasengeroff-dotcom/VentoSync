@@ -1,0 +1,241 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Main configuration for the room ventilation system
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        ventosync_core.yaml
+# Description: Board-independent core of the room ventilation system
+#              (logic, ESP-NOW, sensors, UI, HA integration).
+#              Never include this file directly from a variant YAML — use a
+#              board base instead, which adds the PCB-specific I/O:
+#                ventosync_base.yaml     → PCB v1.0 (Seeed XIAO ESP32-C6 + MCP23017)
+#                ventosync_base_v2.yaml  → PCB v2.0 (ESP32-C6-MINI-1U-H4, native GPIO)
+# Author:      Thomas Engeroff
+# Created:     2026-01-27
+# Modified:    2026-10-01
+# ==========================================================================
+substitutions:
+  device_name: ventosync
+  friendly_name: "VentoSync - Smart HRV"
+
+  # VENTILATION CONFIG - Default Values
+  # These are initial values. The actual configuration can be changed
+  # via Home Assistant and is stored persistently in flash memory.
+  floor_id: "1"
+  room_id: "1"
+  device_id: "1"
+  # Phase A = Starts with INTAKE (Rein). Phase B = Starts with EXHAUST (Raus).
+  # Devices on same wall should have same phase.
+  is_phase_a: "true"
+
+  # WINDOW GUARD CONFIG
+  # The window state is pushed by Home Assistant via the API action
+  # "set_window_open" (see documentation/en/en_window-guard-ha-setup.md) and
+  # shared with the room over ESP-NOW — no per-room entity ID needed here.
+
+  # SMART CLIMATE CONTROL (HVAC COORDINATION) CONFIG
+  # The AC state is pushed by Home Assistant via the API action
+  # "set_ac_active" (see documentation/en/en_smart-climate-control.md) and
+  # shared with the room over ESP-NOW — no per-room entity ID needed here.
+  # Initial (first-boot) values of the room-wide Smart Climate Control thresholds.
+  # Runtime changes via HA are persisted and synced to all devices of the room
+  # over ESP-NOW (Master authority) — set them once per room, not per device.
+  hvac_default_co2_threshold: "1200"   # ppm, relaxed CO2 setpoint while the AC is active
+  hvac_default_emergency_co2: "1500"   # ppm, CO2 emergency override
+  hvac_default_max_fan_level: "3"      # 1-5, fan level cap while the AC is active
+
+  # VACATION MODE CONFIG
+  # Entity ID of the Home Assistant input_boolean helper for vacation mode.
+  vacation_sensor_id: "input_boolean.ventosync_vacation_mode"
+
+  # NTC plausibility ranges (adjust for your climate zone)
+  ntc_indoor_min: "-25.0"
+  ntc_indoor_max: "55.0"
+  ntc_outdoor_min: "-30.0"
+  ntc_outdoor_max: "50.0"
+  # Fail-safe timeout: must be > 2× cycle duration
+  ntc_timeout: "120s"
+  # Set to "true" to hide NTC sensors from HA frontend
+  hide_ntc_sensors: "false"
+
+# ---------------------------------------------------------
+# PACKAGES & INCLUDES
+# ---------------------------------------------------------
+packages:
+  # --- Global Variables (thematisch aufgeteilt) ---
+  globals_ventilation: !include ../globals/globals_ventilation.yaml
+  globals_automation: !include ../globals/globals_automation.yaml
+  globals_ui: !include ../globals/globals_ui.yaml
+  globals_network: !include ../globals/globals_network.yaml
+
+  # --- Device & Hardware ---
+  common: !include esp32c6_common.yaml
+  device_config_pkg: !include device_config.yaml
+  # hardware_io.yaml, logic_buttons.yaml and the board-specific boot hooks
+  # are added by the board package (packages/board/pcb_v1.yaml / pcb_v2.yaml).
+  communication: !include ../communication/esp_now.yaml
+  sensors: !include ../sensors/sensors_climate.yaml
+  fan_hardware: !include ../io/hardware_fan.yaml
+  bmp390: !include ../sensors/sensor_BMP390.yaml
+  ntc: !include ../sensors/sensor_NTC.yaml
+  hrv_efficiency: !include ../sensors/sensor_hrv_efficiency.yaml
+
+  # --- User Interface ---
+  ui: !include ../ui/ui_controls.yaml
+  lights: !include ../ui/ui_lights.yaml
+  diagnostics: !include ../ui/ui_diagnostics.yaml
+
+  # --- Actuators & Logic ---
+  logic: !include ../actuators/logic_automation.yaml
+  pid: !include ../actuators/logic_pid.yaml
+  maintenance: !include ../actuators/logic_maintenance.yaml
+  safety: !include ../actuators/logic_safety.yaml
+
+  # --- Home Assistant Integration ---
+  integration: !include ../integration/homeassistant.yaml
+  ha_fan: !include ../integration/ha_fan_entity.yaml
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esphome:
+  includes:
+    - components/helpers/globals.h
+    - components/helpers/automation_helpers.h
+    - components/helpers/ha_fan_helpers.h 
+    - components/helpers/config_helpers.h
+    - components/helpers/vacation_helpers.h
+    - components/helpers/health_helpers.h
+    - components/helpers/espnow_helpers.h
+    - components/helpers/system_boot_helpers.h
+    - components/helpers/network_sync.h
+    - components/helpers/climate.h
+    - components/helpers/hrv_efficiency.h
+    - components/helpers/auto_mode.h
+    - components/helpers/system_lifecycle.h
+    - components/helpers/led_feedback.h
+    - components/helpers/user_input.h
+    - components/helpers/bme680_iaq_engine.h
+
+  name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
+
+  on_boot:
+    # ── Priority 900: board-specific (e.g. PCB v1 RF switch) → packages/board/ ──
+
+    # ── Priority 600: Boot Diagnostics ──
+    - priority: 600
+      then:
+        - lambda: "log_boot_diagnostics();"
+
+    # ── Priority -10: Core Init + ESP-NOW Discovery ──
+    - priority: -10.0
+      then:
+        # Phase 1: Core system initialization
+        - delay: 1s
+        - lambda: "init_core_system();"
+
+        # Phase 2: Staggered ESP-NOW discovery broadcasts
+        - delay: 1s
+        - lambda: "boot_discovery_broadcast(1);"
+        - delay: 2s
+        - lambda: "boot_discovery_broadcast(2);"
+        - delay: 2s
+        - lambda: "boot_discovery_broadcast(3);"
+        - delay: 1s
+        - lambda: "boot_finish_discovery();"
+
+    # ── Priority -100: Enable PCA9685 LED driver ──
+    - priority: -100
+      then:
+        - switch.turn_on: pca9685_oe
+
+# ---------------------------------------------------------
+# VENTILATION COMPONENT (External)
+# ---------------------------------------------------------
+ventilation_group:
+  id: ventilation_ctrl
+  floor_id: ${floor_id}
+  room_id: ${room_id}
+  device_id: ${device_id}
+  is_phase_a: ${is_phase_a}
+  main_fan: lueftung_fan
+  direction_switch: fan_direction
+  fan_rpm_sensor: fan_rpm
+  board_temp_sensor: temperature
+  scd41_temp_sensor: scd41_temperature
+  bme680_temp_sensor: bme680_temperature
+  mode_index_global: current_mode_index
+  automatik_min_fan_level_global: automatik_min_fan_level
+  automatik_max_fan_level_global: automatik_max_fan_level
+  auto_co2_threshold_global: auto_co2_threshold_val
+  auto_humidity_threshold_global: auto_humidity_threshold_val
+  auto_presence_global: auto_presence_val
+  max_led_brightness_global: max_led_brightness
+  co2_sensor: effective_co2
+  scd41_humidity_sensor: scd41_humidity
+  bme680_humidity_sensor: bme680_humidity
+  hvac_co2_threshold_global: hvac_co2_threshold_val
+  hvac_emergency_co2_global: hvac_emergency_co2_val
+  hvac_max_fan_level_global: hvac_max_fan_level_val
+  vacation_state_global: vacation_state
+  pre_vacation_mode_index_global: pre_vacation_mode_index
+  pre_vacation_intensity_global: pre_vacation_intensity
+  hvac_enabled_global: hvac_enabled_val
+
+# Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
+ventilation_logic:
+
+# ---------------------------------------------------------
+# CUSTOM WRG DASHBOARD
+# ---------------------------------------------------------
+wrg_dashboard:
+  web_server_base_id: my_web_server_base
+  temperature_id: temperature
+  pressure_id: pressure
+  outdoor_humidity_id: outdoor_humidity
+  scd41_co2_id: scd41_co2
+  effective_co2_id: effective_co2
+  scd41_temperature_id: scd41_temperature
+  scd41_humidity_id: scd41_humidity
+  bme680_temperature_id: bme680_temperature
+  bme680_humidity_id: bme680_humidity
+  temp_zuluft_id: temp_zuluft
+  temp_abluft_id: temp_abluft
+  heat_recovery_efficiency_id: heat_recovery_efficiency
+  fan_rpm_id: fan_rpm
+  filter_operating_days_id: filter_operating_days_sensor
+  filter_change_alarm_id: filter_change_alarm
+  radar_presence_id: radar_presence
+  scd41_co2_bewertung_id: effective_co2_bewertung
+  device_id_id: dashboard_device_id
+  floor_id_id: dashboard_floor_id
+  room_id_id: dashboard_room_id
+  phase_id: dashboard_phase
+  direction_display_id: direction_display
+  vent_timer_id: vent_timer
+  sync_interval_config_id: sync_interval_config
+  fan_intensity_display_id: fan_intensity_display
+  automatik_min_luefterstufe_id: automatik_min_luefterstufe
+  automatik_max_luefterstufe_id: automatik_max_luefterstufe
+  auto_co2_threshold_id: auto_co2_threshold
+  auto_humidity_threshold_id: auto_humidity_threshold
+  auto_presence_slider_id: auto_presence_slider
+  luefter_modus_id: luefter_modus
+  lueftung_fan_id: lueftung_fan
+  ventilation_ctrl_id: ventilation_ctrl
