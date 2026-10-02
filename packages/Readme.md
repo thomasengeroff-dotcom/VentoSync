@@ -19,6 +19,7 @@ This directory contains the modularized ESPHome configuration files (packages). 
 | :--- | :--- |
 | **`pcb_v1.yaml`** | PCB v1.0 (Seeed XIAO ESP32-C6): shared I/O + MCP23017, buttons re-mapped to MCP23017 GPA0–GPA2 via `!extend`, XIAO RF switch init (`init_external_antenna()`, boot priority 900). |
 | **`pcb_v2.yaml`** | PCB v2.0 (ESP32-C6-MINI-1U-H4): shared I/O, buttons on native GPIO2/GPIO3/GPIO6, U.FL antenna directly on the module (no RF switch). Full GPIO map in the file header. |
+| **`partitions_4mb_btproxy.csv`** | 4 MB partition table for the Bluetooth proxy (2 × 1.94 MB app, 64 KB NVS) — used by `integration/bluetooth_proxy.yaml`. Switching to it requires a USB flash. |
 
 ### 🧠 Actuators & Logic (`actuators/`)
 | File | Description |
@@ -54,6 +55,7 @@ This directory contains the modularized ESPHome configuration files (packages). 
 | :--- | :--- |
 | **`homeassistant.yaml`** | External data points imported from Home Assistant (outdoor climate sensors, vacation switch, window contacts) and the API actions `set_ac_active` (Smart Climate Control AC state) and `set_window_open` (Window Guard). |
 | **`ha_fan_entity.yaml`** | Native Home Assistant `fan` platform integration exposing preset modes, speed percentage, and directional control for `ventosync-card`. |
+| **`bluetooth_proxy.yaml`** | *Experimental* Home Assistant Bluetooth proxy, off by default (switch "Bluetooth Proxy" in HA and the web dashboard). Brings its own partition table and size optimisations; only used by `ventosync_nosensor_btproxy.yaml`. See [Bluetooth Proxy](../documentation/en/en_bluetooth-proxy.md). |
 
 ### 🎛️ User Interface (`ui/`)
 | File | Description |

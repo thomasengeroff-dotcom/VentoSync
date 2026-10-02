@@ -21,7 +21,7 @@
 // Description: HTML/CSS strings for the WRG web dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-06-09
+// Modified:    2026-10-02
 // ==========================================================================
 #pragma once
 
@@ -158,6 +158,14 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
                   <span class="text-sm text-gray-300">Autom. Max Stufe</span>
                   <input type="number" id="automatik_max_luefterstufe" onchange="sendSet('automatik_max_luefterstufe', this.value)" class="bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block w-20 p-1.5 text-center">
                 </div>
+              </div>
+
+              <!-- Bluetooth proxy: only shown when /state reports bt_proxy (bluetooth_proxy.yaml) -->
+              <div id="bt_proxy_row" class="hidden">
+                <label for="bt_proxy" class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50 cursor-pointer">
+                  <span class="text-sm text-gray-300">Bluetooth Proxy <span class="text-xs text-gray-500">(experimentell)</span></span>
+                  <input type="checkbox" id="bt_proxy" onchange="sendSet('bt_proxy', this.checked ? 1 : 0)" class="w-5 h-5 accent-accent cursor-pointer">
+                </label>
               </div>
             </div>
           </div>
@@ -398,6 +406,14 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         });
 
         document.getElementById("label_fan_intensity").innerText = document.getElementById("fan_intensity_display").value;
+
+        // Bluetooth proxy toggle (key only exists in the Bluetooth proxy variant)
+        if (typeof data.bt_proxy === 'boolean') {
+          document.getElementById('bt_proxy_row').classList.remove('hidden');
+          if (document.activeElement.id !== 'bt_proxy') {
+            document.getElementById('bt_proxy').checked = data.bt_proxy;
+          }
+        }
         
         // Render ESP-NOW Peers
         document.getElementById('peers_card').classList.remove('hidden');
@@ -488,7 +504,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
     async function sendSet(id, val) {
       const allowedKeys = ['luefter_modus', 'fan_intensity_display', 'automatik_min_luefterstufe', 
                           'automatik_max_luefterstufe', 'auto_co2_threshold', 'auto_humidity_threshold',
-                          'auto_presence_slider', 'vent_timer', 'sync_interval_config'];
+                          'auto_presence_slider', 'vent_timer', 'sync_interval_config', 'bt_proxy'];
 
       if (!allowedKeys.includes(id)) {
           console.error('Client validation failed: Invalid parameter =', id);

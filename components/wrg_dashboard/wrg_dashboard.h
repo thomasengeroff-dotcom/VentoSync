@@ -21,7 +21,7 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-03-21
+// Modified:    2026-10-02
 // ==========================================================================
 
 #pragma once
@@ -30,6 +30,9 @@
 #include "esphome/components/fan/fan.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/select/select.h"
+#ifdef USE_SWITCH
+#include "esphome/components/switch/switch.h"
+#endif
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/web_server_base/web_server_base.h"
@@ -132,6 +135,10 @@ public:
   void set_luefter_modus(select::Select *s) { luefter_modus_ = s; }
   void set_lueftung_fan(fan::Fan *f) { lueftung_fan_ = f; }
   void set_ventilation_ctrl(esphome::VentilationController *c) { ventilation_ctrl_ = c; }
+#ifdef USE_SWITCH
+  // Optional: only wired by the Bluetooth proxy package
+  void set_bluetooth_proxy_switch(switch_::Switch *s) { bluetooth_proxy_switch_ = s; }
+#endif
 
   /**
    * @brief   Checks if the request can be handled by this component.
@@ -200,6 +207,9 @@ protected:
   select::Select *luefter_modus_{nullptr};
   fan::Fan *lueftung_fan_{nullptr};
   esphome::VentilationController *ventilation_ctrl_{nullptr};
+#ifdef USE_SWITCH
+  switch_::Switch *bluetooth_proxy_switch_{nullptr};
+#endif
 };
 
 } // namespace wrg_dashboard

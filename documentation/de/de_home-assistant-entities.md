@@ -126,6 +126,10 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 
 Die Panel-LEDs selbst steuert die Firmware; sie sind **keine** Light-Entitäten in HA.
 
+**Bluetooth-Proxy (experimentell, nur `ventosync_nosensor_btproxy.yaml`):**
+
+* **`switch.bluetooth_proxy`** („Bluetooth Proxy“, YAML-ID `bt_proxy_switch`) — schaltet den Home-Assistant-Bluetooth-Proxy dieses Geräts ein/aus (Konfiguration, persistent, Standard aus, pro Gerät). Aus gibt den BLE-Stack frei (RAM, Funkzeit). Siehe [Bluetooth-Proxy](de_bluetooth-proxy.md).
+
 ## 6. Urlaubsmodus
 
 * **`select.urlaubsmodus_betriebsmodus`** („Urlaubsmodus Betriebsmodus“) — Modus während des Urlaubs (Standard `Stoßlüftung`), Konfiguration.

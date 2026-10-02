@@ -1,0 +1,20 @@
+# VentoSync – partition table for the Bluetooth proxy variant (4 MB flash)
+# Used by packages/integration/bluetooth_proxy.yaml (esp32: partitions:).
+#
+# ESPHome default on 4 MB (ESP-IDF):  app0/app1 = 0x1C0000 (1.75 MB), nvs = 0x70000 (448 KB)
+# This layout:                        app0/app1 = 0x1F0000 (1.94 MB), nvs = 0x10000 (64 KB)
+#
+# The Bluetooth stack adds ~610 KB, which does not fit into the default app
+# partitions. Changing the partition table is NOT possible over OTA: a device
+# must be flashed once over USB (factory image) to switch to or from this
+# layout. NVS moves, so Wi-Fi credentials and the runtime configuration
+# (floor / room / device ID) are lost and must be set up again.
+# Offsets are assigned automatically (app partitions 64 KB aligned):
+#   otadata 0x9000, phy_init 0xB000, app0 0x10000, app1 0x200000, nvs 0x3F0000.
+#
+# Name,   Type, SubType, Offset, Size
+otadata,  data, ota,     ,       0x2000
+phy_init, data, phy,     ,       0x1000
+app0,     app,  ota_0,   ,       0x1F0000
+app1,     app,  ota_1,   ,       0x1F0000
+nvs,      data, nvs,     ,       0x10000

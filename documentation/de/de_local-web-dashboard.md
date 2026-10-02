@@ -14,6 +14,7 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
 * **Schnelle Vor-Ort-Konfiguration**: Direkte Einstellung von Geräte-ID, Raum-ID, Etagen-ID und Lüfter-Phase (Phase A / Phase B).
 * **Sensor-Diagnose**: Live-Kacheln aller Sensordaten inklusive Min/Max/Durchschnittswerten.
 * **ESP-NOW Live-Peer-Ansicht**: Echtzeit-Visualisierung aller synchronisierten Geräte im selben Raum (Node-ID, Betriebsmodus, Lüfterstufe, Luftrichtung).
+* **Bluetooth-Proxy-Schalter** *(experimentell)*: In `ventosync_nosensor_btproxy.yaml` zeigt die Gruppe *Steuerung* einen Schalter „Bluetooth Proxy“ (dieselbe Entität wie in HA). Andere Varianten zeigen ihn nicht. Siehe [Bluetooth-Proxy](de_bluetooth-proxy.md).
 * **Autarker Standalone-Betrieb**: Vollständig ohne Home Assistant nutzbar. Erreichbar unter:
   * **VentoSync Dashboard**: `http://<deine-IP-Adresse>/ui` (oder `http://esptest.local/ui`)
   * **Standard-ESPHome-UI**: `http://<deine-IP-Adresse>/`

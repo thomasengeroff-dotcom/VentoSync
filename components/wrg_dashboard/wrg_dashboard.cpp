@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-03-23
+// Modified:    2026-10-02
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -119,6 +119,16 @@ void WrgDashboard::dispatch_set_(const std::string &key,
     doNumber(this->vent_timer_);
   } else if (key == "sync_interval_config") {
     doNumber(this->sync_interval_config_);
+  } else if (key == "bt_proxy") {
+#ifdef USE_SWITCH
+    if (this->bluetooth_proxy_switch_ != nullptr) {
+      if (fval > 0.5f) {
+        this->bluetooth_proxy_switch_->turn_on();
+      } else {
+        this->bluetooth_proxy_switch_->turn_off();
+      }
+    }
+#endif
   } else {
     ESP_LOGW(TAG, "Unknown action trigger received: %s", key.c_str());
   }
@@ -229,6 +239,13 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["auto_co2_threshold"] = get_n(this->auto_co2_threshold_);
   doc["auto_humidity_threshold"] = get_n(this->auto_humidity_threshold_);
   doc["auto_presence_slider"] = get_n(this->auto_presence_slider_);
+#ifdef USE_SWITCH
+  // Only present in the Bluetooth proxy variant — the UI shows the toggle
+  // when this key exists.
+  if (this->bluetooth_proxy_switch_ != nullptr) {
+    doc["bt_proxy"] = this->bluetooth_proxy_switch_->state;
+  }
+#endif
 
   JsonArray peers_array = doc["peers"].to<JsonArray>();
 
@@ -285,7 +302,7 @@ void WrgDashboard::handle_set_(AsyncWebServerRequest *request) {
   static const std::unordered_set<std::string> ALLOWED_KEYS = {
       "luefter_modus", "fan_intensity_display", "automatik_min_luefterstufe",
       "automatik_max_luefterstufe", "auto_co2_threshold", "auto_humidity_threshold",
-      "auto_presence_slider", "vent_timer", "sync_interval_config"
+      "auto_presence_slider", "vent_timer", "sync_interval_config", "bt_proxy"
   };
 
   if (!request->hasParam("id") || !request->hasParam("val")) {

@@ -126,6 +126,10 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 
 The panel LEDs themselves are driven by the firmware and are **not** exposed as light entities.
 
+**Bluetooth proxy (experimental, only `ventosync_nosensor_btproxy.yaml`):**
+
+* **`switch.bluetooth_proxy`** ("Bluetooth Proxy", YAML ID `bt_proxy_switch`) — turns the Home Assistant Bluetooth proxy of this device on/off (config, persisted, default off, per device). Off releases the BLE stack (RAM, airtime). See [Bluetooth Proxy](en_bluetooth-proxy.md).
+
 ## 6. Vacation Mode
 
 * **`select.urlaubsmodus_betriebsmodus`** ("Urlaubsmodus Betriebsmodus") — mode during vacation (default `Stoßlüftung`), config.

@@ -14,6 +14,7 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
 * **On-Site Device Setup**: Direct on-device configuration for Device ID, Room ID, Floor ID, and airflow Phase (Phase A / Phase B).
 * **Sensor Diagnostics**: Live sensor tiles with historical daily minimum/maximum/average values.
 * **ESP-NOW Live Peer Grid**: Real-time overview of all connected mesh peers in the same room group (Node ID, mode, speed level, airflow direction).
+* **Bluetooth Proxy Toggle** *(experimental)*: in `ventosync_nosensor_btproxy.yaml` the *Steuerung* group shows a "Bluetooth Proxy" switch (same entity as in HA). Other variants do not show it. See [Bluetooth Proxy](en_bluetooth-proxy.md).
 * **Standalone Operation**: Full autonomy without Home Assistant. Accessible via:
   * **Custom VentoSync UI**: `http://<your-device-ip>/ui` (or `http://esptest.local/ui`)
   * **Native ESPHome Interface**: `http://<your-device-ip>/`

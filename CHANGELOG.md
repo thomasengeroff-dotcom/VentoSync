@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.33] - 2026-10-02
+
+### Added
+
+- **Bluetooth proxy (experimental)** — new variant **`ventosync_nosensor_btproxy.yaml`** (PCB v1.0, no sensors) with the Home Assistant [Bluetooth proxy](https://esphome.io/components/bluetooth_proxy/) (`esp32_ble` + `esp32_ble_tracker` + `bluetooth_proxy`, active connections, 3 slots):
+  - New package `packages/integration/bluetooth_proxy.yaml`. The BLE stack is **off after boot** (`enable_on_boot: false`) and switched per device with the new config switch **"Bluetooth Proxy"** (`switch.<device>_bluetooth_proxy`, `restore_mode: RESTORE_DEFAULT_OFF`, not synchronised room-wide). `ble.disable` tears the stack down and returns its heap.
+  - **Web dashboard:** toggle "Bluetooth Proxy (experimentell)" in *Einstellungen → Steuerung* — only shown when `/state` reports `bt_proxy` (new optional `bluetooth_proxy_switch_id` of `wrg_dashboard`, `/set?id=bt_proxy`).
+  - **Firmware size:** the Bluetooth stack adds ~610 KB and does not fit into ESPHome's default 4 MB layout (2 × 1.75 MB app). The variant uses its own partition table `packages/board/partitions_4mb_btproxy.csv` (2 × 1.94 MB app, NVS 448 KB → 64 KB) and drops BLE 5.0 host code, assertion strings and DEBUG logs (logger level INFO). Result: 1,994,218 of 2,031,616 bytes (98.2 %, ~37 KB headroom).
+  - ⚠️ **Switching a device to this variant requires a one-time USB flash** (factory image) — the partition table cannot be changed over OTA. NVS moves: Wi-Fi credentials and floor / room / device ID must be configured again. Going back to a standard variant works over OTA.
+  - Documentation: `documentation/en/en_bluetooth-proxy.md` / `documentation/de/de_bluetooth-proxy.md` (function, measurements, partition layout, radio coexistence with Wi-Fi/ESP-NOW).
+- CI: `ventosync-nosensor-btproxy` is validated in `lint.yaml`, built and released with all other variants and additionally compiled on **every pull request** (little partition headroom). `upload_all.sh` validates the config.
+
+### Removed
+
+- Two Windows `Zone.Identifier` metadata files committed by accident under `EasyEDA-Pro/`; `.gitignore` now ignores `*Zone.Identifier` everywhere.
+
 ## [0.10.32] - 2026-10-01
 
 ### Added

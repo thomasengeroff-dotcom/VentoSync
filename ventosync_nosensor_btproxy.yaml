@@ -1,0 +1,49 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Main configuration for the room ventilation system
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        ventosync_nosensor_btproxy.yaml
+# Description: EXPERIMENTAL – PCB v1.0 variant without climate/radar sensors
+#              (as ventosync_nosensor.yaml) plus the Home Assistant Bluetooth
+#              proxy (packages/integration/bluetooth_proxy.yaml, off by default).
+#              Uses its own partition table: the FIRST flash must be done over
+#              USB (factory image); Wi-Fi and the floor / room / device ID must
+#              be configured again afterwards. Afterwards OTA works as usual.
+#              See documentation/en/en_bluetooth-proxy.md.
+# Author:      Thomas Engeroff
+# Created:     2026-10-02
+# Modified:    2026-10-02
+# ==========================================================================
+
+substitutions:
+  hide_climate_sensors: "true"
+  hide_ntc_sensors: "true"
+  firmware_variant: "ventosync-nosensor-btproxy"
+
+esphome:
+  build_flags:
+      - "-DVENTOSYNC_NO_SCD41"
+      - "-DVENTOSYNC_NO_BME680"
+      - "-DVENTOSYNC_NO_RADAR"
+
+packages:
+  base: !include packages/base/ventosync_base.yaml
+  mock_scd41: !include packages/sensors/mock_scd41.yaml
+  mock_bme680: !include packages/sensors/mock_bme680.yaml
+  mock_radar: !include packages/sensors/mock_radar.yaml
+  bluetooth_proxy: !include packages/integration/bluetooth_proxy.yaml

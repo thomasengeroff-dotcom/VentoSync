@@ -102,6 +102,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 | `ventosync_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **No sensors at all** — not even NTCs |
 | `ventosync_v2_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **PCB v2.0** — as `nosensor` |
 | `ventosync_v2_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | **PCB v2.0** — as `bme680_only` |
+| `ventosync_nosensor_btproxy.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks + `integration/bluetooth_proxy.yaml` | `true` | **Experimental** — `nosensor` + HA Bluetooth proxy, own partition table |
 
 (Flags are written without the `-DVENTOSYNC_` prefix, e.g. `NO_SCD41` = `-DVENTOSYNC_NO_SCD41`.)
 
@@ -112,6 +113,13 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   not in the repository.
 - Missing sensors are replaced by `mock_*.yaml` packages that return clean `NaN`/`false` values.
   Never add real sensor YAML without the corresponding mock for the fallback variants.
+- **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
+  (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
+  packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
+  logger INFO. Image 1,994,218 / 2,031,616 B (~37 KB headroom) — CI compiles it on every PR. Switching a device to it
+  needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
+  switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
+  without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
 - PCB v2 variants use their own `firmware_variant` (`ventosync-v2-*`) and therefore their own OTA manifest —
   a v1 device is never offered v2 firmware and vice versa.
 - Adding a variant or flag: update this table, `build.yaml` (matrix), `lint.yaml` and `upload_all.sh`.
@@ -360,9 +368,11 @@ Triggered on push and pull request to `master`:
 
 - **`build.yaml`**
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
-  - *Build* matrix: **pull requests build only `ventosync-full`**; push to `master` / `workflow_dispatch` build all
-    6 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `nosensor-mqtt` (generated)),
-    ESPHome pinned to `2026.9.0`, secret-free OTA configs. The release job needs all 6 builds.
+  - *Build* matrix: **pull requests build `ventosync-full`, `ventosync-v2-nosensor` and `ventosync-nosensor-btproxy`**
+    (one compile per board package + the size-critical Bluetooth proxy variant); push to `master` / `workflow_dispatch`
+    build all 9 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `nosensor-mqtt`
+    (generated), `v2-nosensor`, `v2-bme680-only`, `nosensor-btproxy`), ESPHome pinned to `2026.9.0`, secret-free OTA
+    configs. The release job needs all 9 builds.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).

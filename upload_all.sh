@@ -35,6 +35,8 @@ esphome config ventosync_nosensor.yaml
 esphome config ventosync_radar_only.yaml
 esphome config ventosync_v2_nosensor.yaml
 esphome config ventosync_v2_bme680_only.yaml
+# Bluetooth proxy (experimental): own partition table, first flash over USB only
+esphome config ventosync_nosensor_btproxy.yaml
 
 echo ""
 echo "=================================================="
