@@ -29,6 +29,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 [![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue?logo=esphome)](https://esphome.io/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-green?logo=home-assistant)](https://www.home-assistant.io/)
 [![MQTT](https://img.shields.io/badge/MQTT-Optional-blue?logo=mqtt&logoColor=white)](documentation/en/en_mqtt-integration.md)
+[![Bluetooth Proxy](https://img.shields.io/badge/Bluetooth%20Proxy-Experimental-orange?logo=bluetooth&logoColor=white)](documentation/en/en_bluetooth-proxy.md)
 [![Platform](https://img.shields.io/badge/Platform-ESP32--C6-red?logo=espressif)](https://esphome.io/components/esp32.html)
 ![Sensor: SCD43](https://img.shields.io/badge/Sensor-SCD43-lightgrey)
 ![Sensor: BMP390](https://img.shields.io/badge/Sensor-BMP390-lightgrey)
@@ -211,6 +212,8 @@ The original 9-LED / 3-button control panel of the VentoMaxx V-WRG-1 is fully pr
 
 > 🔌 **MQTT for external systems**: VentoSync optionally supports MQTT publishing for integration with Node-RED, openHAB, ioBroker, and other MQTT-based platforms — without affecting the native Home Assistant integration. See the [📄 MQTT Integration Guide](documentation/en/en_mqtt-integration.md) for setup instructions.
 
+> 📶 **Bluetooth proxy (experimental)**: The variant `ventosync_nosensor_btproxy.yaml` turns the unit into a Home Assistant [Bluetooth proxy](https://esphome.io/components/bluetooth_proxy/) for BLE devices in the room. It is off by default and switched per device in Home Assistant or the web dashboard. Because the Bluetooth stack adds ~610 KB and the 4 MB flash is otherwise too small, the variant uses its own partition table — the first installation needs a **USB flash** and the device configuration is reset. Background, measurements and limits: [📄 Bluetooth Proxy Guide](documentation/en/en_bluetooth-proxy.md).
+
 ### 📊 VentoSync Dashboard - Local Web Dashboard
 
 You do not need a smart home server to use VentoSync: Each ventilation unit hosts its own built-in web page that you can open directly in any web browser on your smartphone, tablet, or PC — allowing you to monitor air quality live, change ventilation modes, and adjust settings without installing any apps or extra software.
@@ -388,6 +391,7 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 - **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U on board) – basic ventilation control without environmental sensors
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – BME680 variant (no SCD43, no LD2450)
+- **`ventosync_nosensor_btproxy.yaml`**: *Experimental* – as `ventosync_nosensor.yaml` plus Home Assistant Bluetooth proxy; own partition table, **first flash over USB only** ([guide](documentation/en/en_bluetooth-proxy.md))
 
 > All variants without `_v2` are for **PCB v1.0** (Seeed XIAO ESP32-C6). Flash the variant that matches your board — the board packages differ in the button wiring (MCP23017 vs. native GPIO) and the antenna setup. PCB documentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
 
@@ -634,6 +638,7 @@ VentoSync/
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
 ├── ventosync_v2_nosensor.yaml # PCB v2.0 variant: core HRV fan control without sensors
 ├── ventosync_v2_bme680_only.yaml # PCB v2.0 variant: BME680 fallback
+├── ventosync_nosensor_btproxy.yaml # Experimental: nosensor + Bluetooth proxy (own partition table)
 ├── upload_all.sh              # Multi-device batch compilation & OTA flash script
 ├── version_bump.py            # Local build version bump (not used by CI)
 └── version.json               # Current semantic release version & metadata

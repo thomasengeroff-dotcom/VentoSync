@@ -8,7 +8,7 @@ AUTO_LOAD = ["web_server_base"]
 
 CONF_WEB_SERVER_BASE_ID = "web_server_base_id"
 
-from esphome.components import sensor, binary_sensor, text_sensor, number, select, fan
+from esphome.components import sensor, binary_sensor, text_sensor, number, select, fan, switch
 
 wrg_dashboard_ns = cg.esphome_ns.namespace("wrg_dashboard")
 WrgDashboard = wrg_dashboard_ns.class_("WrgDashboard", cg.Component)
@@ -55,6 +55,9 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional("luefter_modus_id"):            cv.use_id(select.Select),
 
         cv.Optional("lueftung_fan_id"):             cv.use_id(fan.Fan),
+
+        # Only set by packages/integration/bluetooth_proxy.yaml
+        cv.Optional("bluetooth_proxy_switch_id"):   cv.use_id(switch.Switch),
 
         cv.Optional("ventilation_ctrl_id"):         cv.use_id(cg.Component),
     }

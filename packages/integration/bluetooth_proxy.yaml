@@ -1,0 +1,126 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Configuration for the Bluetooth Proxy
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        bluetooth_proxy.yaml
+# Description: EXPERIMENTAL Bluetooth proxy for Home Assistant
+#              (https://esphome.io/components/bluetooth_proxy/).
+#              Compiled in, but the BLE stack stays OFF until the
+#              "Bluetooth Proxy" switch (Home Assistant or web dashboard)
+#              is turned on. ble.disable tears the stack down and returns
+#              its heap; the flash cost (~610 KB) is always paid.
+#
+#              Flash budget (4 MB modules, XIAO ESP32-C6 / C6-MINI-1U-H4):
+#              the firmware does not fit into ESPHome's default 1.75 MB app
+#              partitions with this package. It therefore
+#                - switches to partitions_4mb_btproxy.csv (2 × 1.94 MB app,
+#                  64 KB NVS) → first flash over USB, NVS is lost,
+#                - disables the unused BLE 5.0 host code, silences
+#                  assertions and lowers the log level to INFO.
+#              Measured with ventosync_nosensor_btproxy.yaml (ESPHome
+#              2026.9.0): 1,994,218 B of the 2,031,616 B app partition —
+#              only ~37 KB headroom.
+#              Only use it with the nosensor variant; sensor packages or a
+#              newer ESPHome release can exceed the partition.
+#
+#              Details: documentation/en/en_bluetooth-proxy.md
+#
+#              Enable by adding a single line to your variant YAML:
+#                bluetooth_proxy: !include packages/integration/bluetooth_proxy.yaml
+#
+# Author:      Thomas Engeroff
+# Created:     2026-10-02
+# Modified:    2026-10-02
+# ==========================================================================
+
+esp32:
+  # Larger app partitions — the default layout is too small for BLE.
+  # Path is relative to the variant YAML (repository root).
+  partitions: packages/board/partitions_4mb_btproxy.csv
+  framework:
+    advanced:
+      # Keep assertion checks, drop their file/line strings (flash).
+      assertion_level: SILENT
+    sdkconfig_options:
+      # ESPHome only uses the legacy (BLE 4.2) scan and connect API —
+      # the BLE 5.0 extended advertising code in Bluedroid is dead weight.
+      CONFIG_BT_LE_50_FEATURE_SUPPORT: "n"
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: "n"
+
+# DEBUG log strings cost flash; INFO keeps warnings, errors and the
+# ESP-NOW / ventilation summaries. Component overrides must not be more
+# verbose than the global level.
+logger:
+  level: INFO
+  logs:
+    vent: INFO
+    vent_sync: INFO
+    espnow: INFO
+    espnow_disc: INFO
+    espnow_raw: INFO
+
+# ---------------------------------------------------------
+# BLUETOOTH STACK
+# ---------------------------------------------------------
+esp32_ble:
+  id: ble_stack
+  # Off after boot; the switch below restores the user's choice.
+  enable_on_boot: false
+
+# Scan window: ESPHome 2026.9 sets window = interval when Wi-Fi is active
+# (the coexistence arbiter shares the radio with Wi-Fi and ESP-NOW).
+# Do not set a window here unless ESP-NOW sync suffers in practice.
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true # allow active connections (e.g. locks, plant sensors)
+  # connection_slots: 3 (ESPHome default)
+
+# ---------------------------------------------------------
+# ON/OFF SWITCH (per device, not synchronised room-wide)
+# ---------------------------------------------------------
+# Optimistic switch with native restore: at boot the restored state runs the
+# matching action, so an enabled proxy comes back after a reboot. No global
+# variable is mirrored, so the restore pitfall of lambda switches does not
+# apply.
+switch:
+  - platform: template
+    id: bt_proxy_switch
+    name: "Bluetooth Proxy"
+    icon: "mdi:bluetooth"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - ble.enable:
+      - logger.log:
+          level: INFO
+          tag: bt_proxy
+          format: "Bluetooth proxy enabled"
+    turn_off_action:
+      - ble.disable:
+      - logger.log:
+          level: INFO
+          tag: bt_proxy
+          format: "Bluetooth proxy disabled (BLE stack released)"
+
+# Expose the switch in the local web dashboard (/ui).
+wrg_dashboard:
+  bluetooth_proxy_switch_id: bt_proxy_switch

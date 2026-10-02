@@ -44,7 +44,8 @@ jobs:
           echo '  mqtt_integration: !include packages/integration/mqtt.yaml' >> ventosync_nosensor_mqtt.yaml
           for f in ventosync.yaml ventosync_bme680_only.yaml ventosync_radar_only.yaml \
                    ventosync_NTConly.yaml ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml \
-                   ventosync_v2_nosensor.yaml ventosync_v2_bme680_only.yaml; do
+                   ventosync_v2_nosensor.yaml ventosync_v2_bme680_only.yaml \
+                   ventosync_nosensor_btproxy.yaml; do
             echo "::group::esphome config $f"
             esphome config "$f" > /dev/null
             echo "::endgroup::"

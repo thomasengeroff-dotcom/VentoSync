@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.32",
-    "project_date": "2026-10-01",
-    "project_description": "PCB v2.0 support: new board packages and the variants ventosync-v2-nosensor / ventosync-v2-bme680-only; PCB v1.0 variants unchanged."
+    "project_version": "0.10.33",
+    "project_date": "2026-10-02",
+    "project_description": "Experimental Bluetooth proxy variant ventosync-nosensor-btproxy (own 4 MB partition table, first flash over USB); BLE off by default, switch in HA and web dashboard."
 }
