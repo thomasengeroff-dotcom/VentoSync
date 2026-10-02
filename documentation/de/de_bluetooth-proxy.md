@@ -68,7 +68,8 @@ Verhalten:
 ### Warum der Proxy nicht in die Standard-Firmware passt
 
 Beide Platinen nutzen Module mit 4 MB Flash (Seeed XIAO ESP32-C6 auf PCB v1.0, ESP32-C6-MINI-1U-**H4** auf
-PCB v2.0; das 8-MB-Modul H8 ist nicht lieferbar). ESPHome teilt 4 MB in zwei OTA-App-Partitionen zu je
+PCB v2.0; die 8-MB-Version des U.FL-Moduls, ESP32-C6-MINI-1U-H8, ist nicht lieferbar – siehe
+[Ausblick 8 MB](#-ausblick-8-mb-modul-esp32-c6-mini-1-h8)). ESPHome teilt 4 MB in zwei OTA-App-Partitionen zu je
 **1.835.008 Bytes (1,75 MB)** plus eine NVS-Partition mit 448 KB. Zwei App-Partitionen sind für OTA nötig: Das
 neue Image wird in die inaktive geschrieben, während die alte weiterläuft.
 
@@ -131,6 +132,34 @@ Ergebnis (komplette Variante inkl. Schalter und Dashboard-Toggle): **1.994.218 B
 - ⚠️ **Beim Wechsel geht das NVS verloren.** Die NVS-Partition verschiebt sich, WLAN-Zugangsdaten und die
   Laufzeitkonfiguration (Etage / Raum / Geräte-ID, Phase, Einstellungen, Filterstunden) beginnen von vorn.
 
+
+### 🔭 Ausblick: 8-MB-Modul (ESP32-C6-MINI-1-H8)
+
+Alles oben Beschriebene folgt aus den **aktuellen 4-MB-Modulen**. Neben der nicht lieferbaren U.FL-Version
+(MINI-1U-H8) gibt es das **ESP32-C6-MINI-1-H8** mit **8 MB Flash** (PCB-Antenne auf dem Modul statt U.FL-Buchse).
+Mit 8 MB entfällt das Problem:
+
+| | 4 MB (heute) | 8 MB (MINI-1-H8) |
+|---|---:|---:|
+| App-Partition (ESPHome-Standardlayout) | 1.835.008 B (1,75 MB) | **3.932.160 B (3,75 MB)** |
+| NVS | 448 KB | 448 KB |
+| Full-Variante + Bluetooth-Proxy, **ohne** Größenoptimierungen (2.121.936 B) | ❌ passt nicht | ✅ ca. 54 % |
+
+Mit einer solchen Platine ließe sich der Proxy **in allen Varianten** anbieten – einkompiliert, standardmäßig aus
+und wie oben beschrieben in Home Assistant bzw. im Web-Dashboard schaltbar –, mit dem Standard-Partitionslayout,
+ohne Größenoptimierungen und ohne Beschränkung auf nosensor.
+
+Mit den **aktuellen ESP-Modulen** (XIAO ESP32-C6 und ESP32-C6-MINI-1U-H4) ist das **nicht möglich**. Eine 8-MB-Platine
+bräuchte:
+
+- eine **PCB-Revision** – das MINI-1 ist länger als das MINI-1U (Antenne auf dem Modul) und braucht eine
+  Antennen-Sperrfläche; eine externe U.FL-Antenne ist nicht mehr möglich, der Empfang am Einbauort muss also
+  geprüft werden,
+- ein eigenes Boardpaket mit `esp32: flash_size: 8MB` und eigene `firmware_variant`-Werte, damit 4-MB-Geräten nie
+  8-MB-Firmware angeboten wird.
+
+Noch nicht umgesetzt – das ist eine Hardware-Entscheidung für eine künftige PCB-Revision.
+
 ---
 
 ## 🛠️ Installation
@@ -189,7 +218,8 @@ Was das für VentoSync bedeutet:
 **Warum nicht einfach in jede Variante einbauen und ausgeschaltet lassen?**
 Das Ausschalten gibt nur RAM und Funkzeit frei – die ~610 KB Code stecken immer im Image. Auf 4-MB-Modulen passt das
 nicht neben das Standard-Partitionslayout, und das Layout aller installierten Geräte zu ändern hieße, jedes Gerät
-per USB neu zu flashen.
+per USB neu zu flashen. Mit einem 8-MB-Modul wäre es möglich – siehe
+[Ausblick 8 MB](#-ausblick-8-mb-modul-esp32-c6-mini-1-h8).
 
 **Gibt es eine Variante für PCB v2.0 oder mit Sensoren?**
 Noch nicht. Das Paket ist platinenunabhängig (`bluetooth_proxy: !include
