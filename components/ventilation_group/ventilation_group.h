@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-09-25
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 
@@ -32,6 +32,7 @@
 #include "esphome.h"
 #include "ventilation_state_machine.h"
 #include "esphome/components/ventilation_logic/room_fusion.h"
+#include "esphome/components/ventilation_logic/level_override.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -96,7 +97,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 11; // Bumped: vacation snapshot shared by the room leader
+static constexpr uint8_t PROTOCOL_VERSION = 12; // Bumped: room-wide Smart-Automatik level override
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -169,6 +170,12 @@ struct __attribute__((packed)) VentilationPacket {
   // VACATION_SNAPSHOT_NONE. Followers adopt it but never re-broadcast it.
   uint8_t vacation_pre_mode_index; ///< Mode index 0-4 before the vacation, or 0xFF.
   uint8_t vacation_pre_intensity;  ///< Fan level 1-10 before the vacation, or 0.
+
+  // Smart-Automatik level override (v12) — room-wide state like the mode
+  // (see level_override.h). Adopted from MSG_STATE and the Master heartbeat.
+  uint8_t auto_override_level;        ///< Override level 1-10, 0 = none.
+  uint16_t auto_override_remaining_s; ///< Remaining override time in seconds (max 18000).
+  uint16_t auto_override_duration_min; ///< Room-wide override duration setting (30-300 min).
 };
 
 static_assert(sizeof(VentilationPacket) <= 250,
@@ -272,6 +279,10 @@ public:
   /// as ROOM_FLAG_PRESENCE; set by auto_mode.h. Never fused.
   bool presence_local = false;
 
+  /// Room-wide Smart-Automatik level override (Level button in
+  /// Smart-Automatik). Shared in every packet; adopted in network_sync.h.
+  ventosync::auto_override::LevelOverride level_override;
+
   // --- PEER TRACKING (dashboard + room-wide sensor/demand fusion) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
@@ -313,6 +324,7 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_mode_index_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_intensity_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *auto_override_duration_global_{nullptr};
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
   /** @brief Sets the global mode index reference. */
@@ -349,6 +361,8 @@ public:
   void set_pre_vacation_intensity_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_intensity_global_ = g; }
   /** @brief Sets the global Smart Climate Control enable flag reference (room-wide switch). */
   void set_hvac_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { hvac_enabled_global_ = g; }
+  /** @brief Sets the level override duration reference (room-wide setting, minutes). */
+  void set_auto_override_duration_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_override_duration_global_ = g; }
 
   /** @return true if the window guard safety lock is active. */
   bool is_window_guard_active() const { return window_guard_active_; }
@@ -911,6 +925,14 @@ public:
         pkt.vacation_pre_intensity = static_cast<uint8_t>(lvl);
       }
     }
+
+    // Smart-Automatik level override (room-wide state, 0 = none)
+    pkt.auto_override_level = level_override.wire_level(now);
+    pkt.auto_override_remaining_s = level_override.wire_remaining_s(now);
+    pkt.auto_override_duration_min = static_cast<uint16_t>(std::clamp(
+        auto_override_duration_global_ != nullptr ? auto_override_duration_global_->value()
+                                                  : ventosync::auto_override::DEFAULT_DURATION_MIN,
+        ventosync::auto_override::MIN_DURATION_MIN, ventosync::auto_override::MAX_DURATION_MIN));
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

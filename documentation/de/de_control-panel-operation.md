@@ -19,7 +19,7 @@ Das Bedienfeld verfügt über 3 Taster:
 | :--- | :--- | :--- |
 | **Power (I/O)** | Raum Ein / Aus | • **Druck (< 10s)**: Schaltet zwischen `Aus` und dem zuletzt aktiven Modus um — **raumweit** (AUS stoppt die Lüfter per 50% PWM; die Geräte bleiben im Sensor-Monitoring-Modus online).<br>• **Sehr langer Druck (> 10s)**: Startet den ESP32-Mikrocontroller neu (der Modus bleibt erhalten). |
 | **Modus (M)** | Betriebsmodus | • **Kurzer Druck**: Zykliert durch die Betriebsmodi: **Automatik → Wärmerückgewinnung → Durchlüften → Stoßlüftung → Aus → Automatik...** |
-| **Stufe (+)** | Lüfterintensität | • **Kurzer Druck**: Zykliert durch 10 Geschwindigkeitsstufen.<br>• **Gedrückt halten**: Automatisches, flüssiges Hoch- und Runterschalten durch alle 10 Stufen (1 Stufe/s), bis die Taste losgelassen wird. |
+| **Stufe (+)** | Lüfterintensität | • **Kurzer Druck**: Zykliert durch 10 Geschwindigkeitsstufen.<br>• **Gedrückt halten**: Automatisches, flüssiges Hoch- und Runterschalten durch alle 10 Stufen (1 Stufe/s), bis die Taste losgelassen wird.<br>• **In der Smart-Automatik**: Die gewählte Stufe übersteuert die Automatik raumweit für die eingestellte Dauer (**Standard 60 Minuten**, 30–300 min) (`LED_WRG` pulsiert schnell); ein Moduswechsel beendet die Übersteuerung vorzeitig. |
 
 ---
 
@@ -31,7 +31,7 @@ Das Panel besitzt 9 grüne LEDs für die Systemzustandsanzeige:
 | :--- | :---: | :--- | :--- |
 | **Power** | 🟢 1x | Oben | Leuchtet im Normalbetrieb hell. Dimmt nach 30s Inaktivität auf 10% Resthelligkeit ab. |
 | **Master** | 🟢 1x | Mitte | Leuchtet gedimmt auf dem Master-Gerät (Geräte-ID = 1). Signalisiert Störungen und Sonderzustände über Blinkmuster (siehe unten). |
-| **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert langsam** im Smart-Automatik-Modus. Leuchtet dauerhaft bei Wärmerückgewinnung und Durchlüften. |
+| **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert langsam** im Smart-Automatik-Modus, **schnell** während einer Stufen-Übersteuerung. Leuchtet dauerhaft bei Wärmerückgewinnung und Durchlüften. |
 | **Modus R** (`LED_VEN`) | 🟢 1x | Rechts | Leuchtet dauerhaft bei Stoßlüftung und Durchlüften. |
 | **Intensität (1–5)** | 🟢 5x | Balken | Zeigt die aktuelle Lüfterstufe 1–10 über schwache (20 %, ungerade Stufe) und volle (100 %, gerade Stufe) LED-Helligkeit an. |
 
@@ -42,6 +42,7 @@ Das Panel besitzt 9 grüne LEDs für die Systemzustandsanzeige:
 | Modus | `LED_WRG` (links) | `LED_VEN` (rechts) |
 | :--- | :---: | :---: |
 | **Smart Automatik (Standard)** | 🟢 (pulsiert langsam) | ⚫ |
+| **Smart Automatik, Stufe übersteuert** | 🟢 (pulsiert schnell) | ⚫ |
 | **Wärmerückgewinnung (Eco)** | 🟢 (dauerhaft an) | ⚫ |
 | **Stoßlüftung (Boost)** | ⚫ | 🟢 (dauerhaft an) |
 | **Durchlüften (Sommer-Querlüftung)** | 🟢 (dauerhaft an) | 🟢 (dauerhaft an) |

@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-25
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -622,7 +622,149 @@ inline void apply_co2_setpoint(float desired) {
   pid_co2->reset_integral_term();
 }
 
+/**
+ * @brief   Health emergency that lets the automatic raise the level above a
+ *          user override.
+ *
+ * @details Updates the override's own CO2 guard (room-wide max CO2, latched at
+ *          the `hvac_emergency_co2` slider, released at the normal CO2
+ *          setpoint) — so it also works without Smart Climate Control — and
+ *          ORs the coordinator's CO2 emergency and mold guard.
+ *
+ * @param[in] now   Current millis().
+ * @param[in] hvac  Decision of the current evaluation cycle.
+ */
+inline bool override_emergency(uint32_t now, const ventosync::hvac::Decision &hvac) {
+  const float on_ppm = (hvac_emergency_co2_val != nullptr)
+      ? static_cast<float>(hvac_emergency_co2_val->value()) : ventosync::hvac::DEFAULT_EMERGENCY_CO2_PPM;
+  const float off_ppm = (auto_co2_threshold_val != nullptr)
+      ? static_cast<float>(auto_co2_threshold_val->value()) : 1000.0f;
+  const bool co2 = override_state::co2_guard.update(get_room_max_co2(now), on_ppm, off_ppm);
+  return co2 || hvac.state == ventosync::hvac::State::EMERGENCY_CO2 ||
+         hvac.state == ventosync::hvac::State::EMERGENCY_HUMIDITY;
+}
+
+/**
+ * @brief   Applies the active level override to the fan right away.
+ *
+ * @details Used when the override starts (button) or is adopted from a peer,
+ *          so the fan reacts without waiting for the next 10 s evaluation.
+ *          Uses the last coordinator decision and CO2 guard state; the next
+ *          evaluate_auto_mode() re-checks both.
+ */
+inline void apply_override_level(uint32_t now) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || !v->level_override.active(now) || fan_intensity_level == nullptr ||
+      fan_intensity_display == nullptr || fan_speed_update == nullptr) return;
+  const auto &d = hvac_state::last_decision;
+  const bool emergency = override_state::co2_guard.latched ||
+                         d.state == ventosync::hvac::State::EMERGENCY_CO2 ||
+                         d.state == ventosync::hvac::State::EMERGENCY_HUMIDITY;
+  const int current = static_cast<int>(fan_intensity_level->value());
+  const int level = ventosync::auto_override::resolve_level(
+      v->level_override.level, current, d.restrict_levels, d.min_level, d.max_level, emergency);
+  if (level == current) return;
+  fan_intensity_level->value() = level;
+  fan_intensity_display->publish_state(level);
+  v->set_fan_intensity(static_cast<uint8_t>(level), false);
+  fan_speed_update->execute();
+}
+
+/**
+ * @brief   Ends an elapsed override, or any override outside Smart-Automatik.
+ *
+ * @details Every device counts down on its own clock (re-aligned by the
+ *          Master heartbeat), so the room expires together without a packet.
+ *          The automatic then ramps from the override level (±1 per cycle).
+ */
+inline void tick_level_override(uint32_t now) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || v->level_override.level == 0) return;
+  if (auto_mode_active == nullptr || !auto_mode_active->value()) {
+    auto_override_clear("Smart-Automatik verlassen");
+    return;
+  }
+  if (v->level_override.expire(now)) {
+    override_state::co2_guard.latched = false;
+    ESP_LOGI("auto_mode", "Level override expired -> Smart-Automatik regelt wieder");
+    if (update_leds != nullptr) update_leds->execute();
+  }
+}
+
 } // namespace auto_mode
+
+/**
+ * @brief   Starts the room-wide level override (Level button in Smart-Automatik).
+ *
+ * @details Holds `level` for the configured duration (room-wide setting
+ *          `auto_override_duration_val`, 30–300 min, default 60) instead of
+ *          letting the automatic pull the fan back. A new press restarts the
+ *          countdown. The caller sends MSG_STATE (sync_settings_to_peers()),
+ *          which carries the override to the room. The applied level may be
+ *          lower than `level` while Smart Climate Control caps the room.
+ *
+ * @param[in] level  Requested fan level (1–10).
+ */
+inline void auto_override_start(int level) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || auto_mode_active == nullptr || !auto_mode_active->value()) return;
+  const uint32_t now = millis();
+  const int minutes = (auto_override_duration_val != nullptr)
+      ? auto_override_duration_val->value() : ventosync::auto_override::DEFAULT_DURATION_MIN;
+  const uint32_t duration_ms = ventosync::auto_override::duration_ms_from_min(minutes);
+  if (!v->level_override.start(level, now, duration_ms)) return;
+  ESP_LOGI("auto_mode", "Level override: Stufe %d fuer %u min (raumweit)", level,
+           static_cast<unsigned>(duration_ms / 60000u));
+  auto_mode::apply_override_level(now);
+  if (update_leds != nullptr) update_leds->execute();
+}
+
+/**
+ * @brief   Adopts the room's level override from a peer packet.
+ *
+ * @details Called for MSG_STATE (any device), the Master heartbeat and the
+ *          boot status response, after the mode has been synced. Only
+ *          MSG_STATE (an explicit interaction) can end an override; a
+ *          heartbeat or status response only starts / re-aligns it, so a
+ *          rebooted device cannot cancel the room's override. Outside
+ *          Smart-Automatik the override is dropped. The countdown is never
+ *          restarted by an adoption.
+ */
+inline void auto_override_adopt(const esphome::VentilationPacket *pkt) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || pkt == nullptr) return;
+  if (auto_mode_active == nullptr || !auto_mode_active->value()) {
+    auto_override_clear("Smart-Automatik verlassen");
+    return;
+  }
+  const uint32_t now = millis();
+  const bool allow_cancel = (pkt->msg_type == esphome::MSG_STATE);
+  if (!v->level_override.adopt(pkt->auto_override_level, pkt->auto_override_remaining_s, now,
+                               allow_cancel)) return;
+  if (v->level_override.active(now)) {
+    ESP_LOGI("auto_mode", "Level override from device %d: Stufe %d, %u min left", pkt->device_id,
+             v->level_override.level, static_cast<unsigned>((v->level_override.remaining_ms(now) + 59999u) / 60000u));
+    auto_mode::apply_override_level(now);
+  } else {
+    override_state::co2_guard.latched = false;
+    ESP_LOGI("auto_mode", "Level override ended by device %d", pkt->device_id);
+  }
+  if (update_leds != nullptr) update_leds->execute();
+}
+
+/**
+ * @brief   Ends the level override (mode change or leaving Smart-Automatik).
+ *
+ * @param[in] reason  Log text.
+ */
+inline void auto_override_clear(const char *reason) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || v->level_override.level == 0) return;
+  v->level_override.clear();
+  override_state::co2_guard.latched = false;
+  ESP_LOGI("auto_mode", "Level override ended (%s)", reason);
+  if (update_leds != nullptr) update_leds->execute();
+}
 
 /**
  * @brief   Main entry point for the Smart-Automatik logic.
@@ -637,6 +779,8 @@ inline void apply_co2_setpoint(float desired) {
 inline void evaluate_auto_mode(bool force) {
   // Room flags for peers (AC, window) must stay current in every mode.
   auto_mode::refresh_local_room_flags(millis());
+  // Level override: expiry, and dropped outside Smart-Automatik.
+  auto_mode::tick_level_override(millis());
 
   if (!auto_mode::is_system_ready()) {
     // Not regulating: never advertise a frozen demand to the room.
@@ -763,6 +907,25 @@ inline void evaluate_auto_mode(bool force) {
     // Pure + unit-tested; the result is always inside [min_l, max_l], so a
     // shrinking window (Smart Climate Control cap) is enforced via the ramp.
     target_level = VentilationLogic::calculate_auto_target_level(demand, current_level, min_l, max_l);
+  }
+
+  // 6b. Level override (Level button, room-wide, 30–300 min): the user's level
+  //     replaces the automatic — also on slaves, so a press on a slave is not
+  //     pulled back to the Master's stale level before its heartbeat. Safety
+  //     wins: the Smart Climate Control cap clamps it, a health emergency
+  //     lets the automatic go higher. The automatic min/max window does not
+  //     apply to the override.
+  const bool emergency = auto_mode::override_emergency(now, hvac);
+  if (v->level_override.active(now)) {
+    const int auto_level = target_level;
+    target_level = ventosync::auto_override::resolve_level(v->level_override.level, auto_level,
+                                                           hvac.restrict_levels, min_l, max_l, emergency);
+    static bool last_override_emergency = false;
+    if (emergency != last_override_emergency) {
+      ESP_LOGI("auto_mode", "Level override %s (emergency)", emergency ? "lifted: automatic may go higher"
+                                                                       : "restored");
+      last_override_emergency = emergency;
+    }
   }
 
   // Soft Ramping: Maximum ±1 level per evaluation cycle (10s)

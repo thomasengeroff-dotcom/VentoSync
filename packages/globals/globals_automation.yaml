@@ -25,7 +25,7 @@
 #              across reboots.
 # Author:      Thomas Engeroff
 # Created:     2026-05-16
-# Modified:    2026-09-24
+# Modified:    2026-10-11
 # ==========================================================================
 
 globals:
@@ -105,6 +105,19 @@ globals:
   - id: summer_cooling_threshold
     type: int
     initial_value: "22"
+    restore_value: true
+
+  # ---------------------------------------------------------
+  # SMART-AUTOMATIK – LEVEL OVERRIDE (Level button)
+  # ---------------------------------------------------------
+
+  # Duration (min, 30-300) of the room-wide level override started with the
+  # Level button in Smart-Automatik. ROOM-WIDE: carried in the ESP-NOW packet
+  # (v12) like the min/max levels. Range: ventosync::auto_override in
+  # components/ventilation_logic/level_override.h.
+  - id: auto_override_duration_val
+    type: int
+    initial_value: "60"
     restore_value: true
 
   # ---------------------------------------------------------

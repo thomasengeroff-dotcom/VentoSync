@@ -37,6 +37,8 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 
 **This mode is the standard upon powering on** and handles all ventilation tasks autonomously ("Set and forget"). The system regulates itself continuously based on indoor and outdoor environmental sensor data.
 
+> **Level button:** pressing Level (+) in this mode overrides the automatic **room-wide for 60 minutes** (adjustable 30–300 min) — `LED_WRG` then **pulses fast**. A mode change ends the override early; afterwards the automatic continues smoothly from the chosen level. Details: [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
+
 #### Active Smart Features
 
 | Feature | Sensor(s) | Threshold / Control Method |

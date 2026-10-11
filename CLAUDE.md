@@ -15,7 +15,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
   naming — do not rename to `scd43_*`.
-- Communication: ESP-NOW (protocol v11) for multi-device sync (no Wi-Fi router required between units),
+- Communication: ESP-NOW (protocol v12) for multi-device sync (no Wi-Fi router required between units),
   ESPHome Native API to Home Assistant (optional MQTT variant)
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names,
   UI labels, and user-facing strings remain in **German**.
@@ -116,7 +116,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 1,994,218 / 2,031,616 B (~37 KB headroom) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 1,997,328 / 2,031,616 B (~34 KB headroom, 0.10.34) — CI compiles it on every PR. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -185,11 +185,13 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v11` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 11` in `ventilation_group.h`;
+- **Protocol version:** `v12` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 12` in `ventilation_group.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
-  v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot).
+  v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
+  v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
+  Smart-Automatik level override and its duration setting).
 - **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
@@ -221,6 +223,13 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
     restore the room state even if the leader is replaced or reboots without NVS. Followers adopt it only in
     `VACATION_FOLLOWING`, never re-broadcast it (they send `VACATION_SNAPSHOT_NONE`), and pick the lowest
     device ID among fresh peers, so exactly one snapshot wins.
+- **Level override** (`level_override.h`, `ventosync::auto_override`, `VentilationController::level_override`): the
+  Level button in Smart-Automatik holds its level room-wide for `auto_override_duration_val` (30–300 min, default 60,
+  room-wide setting synced like the min/max levels). Room-wide **state** like the mode, not a fused
+  value: `MSG_STATE` from any device is adopted in full (incl. "none"); the Master heartbeat / boot status response
+  only start or re-align it, never end it (a rebooted device must not cancel it). Countdown on each device's own clock,
+  never restarted by an adoption. Ended by expiry or `cycle_operating_mode()`. Safety: HVAC cap clamps it, a health
+  emergency (HVAC CO2 / mold guard or the override's `Co2Guard`) lets the automatic go higher (`resolve_level()`).
 - **HA-pushed room inputs** (API actions in `packages/integration/homeassistant.yaml`): `set_ac_active`,
   `set_window_open`. Stored as `ventosync::room::HaPushedFlag` (expires after 15 min, false while the API is
   down), shared room-wide via `room_flags`; a local change triggers an immediate `MSG_SYNC`
@@ -234,7 +243,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 Use `ventosync::` for project-wide constants, guards, and helper structs. Sub-namespaces in use:
 `ventosync::config`, `ventosync::espnow`, `ventosync::ha_fan`, `ventosync::health`, `ventosync::hrv`,
-`ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`.
+`ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`.
 
 ### Modular C++ Headers (`components/helpers/`)
 
@@ -252,7 +261,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v11 mesh communication, packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v12 mesh communication, packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock
@@ -271,6 +280,8 @@ Complex YAML lambda logic is extracted into focused header files:
     HA sliders in `ui_controls.yaml`.
   - `room_fusion.h` (`ventosync::room`): room-wide max of CO2 / humidity / peer demand, OR of the peers' AC /
     window / presence flags (freshness ≥ 5 min), `HaPushedFlag` for expiring HA-pushed inputs, `PresenceHold`.
+  - `level_override.h` (`ventosync::auto_override`): Smart-Automatik level override (30–300 min) (`LevelOverride`
+    countdown + packet adoption, `Co2Guard`, `resolve_level()`).
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices

@@ -63,11 +63,12 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protokoll-Architektur & Paketvalidierung (v11)
+## 🔒 Protokoll-Architektur & Paketvalidierung (v12)
 
 * **Magic Header**: Jedes Datenpaket beginnt mit einem festen Prüfbyte (`0x42`), um fremde oder fehlerhafte 2,4-GHz-Pakete sofort zu verwerfen.
 * **Firmware-Versionsprüfung**: Strikte Validierung verhindert Fehlinterpretationen bei unterschiedlichen Firmware-Ständen.
 * **Schleifen-Schutz**: Einstellungsänderungen enthalten Sequenz-Token, um zirkuläre Broadcast-Schleifen beim Spiegeln von Parametern zu verhindern.
+* **Stufen-Übersteuerung (v12)**: Jedes Paket trägt die Stufen-Übersteuerung der Smart-Automatik des Raums (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` eines beliebigen Geräts startet, ändert oder beendet sie; der Master-Heartbeat startet bzw. synchronisiert sie nur. Firmware ≥ 0.10.34 verwirft v11-Pakete — **alle Geräte eines Raums flashen**.
 
 ---
 

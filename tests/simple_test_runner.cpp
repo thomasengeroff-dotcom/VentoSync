@@ -21,12 +21,13 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-09-25
+// Modified:    2026-10-11
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
 #include "../components/ventilation_logic/hvac_coordinator.h"
 #include "../components/ventilation_logic/room_fusion.h"
+#include "../components/ventilation_logic/level_override.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -1396,6 +1397,121 @@ bool test_type_layout_verification() {
   return true;
 }
 
+bool test_level_override() {
+  using namespace ventosync::auto_override;
+  const uint32_t t0 = 5000000u;
+
+  // Start / active / remaining / wire format
+  LevelOverride o;
+  TEST_ASSERT(!o.active(t0));
+  TEST_ASSERT(o.wire_level(t0) == 0 && o.wire_remaining_s(t0) == 0);
+  TEST_ASSERT(!o.start(0, t0));  // invalid levels are rejected
+  TEST_ASSERT(!o.start(11, t0));
+  TEST_ASSERT(o.start(8, t0));
+  TEST_ASSERT(o.active(t0) && o.level == 8);
+  TEST_ASSERT(o.remaining_ms(t0) == DEFAULT_DURATION_MS);
+  TEST_ASSERT(o.wire_level(t0) == 8 && o.wire_remaining_s(t0) == 3600);
+  TEST_ASSERT(o.wire_remaining_s(t0 + 500u) == 3600); // rounded up
+  TEST_ASSERT(o.remaining_ms(t0 + 600000u) == DEFAULT_DURATION_MS - 600000u);
+
+  // Expiry: exactly at DEFAULT_DURATION_MS, edge reported once
+  TEST_ASSERT(!o.expire(t0 + DEFAULT_DURATION_MS - 1u));
+  TEST_ASSERT(o.active(t0 + DEFAULT_DURATION_MS - 1u));
+  TEST_ASSERT(!o.active(t0 + DEFAULT_DURATION_MS));
+  TEST_ASSERT(o.wire_level(t0 + DEFAULT_DURATION_MS) == 0);
+  TEST_ASSERT(o.expire(t0 + DEFAULT_DURATION_MS));
+  TEST_ASSERT(o.level == 0 && !o.expire(t0 + DEFAULT_DURATION_MS + 1u));
+
+  // Configurable duration (HA setting 30-300 min, room-wide)
+  TEST_ASSERT(valid_duration_min(30) && valid_duration_min(300) && valid_duration_min(60));
+  TEST_ASSERT(!valid_duration_min(29) && !valid_duration_min(301));
+  TEST_ASSERT(duration_ms_from_min(10) == 30u * 60000u);   // clamped up
+  TEST_ASSERT(duration_ms_from_min(999) == MAX_DURATION_MS); // clamped down
+  LevelOverride lg;
+  TEST_ASSERT(lg.start(2, t0, duration_ms_from_min(300)));
+  TEST_ASSERT(lg.wire_remaining_s(t0) == 18000);  // fits the uint16_t field
+  TEST_ASSERT(lg.active(t0 + 299u * 60000u) && !lg.active(t0 + 300u * 60000u));
+  LevelOverride sh;
+  TEST_ASSERT(sh.start(2, t0, duration_ms_from_min(30)));
+  TEST_ASSERT(!sh.active(t0 + 30u * 60000u));
+  // A long override is adopted with its full remaining time (> 60 min)
+  LevelOverride al;
+  TEST_ASSERT(al.adopt(7, 15000, t0));
+  TEST_ASSERT(al.remaining_ms(t0) == 15000000u);
+
+  // Wrap-safe across the millis() overflow
+  const uint32_t near_wrap = 0xFFFFFFFFu - 1000u;
+  LevelOverride w;
+  TEST_ASSERT(w.start(3, near_wrap));
+  TEST_ASSERT(w.active(near_wrap + 2000u)); // wrapped
+  TEST_ASSERT(w.remaining_ms(near_wrap + 2000u) == DEFAULT_DURATION_MS - 2000u);
+  TEST_ASSERT(!w.active(near_wrap + DEFAULT_DURATION_MS));
+
+  // Adopt: unknown override is taken over with the sender's remaining time
+  LevelOverride a;
+  TEST_ASSERT(a.adopt(6, 1800, t0));
+  TEST_ASSERT(a.active(t0) && a.level == 6 && a.remaining_ms(t0) == 1800000u);
+  // Same level, small deviation: no visible change, countdown untouched
+  TEST_ASSERT(!a.adopt(6, 1797, t0));
+  TEST_ASSERT(a.remaining_ms(t0) == 1800000u);
+  // Same level, large deviation: silent re-alignment (never a restart to 60 min)
+  TEST_ASSERT(!a.adopt(6, 1200, t0));
+  TEST_ASSERT(a.remaining_ms(t0) == 1200000u);
+  // Re-sending the state later cannot extend it
+  TEST_ASSERT(!a.adopt(6, a.wire_remaining_s(t0 + 60000u), t0 + 60000u));
+  TEST_ASSERT(a.remaining_ms(t0 + 60000u) == 1140000u);
+  // Different level: visible change
+  TEST_ASSERT(a.adopt(9, 3600, t0));
+  TEST_ASSERT(a.level == 9 && a.remaining_ms(t0) == DEFAULT_DURATION_MS);
+  // Out-of-range level or remaining time is ignored / clamped
+  TEST_ASSERT(!a.adopt(12, 3600, t0));
+  TEST_ASSERT(a.level == 9);
+  LevelOverride c;
+  TEST_ASSERT(c.adopt(4, 0xFFFF, t0));
+  TEST_ASSERT(c.remaining_ms(t0) == MAX_DURATION_MS); // clamped to 300 min
+  // A heartbeat (no cancel right) never ends a running override
+  TEST_ASSERT(!a.adopt(0, 0, t0, false));
+  TEST_ASSERT(a.active(t0) && a.level == 9);
+  // ...but still starts / re-aligns one
+  LevelOverride hb;
+  TEST_ASSERT(hb.adopt(5, 600, t0, false));
+  TEST_ASSERT(hb.active(t0) && hb.remaining_ms(t0) == 600000u);
+  // "No override" via MSG_STATE ends a running one (visible), no-op otherwise
+  TEST_ASSERT(a.adopt(0, 0, t0));
+  TEST_ASSERT(!a.active(t0) && a.level == 0);
+  TEST_ASSERT(!a.adopt(0, 0, t0));
+  TEST_ASSERT(c.adopt(4, 0, t0)); // level without time = none
+  TEST_ASSERT(!c.active(t0));
+
+  // CO2 guard: latch at the emergency threshold, release at the setpoint
+  Co2Guard g;
+  TEST_ASSERT(!g.update(1400.0f, 1500.0f, 1000.0f));
+  TEST_ASSERT(g.update(1500.0f, 1500.0f, 1000.0f));
+  TEST_ASSERT(g.update(1100.0f, 1500.0f, 1000.0f)); // hysteresis
+  TEST_ASSERT(!g.update(1000.0f, 1500.0f, 1000.0f));
+  TEST_ASSERT(g.update(1600.0f, 1500.0f, 1000.0f));
+  TEST_ASSERT(!g.update(NAN, 1500.0f, 1000.0f)); // no CO2 -> released
+  // Misconfigured band (setpoint above the emergency) keeps a hysteresis
+  Co2Guard g2;
+  TEST_ASSERT(g2.update(1500.0f, 1500.0f, 1800.0f));
+  TEST_ASSERT(g2.update(1499.5f, 1500.0f, 1800.0f));
+  TEST_ASSERT(!g2.update(1499.0f, 1500.0f, 1800.0f));
+
+  // resolve_level: the user's level wins, also outside the automatic window
+  TEST_ASSERT(resolve_level(10, 4, false, 2, 7, false) == 10);
+  TEST_ASSERT(resolve_level(1, 4, false, 2, 7, false) == 1);
+  // Smart Climate Control cap clamps it
+  TEST_ASSERT(resolve_level(8, 2, true, 1, 3, false) == 3);
+  TEST_ASSERT(resolve_level(2, 2, true, 1, 3, false) == 2);
+  // Health emergency: the automatic may go higher, never lower
+  TEST_ASSERT(resolve_level(2, 7, false, 2, 7, true) == 7);
+  TEST_ASSERT(resolve_level(9, 5, false, 2, 7, true) == 9);
+  // Out-of-range inputs are clamped
+  TEST_ASSERT(resolve_level(0, 0, false, 1, 10, false) == 1);
+  TEST_ASSERT(resolve_level(15, 3, true, 5, 3, false) == 5); // swapped window
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -1545,6 +1661,7 @@ int main() {
     {"T-7t: Stoßlüftung one-way bursts + Master schedule sync", test_stoss_one_way_and_sync},
     {"T-7u: Mode-switch hold-off (wrap-safe, re-armable)", test_mode_switch_holdoff},
     {"T-7v: Vacation snapshot from the room leader", test_vacation_snapshot},
+    {"T-7w: Smart-Automatik level override (countdown, adopt, safety)", test_level_override},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

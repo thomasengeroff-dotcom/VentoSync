@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -395,6 +395,13 @@ inline void load_peers_from_runtime_cache() {
 // SECTION: Synchronization Logic
 // =========================================================
 
+/// Rate-limit state of sync_settings_to_peers().
+namespace settings_sync {
+  inline uint32_t last_ms = 0;     ///< millis() of the last MSG_STATE.
+  inline bool deferred = false;    ///< A MSG_STATE was rate-limited and is still owed.
+  constexpr uint32_t MIN_INTERVAL_MS = 500;
+}
+
 /**
  * @brief   Sends a state update to all registered peers via Unicast.
  *
@@ -405,17 +412,33 @@ inline void load_peers_from_runtime_cache() {
 inline void sync_settings_to_peers() {
   if (ventilation_ctrl == nullptr || !esphome::espnow::global_esp_now) return;
   
-  // Rate-limit: max 1 sync per 500ms
-  static uint32_t last_settings_sync = 0;
-  if (last_settings_sync != 0 && millis() - last_settings_sync < 500) {
-    ESP_LOGD("vent_sync", "Settings sync suppressed (rate-limit active)");
+  // Rate-limit: max 1 sync per 500ms. A suppressed sync is sent later by
+  // flush_deferred_settings_sync(), so the LAST change (e.g. fast Level
+  // clicks) always reaches the room — otherwise the Master heartbeat would
+  // push an older level / override back.
+  const uint32_t now = millis();
+  if (settings_sync::last_ms != 0 && now - settings_sync::last_ms < settings_sync::MIN_INTERVAL_MS) {
+    settings_sync::deferred = true;
+    ESP_LOGD("vent_sync", "Settings sync deferred (rate-limit active)");
     return;
   }
-  last_settings_sync = millis();
+  settings_sync::last_ms = now;
+  settings_sync::deferred = false;
 
   auto data = build_and_populate_packet(esphome::MSG_STATE);
   send_sync_to_all_peers(data);
   ESP_LOGI("vent_sync", "Sent state change via UNICAST to %zu peer(s)", peer_cache.size());
+}
+
+/**
+ * @brief   Sends a MSG_STATE that sync_settings_to_peers() had to defer.
+ *
+ * @note    Called every second (logic_automation.yaml).
+ */
+inline void flush_deferred_settings_sync() {
+  if (!settings_sync::deferred) return;
+  if (millis() - settings_sync::last_ms < settings_sync::MIN_INTERVAL_MS) return;
+  sync_settings_to_peers();
 }
 
 /** @brief Sends a discovery broadcast to identify peers in the same room. */
@@ -883,6 +906,15 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     dirty = true;
   }
 
+  // 2c. Level override duration (room-wide setting, protocol v12). Only
+  //     values inside the HA number range are adopted.
+  if (auto_override_duration_val != nullptr && auto_override_duration != nullptr &&
+      ventosync::auto_override::valid_duration_min(pkt->auto_override_duration_min) &&
+      pkt->auto_override_duration_min != auto_override_duration_val->value()) {
+    auto_override_duration_val->value() = pkt->auto_override_duration_min;
+    auto_override_duration->publish_state(pkt->auto_override_duration_min);
+  }
+
   // 3. System Timers
   if (sync_interval_config != nullptr && pkt->sync_interval_min >= 1 &&
       pkt->sync_interval_min <= 1440 &&
@@ -1140,6 +1172,8 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
       if (fan_intensity_level != nullptr)
         fan_intensity_level->value() = pkt->fan_intensity;
 
+      auto_override_adopt(pkt); // Rejoin a running level override
+
       v->is_state_synced = true;
       v->pending_broadcast = false; // Mute echo to prevent spamming old state on boot
       return;
@@ -1159,6 +1193,9 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
 
   if (should_sync_config) {
     espnow_handler::handle_config_sync(pkt);
+    // Room-wide level override: same authority as the mode (any MSG_STATE,
+    // Master heartbeat). Runs after the mode sync above.
+    auto_override_adopt(pkt);
   }
 }
 

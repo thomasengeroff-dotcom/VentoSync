@@ -100,9 +100,9 @@ Gut zu wissen:
 
 - Im Modus **Aus** reagiert die Stufen-Taste nicht – erst einschalten.
 - In den ersten **10 Sekunden nach dem Einschalten / Neustart** wird die Stufen-Taste ignoriert.
-- In der **Smart-Automatik** regelt das Gerät die Stufe selbst. Eine manuell gewählte Stufe wird von der
-  Automatik in den nächsten Regelzyklen (alle 10 s, je eine Stufe) wieder angepasst. Wer eine feste Stufe
-  möchte, wählt **Wärmerückgewinnung**.
+- In der **Smart-Automatik** übersteuert die Stufen-Taste die Automatik ab Werk für **60 Minuten** (siehe
+  [Stufe in der Smart-Automatik übersteuern](#stufe-in-der-smart-automatik-übersteuern)). Wer dauerhaft eine
+  feste Stufe möchte, wählt **Wärmerückgewinnung**.
 
 > [!TIP]
 > Jeder Tastendruck wirkt **sofort**, auch wenn das Bedienfeld gerade dunkel ist – es gibt keinen „Aufweck-Druck“.
@@ -115,7 +115,7 @@ Gut zu wissen:
 
 | # | Modus | Modus-LED links (WRG) | Modus-LED rechts (VEN) | Was passiert |
 | :-: | :--- | :---: | :---: | :--- |
-| 1 | **Smart-Automatik** *(Standard)* | 🟢 **pulsiert langsam** | ⚫ | Das Gerät lüftet selbstständig mit Wärmerückgewinnung und regelt die Stufe nach CO2 und Luftfeuchte. |
+| 1 | **Smart-Automatik** *(Standard)* | 🟢 **pulsiert langsam** (schnell: Stufe übersteuert) | ⚫ | Das Gerät lüftet selbstständig mit Wärmerückgewinnung und regelt die Stufe nach CO2 und Luftfeuchte. |
 | 2 | **Wärmerückgewinnung** | 🟢 an | ⚫ | Wechselbetrieb mit Wärmerückgewinnung auf der von dir gewählten, festen Stufe. |
 | 3 | **Durchlüften** | 🟢 an | 🟢 an | Dauerhafter Luftstrom in eine Richtung (Querlüftung, z. B. zur Abkühlung im Sommer). Endet ab Werk nach **30 Minuten**. |
 | 4 | **Stoßlüftung** | ⚫ | 🟢 an | 15 Minuten kräftig in eine Richtung lüften, dann 105 Minuten Pause – im Wechsel. |
@@ -129,6 +129,22 @@ Gut zu wissen:
 - Ist es im Sommer draußen deutlich kühler als drinnen, kann die Automatik selbstständig auf **Durchlüften**
   umschalten. Die linke Modus-LED **pulsiert dabei weiter** – das Gerät bleibt in der Smart-Automatik.
 - Auch Geräte ohne eigene Sensoren regeln mit, weil sie den Bedarf der anderen Geräte im Raum übernehmen.
+
+#### Stufe in der Smart-Automatik übersteuern
+
+Für „jetzt gerade mehr / weniger Luft“ (Kochen, Besuch, ruhige Nacht) einfach die **Stufen-Taste** drücken:
+
+- Die gewählte Stufe gilt **60 Minuten lang für den ganzen Raum**, die Automatik pausiert so lange. Die Dauer
+  lässt sich in Home Assistant zwischen 30 und 300 Minuten einstellen (*Smart-Automatik: Übersteuerung Dauer*). Danach
+  regelt sie von dieser Stufe aus wieder sanft weiter (eine Stufe alle 10 s).
+- Die linke Modus-LED **pulsiert schnell** (statt langsam), solange die Übersteuerung läuft.
+- Ein weiterer Druck wählt die nächste Stufe und startet die Zeit neu.
+- **Vorzeitig beenden:** den Modus wechseln oder die Smart-Automatik erneut wählen.
+- Die Übersteuerung darf unter oder über den eingestellten Automatik-Grenzen liegen. **Sicherheit hat
+  Vorrang:** Läuft die Klimaanlage (Klima-Koordination), wird höchstens deren Maximalstufe gefahren; bei sehr
+  hohem CO2-Wert (ab Werk 1500 ppm) oder Schimmelgefahr darf die Automatik trotzdem höher lüften.
+- Die Übersteuerung wird nicht dauerhaft gespeichert: Ein neu gestartetes Gerät übernimmt sie von den anderen
+  Geräten im Raum; starten alle Geräte gleichzeitig neu (Stromausfall), ist sie beendet.
 
 ### 2. Wärmerückgewinnung
 
@@ -184,7 +200,8 @@ Die 10 Stufen werden über die **5 Stufen-LEDs** angezeigt. Jede LED steht für 
 Gut zu wissen:
 
 - Die LEDs zeigen sofort die **Zielstufe**. Der Lüfter fährt sanft innerhalb weniger Sekunden dorthin.
-- In der Smart-Automatik zeigen die LEDs die **von der Automatik gewählte** Stufe.
+- In der Smart-Automatik zeigen die LEDs die **von der Automatik gewählte** Stufe – bzw. bei einer
+  Übersteuerung die gewählte Stufe (bei aktiver Klima-Koordination ggf. auf deren Maximalstufe begrenzt).
 - Ist in Home Assistant eine **Anwesenheits-Anpassung** eingestellt, läuft der Lüfter bei erkannter
   Anwesenheit etwas stärker oder schwächer; die LEDs zeigen weiterhin die eingestellte Grundstufe.
 - Im Modus **Aus** sind alle Stufen-LEDs dunkel.

@@ -63,11 +63,12 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protocol Architecture & Packet Validation (v11)
+## 🔒 Protocol Architecture & Packet Validation (v12)
 
 * **Magic Header Validation**: Every packet begins with a fixed magic byte (`0x42`) to immediately discard foreign or malformed 2.4 GHz packets.
 * **Firmware Version Guard**: Strict version validation ensures that packets from incompatible firmware builds are rejected cleanly.
 * **Loop Prevention**: Settings updates contain sequence tokens to prevent cyclic broadcast loops when mirroring configuration values across peers.
+* **Level override (v12)**: every packet carries the room's Smart-Automatik level override (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` from any device starts, changes or ends it; the Master heartbeat only starts / re-aligns it. Firmware ≥ 0.10.34 rejects v11 packets — **flash all devices of a room**.
 
 ---
 

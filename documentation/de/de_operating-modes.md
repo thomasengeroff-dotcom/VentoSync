@@ -36,6 +36,8 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 
 **Dieser Modus ist der Standard nach dem Einschalten** und übernimmt alle Lüftungsaufgaben vollkommen autonom („Einstellen und vergessen“). Das System regelt sich kontinuierlich anhand der Umweltsensordaten von Innen- und Außenbereich.
 
+> **Stufen-Taste:** Ein Druck auf Stufe (+) übersteuert in diesem Modus die Automatik **raumweit für 60 Minuten** (einstellbar 30–300 min) — `LED_WRG` **pulsiert dann schnell**. Ein Moduswechsel beendet die Übersteuerung vorzeitig; danach regelt die Automatik sanft von der gewählten Stufe aus weiter. Details: [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
+
 #### Aktive Smart-Funktionen
 
 | Funktion | Sensor(en) | Schwellwert / Regelmethode |

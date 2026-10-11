@@ -21,7 +21,7 @@
 # Description: LED indicator configurations and animations.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-04-21
+# Modified:    2026-10-11
 # ==========================================================================
 
 # ---------------------------------------------------------
@@ -117,6 +117,13 @@ light:
           name: "Automatik Pulse"
           transition_length: 3.5s
           update_interval: 3.5s
+          min_brightness: 5%
+          max_brightness: 100%
+      # Smart-Automatik paused by a level override (Level button, 60 min)
+      - pulse:
+          name: "Automatik Override"
+          transition_length: 0.5s
+          update_interval: 0.5s
           min_brightness: 5%
           max_brightness: 100%
   - platform: monochromatic

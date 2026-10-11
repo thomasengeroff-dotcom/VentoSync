@@ -21,7 +21,7 @@
 // Description: Processing of physical button and slider interactions.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -248,10 +248,45 @@ inline void handle_button_power_short_click() {
 }
 
 /**
+ * @brief   Base level for the Level button cycle.
+ *
+ * @details In Smart-Automatik with an active level override the cycle
+ *          continues from the override level: the applied level can be lower
+ *          (Smart Climate Control cap), and cycling from it would get stuck.
+ */
+inline int level_button_base() {
+  int level = static_cast<int>(fan_intensity_level->value());
+  if (auto_mode_active != nullptr && auto_mode_active->value() &&
+      ventilation_ctrl->level_override.active(millis())) {
+    level = ventilation_ctrl->level_override.level;
+  }
+  return std::clamp(level, 1, 10);
+}
+
+/**
+ * @brief   Applies a level chosen with the Level button (click or hold).
+ *
+ * @details Manual modes: sets the level directly. Smart-Automatik: starts the
+ *          room-wide level override (30–300 min) instead, so the automatic does not
+ *          pull the fan back (see ventosync::auto_override).
+ */
+inline void apply_level_button(int level) {
+  if (auto_mode_active != nullptr && auto_mode_active->value()) {
+    auto_override_start(level);
+    return;
+  }
+  fan_intensity_level->value() = level;
+  fan_intensity_display->publish_state(level);
+  ventilation_ctrl->set_fan_intensity(level);
+  fan_speed_update->execute();
+}
+
+/**
  * @brief   Increments fan intensity via the physical "Level" button.
  *
  * @details Implements a 10s boot-guard to prevent spurious triggers while
- *          MCP23017 GPIOs are stabilizing.
+ *          MCP23017 GPIOs are stabilizing. In Smart-Automatik the chosen level
+ *          becomes a room-wide level override (30–300 min) (apply_level_button()).
  *
  * @code
  *   // Example: Level 3 -> click -> Level 4
@@ -279,17 +314,11 @@ inline void handle_button_level_click() {
 
   if (!ventilation_enabled->value())
     return; // Ignore if system is off
-  int level = fan_intensity_level->value();
-
   // Delegate logic to Pure Class
-  level = VentilationLogic::get_next_fan_level(level);
+  const int level = VentilationLogic::get_next_fan_level(level_button_base());
 
-  fan_intensity_level->value() = level;
-  fan_intensity_display->publish_state(level);
-
-  ventilation_ctrl->set_fan_intensity(level);
+  apply_level_button(level);
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
-  fan_speed_update->execute();
   ui_active->value() = true;    // Activate UI immediately so LEDs render
   update_leds->execute();       // Show new intensity level LEDs now
   ui_timeout_script->execute(); // Start 30s auto-dim timer
@@ -320,7 +349,7 @@ inline void handle_intensity_bounce() {
 
   if (!ventilation_enabled->value())
     return;
-  int current_level = fan_intensity_level->value();
+  int current_level = level_button_base();
   bool up = intensity_bounce_up->value();
 
   if (up) {
@@ -341,11 +370,9 @@ inline void handle_intensity_bounce() {
     }
   }
 
-  // Apply the new level (sync with UI, hardware, and LEDs)
-  fan_intensity_level->value() = current_level;
-  fan_intensity_display->publish_state(current_level);
-  ventilation_ctrl->set_fan_intensity(current_level);
-  fan_speed_update->execute();
+  // Apply the new level (sync with UI, hardware, and LEDs); peers get it on
+  // release (sync_settings_to_peers() in logic_buttons.yaml)
+  apply_level_button(current_level);
   ui_active->value() = true;
   update_leds->execute();
   ui_timeout_script->execute();

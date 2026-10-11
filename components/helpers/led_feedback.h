@@ -21,7 +21,7 @@
 // Description: Visual system status feedback via physical LEDs.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -222,6 +222,9 @@ inline void update_leds_logic(bool force) {
   const float max_b = (max_led_brightness != nullptr) ? max_led_brightness->value() : 1.0f;
   const bool is_auto = (auto_mode_active != nullptr) ? auto_mode_active->value() : false;
   const int intensity = (fan_intensity_level != nullptr) ? static_cast<int>(fan_intensity_level->value()) : 1;
+  // Level override (Level button in Smart-Automatik): fast pulse instead of
+  // the slow automatic pulse ("Automatik pausiert").
+  const bool is_override = is_auto && v->level_override.active(millis());
 
   // FIXED: State tracking to prevent log spam and I2C flooding
   static bool  last_ui_active  = false;
@@ -229,6 +232,7 @@ inline void update_leds_logic(bool force) {
   static int   last_intensity  = -1;
   static float last_max_b      = -1.0f;
   static bool  last_auto       = false;
+  static bool  last_override   = false;
 
   static bool initialized = false;
   if (!initialized) {
@@ -239,7 +243,8 @@ inline void update_leds_logic(bool force) {
 
   bool changed = force || (is_ui_active != last_ui_active) || 
                  (current_mode != last_mode) || (intensity != last_intensity) || 
-                 (std::abs(max_b - last_max_b) > 0.01f) || (is_auto != last_auto);
+                 (std::abs(max_b - last_max_b) > 0.01f) || (is_auto != last_auto) ||
+                 (is_override != last_override);
 
   if (!changed) {
     return;
@@ -251,6 +256,7 @@ inline void update_leds_logic(bool force) {
   last_intensity = intensity;
   last_max_b = max_b;
   last_auto = is_auto;
+  last_override = is_override;
 
   // 1. Case: UI Inactive (Dimming/Night mode)
   if (!is_ui_active) {
@@ -269,7 +275,9 @@ inline void update_leds_logic(bool force) {
   led_guard::turn_off_safe(status_led_mode_vent);
 
   if (current_mode != esphome::MODE_OFF) {
-    if (is_auto) {
+    if (is_override) {
+      led_guard::turn_on_effect_safe(status_led_mode_wrg, "Automatik Override");
+    } else if (is_auto) {
       led_guard::turn_on_effect_safe(status_led_mode_wrg, "Automatik Pulse");
     } else if (current_mode == esphome::MODE_ECO_RECOVERY) {
       led_guard::turn_on_effect_safe(status_led_mode_wrg, "None", max_b);
