@@ -19,7 +19,7 @@ The control panel features 3 tactile buttons:
 | :--- | :--- | :--- |
 | **Power (I/O)** | Room On / Off | • **Press (< 10s)**: Toggles between `Aus` and the last active mode — **room-wide** (OFF stops the fans at 50% PWM; the devices stay online in Sensor Monitoring mode).<br>• **Very long press (> 10s)**: Reboots the ESP32 microcontroller (the mode is kept). |
 | **Mode (M)** | Operating Mode | • **Short press**: Cycles through programs: **Auto → Heat Recovery → Ventilation → Boost Ventilation → Off → Auto...** |
-| **Level (+)** | Fan Intensity | • **Short press**: Cycles through 10 speed levels.<br>• **Hold**: Automatically cycles smoothly up and down through all levels (1 level/sec) until released. |
+| **Level (+)** | Fan Intensity | • **Short press**: Cycles through 10 speed levels.<br>• **Hold**: Automatically cycles smoothly up and down through all levels (1 level/sec) until released.<br>• **In Smart Automatic**: the chosen level overrides the automatic room-wide for the configured time (**default 60 minutes**, 30–300 min) (`LED_WRG` pulses fast); a mode change ends the override early. |
 
 ---
 
@@ -31,7 +31,7 @@ The panel features 9 green LEDs providing real-time system state feedback:
 | :--- | :---: | :--- | :--- |
 | **Power** | 🟢 1x | Panel Top | Illuminates bright during active operation. Dims to 10% brightness after the 30s inactivity timeout. |
 | **Master** | 🟢 1x | Center | Lights up solid (dimmed) on the Master Device (Device ID = 1). Signals diagnostic error states via pulse blink patterns (see below). |
-| **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses slowly** in Smart Automatic mode. Stays permanently ON for Heat Recovery and Ventilation. |
+| **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses slowly** in Smart Automatic mode, **fast** during a level override. Stays permanently ON for Heat Recovery and Ventilation. |
 | **Mode R** (`LED_VEN`) | 🟢 1x | Right | Permanently ON for Boost Ventilation and Ventilation. |
 | **Intensity (1–5)** | 🟢 5x | Bar | Displays current fan speed level 1–10 using dim (20 %, odd level) and full (100 %, even level) LED brightness. |
 
@@ -42,6 +42,7 @@ The panel features 9 green LEDs providing real-time system state feedback:
 | Mode | `LED_WRG` (left) | `LED_VEN` (right) |
 | :--- | :---: | :---: |
 | **Smart Automatic (Default)** | 🟢 (pulses slowly) | ⚫ |
+| **Smart Automatic, level overridden** | 🟢 (pulses fast) | ⚫ |
 | **Heat Recovery (Eco)** | 🟢 (solid) | ⚫ |
 | **Boost Ventilation** | ⚫ | 🟢 (solid) |
 | **Ventilation (Summer Cross-Vent)** | 🟢 (solid) | 🟢 (solid) |

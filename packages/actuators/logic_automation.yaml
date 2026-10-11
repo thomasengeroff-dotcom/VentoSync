@@ -76,6 +76,7 @@ interval:
     then:
       - lambda: "handle_ventilation_timer_expiry();"
       - lambda: "process_pending_broadcast();"
+      - lambda: "flush_deferred_settings_sync();"
 
   # Periodic controller config sync (catch HA state drift)
   - interval: 60s

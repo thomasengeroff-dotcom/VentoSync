@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-25
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 
@@ -185,6 +185,10 @@ extern esphome::globals::RestoringGlobalsComponent<int>
 extern esphome::globals::RestoringGlobalsComponent<int> *const auto_presence_val;
 extern esphome::globals::RestoringGlobalsComponent<int>
     *const summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C).
+extern esphome::globals::RestoringGlobalsComponent<int>
+    *const auto_override_duration_val; ///< Level override duration (30-300 min, room-wide, ESP-NOW synced).
+extern esphome::template_::TemplateNumber
+    *const auto_override_duration; ///< HA number "Smart-Automatik: Übersteuerung Dauer".
 extern esphome::globals::GlobalsComponent<float> *const co2_pid_result;
 extern esphome::globals::GlobalsComponent<float> *const humidity_pid_result;
 extern esphome::globals::RestoringGlobalsComponent<float>
@@ -350,6 +354,12 @@ namespace presence_state {
   /// Own radar presence with 30 s off-delay (broadcast as ROOM_FLAG_PRESENCE).
   inline ventosync::room::PresenceHold hold;
 }
+
+namespace override_state {
+  /// CO2 health guard of the Smart-Automatik level override (runtime only).
+  /// The override itself lives in VentilationController::level_override.
+  inline ventosync::auto_override::Co2Guard co2_guard;
+}
 /// @}
 
 /// @name Status LEDs (monochromatic light components)
@@ -504,6 +514,12 @@ inline void handle_button_level_click();
 inline void handle_intensity_bounce();
 /** @brief Evaluates Smart-Automatik logic. */
 inline void evaluate_auto_mode(bool force = false);
+/** @brief Starts the room-wide Smart-Automatik level override (Level button). */
+inline void auto_override_start(int level);
+/** @brief Adopts the room's level override from a peer packet. */
+inline void auto_override_adopt(const esphome::VentilationPacket *pkt);
+/** @brief Ends the level override (mode change). */
+inline void auto_override_clear(const char *reason);
 /** @brief Updates filter wear-out analytics. */
 inline void update_filter_analytics();
 /** @brief Orchestrates a mode transition. */

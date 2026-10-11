@@ -47,10 +47,16 @@ Diese Datei listet die Home-Assistant-Entitäten der VentoSync-Firmware (`ventos
   * *Dokumentation:* Grundlüftung (Schimmelschutz) — die Automatik unterschreitet diese Stufe nie.
 * **`number.smart_automatik_max_lufterstufe`** („Smart-Automatik Max Lüfterstufe“, YAML-ID `automatik_max_luefterstufe`)
   * *Typ:* Number (5–10, Standard 7), raumweit
-  * *Dokumentation:* Obergrenze (z. B. Lärmschutz) für die Automatik.
+  * *Dokumentation:* Obergrenze (z. B. Lärmschutz) für die Automatik. Begrenzt keine Stufen-Übersteuerung (Stufen-Taste).
+* **`sensor.automatik_ubersteuerung_restzeit`** („Automatik-Übersteuerung Restzeit“, YAML-ID `auto_override_remaining`)
+  * *Typ:* Sensor (min, Aktualisierung alle 30 s), raumweiter Zustand
+  * *Dokumentation:* Restzeit der mit der Stufen-Taste in der Smart-Automatik gestarteten Übersteuerung (raumweit). `0` = die Automatik regelt. Ein Moduswechsel beendet sie vorzeitig. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
 * **`number.smart_automatik_sommerkuhlung_schwelle`** („Smart-Automatik: Sommerkühlung Schwelle“, YAML-ID `auto_summer_cooling_threshold`)
   * *Typ:* Number (18–30 °C, Standard 22), Konfiguration, pro Gerät
   * *Dokumentation:* Innentemperatur, ab der der Sommer-Bypass (freie Kühlung per `Durchlüften`) starten darf. Details: [Smart-Automatik Logik](de_smart-automatic-logic.md).
+* **`number.smart_automatik_ubersteuerung_dauer`** („Smart-Automatik: Übersteuerung Dauer“, YAML-ID `auto_override_duration`)
+  * *Typ:* Number (30–300 min, Schrittweite 5, Standard 60), Konfiguration, raumweit
+  * *Dokumentation:* Wie lange eine mit der Stufen-Taste in der Smart-Automatik gewählte Stufe die Automatik übersteuert. Gilt ab der nächsten Übersteuerung; eine laufende behält ihre Restzeit. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
 * **`number.radar_lufter_anpassung`** („Radar Lüfter-Anpassung“, YAML-ID `auto_presence_slider`)
   * *Typ:* Number (-5 … +5, `0` = aus), Konfiguration, raumweit
   * *Dokumentation:* Stufen, die in den **manuellen** Modi zur Grundstufe addiert werden, solange irgendwo im Raum Radar-Anwesenheit erkannt wird (LD2450 eines beliebigen Geräts, per ESP-NOW geteilt). Ohne Anwesenheit keine Anpassung, in der Smart-Automatik nie.

@@ -21,7 +21,7 @@
 # Description: Web UI and physical control entities for ventilation.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-09-24
+# Modified:    2026-10-11
 # ==========================================================================
 
 
@@ -208,6 +208,28 @@ number:
           id(auto_summer_cooling_threshold).publish_state(x);
           ESP_LOGI("auto_mode", "Sommerkühlung Schwelle auf %d°C gesetzt", (int)x);
 
+  # Auto Mode: Level override duration (Level button in Smart-Automatik).
+  # ROOM-WIDE (ESP-NOW v12). Range must match MIN/MAX_DURATION_MIN in
+  # components/ventilation_logic/level_override.h. Applies to the next
+  # override; a running one keeps its remaining time.
+  - platform: template
+    name: "Smart-Automatik: Übersteuerung Dauer"
+    id: auto_override_duration
+    icon: "mdi:timer-cog-outline"
+    unit_of_measurement: "min"
+    min_value: 30
+    max_value: 300
+    step: 5
+    entity_category: config
+    lambda: "return id(auto_override_duration_val);"
+    set_action:
+      - lambda: |-
+          id(auto_override_duration_val) = std::clamp(static_cast<int>(x),
+              ventosync::auto_override::MIN_DURATION_MIN, ventosync::auto_override::MAX_DURATION_MIN);
+          id(auto_override_duration).publish_state(id(auto_override_duration_val));
+          sync_settings_to_peers();
+          ESP_LOGI("auto_mode", "Übersteuerung Dauer auf %d min gesetzt", id(auto_override_duration_val));
+
 
   # ---------------------------------------------------------
   # SMART CLIMATE CONTROL (HVAC COORDINATION) - Room-wide thresholds
@@ -358,6 +380,25 @@ text_sensor:
       if (current_state == last_state) return {};
       last_state = current_state;
       return {current_state};
+
+# ---------------------------------------------------------
+# SMART-AUTOMATIK LEVEL OVERRIDE
+# ---------------------------------------------------------
+sensor:
+  # Remaining time of the room-wide level override started with the Level
+  # button in Smart-Automatik (0 = the automatic regulates). See
+  # components/ventilation_logic/level_override.h.
+  - platform: template
+    name: "Automatik-Übersteuerung Restzeit"
+    id: auto_override_remaining
+    icon: "mdi:timer-sand"
+    unit_of_measurement: "min"
+    accuracy_decimals: 0
+    update_interval: 30s
+    lambda: |-
+      auto *v = id(ventilation_ctrl);
+      const uint32_t ms = (v != nullptr && id(auto_mode_active)) ? v->level_override.remaining_ms(millis()) : 0;
+      return static_cast<float>((ms + 59999u) / 60000u);
 
 # ---------------------------------------------------------
 # VENTILATION MODE SELECTION

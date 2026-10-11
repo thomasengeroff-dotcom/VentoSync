@@ -102,9 +102,9 @@ Good to know:
 
 - In **Aus** the Level button does nothing – switch on first.
 - During the first **10 seconds after power-up / restart** the Level button is ignored.
-- In **Smart-Automatik** the unit chooses the level itself. A manually chosen level is adjusted again by
-  the automatic within its next control cycles (every 10 s, one level at a time). For a fixed level choose
-  **Wärmerückgewinnung**.
+- In **Smart-Automatik** the Level button overrides the automatic for **60 minutes** by default (see
+  [Overriding the level in Smart-Automatik](#overriding-the-level-in-smart-automatik)). For a permanently
+  fixed level choose **Wärmerückgewinnung**.
 
 > [!TIP]
 > Every button press takes effect **immediately**, even while the panel is dark – there is no "wake-up press".
@@ -116,7 +116,7 @@ Good to know:
 
 | # | Mode | Left mode LED (WRG) | Right mode LED (VEN) | What happens |
 | :-: | :--- | :---: | :---: | :--- |
-| 1 | **Smart-Automatik** *(default)* | 🟢 **pulses slowly** | ⚫ | Ventilates on its own with heat recovery and sets the level by CO2 and humidity. |
+| 1 | **Smart-Automatik** *(default)* | 🟢 **pulses slowly** (fast: level overridden) | ⚫ | Ventilates on its own with heat recovery and sets the level by CO2 and humidity. |
 | 2 | **Wärmerückgewinnung** (heat recovery) | 🟢 on | ⚫ | Alternating operation with heat recovery at the fixed level you choose. |
 | 3 | **Durchlüften** (cross-ventilation) | 🟢 on | 🟢 on | Continuous airflow in one direction (e.g. to cool down in summer). Ends after **30 minutes** by default. |
 | 4 | **Stoßlüftung** (boost ventilation) | ⚫ | 🟢 on | 15 minutes of strong one-way ventilation, then a 105-minute pause – repeating. |
@@ -130,6 +130,22 @@ Good to know:
 - If it is noticeably cooler outside than inside in summer, the automatic may switch to **Durchlüften** on
   its own. The left mode LED **keeps pulsing** – the unit stays in Smart-Automatik.
 - Units without their own sensors also respond, because they adopt the demand of the other units in the room.
+
+#### Overriding the level in Smart-Automatik
+
+For "more / less air right now" (cooking, visitors, a quiet night) simply press the **Level button**:
+
+- The chosen level applies **for 60 minutes to the whole room**; the automatic pauses meanwhile. The duration
+  can be set between 30 and 300 minutes in Home Assistant (*Smart-Automatik: Übersteuerung Dauer*). Afterwards it
+  continues smoothly from that level (one level every 10 s).
+- The left mode LED **pulses fast** (instead of slowly) while the override runs.
+- Another press selects the next level and restarts the countdown.
+- **End it early:** change the mode or select Smart-Automatik again.
+- The override may lie below or above the configured automatic limits. **Safety comes first:** while the air
+  conditioner runs (climate coordination) at most its maximum level is used; with very high CO2 (factory
+  default 1500 ppm) or a mold risk the automatic may still ventilate harder.
+- The override is not stored permanently: a restarted unit adopts it from the other units of the room; if all
+  units restart at once (power failure), it ends.
 
 ### 2. Wärmerückgewinnung (heat recovery)
 
@@ -185,7 +201,8 @@ The 10 levels are shown on the **5 level LEDs**. Each LED stands for two levels:
 Good to know:
 
 - The LEDs show the **target level** immediately. The fan ramps there smoothly within a few seconds.
-- In Smart-Automatik the LEDs show the level **chosen by the automatic**.
+- In Smart-Automatik the LEDs show the level **chosen by the automatic** – or, during an override, the chosen
+  level (capped to the climate coordination maximum while it is active).
 - If a **presence adjustment** is configured in Home Assistant, the fan runs a little stronger or weaker
   while presence is detected; the LEDs keep showing the base level.
 - In **Aus** all level LEDs are dark.

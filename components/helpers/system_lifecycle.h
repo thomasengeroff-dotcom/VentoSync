@@ -21,7 +21,7 @@
 // Description: System-wide mode orchestration and lifecycle hooks.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 #include <esp_system.h>
@@ -93,6 +93,9 @@ inline void cycle_operating_mode(int mode_index) {
   if (auto_mode_active != nullptr) {
     auto_mode_active->value() = false; // Reset by default
   }
+  // A mode change (including re-selecting Smart-Automatik) ends the level
+  // override; the following MSG_STATE carries "no override" to the room.
+  auto_override_clear("Moduswechsel");
 
   // Mode names for HA select sync — defined centrally in globals.h as MODE_NAMES[].
   // Must match `luefter_modus` select options in ui_controls.yaml EXACTLY.

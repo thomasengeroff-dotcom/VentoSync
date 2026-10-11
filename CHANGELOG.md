@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.34] - 2026-10-11
+
+### Added
+
+- **Level override in Smart-Automatik** — the Level button (+) no longer fights the automatic. A short press or hold in `Smart-Automatik` starts a **room-wide override for a configurable time (default 60 minutes)**: the chosen level replaces the automatic level on all devices of the room; afterwards the automatic continues from that level with its normal ramp (±1 level per 10 s). Another press selects the next level and restarts the countdown. A mode change (also re-selecting `Smart-Automatik`) ends it early.
+  - **Safety first:** the Smart Climate Control cap (`Klima-Koordination: Max Lüfterstufe`) still limits the level while the AC runs; during a health emergency the automatic may go higher than the override — Smart Climate Control's CO2 emergency / mold guard, or the override's own CO2 guard (room-wide CO2 ≥ `Klima-Koordination: CO2 Notfallgrenze`, default 1500 ppm, released at the normal CO2 setpoint), which also works without Smart Climate Control. The automatic min/max window does not apply to the override.
+  - **LED feedback:** the left mode LED (`LED_WRG`) **pulses fast** (new effect `Automatik Override`, 1 s period) instead of the slow automatic pulse while the override runs; the level LEDs show the override level.
+  - **New entity** `number.smart_automatik_ubersteuerung_dauer` ("Smart-Automatik: Übersteuerung Dauer", config, **30–300 min**, default 60, step 5) — **room-wide** like the min/max levels (synced over ESP-NOW, re-asserted by the Master heartbeat). Applies to the next override; a running one keeps its remaining time.
+  - **New entity** `sensor.automatik_ubersteuerung_restzeit` ("Automatik-Übersteuerung Restzeit", minutes, 0 = automatic regulates).
+  - Pure logic in `components/ventilation_logic/level_override.h` (`ventosync::auto_override`), unit-tested (T-7w).
+
+### Changed
+
+- **ESP-NOW protocol v12** (`PROTOCOL_VERSION = 12`): `VentilationPacket` carries the room's level override (`auto_override_level`, `auto_override_remaining_s`) and the room-wide duration setting (`auto_override_duration_min`). `MSG_STATE` from any device starts, changes or ends it; the Master heartbeat and the boot status response only start / re-align it, so a rebooted device cannot cancel the room's override. ⚠️ **All devices of a room must be flashed** — v11 and v12 devices reject each other's packets.
+
+### Fixed
+
+- A settings change suppressed by the 500 ms rate limit of `sync_settings_to_peers()` (e.g. fast Level clicks) was never sent, so peers kept an older level until the next interaction. The last change is now sent as soon as the rate limit allows (`flush_deferred_settings_sync()`, every second).
+
 ## [0.10.33] - 2026-10-02
 
 ### Added
