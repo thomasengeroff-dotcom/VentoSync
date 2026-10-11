@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.33",
-    "project_date": "2026-10-02",
-    "project_description": "Experimental Bluetooth proxy variant ventosync-nosensor-btproxy (own 4 MB partition table, first flash over USB); BLE off by default, switch in HA and web dashboard."
+    "project_version": "0.10.34",
+    "project_date": "2026-10-11",
+    "project_description": "Level button in Smart-Automatik starts a room-wide level override (30-300 min, default 60, fast-pulsing mode LED); ESP-NOW protocol v12 - flash all devices of a room."
 }
