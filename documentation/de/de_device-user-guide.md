@@ -143,6 +143,7 @@ Für „jetzt gerade mehr / weniger Luft“ (Kochen, Besuch, ruhige Nacht) einfa
 - Die Übersteuerung darf unter oder über den eingestellten Automatik-Grenzen liegen. **Sicherheit hat
   Vorrang:** Läuft die Klimaanlage (Klima-Koordination), wird höchstens deren Maximalstufe gefahren; bei sehr
   hohem CO2-Wert (ab Werk 1500 ppm) oder Schimmelgefahr darf die Automatik trotzdem höher lüften.
+- Dasselbe passiert, wenn die Stufe in der Smart-Automatik in Home Assistant oder im Web-Dashboard geändert wird.
 - Die Übersteuerung wird nicht dauerhaft gespeichert: Ein neu gestartetes Gerät übernimmt sie von den anderen
   Geräten im Raum; starten alle Geräte gleichzeitig neu (Stromausfall), ist sie beendet.
 

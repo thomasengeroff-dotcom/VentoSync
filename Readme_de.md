@@ -474,7 +474,7 @@ Das Gerät verfügt über ein 3-Tasten-Bedienpanel mit 9 Status-LEDs (dimmbar, m
 
 - **Power (I/O)**: Ein Druck schaltet den Raum zwischen `Aus` und dem zuletzt aktiven Modus um; sehr langer Druck (>10s) startet das Gerät neu.
 - **Modus (M)**: Zykliert durch `Automatik` → `Wärmerückgewinnung` → `Durchlüften` → `Stoßlüftung` → `Aus`.
-- **Stufe (+)**: Zykliert durch 10 Lüfterstufen (kurzer Druck) oder läuft die Stufen fortlaufend durch (gedrückt halten) — raumweit. In der Smart-Automatik **übersteuert die gewählte Stufe die Automatik 60 Minuten lang raumweit** (einstellbar 30–300 min: `Smart-Automatik: Übersteuerung Dauer`) (linke Modus-LED pulsiert schnell); ein Moduswechsel beendet sie vorzeitig. CO2-Notfall und die Begrenzung der Klima-Koordination gelten weiter.
+- **Stufe (+)**: Zykliert durch 10 Lüfterstufen (kurzer Druck) oder läuft die Stufen fortlaufend durch (gedrückt halten) — raumweit. In der Smart-Automatik **übersteuert die gewählte Stufe die Automatik 60 Minuten lang raumweit** (einstellbar 30–300 min: `Smart-Automatik: Übersteuerung Dauer`; HA-Stufen-Slider / Fan-Geschwindigkeit und Web-Dashboard starten dieselbe Übersteuerung) (linke Modus-LED pulsiert schnell); ein Moduswechsel beendet sie vorzeitig. CO2-Notfall und die Begrenzung der Klima-Koordination gelten weiter.
 - **Feedback**: 5 Intensitäts-LEDs (Balkenanzeige: gedimmt (20 %) bei ungerader, voll bei gerader Stufe), 2 Modus-LEDs (`LED_WRG` / `LED_VEN`), Power-LED und Master-Diagnose-LED.
 
 > 📖 **Vollständige Bedienungsanleitung:**  

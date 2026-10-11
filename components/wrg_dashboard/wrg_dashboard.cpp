@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-02
+// Modified:    2026-10-11
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -234,6 +234,7 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["vent_timer"] = get_n(this->vent_timer_);
   doc["sync_interval_config"] = get_n(this->sync_interval_config_);
   doc["fan_intensity_display"] = get_n(this->fan_intensity_display_);
+  doc["auto_override_min"] = get_f(this->auto_override_remaining_);
   doc["automatik_min_luefterstufe"] = get_n(this->automatik_min_luefterstufe_);
   doc["automatik_max_luefterstufe"] = get_n(this->automatik_max_luefterstufe_);
   doc["auto_co2_threshold"] = get_n(this->auto_co2_threshold_);

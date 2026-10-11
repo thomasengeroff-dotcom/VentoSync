@@ -14,6 +14,7 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
 * **Schnelle Vor-Ort-Konfiguration**: Direkte Einstellung von Geräte-ID, Raum-ID, Etagen-ID und Lüfter-Phase (Phase A / Phase B).
 * **Sensor-Diagnose**: Live-Kacheln aller Sensordaten inklusive Min/Max/Durchschnittswerten.
 * **ESP-NOW Live-Peer-Ansicht**: Echtzeit-Visualisierung aller synchronisierten Geräte im selben Raum (Node-ID, Betriebsmodus, Lüfterstufe, Luftrichtung).
+* **Stufen-Slider in der Smart-Automatik**: Eine Stufenänderung startet die raumweite **Stufen-Übersteuerung** (wie die Stufen-Taste, Dauer `Smart-Automatik: Übersteuerung Dauer`, Standard 60 min). Ein Hinweis unter dem Slider zeigt die Restzeit (`/state`-Schlüssel `auto_override_min`); ein Moduswechsel beendet die Übersteuerung. Siehe [Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
 * **Bluetooth-Proxy-Schalter** *(experimentell)*: In `ventosync_nosensor_btproxy.yaml` zeigt die Gruppe *Steuerung* einen Schalter „Bluetooth Proxy“ (dieselbe Entität wie in HA). Andere Varianten zeigen ihn nicht. Siehe [Bluetooth-Proxy](de_bluetooth-proxy.md).
 * **Autarker Standalone-Betrieb**: Vollständig ohne Home Assistant nutzbar. Erreichbar unter:
   * **VentoSync Dashboard**: `http://<deine-IP-Adresse>/ui` (oder `http://esptest.local/ui`)

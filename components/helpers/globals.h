@@ -189,6 +189,8 @@ extern esphome::globals::RestoringGlobalsComponent<int>
     *const auto_override_duration_val; ///< Level override duration (30-300 min, room-wide, ESP-NOW synced).
 extern esphome::template_::TemplateNumber
     *const auto_override_duration; ///< HA number "Smart-Automatik: Übersteuerung Dauer".
+extern esphome::template_::TemplateSensor
+    *const auto_override_remaining; ///< HA sensor "Automatik-Übersteuerung Restzeit" (min).
 extern esphome::globals::GlobalsComponent<float> *const co2_pid_result;
 extern esphome::globals::GlobalsComponent<float> *const humidity_pid_result;
 extern esphome::globals::RestoringGlobalsComponent<float>
@@ -502,6 +504,8 @@ inline void set_ventilation_timer(float value);
 inline void set_sync_interval_handler(float value);
 /** @brief Sets the fan intensity from a UI slider. */
 inline void set_fan_intensity_slider(float value);
+/** @brief Level chosen in HA / web dashboard (starts the override in Smart-Automatik). */
+inline void set_fan_intensity_user(float value);
 /** @brief Sets the operating mode from a UI select. */
 inline void set_operating_mode_select(const std::string &x);
 /** @brief Cycles mode on button click. */

@@ -14,13 +14,13 @@ Diese Datei listet die Home-Assistant-Entitäten der VentoSync-Firmware (`ventos
 
 * **`fan.ventosync_hrv`** („VentoSync HRV“, YAML-ID `ventosync_hrv_fan`)
   * *Typ:* Fan (10 Geschwindigkeitsstufen, Presets = Betriebsmodi)
-  * *Dokumentation:* Standard-Fan-Entität für Dashboards und Sprachassistenten: Ein/Aus (raumweit, *Ein* stellt den zuletzt aktiven Modus wieder her), 10 Stufen (10 % … 100 % = Stufe 1 … 10), Preset = Betriebsmodus.
+  * *Dokumentation:* Standard-Fan-Entität für Dashboards und Sprachassistenten: Ein/Aus (raumweit, *Ein* stellt den zuletzt aktiven Modus wieder her), 10 Stufen (10 % … 100 % = Stufe 1 … 10; in der Smart-Automatik startet eine Stufenänderung die Übersteuerung), Preset = Betriebsmodus.
 * **`select.luftermodus`** („Lüftermodus“, YAML-ID `luefter_modus`)
   * *Typ:* Select
   * *Dokumentation:* Betriebsmodus: `Smart-Automatik`, `Wärmerückgewinnung`, `Durchlüften`, `Stoßlüftung`, `Aus` — raumweit. Details: [Betriebsmodi](de_operating-modes.md).
 * **`number.lufter_intensitat`** („Lüfter Intensität“, YAML-ID `fan_intensity_display`)
   * *Typ:* Number (1–10)
-  * *Dokumentation:* Manuelle Lüfterstufe. In der Smart-Automatik wird sie von der Automatik gesetzt.
+  * *Dokumentation:* Manuelle Lüfterstufe. In der Smart-Automatik zeigt sie die Stufe der Automatik; eine Änderung (hier oder im Web-Dashboard) startet wie die Stufen-Taste die raumweite **Stufen-Übersteuerung** (siehe `number.smart_automatik_ubersteuerung_dauer`).
 * **`sensor.lufter_drehzahl`** („Lüfter Drehzahl“, YAML-ID `fan_rpm`)
   * *Typ:* Sensor (RPM, negativ bei Abluft)
   * *Dokumentation:* Tacho-Drehzahl eines 4-Pin-Lüfters, sonst geschätzt als Geschwindigkeitsanteil × 4200 RPM.
@@ -50,13 +50,13 @@ Diese Datei listet die Home-Assistant-Entitäten der VentoSync-Firmware (`ventos
   * *Dokumentation:* Obergrenze (z. B. Lärmschutz) für die Automatik. Begrenzt keine Stufen-Übersteuerung (Stufen-Taste).
 * **`sensor.automatik_ubersteuerung_restzeit`** („Automatik-Übersteuerung Restzeit“, YAML-ID `auto_override_remaining`)
   * *Typ:* Sensor (min, Aktualisierung alle 30 s), raumweiter Zustand
-  * *Dokumentation:* Restzeit der mit der Stufen-Taste in der Smart-Automatik gestarteten Übersteuerung (raumweit). `0` = die Automatik regelt. Ein Moduswechsel beendet sie vorzeitig. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
+  * *Dokumentation:* Restzeit der in der Smart-Automatik gestarteten Übersteuerung – per Stufen-Taste, Slider `Lüfter Intensität`, Geschwindigkeit der Fan-Entität oder Web-Dashboard (raumweit). `0` = die Automatik regelt. Ein Moduswechsel beendet sie vorzeitig. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
 * **`number.smart_automatik_sommerkuhlung_schwelle`** („Smart-Automatik: Sommerkühlung Schwelle“, YAML-ID `auto_summer_cooling_threshold`)
   * *Typ:* Number (18–30 °C, Standard 22), Konfiguration, pro Gerät
   * *Dokumentation:* Innentemperatur, ab der der Sommer-Bypass (freie Kühlung per `Durchlüften`) starten darf. Details: [Smart-Automatik Logik](de_smart-automatic-logic.md).
 * **`number.smart_automatik_ubersteuerung_dauer`** („Smart-Automatik: Übersteuerung Dauer“, YAML-ID `auto_override_duration`)
   * *Typ:* Number (30–300 min, Schrittweite 5, Standard 60), Konfiguration, raumweit
-  * *Dokumentation:* Wie lange eine mit der Stufen-Taste in der Smart-Automatik gewählte Stufe die Automatik übersteuert. Gilt ab der nächsten Übersteuerung; eine laufende behält ihre Restzeit. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
+  * *Dokumentation:* Wie lange eine in der Smart-Automatik gewählte Stufe (Stufen-Taste, HA-Slider / Fan-Geschwindigkeit, Web-Dashboard) die Automatik übersteuert. Gilt ab der nächsten Übersteuerung; eine laufende behält ihre Restzeit. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
 * **`number.radar_lufter_anpassung`** („Radar Lüfter-Anpassung“, YAML-ID `auto_presence_slider`)
   * *Typ:* Number (-5 … +5, `0` = aus), Konfiguration, raumweit
   * *Dokumentation:* Stufen, die in den **manuellen** Modi zur Grundstufe addiert werden, solange irgendwo im Raum Radar-Anwesenheit erkannt wird (LD2450 eines beliebigen Geräts, per ESP-NOW geteilt). Ohne Anwesenheit keine Anpassung, in der Smart-Automatik nie.

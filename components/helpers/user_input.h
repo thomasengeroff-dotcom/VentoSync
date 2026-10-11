@@ -130,6 +130,39 @@ inline void set_fan_intensity_slider(float value) {
 }
 
 /**
+ * @brief   Level chosen by a user in Home Assistant or the web dashboard.
+ *
+ * @details Entry point for the HA number "Lüfter Intensität" (also used by the
+ *          web dashboard via make_call()) and the HA fan entity speed.
+ *          Manual modes: same as set_fan_intensity_slider(). Smart-Automatik:
+ *          starts the room-wide level override like the Level button, so the
+ *          automatic does not pull the level back.
+ *
+ * @note    Internal callers (vacation restore) use set_fan_intensity_slider()
+ *          directly — they must never start an override.
+ *
+ * @param[in] value  Requested level (1.0 to 10.0)
+ */
+inline void set_fan_intensity_user(float value) {
+  if (std::isnan(value)) return;
+  const int val = static_cast<int>(std::round(value));
+  if (val < 1 || val > 10) {
+    ESP_LOGW("input", "Invalid fan intensity from UI: %d (raw: %.2f)", val, value);
+    return;
+  }
+  if (auto_mode_active == nullptr || !auto_mode_active->value()) {
+    set_fan_intensity_slider(value);
+    return;
+  }
+  if (ui_active == nullptr || update_leds == nullptr || ui_timeout_script == nullptr) return;
+  auto_override_start(val);
+  sync_settings_to_peers(); // MSG_STATE carries the override to the room
+  ui_active->value() = true;
+  update_leds->execute();
+  ui_timeout_script->execute();
+}
+
+/**
  * @brief   Maps Home Assistant mode selection strings to internal enum indices.
  *
  * @details This unified entry point ensures that mode changes from the cloud/app

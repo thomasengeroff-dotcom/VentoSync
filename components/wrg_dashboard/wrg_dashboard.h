@@ -21,7 +21,7 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-02
+// Modified:    2026-10-11
 // ==========================================================================
 
 #pragma once
@@ -91,6 +91,10 @@ public:
   void set_fan_rpm(sensor::Sensor *s) { fan_rpm_ = s; }
   void set_filter_operating_days(sensor::Sensor *s) {
     filter_operating_days_ = s;
+  }
+  /// Remaining Smart-Automatik level override (min, 0 = automatic regulates).
+  void set_auto_override_remaining(sensor::Sensor *s) {
+    auto_override_remaining_ = s;
   }
 
   void set_filter_change_alarm(binary_sensor::BinarySensor *b) {
@@ -184,6 +188,7 @@ protected:
   sensor::Sensor *heat_recovery_efficiency_{nullptr};
   sensor::Sensor *fan_rpm_{nullptr};
   sensor::Sensor *filter_operating_days_{nullptr};
+  sensor::Sensor *auto_override_remaining_{nullptr};
 
   binary_sensor::BinarySensor *filter_change_alarm_{nullptr};
   binary_sensor::BinarySensor *radar_presence_{nullptr};

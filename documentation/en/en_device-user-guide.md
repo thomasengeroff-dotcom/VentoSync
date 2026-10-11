@@ -144,6 +144,7 @@ For "more / less air right now" (cooking, visitors, a quiet night) simply press 
 - The override may lie below or above the configured automatic limits. **Safety comes first:** while the air
   conditioner runs (climate coordination) at most its maximum level is used; with very high CO2 (factory
   default 1500 ppm) or a mold risk the automatic may still ventilate harder.
+- The same happens when the level is changed in Smart-Automatik in Home Assistant or the web dashboard.
 - The override is not stored permanently: a restarted unit adopts it from the other units of the room; if all
   units restart at once (power failure), it ends.
 

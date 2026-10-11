@@ -14,13 +14,13 @@ This file lists the Home Assistant entities provided by the VentoSync firmware (
 
 * **`fan.ventosync_hrv`** ("VentoSync HRV", YAML ID `ventosync_hrv_fan`)
   * *Type:* Fan (10 speed steps, presets = operating modes)
-  * *Documentation:* Standard HA fan entity for dashboards and voice assistants: on/off (room-wide, *on* restores the last active mode), 10 speed steps (10 % … 100 % = level 1 … 10), preset = operating mode.
+  * *Documentation:* Standard HA fan entity for dashboards and voice assistants: on/off (room-wide, *on* restores the last active mode), 10 speed steps (10 % … 100 % = level 1 … 10; in Smart-Automatik a speed change starts the level override), preset = operating mode.
 * **`select.luftermodus`** ("Lüftermodus", YAML ID `luefter_modus`)
   * *Type:* Select
   * *Documentation:* Operating mode: `Smart-Automatik`, `Wärmerückgewinnung`, `Durchlüften`, `Stoßlüftung`, `Aus` — room-wide. Details: [Operating Modes](en_operating-modes.md).
 * **`number.lufter_intensitat`** ("Lüfter Intensität", YAML ID `fan_intensity_display`)
   * *Type:* Number (1–10)
-  * *Documentation:* Manual fan level. In Smart-Automatik it is set by the automatic.
+  * *Documentation:* Manual fan level. In Smart-Automatik it shows the automatic's level; changing it (here or in the web dashboard) starts the room-wide **level override** like the Level button (see `number.smart_automatik_ubersteuerung_dauer`).
 * **`sensor.lufter_drehzahl`** ("Lüfter Drehzahl", YAML ID `fan_rpm`)
   * *Type:* Sensor (RPM, negative while extracting)
   * *Documentation:* Tacho RPM of a 4-pin fan, otherwise estimated as speed fraction × 4200 RPM.
@@ -50,13 +50,13 @@ This file lists the Home Assistant entities provided by the VentoSync firmware (
   * *Documentation:* Upper limit (e.g. noise protection) for the automatic. Does not limit a level override (Level button).
 * **`sensor.automatik_ubersteuerung_restzeit`** ("Automatik-Übersteuerung Restzeit", YAML ID `auto_override_remaining`)
   * *Type:* Sensor (min, updated every 30 s), room-wide state
-  * *Documentation:* Remaining time of the level override started with the Level button in Smart-Automatik (room-wide). `0` = the automatic regulates. Ended early by a mode change. See [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
+  * *Documentation:* Remaining time of the level override started in Smart-Automatik with the Level button, the `Lüfter Intensität` slider, the fan entity speed or the web dashboard (room-wide). `0` = the automatic regulates. Ended early by a mode change. See [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
 * **`number.smart_automatik_sommerkuhlung_schwelle`** ("Smart-Automatik: Sommerkühlung Schwelle", YAML ID `auto_summer_cooling_threshold`)
   * *Type:* Number (18–30 °C, default 22), config, per device
   * *Documentation:* Indoor temperature above which the summer bypass (free cooling via `Durchlüften`) may start. Details: [Smart-Automatik Logic](en_smart-automatic-logic.md).
 * **`number.smart_automatik_ubersteuerung_dauer`** ("Smart-Automatik: Übersteuerung Dauer", YAML ID `auto_override_duration`)
   * *Type:* Number (30–300 min, step 5, default 60), config, room-wide
-  * *Documentation:* How long a level chosen with the Level button in Smart-Automatik overrides the automatic. Applies to the next override; a running one keeps its remaining time. See [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
+  * *Documentation:* How long a level chosen in Smart-Automatik (Level button, HA slider / fan speed, web dashboard) overrides the automatic. Applies to the next override; a running one keeps its remaining time. See [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
 * **`number.radar_lufter_anpassung`** ("Radar Lüfter-Anpassung", YAML ID `auto_presence_slider`)
   * *Type:* Number (-5 … +5, `0` = off), config, room-wide
   * *Documentation:* Levels added to the base level in the **manual** modes while radar presence is detected anywhere in the room (any device's LD2450, shared via ESP-NOW). Not applied without presence and never in Smart-Automatik.
