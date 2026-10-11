@@ -645,6 +645,14 @@ inline bool override_emergency(uint32_t now, const ventosync::hvac::Decision &hv
 }
 
 /**
+ * @brief   Publishes the override remaining time now (HA, web dashboard)
+ *          instead of waiting for the sensor's 30 s update interval.
+ */
+inline void publish_override_remaining() {
+  if (auto_override_remaining != nullptr) auto_override_remaining->update();
+}
+
+/**
  * @brief   Applies the active level override to the fan right away.
  *
  * @details Used when the override starts (button) or is adopted from a peer,
@@ -688,6 +696,7 @@ inline void tick_level_override(uint32_t now) {
     override_state::co2_guard.latched = false;
     ESP_LOGI("auto_mode", "Level override expired -> Smart-Automatik regelt wieder");
     if (update_leds != nullptr) update_leds->execute();
+    publish_override_remaining();
   }
 }
 
@@ -717,6 +726,7 @@ inline void auto_override_start(int level) {
            static_cast<unsigned>(duration_ms / 60000u));
   auto_mode::apply_override_level(now);
   if (update_leds != nullptr) update_leds->execute();
+  auto_mode::publish_override_remaining();
 }
 
 /**
@@ -750,6 +760,7 @@ inline void auto_override_adopt(const esphome::VentilationPacket *pkt) {
     ESP_LOGI("auto_mode", "Level override ended by device %d", pkt->device_id);
   }
   if (update_leds != nullptr) update_leds->execute();
+  auto_mode::publish_override_remaining();
 }
 
 /**
@@ -764,6 +775,7 @@ inline void auto_override_clear(const char *reason) {
   override_state::co2_guard.latched = false;
   ESP_LOGI("auto_mode", "Level override ended (%s)", reason);
   if (update_leds != nullptr) update_leds->execute();
+  auto_mode::publish_override_remaining();
 }
 
 /**

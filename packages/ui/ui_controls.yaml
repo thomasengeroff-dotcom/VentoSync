@@ -76,8 +76,11 @@ number:
     set_action:
       then:
         - lambda: |-
-            set_fan_intensity_slider(x);
-            id(fan_intensity_display).publish_state(x);
+            // In Smart-Automatik this starts the room-wide level override
+            // (also used by the web dashboard). Publish the applied level —
+            // it may be capped by Smart Climate Control.
+            set_fan_intensity_user(x);
+            id(fan_intensity_display).publish_state(id(fan_intensity_level));
 
   - platform: template
     name: "Maximale LED Helligkeit"

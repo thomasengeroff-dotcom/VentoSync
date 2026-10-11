@@ -144,13 +144,14 @@ An optional modifier evaluated at the start of every 10-second cycle (`auto_mode
 Details, state machine and HA setup: [📄 Smart Climate Control — HVAC Coordination](en_smart-climate-control.md).
 
 ### 7. Level Override (Level button)
-Pressing the **Level button (+)** (short press or hold) in Smart-Automatik starts a **room-wide override** for the configured time (`Smart-Automatik: Übersteuerung Dauer`, 30–300 min, default 60; room-wide setting synced over ESP-NOW like the min/max levels; applies from the next override) (`ventosync::auto_override`, `components/ventilation_logic/level_override.h`) instead of the automatic pulling the level straight back:
+Pressing the **Level button (+)** (short press or hold) in Smart-Automatik — or changing the level in Home Assistant (`Lüfter Intensität` slider, fan entity speed) or in the web dashboard (since 0.10.35, `set_fan_intensity_user()`) — starts a **room-wide override** for the configured time (`Smart-Automatik: Übersteuerung Dauer`, 30–300 min, default 60; room-wide setting synced over ESP-NOW like the min/max levels; applies from the next override) (`ventosync::auto_override`, `components/ventilation_logic/level_override.h`) instead of the automatic pulling the level straight back:
 - **Target level**: the chosen level replaces the computed one — on slaves too (otherwise a slave would be pulled back to the stale Master level until the next heartbeat). The automatic window `[min, max]` does **not** apply to the override.
 - **Safety first** (`resolve_level()`): the Smart Climate Control cap clamps the override. During a health emergency the automatic may go higher (maximum of override and automatic level): Smart Climate Control's CO2 emergency / mold guard, or the override's own CO2 guard (`Co2Guard`: room-wide max CO2 ≥ `hvac_emergency_co2`, release ≤ `auto_co2_threshold`), which also works without Smart Climate Control.
 - **Room-wide (protocol v12)**: `auto_override_level` + `auto_override_remaining_s` (+ the setting `auto_override_duration_min`) in every packet. `MSG_STATE` from any device is adopted in full (incl. "no override"); the Master heartbeat and the boot status response only start / re-align an override and never end it — so a rebooted device cannot cancel the room's override.
 - **Countdown**: each device counts down on its own clock; an adoption never restarts the countdown (deviations > 5 s are re-aligned). After expiry the automatic continues from the override level with the normal ramp (±1 level per cycle).
 - **End**: expiry, mode change (`cycle_operating_mode()`, including re-selecting Smart-Automatik) or leaving Smart-Automatik. The override lives in RAM only.
-- **Display**: `LED_WRG` pulses fast (effect `Automatik Override`); HA sensor `Automatik-Übersteuerung Restzeit` (min, 0 = automatic regulates).
+- **Display**: `LED_WRG` pulses fast (effect `Automatik Override`); HA sensor `Automatik-Übersteuerung Restzeit` (min, 0 = automatic regulates, published immediately on every change); web dashboard hint below the level slider (`/state` key `auto_override_min`).
+- **Not an override**: internal level changes (vacation restore uses `set_fan_intensity_slider()`) never start one.
 
 ---
 

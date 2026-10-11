@@ -25,7 +25,7 @@
 //              re-triggering between card input and system state sync.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-09-24
+// Modified:    2026-10-11
 //
 // Dependencies: globals.h (MODE_NAMES, MODE_NAME_OFF, MODE_NAME_AUTO,
 //                           ventilation_enabled, last_active_mode_index,
@@ -157,7 +157,8 @@ inline void ha_fan_on_speed_set(int speed) {
     }
 
     const int step = std::clamp(speed, 1, 10);
-    set_fan_intensity_slider(static_cast<float>(step));
+    // In Smart-Automatik this starts the room-wide level override
+    set_fan_intensity_user(static_cast<float>(step));
     ESP_LOGI("ha_fan", "Card set intensity to step %d", step);
 }
 

@@ -32,6 +32,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional("heat_recovery_efficiency_id"): cv.use_id(sensor.Sensor),
         cv.Optional("fan_rpm_id"):                  cv.use_id(sensor.Sensor),
         cv.Optional("filter_operating_days_id"):    cv.use_id(sensor.Sensor),
+        cv.Optional("auto_override_remaining_id"):  cv.use_id(sensor.Sensor),
 
         cv.Optional("filter_change_alarm_id"):      cv.use_id(binary_sensor.BinarySensor),
         cv.Optional("radar_presence_id"):           cv.use_id(binary_sensor.BinarySensor),

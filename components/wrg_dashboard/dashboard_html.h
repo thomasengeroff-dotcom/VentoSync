@@ -21,7 +21,7 @@
 // Description: HTML/CSS strings for the WRG web dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-02
+// Modified:    2026-10-11
 // ==========================================================================
 #pragma once
 
@@ -147,6 +147,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
               <div class="flex flex-col space-y-2">
                 <div class="flex justify-between"><span class="text-sm text-gray-400 font-medium">Lüfter Intensität</span><span id="label_fan_intensity" class="font-bold text-accent">--</span></div>
                 <input type="range" id="fan_intensity_display" min="1" max="10" step="1" onchange="sendSet('fan_intensity_display', this.value)" oninput="document.getElementById('label_fan_intensity').innerText = this.value" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer mt-2">
+                <span id="override_hint" class="text-xs text-gray-500"></span>
               </div>
 
               <div class="grid grid-cols-2 gap-4">
@@ -406,6 +407,18 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         });
 
         document.getElementById("label_fan_intensity").innerText = document.getElementById("fan_intensity_display").value;
+
+        // Smart-Automatik level override (room-wide, started by the slider or the Level button)
+        const overrideHint = document.getElementById("override_hint");
+        if (data.luefter_modus === 'Smart-Automatik') {
+          const om = Number(data.auto_override_min);
+          overrideHint.innerText = (om > 0)
+            ? `Automatik übersteuert – noch ${om} min (Moduswechsel beendet)`
+            : 'Stufe ändern übersteuert die Automatik (raumweit, zeitlich begrenzt)';
+          overrideHint.className = (om > 0) ? 'text-xs text-accent' : 'text-xs text-gray-500';
+        } else {
+          overrideHint.innerText = '';
+        }
 
         // Bluetooth proxy toggle (key only exists in the Bluetooth proxy variant)
         if (typeof data.bt_proxy === 'boolean') {

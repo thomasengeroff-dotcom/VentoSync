@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.35] - 2026-10-11
+
+### Changed
+
+- **Level override from Home Assistant and the web dashboard** — in `Smart-Automatik`, changing the level with the HA number `Lüfter Intensität`, the speed of the HA fan entity `fan.ventosync_hrv` (ventosync-card) or the slider of the web dashboard now starts the same room-wide level override as the Level button (duration `Smart-Automatik: Übersteuerung Dauer`). Before, the automatic pulled the level straight back. New entry point `set_fan_intensity_user()`; internal level changes (vacation restore) still use `set_fan_intensity_slider()` and never start an override. While Smart Climate Control caps the room, the slider shows the applied (capped) level.
+- **Web dashboard:** a hint below the level slider shows the remaining override time in Smart-Automatik (new `/state` key `auto_override_min`, new optional `auto_override_remaining_id` of `wrg_dashboard`).
+- The sensor `Automatik-Übersteuerung Restzeit` is published immediately on every override change instead of only every 30 s.
+
+No protocol change — devices on 0.10.34 and 0.10.35 work together.
+
 ## [0.10.34] - 2026-10-11
 
 ### Added

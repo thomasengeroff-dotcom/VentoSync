@@ -476,7 +476,7 @@ The unit features an intuitive 3-button control panel with 9 status LEDs (dimmab
 
 - **Power (I/O)**: Press toggles the room between `Aus` and the last active mode; very long press (>10s) triggers reboot.
 - **Mode (M)**: Cycles through `Auto` → `Heat Recovery` → `Ventilation` → `Boost Ventilation` → `Off`.
-- **Level (+)**: Cycles through 10 fan speed levels (press) or continuous level cycling (hold) — room-wide. In Smart-Automatik the chosen level **overrides the automatic room-wide for 60 minutes** (adjustable 30–300 min: `Smart-Automatik: Übersteuerung Dauer`) (left mode LED pulses fast); a mode change ends it early. CO2 emergency and the Smart Climate Control cap still apply.
+- **Level (+)**: Cycles through 10 fan speed levels (press) or continuous level cycling (hold) — room-wide. In Smart-Automatik the chosen level **overrides the automatic room-wide for 60 minutes** (adjustable 30–300 min: `Smart-Automatik: Übersteuerung Dauer`; the HA level slider / fan speed and the web dashboard start the same override) (left mode LED pulses fast); a mode change ends it early. CO2 emergency and the Smart Climate Control cap still apply.
 - **Feedback**: Visualized via 5 Intensity LEDs (fill-bar, dimmed (20 %) for odd and full for even levels), 2 Mode LEDs (`LED_WRG` / `LED_VEN`), Power LED, and Master diagnostic LED.
 
 > 📖 **Complete Control Panel Guide:**  
