@@ -33,7 +33,7 @@ The panel features 9 green LEDs providing real-time system state feedback:
 | **Master** | 🟢 1x | Center | Lights up solid (dimmed) on the Master Device (Device ID = 1). Signals diagnostic error states via pulse blink patterns (see below). |
 | **Mode L** (`LED_WRG`) | 🟢 1x | Left | **Pulses slowly** in Smart Automatic mode. Stays permanently ON for Heat Recovery and Ventilation. |
 | **Mode R** (`LED_VEN`) | 🟢 1x | Right | Permanently ON for Boost Ventilation and Ventilation. |
-| **Intensity (1–5)** | 🟢 5x | Bar | Displays current fan speed level 1–10 using 50% / 100% LED brightness levels. |
+| **Intensity (1–5)** | 🟢 5x | Bar | Displays current fan speed level 1–10 using dim (20 %, odd level) and full (100 %, even level) LED brightness. |
 
 ---
 
@@ -85,3 +85,5 @@ When a malfunction or special operational state occurs, the center **Master LED*
 * **30s Auto-Dimming**: To prevent light pollution in living spaces and bedrooms, all status LEDs (Mode, Intensity, Master) smoothly fade out 30 seconds after the last interaction (`ui_timeout_script` in `packages/ui/ui_controls.yaml`). The **Power LED** stays dimmed at 10% to indicate operational readiness.
 * **Instant Reactivation**: Pressing any button immediately reactivates all status LEDs.
 * **Persistent Diagnostic Feedback**: The **Master LED continues to signal error states and diagnostic blink codes** (e.g. Wi-Fi loss, peer sync lost, overheat warning), even while other LEDs are in the dimmed/timeout state.
+
+> 📘 A compact guide for residents (buttons, LEDs, error codes, troubleshooting) is available in the **[📄 On-Device User Guide](en_device-user-guide.md)**.

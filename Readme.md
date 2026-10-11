@@ -199,6 +199,8 @@ The original 9-LED / 3-button control panel of the VentoMaxx V-WRG-1 is fully pr
 ![Operation at the Ventilation Device](images/Ventomax%20V-WRG-1/PXL_20260128_232625674.jpg)
 
 > 👉 *For quick button actions, see [On-Device Control Panel](#️-on-device-control-panel-ventomaxx-style) below, or read the full [📄 Control Panel Operation Guide](documentation/en/en_control-panel-operation.md).*
+>
+> 📘 *For end users: the [📄 On-Device User Guide](documentation/en/en_device-user-guide.md) explains buttons, LEDs and all blink/error codes without any technical background.*
 
 ### 🏠 Home Assistant Integration
 
@@ -479,6 +481,8 @@ The unit features an intuitive 3-button control panel with 9 status LEDs (dimmab
 
 > 📖 **Complete Control Panel Guide:**  
 > For full details on button operations, the 10-level LED fill-bar logic, diagnostic blink patterns (Master LED), and group wake-up behavior, see the **[📄 Control Panel Operation Guide](documentation/en/en_control-panel-operation.md)**.
+>
+> 📘 **User guide for residents:** The **[📄 On-Device User Guide](documentation/en/en_device-user-guide.md)** covers everything needed to operate the unit itself — buttons, mode and level LEDs, Master LED error codes, child lock and troubleshooting.
 
 ---
 

@@ -33,7 +33,7 @@ Das Panel besitzt 9 grüne LEDs für die Systemzustandsanzeige:
 | **Master** | 🟢 1x | Mitte | Leuchtet gedimmt auf dem Master-Gerät (Geräte-ID = 1). Signalisiert Störungen und Sonderzustände über Blinkmuster (siehe unten). |
 | **Modus L** (`LED_WRG`) | 🟢 1x | Links | **Pulsiert langsam** im Smart-Automatik-Modus. Leuchtet dauerhaft bei Wärmerückgewinnung und Durchlüften. |
 | **Modus R** (`LED_VEN`) | 🟢 1x | Rechts | Leuchtet dauerhaft bei Stoßlüftung und Durchlüften. |
-| **Intensität (1–5)** | 🟢 5x | Balken | Zeigt die aktuelle Lüfterstufe 1–10 über halbe (50%) und volle (100%) LED-Helligkeit an. |
+| **Intensität (1–5)** | 🟢 5x | Balken | Zeigt die aktuelle Lüfterstufe 1–10 über schwache (20 %, ungerade Stufe) und volle (100 %, gerade Stufe) LED-Helligkeit an. |
 
 ---
 
@@ -83,3 +83,5 @@ Tritt eine Störung oder ein Sonderzustand auf, signalisiert die mittlere **Mast
 
 * **Echtzeit Wake-Up Effekt**: Ändert ein Gerät im Raum den Modus oder die Stufe, wachen die LEDs aller Partner-Geräte (Peers) im Raum sofort auf und zeigen den neuen Status für 30 Sekunden synchron an.
 * **30 Sekunden Auto-Dimming**: Alle Status-LEDs blenden 30 Sekunden nach der letzten Bedienung sanft aus (`ui_timeout_script` in `packages/ui/ui_controls.yaml`). Die **Power-LED** bleibt auf 10% Resthelligkeit gedimmt, um Betriebsbereitschaft diskret anzuzeigen.
+
+> 📘 Eine kompakte Anleitung für Bewohner (Tasten, LEDs, Fehlercodes, Fehlerbehebung) steht in der **[📄 Geräte-Bedienungsanleitung (User Guide)](de_device-user-guide.md)**.
