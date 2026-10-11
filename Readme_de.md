@@ -197,6 +197,8 @@ Das originale Bedienpanel des VentoMaxx V-WRG-1 (9 LEDs, 3 Taster) bleibt vollst
 ![Bedienung am Lüftungsgerät](images/Ventomax%20V-WRG-1/PXL_20260128_232625674.jpg)
 
 > 👉 *Für eine schnelle Tastenübersicht siehe [Bedienpanel am Gerät](#️-bedienpanel-ventomaxx-style) weiter unten oder die ausführliche [📄 Bedienungsanleitung Lüftungsgerät](documentation/de/de_control-panel-operation.md).*
+>
+> 📘 *Für Bewohner: Die [📄 Geräte-Bedienungsanleitung (User Guide)](documentation/de/de_device-user-guide.md) erklärt Tasten, LEDs und alle Blink-/Fehlercodes ohne technisches Vorwissen.*
 
 ### 🏠 Home Assistant Integration
 
@@ -477,6 +479,8 @@ Das Gerät verfügt über ein 3-Tasten-Bedienpanel mit 9 Status-LEDs (dimmbar, m
 
 > 📖 **Vollständige Bedienungsanleitung:**  
 > Alle Details zu Tastenfunktionen, der 10-stufigen LED-Balkenlogik, den Diagnose-Blinkmustern (Master-LED) und dem Gruppen-Wake-Up findest du in der **[📄 Bedienungsanleitung Lüftungsgerät](documentation/de/de_control-panel-operation.md)**.
+>
+> 📘 **Anleitung für Bewohner:** Die **[📄 Geräte-Bedienungsanleitung (User Guide)](documentation/de/de_device-user-guide.md)** enthält alles für die Bedienung am Gerät selbst — Tasten, Modus- und Stufen-LEDs, Fehlercodes der Master-LED, Kindersicherung und Fehlerbehebung.
 
 ---
 
