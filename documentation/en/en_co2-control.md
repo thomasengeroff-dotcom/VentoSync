@@ -11,7 +11,7 @@ A configurable **Minimum Fan Level** ensures that base ventilation for moisture 
 **Requirement:** An SCD43 CO2 sensor must be connected to the I2C bus (Header H2).
 Without a connected sensor, this automated function remains inactive.
 
-> **SGP41 + SHT45 board (`ventosync_v2_sgp41`):** instead of real CO2, the SGP41 VOC index is mapped to a CO2 equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm; index 200 ≙ 1000 ppm) and drives the same CO2 regulation. The VOC index is relative to the last 24 h — it reacts to events (cooking, showering, cleaning agents), not to a constant pollution level.
+> **SGP41 + SHT45 board (`ventosync_sgp41` / `ventosync_v2_sgp41`):** instead of real CO2, the SGP41 VOC index is mapped to a CO2 equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm; index 200 ≙ 1000 ppm) and drives the same CO2 regulation. The VOC index is relative to the last 24 h — it reacts to events (cooking, showering, cleaning agents), not to a constant pollution level.
 
 ---
 

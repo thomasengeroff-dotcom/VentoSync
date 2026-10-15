@@ -103,7 +103,7 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 ## 3. Sensor Data & Climate
 
 ### Combined & Calculated Values
-* **`sensor.effektiver_co2_wert`** ("Effektiver CO2 Wert", YAML ID `effective_co2`) — CO2 used by the regulation: SCD43 (NDIR), BME680 CO2 estimate as fallback; in `ventosync_v2_sgp41` the CO2 equivalent of the SGP41 VOC index.
+* **`sensor.effektiver_co2_wert`** ("Effektiver CO2 Wert", YAML ID `effective_co2`) — CO2 used by the regulation: SCD43 (NDIR), BME680 CO2 estimate as fallback; in the `sgp41` variants the CO2 equivalent of the SGP41 VOC index.
 * **`text_sensor.co2_bewertung`** ("CO2 Bewertung", YAML ID `effective_co2_bewertung`) — qualitative rating of the CO2 value.
 * **`sensor.wrg_effizienz`** ("WRG Effizienz", YAML ID `heat_recovery_efficiency`) — measured heat recovery efficiency (%), see [Heat Recovery & Efficiency](en_heat-recovery-and-efficiency.md).
 * **`sensor.wrg_effizienz_zyklus`** ("WRG Effizienz (Zyklus)") / **`sensor.wrg_energie_zyklus`** ("WRG Energie (Zyklus)") — efficiency and recovered energy (Wh) of the last push-pull cycle.
@@ -112,7 +112,7 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 ### Hardware Sensors
 * **SCD43** (precision CO2): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
 * **BME680** (environment & IAQ): `sensor.bme680_temperatur`, `sensor.bme680_luftdruck_relativ`, `sensor.bme680_taupunkt`, `sensor.bme680_absolute_feuchtigkeit`, `sensor.bme680_gas_basiswert`, `sensor.bme680_luftqualitat_co2eq`, `sensor.bme680_iaq_trend`, `binary_sensor.bme680_sensor_health`, `text_sensor.bme680_iaq_bewertung`, `text_sensor.bme680_iaq_trendrichtung`, `text_sensor.bme680_sensor_status`
-* **SGP41 + SHT45 board** (`ventosync_v2_sgp41` only): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit` (room temperature / humidity for the regulation), `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index` (Sensirion index 1–500, 100 / 1 = normal, informational), `sensor.sgp41_voc_co2_aquivalent` ("SGP41 VOC CO2-Äquivalent", VOC index mapped to 400–2200 ppm, feeds `Effektiver CO2 Wert`)
+* **SGP41 + SHT45 board** (`ventosync_sgp41` / `ventosync_v2_sgp41` only): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit` (room temperature / humidity for the regulation), `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index` (Sensirion index 1–500, 100 / 1 = normal, informational), `sensor.sgp41_voc_co2_aquivalent` ("SGP41 VOC CO2-Äquivalent", VOC index mapped to 400–2200 ppm, feeds `Effektiver CO2 Wert`)
 * **BMP390** (precision pressure): `sensor.bmp390_luftdruck`, `sensor.bmp390_temperatur`
 * **NTC thermistors** (air in the tube): `sensor.temp_abluft_innen` ("Temp. Abluft (Innen)"), `sensor.temp_zuluft_aussen` ("Temp. Zuluft (Außen)"), plus the diagnostic `…_raw` values
 

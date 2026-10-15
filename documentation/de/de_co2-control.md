@@ -13,7 +13,7 @@ eine Grundlüftung zum Feuchteschutz aktiv bleibt (nach DIN 1946-6).
 **Voraussetzung:** SCD43 CO2-Sensor muss am I2C-Bus (Header H2) angeschlossen sein.
 Ohne angeschlossenen Sensor bleibt die Funktion automatisch inaktiv.
 
-> **SGP41 + SHT45 Board (`ventosync_v2_sgp41`):** Statt echtem CO2 wird der VOC-Index des SGP41 auf ein CO2-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm; Index 200 ≙ 1000 ppm) und steuert dieselbe CO2-Regelung. Der VOC-Index ist relativ zu den letzten 24 h — er reagiert auf Ereignisse (Kochen, Duschen, Reinigungsmittel), nicht auf eine konstante Belastung.
+> **SGP41 + SHT45 Board (`ventosync_sgp41` / `ventosync_v2_sgp41`):** Statt echtem CO2 wird der VOC-Index des SGP41 auf ein CO2-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm; Index 200 ≙ 1000 ppm) und steuert dieselbe CO2-Regelung. Der VOC-Index ist relativ zu den letzten 24 h — er reagiert auf Ereignisse (Kochen, Duschen, Reinigungsmittel), nicht auf eine konstante Belastung.
 
 ---
 

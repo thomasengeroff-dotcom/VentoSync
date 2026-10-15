@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **New firmware variant `ventosync_v2_sgp41`** (PCB v2.0) for the **SGP41 + SHT45 VOC sensor board** at H2 — the alternative to the SCD43 board for kitchens and bathrooms. OTA manifest `manifest-ventosync-v2-sgp41.json`.
+- **New firmware variants `ventosync_sgp41` (PCB v1.0) and `ventosync_v2_sgp41` (PCB v2.0)** for the **SGP41 + SHT45 VOC sensor board** at H2 (same connector on both boards) — the alternative to the SCD43 board for kitchens and bathrooms. OTA manifests `manifest-ventosync-sgp41.json` / `manifest-ventosync-v2-sgp41.json`.
   - **SHT45** (0x44): room temperature and humidity for the regulation — humidity PID, enthalpy guard, mold guard, room-wide humidity fusion and the web dashboard (it takes over the role of the SCD43 values). It also compensates the SGP41 (`sgp4x` `compensation`). Substitution `sht45_temperature_offset` (°C, default 0.0) corrects the warm-up near the Traco power supply.
   - **SGP41** (0x59): VOC and NOx index (Sensirion algorithm, baseline stored in flash). The VOC index is mapped to a **CO2 equivalent** (`400 + 4 × (index − 50)`, 400–2200 ppm; index 100 → 600 ppm, 200 → 1000 ppm, 325 → 1500 ppm) that feeds `Effektiver CO2 Wert` — so the CO2 PID of Smart-Automatik, the CO2 guards and the room-wide CO2 fusion work unchanged. The NOx index is informational only.
-  - **New entities** (this variant only): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit`, `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index`, `sensor.sgp41_voc_co2_aquivalent`.
+  - **New entities** (these variants only): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit`, `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index`, `sensor.sgp41_voc_co2_aquivalent`.
   - New package `packages/sensors/sensor_SGP41_SHT45.yaml` (extends `mock_scd41` / `mock_bme680`), pure mapping `VentilationLogic::voc_index_to_co2eq()` with unit tests.
-  - CI builds the variant on push to `master` (10 variants) and validates it in `lint.yaml` on every PR.
+  - CI builds both on push to `master` (11 variants), compiles `ventosync-v2-sgp41` on every PR (only variant with the SGP41/SHT45 drivers) and validates both in `lint.yaml`.
 
 No protocol change — devices on 0.10.35 and 0.10.36 work together.
 

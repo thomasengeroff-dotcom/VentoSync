@@ -290,7 +290,7 @@ Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 
 | **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC-Index, NOx-Index, Temperatur, Feuchte (absolute Feuchte) | Küche, Badezimmer |
 | **SGP41 Board** | Sensirion SGP41 | VOC-Index, NOx-Index | Küche (wenn Klimadaten bereits vorliegen) |
 
-**Firmware-Unterstützung (SGP41 + SHT45 Board, PCB v2.0):** `ventosync_v2_sgp41.yaml`. Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index wird in Home Assistant angezeigt, steuert den Lüfter aber nicht.
+**Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index wird in Home Assistant angezeigt, steuert den Lüfter aber nicht.
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
@@ -393,7 +393,7 @@ VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Har
 - **`ventosync_NTConly.yaml`**: Basis-Lüftungssteuerung nur mit NTC-Temperatursensoren
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U auf der Platine) – Basis-Lüftungssteuerung ohne Sensoren
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – Variante mit BME680 (ohne SCD43/LD2450)
-- **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 Sensorboard an H2 statt des SCD43-Boards (VOC-/NOx-Index, Temperatur, Feuchte; der VOC-Index steuert die Smart-Automatik als CO2-Äquivalent, ohne LD2450)
+- **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 Variante (wie `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimentell* – wie `ventosync_nosensor.yaml` plus Bluetooth-Proxy für Home Assistant; eigene Partitionstabelle, **Erstinstallation nur per USB** ([Leitfaden](documentation/de/de_bluetooth-proxy.md))
 
 > Alle Varianten ohne `_v2` sind für **PCB v1.0** (Seeed XIAO ESP32-C6). Flashe die Variante, die zu deiner Platine passt – die Board-Pakete unterscheiden sich bei der Tasteranbindung (MCP23017 vs. native GPIOs) und der Antennen-Initialisierung. PCB-Dokumentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
@@ -634,6 +634,7 @@ VentoSync/
 ├── ventosync_radar_only.yaml  # Hardware-Variante: Nur Radar-Anwesenheitssensor
 ├── ventosync_nosensor.yaml    # Hardware-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_NTConly.yaml     # Hardware-Variante: Basis-Lüftersteuerung nur mit NTCs
+├── ventosync_sgp41.yaml       # Hardware-Variante: SGP41 + SHT45 VOC-Sensorboard
 ├── ventosync_v2_nosensor.yaml # PCB-v2.0-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_v2_bme680_only.yaml # PCB-v2.0-Variante: BME680 Fallback
 ├── ventosync_v2_sgp41.yaml    # PCB-v2.0-Variante: SGP41 + SHT45 VOC-Sensorboard

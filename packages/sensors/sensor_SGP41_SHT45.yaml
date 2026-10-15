@@ -18,7 +18,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        sensor_SGP41_SHT45.yaml
-# Description: Plug-in VOC sensor board at H2 (VentoSyncPCB, docs/Sensor-Boards.md):
+# Description: Plug-in VOC sensor board at H2 (PCB v1 and v2; VentoSyncPCB, docs/Sensor-Boards.md):
 #              Sensirion SGP41 (VOC / NOx index, 0x59) + SHT45 (temperature /
 #              humidity, 0x44) on I2C bus_a. The board replaces the SCD43 board,
 #              so this package takes over the SCD41 *roles*:
