@@ -244,6 +244,8 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
 
 VentoSync wird aktiv gepflegt und kontinuierlich weiterentwickelt, mit Fokus auf tiefere Sensorfusion, akustische Optimierung und moderne Gebäudeautomation.
 
+- 🔥 **NOx-Stoßlüftung für Gasherde**: Mit dem SGP41 + SHT45 Board erhöht ein NOx-Index über einer Schwelle (~20, typisch beim Kochen mit Gas) vorübergehend die Lüfterstufe des Raums; pro Raum abschaltbar, da NOx auch vom Straßenverkehr draußen stammen kann.
+
 > 👉 *Detaillierte Beschreibungen und Konzepte aller geplanten Features und Roadmap-Meilensteine siehe [📄 Roadmap & Zukünftige Erweiterungen](documentation/de/de_roadmap-and-future-enhancements.md).*
 
 ## 🎛️ Eigene Platine - PCB
@@ -287,8 +289,12 @@ Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 
 | Sensorplatine | Bestückung | Messgrößen | Idealer Einsatzbereich |
 | :--- | :--- | :--- | :--- |
 | **SCD43 Board** | Sensirion SCD43 | CO₂, Temperatur, rel. Feuchte | Wohnzimmer, Schlafzimmer, Büro |
-| **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC-Index, NOx-Index, Temperatur, Feuchte (absolute Feuchte) | Küche, Badezimmer |
+| **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC-Index, NOx-Index, Temperatur, Feuchte (absolute Feuchte) | Küche, Räume mit Kamin / Verbrennungsgeräten, Badezimmer |
 | **SGP41 Board** | Sensirion SGP41 | VOC-Index, NOx-Index | Küche (wenn Klimadaten bereits vorliegen) |
+
+**Welches Board für welchen Raum?** Das **SCD43-Board** ist für alle Räume gedacht, in denen es vor allem um die **durch Menschen verursachte CO₂-Konzentration** geht (Wohnzimmer, Schlafzimmer, Kinderzimmer, Büro). Das **SGP41 + SHT45-Board** ist vor allem für die **Küche** und Räume mit **offenem Kamin, Holzofen oder anderen Verbrennungsgeräten** gedacht, in denen Kochdünste, Gerüche und Stickoxide die Luft verschlechtern, während der CO₂-Wert oft niedrig bleibt.
+
+**NOx kurz erklärt:** Stickoxide (NO, NO₂) aus Verbrennung – drinnen Gasherd, Kamin, Kerzen, draußen der Straßenverkehr. Der SGP41 liefert einen **NOx-Index von 1–500**: **1** = Normalzustand (kein Ereignis), ~2–20 leichte Erhöhung, ~20–150 deutliches Ereignis (typisch beim Kochen mit Gas), > 150 starke Belastung. Es ist ein relativer Index, keine Konzentration in ppb. Details: [Hardware & Verkabelung – SGP41 + SHT45](documentation/de/de_hardware-and-wiring.md#-sgp41--sht45-sensorboard-voc--nox).
 
 **Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index wird in Home Assistant angezeigt, steuert den Lüfter aber nicht.
 

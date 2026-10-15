@@ -35,6 +35,47 @@ This document provides detailed specifications of the central hardware component
 
 The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](../../EasyEDA-Pro/) subfolder in the [BOM](../../EasyEDA-Pro/BOM_VentoSync_PWM_PCB_VentoSync-WRG_ESP32_PWM_2026-03-01.csv).
 
+### 🌿 SGP41 + SHT45 Sensor Board: VOC & NOx
+
+**Which board for which room?**
+
+- **SCD43 board** – for all rooms where the air quality is mainly determined by the **CO₂ exhaled by people**: living room, bedroom, children's room, home office.
+- **SGP41 + SHT45 board** – mainly for the **kitchen** and rooms with an **open fireplace, wood stove or other combustion appliances**. There, cooking fumes, odours and combustion gases (NOx) spoil the air while the CO₂ level often stays low. It also suits bathrooms (humidity + odours).
+
+Firmware: `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2).
+
+**What is NOx?** NOx stands for **nitrogen oxides**, mainly nitric oxide (NO) and nitrogen dioxide (NO₂). They are formed by combustion at high temperature:
+
+- **Indoors:** gas hob and gas oven (the main source), a gas boiler with a flue problem, candles, open fireplace / wood stove, cigarettes.
+- **Outdoors:** mainly road traffic (diesel exhaust) – it gets in through open windows or the ventilation.
+
+NO₂ irritates the airways and matters especially for asthmatics and children, which is why the outdoor air has legal limits for it.
+
+**What the SGP41 reports:** no concentration (no ppb or µg/m³), but an **index of 1–500**. Sensirion's algorithm compares the current signal with what it has learned over the last hours:
+
+| NOx index | Meaning (rough guide) |
+|---|---|
+| **1** | Normal, no NOx event – the value you see most of the time |
+| **~2–20** | Slight increase, e.g. a candle or some traffic air |
+| **~20–150** | Clear event – typical when cooking on a gas hob |
+| **> 150** | Heavy load, e.g. several gas burners for a long time or smoke |
+
+These bands are rules of thumb, not official limits: an index of 50 does not mean "50 ppb", only "clearly more than the learned normal state".
+
+**VOC index vs. NOx index:**
+
+- **VOC index:** normal state = **100**; below means better than usual, above worse. Reacts to odours, cooking fumes, cleaning agents, outgassing and people. Firmware: mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm) that drives the CO₂ regulation of Smart-Automatik.
+- **NOx index:** normal state = **1**, because there is usually no NOx at all. Only rises with combustion events. Firmware: shown in Home Assistant (`sensor.sgp41_nox_index`), **does not control the fan** (yet).
+
+After power-up the algorithm needs a few minutes before it reports values (NOx somewhat longer than VOC), and several hours to learn the room's air – do not over-interpret the first readings after flashing.
+
+**Why NOx does not control the fan (yet):**
+
+1. **The source can be outdoors.** If the NOx comes from the street, more ventilation brings it in instead of out – the sensor cannot tell where it comes from.
+2. **It is event-driven.** Without a gas hob the index stays at 1 almost all the time, a continuous control term would hardly help.
+
+A NOx boost for gas hobs is planned – see [Roadmap](en_roadmap-and-future-enhancements.md#-nox-boost-ventilation-for-gas-hobs).
+
 ### 🖱️ On-Device Control Panel
 
 | Component | Description | Documentation |
