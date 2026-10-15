@@ -126,7 +126,9 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   SCD41 *roles* by `!extend`-ing the mocks — SHT45 → `scd41_temperature` / `scd41_humidity` (room climate),
   SGP41 VOC index → `iaq_co2eq` (`VentilationLogic::voc_index_to_co2eq()`: 400 + 4 × (index − 50), 400–2200 ppm) →
   `effective_co2`. The variant must therefore include `mock_scd41.yaml` and `mock_bme680.yaml`. NOx index is
-  informational only. The SGP41 board needs 3.3 V at H2 (identical on PCB v1 and v2).
+  informational only. The mirrors go through `sensor_value_or_nan()` (`climate.h`): the drivers keep their last value on
+  read errors, so the mirrors turn NaN after 2 min of warnings or a failed component. The package also sets
+  `wrg_dashboard: voc_index_id / nox_index_id` (dashboard label "CO2-Äquivalent (VOC)" + index rows). The SGP41 board needs 3.3 V at H2 (identical on PCB v1 and v2).
 - PCB v2 variants use their own `firmware_variant` (`ventosync-v2-*`) and therefore their own OTA manifest —
   a v1 device is never offered v2 firmware and vice versa.
 - Adding a variant or flag: update this table, `build.yaml` (matrix), `lint.yaml` and `upload_all.sh`.

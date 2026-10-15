@@ -21,7 +21,7 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-11
+// Modified:    2026-10-15
 // ==========================================================================
 
 #pragma once
@@ -96,6 +96,11 @@ public:
   void set_auto_override_remaining(sensor::Sensor *s) {
     auto_override_remaining_ = s;
   }
+
+  /// SGP41 VOC / NOx index (only sgp41 variants). When set, /state reports
+  /// voc_index / nox_index and the UI labels the CO2 value as VOC equivalent.
+  void set_voc_index(sensor::Sensor *s) { voc_index_ = s; }
+  void set_nox_index(sensor::Sensor *s) { nox_index_ = s; }
 
   void set_filter_change_alarm(binary_sensor::BinarySensor *b) {
     filter_change_alarm_ = b;
@@ -214,6 +219,8 @@ protected:
   esphome::VentilationController *ventilation_ctrl_{nullptr};
 #ifdef USE_SWITCH
   switch_::Switch *bluetooth_proxy_switch_{nullptr};
+  sensor::Sensor *voc_index_{nullptr};
+  sensor::Sensor *nox_index_{nullptr};
 #endif
 };
 

@@ -46,6 +46,7 @@ sensor:
   # SHT45 TEMPERATURE / HUMIDITY (0x44)
   # ---------------------------------------------------------
   - platform: sht4x
+    id: sht45_sensor
     i2c_id: bus_a
     address: 0x44
     precision: High
@@ -72,6 +73,7 @@ sensor:
   # boot and ~12 h to learn the room's baseline. The SHT45 compensates the
   # raw signals (same air stream, same board).
   - platform: sgp4x
+    id: sgp41_sensor
     i2c_id: bus_a
     address: 0x59
     update_interval: 10s
@@ -93,15 +95,21 @@ sensor:
   # ---------------------------------------------------------
   # Room temperature / humidity used by the logic, the room fusion and the
   # web dashboard. Internal — HA shows the SHT45 entities above.
+  # sensor_value_or_nan() (climate.h) turns them NaN after 2 min of read errors
+  # or a missing board — the drivers themselves keep their last value.
   - id: !extend scd41_temperature
     name: "Raumtemperatur (SHT45)"
     update_interval: 10s
-    lambda: "return id(sht45_temperature).state;"
+    lambda: |-
+      static uint32_t last_ok_ms = millis();
+      return sensor_value_or_nan(id(sht45_sensor), id(sht45_temperature).state, last_ok_ms);
 
   - id: !extend scd41_humidity
     name: "Raumfeuchte (SHT45)"
     update_interval: 10s
-    lambda: "return id(sht45_humidity).state;"
+    lambda: |-
+      static uint32_t last_ok_ms = millis();
+      return sensor_value_or_nan(id(sht45_sensor), id(sht45_humidity).state, last_ok_ms);
 
   # VOC-based CO2 equivalent → effective_co2 (sensors_climate.yaml).
   # Mapping and limits: VentilationLogic::voc_index_to_co2eq().
@@ -113,4 +121,12 @@ sensor:
     icon: "mdi:molecule-co2"
     accuracy_decimals: 0
     update_interval: 10s
-    lambda: "return VentilationLogic::voc_index_to_co2eq(id(sgp41_voc_index).state);"
+    lambda: |-
+      static uint32_t last_ok_ms = millis();
+      return VentilationLogic::voc_index_to_co2eq(
+          sensor_value_or_nan(id(sgp41_sensor), id(sgp41_voc_index).state, last_ok_ms));
+
+# Web dashboard: VOC / NOx index rows, CO2 value labelled "CO2-Äquivalent (VOC)"
+wrg_dashboard:
+  voc_index_id: sgp41_voc_index
+  nox_index_id: sgp41_nox_index

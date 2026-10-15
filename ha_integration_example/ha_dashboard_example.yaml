@@ -21,7 +21,7 @@
 # Description: Example Home Assistant UI configuration (Lovelace Dashboard).
 # Author:      Thomas Engeroff
 # Created:     2026-02-26
-# Modified:    2026-02-26
+# Modified:    2026-10-15
 # ==========================================================================
 # ----------------------------------------------------------------------------------
 # BEISPIEL: Home Assistant UI Konfiguration (Lovelace Dashboard)
@@ -29,7 +29,8 @@
 # Voraussetzung: Die "Mushroom Cards" aus dem HACS Store sind in HA installiert.
 # (https://github.com/piitaya/lovelace-mushroom)
 #
-# Dieses Stück YAML stellt das "Wohnzimmer" Panel dar und wird z.B. als
+# Dieses Stück YAML stellt das "Wohnzimmer" Panel (SCD43, CO2) und ein
+# "Küche" Panel (SGP41 + SHT45 Sensorboard, VOC / NOx) dar und wird z.B. als
 # manuelle Karte in ein existierendes Dashboard eingefügt.
 # ----------------------------------------------------------------------------------
 
@@ -107,3 +108,51 @@ cards:
           # - type: entity
           #   entity: sensor.wohnzimmer_temperatur_durchschnitt
           #   icon_color: amber
+
+  # ==================================================================
+  # KÜCHE: Gerät mit SGP41 + SHT45 Sensorboard (ventosync_sgp41 /
+  # ventosync_v2_sgp41). Entity-IDs hier für ein Gerät mit dem Namen
+  # "Küche" — an den eigenen Gerätenamen anpassen.
+  # VOC-Index: 100 = Normalzustand, NOx-Index: 1 = Normalzustand,
+  # ~20+ = deutliches Verbrennungsereignis (z. B. Gasherd).
+  # ==================================================================
+  - type: custom:mushroom-template-card
+    primary: "Küche Luftqualität"
+    secondary: ""
+    icon: mdi:stove
+    icon_color: grey
+    fill_container: false
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-chips-card
+        alignment: center
+        chips:
+          # VOC-Index (Gerüche, Kochdünste, Reinigungsmittel)
+          - type: entity
+            entity: sensor.kuche_sgp41_voc_index
+            icon: mdi:scent
+            icon_color: >-
+              {% set v = states('sensor.kuche_sgp41_voc_index') | float(0) %}
+              {% if v > 250 %} red {% elif v > 150 %} orange {% else %} green {% endif %}
+
+          # NOx-Index (Gasherd, Kamin, Kerzen, Verkehr)
+          - type: entity
+            entity: sensor.kuche_sgp41_nox_index
+            icon: mdi:fire
+            icon_color: >-
+              {% set n = states('sensor.kuche_sgp41_nox_index') | float(0) %}
+              {% if n > 150 %} red {% elif n > 20 %} orange {% else %} green {% endif %}
+
+          # CO2-Äquivalent aus dem VOC-Index (steuert die Smart-Automatik)
+          - type: entity
+            entity: sensor.kuche_sgp41_voc_co2_aquivalent
+            icon_color: blue
+
+          # Raumklima vom SHT45
+          - type: entity
+            entity: sensor.kuche_sht45_temperatur
+            icon_color: amber
+          - type: entity
+            entity: sensor.kuche_sht45_luftfeuchtigkeit
+            icon_color: cyan

@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **SGP41** (0x59): VOC and NOx index (Sensirion algorithm, baseline stored in flash). The VOC index is mapped to a **CO2 equivalent** (`400 + 4 × (index − 50)`, 400–2200 ppm; index 100 → 600 ppm, 200 → 1000 ppm, 325 → 1500 ppm) that feeds `Effektiver CO2 Wert` — so the CO2 PID of Smart-Automatik, the CO2 guards and the room-wide CO2 fusion work unchanged. The NOx index is informational only.
   - **New entities** (these variants only): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit`, `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index`, `sensor.sgp41_voc_co2_aquivalent`.
   - New package `packages/sensors/sensor_SGP41_SHT45.yaml` (extends `mock_scd41` / `mock_bme680`), pure mapping `VentilationLogic::voc_index_to_co2eq()` with unit tests.
+  - **Sensor failure → NaN:** `sht4x` / `sgp4x` only raise a warning on a failed read and keep (sgp4x even re-publishes) their last value. Room temperature / humidity and the VOC CO2 equivalent now turn NaN after 2 minutes of read errors or when the board is missing at boot (`sensor_value_or_nan()` in `climate.h`), so a lost sensor board no longer freezes the humidity PID, mold guard or CO2 regulation.
+  - **Web dashboard:** on these variants the *Luftqualität* tile shows "CO2-Äquivalent (VOC)" instead of "CO2" and adds the VOC and NOx index (`/state` keys `voc_index` / `nox_index`, new optional `voc_index_id` / `nox_index_id` of `wrg_dashboard`).
+  - HA dashboard example (`ha_integration_example/ha_dashboard_example.yaml`): kitchen panel with VOC / NOx index chips.
   - CI builds both on push to `master` (11 variants), compiles `ventosync-v2-sgp41` on every PR (only variant with the SGP41/SHT45 drivers) and validates both in `lint.yaml`.
 
 No protocol change — devices on 0.10.35 and 0.10.36 work together.

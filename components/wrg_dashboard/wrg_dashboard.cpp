@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-11
+// Modified:    2026-10-15
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -193,6 +193,14 @@ void WrgDashboard::handle_state_(AsyncWebServerRequest *request) {
   doc["outdoor_humidity"] = get_f(this->outdoor_humidity_);
   doc["room_co2"] =
       get_f(this->effective_co2_ ? this->effective_co2_ : this->scd41_co2_);
+  // SGP41 board: room_co2 is the VOC-based CO2 equivalent. The keys are only
+  // present on the sgp41 variants — the UI uses them to switch the label.
+  if (this->voc_index_ != nullptr) {
+    doc["voc_index"] = get_f(this->voc_index_);
+  }
+  if (this->nox_index_ != nullptr) {
+    doc["nox_index"] = get_f(this->nox_index_);
+  }
   // Temperature: SCD41 → BME680 fallback
   float display_temp = get_f(this->scd41_temperature_);
   if (std::isnan(display_temp)) {
