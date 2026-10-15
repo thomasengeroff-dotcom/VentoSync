@@ -21,7 +21,7 @@
 // Description: Core ventilation math and logic implementation.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-09-23
+// Modified:    2026-10-15
 // ==========================================================================
 #include "ventilation_logic.h"
 
@@ -225,4 +225,16 @@ std::string VentilationLogic::get_co2_classification(float co2_ppm) {
     if (val <= 1200) return "Erhöht";
     if (val <= 1400) return "Schlecht";
     return "Inakzeptabel";
+}
+
+/**
+ * @brief   Maps a Sensirion VOC index (1–500) to a CO2-equivalent in ppm.
+ * @param[in] voc_index  VOC index from the SGP41.
+ * @return  CO2 equivalent (400–2200 ppm), NaN without valid data.
+ */
+float VentilationLogic::voc_index_to_co2eq(float voc_index) {
+    if (std::isnan(voc_index) || voc_index < 1.0f) return NAN;
+    const float ppm = VOC_CO2EQ_MIN_PPM +
+                      VOC_CO2EQ_PPM_PER_INDEX * (voc_index - VOC_CO2EQ_BASE_INDEX);
+    return std::clamp(ppm, VOC_CO2EQ_MIN_PPM, VOC_CO2EQ_MAX_PPM);
 }

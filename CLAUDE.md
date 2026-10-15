@@ -10,7 +10,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 - Platform: ESP32-C6 (RISC-V), ESPHome `2026.9.0`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
-- Sensors: Sensirion **SCD43** (CO2 / temperature / humidity), BME680 (IAQ fallback), BMP390 (pressure),
+- Sensors: Sensirion **SCD43** (CO2 / temperature / humidity) or **SGP41 + SHT45** board (VOC / NOx / temperature / humidity, PCB v2), BME680 (IAQ fallback), BMP390 (pressure),
   2× NTC thermistors, HLK-LD2450 (mmWave radar).
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
@@ -102,6 +102,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 | `ventosync_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **No sensors at all** — not even NTCs |
 | `ventosync_v2_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **PCB v2.0** — as `nosensor` |
 | `ventosync_v2_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | **PCB v2.0** — as `bme680_only` |
+| `ventosync_v2_sgp41.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41/BME680), mock radar | `false` | **PCB v2.0** — SGP41/SHT45 VOC board at H2 instead of the SCD43 board |
 | `ventosync_nosensor_btproxy.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks + `integration/bluetooth_proxy.yaml` | `true` | **Experimental** — `nosensor` + HA Bluetooth proxy, own partition table |
 
 (Flags are written without the `-DVENTOSYNC_` prefix, e.g. `NO_SCD41` = `-DVENTOSYNC_NO_SCD41`.)
@@ -120,6 +121,11 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
+- **SGP41 + SHT45 board** (`packages/sensors/sensor_SGP41_SHT45.yaml`, only in `ventosync_v2_sgp41.yaml`): takes over the
+  SCD41 *roles* by `!extend`-ing the mocks — SHT45 → `scd41_temperature` / `scd41_humidity` (room climate),
+  SGP41 VOC index → `iaq_co2eq` (`VentilationLogic::voc_index_to_co2eq()`: 400 + 4 × (index − 50), 400–2200 ppm) →
+  `effective_co2`. The variant must therefore include `mock_scd41.yaml` and `mock_bme680.yaml`. NOx index is
+  informational only. The SGP41 board needs 3.3 V at H2.
 - PCB v2 variants use their own `firmware_variant` (`ventosync-v2-*`) and therefore their own OTA manifest —
   a v1 device is never offered v2 firmware and vice versa.
 - Adding a variant or flag: update this table, `build.yaml` (matrix), `lint.yaml` and `upload_all.sh`.
@@ -339,8 +345,9 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`vent_timer` = 0 means continuous** (`ventilation_duration_ms = 0`); only values > 0 are clamped to 1–1440 min.
 - **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
   whole firmware — they persist across mode switches and are not per-instance.
-- **`effective_co2` may be a BME680 eCO2 estimate** (VOC-based) in the `bme680_only` variant; room-wide
-  maxima include it as if it were an NDIR value.
+- **`effective_co2` may be a VOC-based eCO2 estimate** (BME680 in the `bme680_only` variants, SGP41 VOC index in
+  `v2_sgp41`); room-wide maxima include it as if it were an NDIR value. The SGP41 VOC index is relative to the
+  last 24 h — a constant pollution level drifts back to index 100 (≈ 600 ppm).
 - **Local builds bump `version.json`** via `version_bump.py` — never commit that local bump.
 - **OTA is encrypted with the api key** (`ota: - platform: esphome` + bare `encryption:`, since 0.10.31): no OTA
   password, uploads without the key are rejected, `web_server: ota: false` closes the plaintext `/update` endpoint
@@ -381,9 +388,9 @@ Triggered on push and pull request to `master`:
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
   - *Build* matrix: **pull requests build `ventosync-full`, `ventosync-v2-nosensor` and `ventosync-nosensor-btproxy`**
     (one compile per board package + the size-critical Bluetooth proxy variant); push to `master` / `workflow_dispatch`
-    build all 9 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `nosensor-mqtt`
-    (generated), `v2-nosensor`, `v2-bme680-only`, `nosensor-btproxy`), ESPHome pinned to `2026.9.0`, secret-free OTA
-    configs. The release job needs all 9 builds.
+    build all 10 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `nosensor-mqtt`
+    (generated), `v2-nosensor`, `v2-bme680-only`, `v2-sgp41`, `nosensor-btproxy`), ESPHome pinned to `2026.9.0`, secret-free OTA
+    configs. The release job needs all 10 builds.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).

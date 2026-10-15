@@ -292,6 +292,8 @@ All sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch con
 | **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC Index, NOx Index, Temperature, Humidity (Absolute Humidity) | Kitchen, Bathroom |
 | **SGP41 Board** | Sensirion SGP41 | VOC Index, NOx Index | Kitchen (if climate data already exists via BME/NTC) |
 
+**Firmware support (SGP41 + SHT45 board, PCB v2.0):** `ventosync_v2_sgp41.yaml`. The SHT45 provides room temperature and humidity (humidity PID, enthalpy and mold guard, room-wide fusion) and compensates the SGP41. Because the SGP41 measures no CO₂, its VOC index is mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm: index 100 → 600 ppm, 200 → 1000 ppm = default CO₂ setpoint) that feeds `Effektiver CO2 Wert` and the CO₂ PID of Smart-Automatik. The VOC index is relative to the last 24 h (Sensirion algorithm), so it reacts to *events* like cooking or showering rather than to a constant pollution level. The NOx index is shown in Home Assistant but does not control the fan.
+
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
   &nbsp;&nbsp;&nbsp;&nbsp;
@@ -393,6 +395,7 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 - **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U on board) – basic ventilation control without environmental sensors
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – BME680 variant (no SCD43, no LD2450)
+- **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 sensor board at H2 instead of the SCD43 board (VOC/NOx index, temperature, humidity; the VOC index drives Smart-Automatik as a CO2 equivalent, no LD2450)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimental* – as `ventosync_nosensor.yaml` plus Home Assistant Bluetooth proxy; own partition table, **first flash over USB only** ([guide](documentation/en/en_bluetooth-proxy.md))
 
 > All variants without `_v2` are for **PCB v1.0** (Seeed XIAO ESP32-C6). Flash the variant that matches your board — the board packages differ in the button wiring (MCP23017 vs. native GPIO) and the antenna setup. PCB documentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
@@ -632,7 +635,7 @@ VentoSync/
 │   ├── globals/               # Separated global variables (automation, network, UI, fan)
 │   ├── integration/           # Home Assistant entity exposures & data exchange
 │   ├── io/                    # Fan PWM, buttons, PCA9685/MCP23017 hardware pinouts
-│   ├── sensors/               # Drivers & Mocks for SCD43, BME680, Radar, BMP390, NTCs
+│   ├── sensors/               # Drivers & Mocks for SCD43, SGP41/SHT45, BME680, Radar, BMP390, NTCs
 │   └── ui/                    # On-device front panel controls & diagnostic entities
 ├── tests/                     # C++ unit tests & native test runner suite
 ├── ventosync.yaml             # Main configuration entry point (Full sensor variant)
@@ -642,6 +645,7 @@ VentoSync/
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
 ├── ventosync_v2_nosensor.yaml # PCB v2.0 variant: core HRV fan control without sensors
 ├── ventosync_v2_bme680_only.yaml # PCB v2.0 variant: BME680 fallback
+├── ventosync_v2_sgp41.yaml    # PCB v2.0 variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_nosensor_btproxy.yaml # Experimental: nosensor + Bluetooth proxy (own partition table)
 ├── upload_all.sh              # Multi-device batch compilation & OTA flash script
 ├── version_bump.py            # Local build version bump (not used by CI)

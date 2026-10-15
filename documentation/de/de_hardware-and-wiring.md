@@ -23,6 +23,7 @@ Dieses Dokument bietet detaillierte Spezifikationen der zentralen Hardware-Kompo
 | :--- | :--- | :--- |
 | **Lüfter** | Original Ventomaxx V-WRG (EBM-PAPST 4412 F/2 GLL) 3-Pin PWM oder AxiRev (4-Pin PWM) | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD43** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
+| **SGP41 + SHT45** | Alternatives Steck-Sensorboard für H2 (PCB v2, statt des SCD43-Boards): Sensirion SGP41 VOC-/NOx-Index + SHT45 Temperatur/Feuchte via I²C (0x59 / 0x44, **nur 3,3 V**). Firmware `ventosync_v2_sgp41.yaml` — der SHT45 liefert Raumtemperatur/-feuchte, der VOC-Index wird für die Smart-Automatik auf ein CO2-Äquivalent abgebildet. Board: [VentoSyncPCB Sensor-Boards](https://github.com/thomasengeroff-dotcom/VentoSyncPCB/blob/main/docs/Sensor-Boards.md) | [SGP4x](https://esphome.io/components/sensor/sgp4x.html), [SHT4x](https://esphome.io/components/sensor/sht4x.html) |
 | **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch Gas Sensor (Fallback für IAQ/Luftqualität) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
