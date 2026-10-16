@@ -21,7 +21,7 @@
 # Description: Web UI and physical control entities for ventilation.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-10-11
+# Modified:    2026-10-16
 # ==========================================================================
 
 
@@ -363,6 +363,30 @@ text_sensor:
       }
     update_interval: 10s
 
+  # What the ventilation is doing and why (auto_status.h), e.g.
+  # "CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5". Also publishes
+  # automatik_grund and fires the event lueftung_ereignis.
+  - platform: template
+    name: "Automatik-Status"
+    id: automatik_status
+    icon: "mdi:information-outline"
+    update_interval: 10s
+    lambda: |-
+      static std::string last_state = "";
+      std::string current_state = update_auto_status();
+      if (current_state == last_state) return {};
+      last_state = current_state;
+      return {current_state};
+
+  # Stable reason key for HA automations (aus, urlaub, fenster, manuell, nox,
+  # co2_notfall, schimmelschutz, uebersteuerung, keine_daten, co2, feuchte,
+  # grundlueftung). Published by update_auto_status().
+  - platform: template
+    name: "Automatik-Grund"
+    id: automatik_grund
+    icon: "mdi:tag-outline"
+    update_interval: never
+
   # Smart Climate Control status (German UI labels from hvac_coordinator.h)
   - platform: template
     name: "Klima-Koordination Status"
@@ -433,6 +457,32 @@ switch:
           id(hvac_enabled_val) = false;
           id(smart_climate_control).publish_state(false);
           ESP_LOGI("hvac", "Smart Climate Control DISABLED via HA (room-wide)");
+          sync_settings_to_peers();
+          evaluate_auto_mode();
+
+  # NOx boost ventilation (room-wide, synced like "Klima-Koordination").
+  # Only devices with the SGP41 + SHT45 board detect NOx; every device of
+  # the room follows the boost in Smart-Automatik. See nox_boost.h.
+  - platform: template
+    name: "NOx-Stoßlüftung"
+    id: nox_boost_switch
+    icon: "mdi:stove"
+    entity_category: config
+    # DISABLED: the state comes from the NVS global (see Known Pitfalls).
+    restore_mode: DISABLED
+    lambda: "return id(nox_boost_enabled_val);"
+    turn_on_action:
+      - lambda: |-
+          id(nox_boost_enabled_val) = true;
+          id(nox_boost_switch).publish_state(true);
+          ESP_LOGI("nox", "NOx-Stoßlüftung ENABLED via HA (room-wide)");
+          sync_settings_to_peers();
+          evaluate_auto_mode();
+    turn_off_action:
+      - lambda: |-
+          id(nox_boost_enabled_val) = false;
+          id(nox_boost_switch).publish_state(false);
+          ESP_LOGI("nox", "NOx-Stoßlüftung DISABLED via HA (room-wide)");
           sync_settings_to_peers();
           evaluate_auto_mode();
 
@@ -543,3 +593,30 @@ script:
           id: ui_active
           value: "false"
       - script.execute: update_leds
+
+# ---------------------------------------------------------
+# HOME ASSISTANT EVENT
+# ---------------------------------------------------------
+# Fired when the reason of the Automatik-Status changes (stable for 30 s;
+# event type = reason key, see automatik_grund) and immediately when a NOx
+# boost is aborted. Use it as an HA automation trigger (event entity).
+event:
+  - platform: template
+    name: "Lüftung Ereignis"
+    id: lueftung_ereignis
+    icon: "mdi:bell-ring-outline"
+    event_types:
+      - "aus"
+      - "urlaub"
+      - "fenster"
+      - "manuell"
+      - "nox"
+      - "co2_notfall"
+      - "schimmelschutz"
+      - "uebersteuerung"
+      - "keine_daten"
+      - "co2"
+      - "feuchte"
+      - "grundlueftung"
+      - "nox_abbruch_aussenluft"
+      - "nox_abbruch_max_dauer"

@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-11
+// Modified:    2026-10-16
 // ==========================================================================
 #pragma once
 
@@ -108,6 +108,14 @@ static constexpr uint8_t ROOM_FLAG_WINDOW_OPEN = 0x04;  ///< Sender's OWN Home A
 /// 0.10.23 without a protocol bump: same layout, older v10 firmware simply
 /// never sets it (its presence is then not shared).
 static constexpr uint8_t ROOM_FLAG_PRESENCE = 0x08;
+/// NOx boost (0.10.38, no protocol bump — same layout; older firmware never
+/// sets these bits and ignores them):
+/// Room-wide "NOx-Stoßlüftung" switch (setting, synced like the HVAC switch).
+static constexpr uint8_t ROOM_FLAG_NOX_BOOST_ENABLED = 0x10;
+/// Sender's OWN NOx boost (own SGP41 detector) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_NOX_ACTIVE = 0x20;
+/// Sender's OWN boost is a strong event (index >= 150) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_NOX_STRONG = 0x40;
 /// @}
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
@@ -200,6 +208,8 @@ struct PeerState {
   bool hvac_ac_active; ///< Peer's own HA AC state (ROOM_FLAG_AC_ACTIVE).
   bool window_open;    ///< Peer's own HA window state (ROOM_FLAG_WINDOW_OPEN).
   bool presence;       ///< Peer's own radar presence (ROOM_FLAG_PRESENCE).
+  bool nox_active;     ///< Peer's own NOx boost (ROOM_FLAG_NOX_ACTIVE).
+  bool nox_strong;     ///< Peer's own strong NOx event (ROOM_FLAG_NOX_STRONG).
   uint8_t vacation_pre_mode_index; ///< Leader's pre-vacation mode index, else 0xFF.
   uint8_t vacation_pre_intensity;  ///< Leader's pre-vacation fan level, else 0.
 };
@@ -278,6 +288,10 @@ public:
   /// Radar presence of THIS device (held 30 s, see PresenceHold). Broadcast
   /// as ROOM_FLAG_PRESENCE; set by auto_mode.h. Never fused.
   bool presence_local = false;
+  /// NOx boost of THIS device's own SGP41 (nox_boost.h). Broadcast as
+  /// ROOM_FLAG_NOX_ACTIVE / ROOM_FLAG_NOX_STRONG; set by auto_mode.h. Never fused.
+  bool nox_local_active = false;
+  bool nox_local_strong = false;
 
   /// Room-wide Smart-Automatik level override (Level button in
   /// Smart-Automatik). Shared in every packet; adopted in network_sync.h.
@@ -324,6 +338,7 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_mode_index_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_intensity_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<bool> *nox_boost_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *auto_override_duration_global_{nullptr};
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
@@ -361,6 +376,8 @@ public:
   void set_pre_vacation_intensity_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_intensity_global_ = g; }
   /** @brief Sets the global Smart Climate Control enable flag reference (room-wide switch). */
   void set_hvac_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { hvac_enabled_global_ = g; }
+  /** @brief Sets the room-wide NOx boost switch reference ("NOx-Stoßlüftung"). */
+  void set_nox_boost_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { nox_boost_enabled_global_ = g; }
   /** @brief Sets the level override duration reference (room-wide setting, minutes). */
   void set_auto_override_duration_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_override_duration_global_ = g; }
 
@@ -666,6 +683,8 @@ public:
       peer.hvac_ac_active = (pkt->room_flags & ROOM_FLAG_AC_ACTIVE) != 0;
       peer.window_open = (pkt->room_flags & ROOM_FLAG_WINDOW_OPEN) != 0;
       peer.presence = (pkt->room_flags & ROOM_FLAG_PRESENCE) != 0;
+      peer.nox_active = (pkt->room_flags & ROOM_FLAG_NOX_ACTIVE) != 0;
+      peer.nox_strong = (pkt->room_flags & ROOM_FLAG_NOX_STRONG) != 0;
       peer.vacation_pre_mode_index = pkt->vacation_pre_mode_index;
       peer.vacation_pre_intensity = pkt->vacation_pre_intensity;
     };
@@ -909,6 +928,10 @@ public:
     if (hvac_local_ac_active) pkt.room_flags |= ROOM_FLAG_AC_ACTIVE;    // own HA state only
     if (window_local_open) pkt.room_flags |= ROOM_FLAG_WINDOW_OPEN;     // own HA state only
     if (presence_local) pkt.room_flags |= ROOM_FLAG_PRESENCE;           // own radar only
+    if (nox_boost_enabled_global_ != nullptr && nox_boost_enabled_global_->value())
+      pkt.room_flags |= ROOM_FLAG_NOX_BOOST_ENABLED;
+    if (nox_local_active) pkt.room_flags |= ROOM_FLAG_NOX_ACTIVE;       // own SGP41 only
+    if (nox_local_strong) pkt.room_flags |= ROOM_FLAG_NOX_STRONG;       // own SGP41 only
 
     // Vacation snapshot: only the device LEADING a vacation shares its
     // pre-vacation state (vacation_state == 2). Followers send the sentinel,

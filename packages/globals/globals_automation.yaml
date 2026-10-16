@@ -25,7 +25,7 @@
 #              across reboots.
 # Author:      Thomas Engeroff
 # Created:     2026-05-16
-# Modified:    2026-10-11
+# Modified:    2026-10-16
 # ==========================================================================
 
 globals:
@@ -150,6 +150,14 @@ globals:
   # Room-wide enable flag of the "Klima-Koordination" switch (ESP-NOW v10
   # flag ROOM_FLAG_HVAC_ENABLED). The switch entity mirrors this global.
   - id: hvac_enabled_val
+    type: bool
+    initial_value: "false"
+    restore_value: true
+
+  # Room-wide "NOx-Stoßlüftung" switch (ESP-NOW room flag
+  # ROOM_FLAG_NOX_BOOST_ENABLED, since 0.10.38). Off by default — enable it in
+  # rooms with a gas hob / fireplace (NOx can also come from road traffic).
+  - id: nox_boost_enabled_val
     type: bool
     initial_value: "false"
     restore_value: true

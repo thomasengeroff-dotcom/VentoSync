@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-11
+// Modified:    2026-10-16
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -523,6 +523,80 @@ inline void fill_ac_inputs(ventosync::hvac::Inputs &in, uint32_t now) {
                       ventosync::room::any_fresh_peer_ac_active(v->peers, now, fusion_max_age_ms());
 }
 
+/// @brief True while the room-wide switch "NOx-Stoßlüftung" is on.
+inline bool nox_boost_switch_on() {
+  return nox_boost_enabled_val != nullptr && nox_boost_enabled_val->value();
+}
+
+/**
+ * @brief   Room-wide NOx boost: own detector OR any fresh peer reporting its own.
+ *
+ * @param[in]  now        Current millis().
+ * @param[out] strong     A boosting device reports a strong event (index >= 150).
+ * @param[out] from_peer  The boost comes only from other devices of the room.
+ * @return  true while the room boosts (switch on; Smart-Automatik is checked by the caller).
+ */
+inline bool room_nox_active(uint32_t now, bool &strong, bool &from_peer) {
+  strong = false;
+  from_peer = false;
+  auto *v = ventilation_ctrl;
+  if (v == nullptr || !nox_boost_switch_on()) return false;
+  const uint32_t age = fusion_max_age_ms();
+  const bool peer = ventosync::room::any_fresh_peer(v->peers, now, [](const auto &p) { return p.nox_active; }, age);
+  const bool peer_strong =
+      ventosync::room::any_fresh_peer(v->peers, now, [](const auto &p) { return p.nox_active && p.nox_strong; }, age);
+  strong = v->nox_local_strong || peer_strong;
+  from_peer = peer && !v->nox_local_active;
+  return v->nox_local_active || peer;
+}
+
+/// @brief Fires the HA event "Lüftung Ereignis" (no-op without the entity).
+inline void fire_ventilation_event(const char *event_type) {
+  if (lueftung_ereignis == nullptr) return;
+  lueftung_ereignis->trigger(event_type);
+  ESP_LOGI("auto_status", "HA event: %s", event_type);
+}
+
+/**
+ * @brief   Runs this device's own NOx boost detector (nox_boost.h).
+ *
+ * @details Only the sgp41 variants register a NOx index (nox_state); on all
+ *          others the input stays NaN and the detector never triggers. The
+ *          outdoor-source test needs to know when THIS device blows outdoor
+ *          air in: fan running, direction intake, ramp mostly done, not paused
+ *          by the window guard. Aborts fire an HA event; the own flags are
+ *          broadcast right away on change (never the room-wide OR).
+ */
+inline void update_nox_detector(uint32_t now) {
+  auto *v = ventilation_ctrl;
+  if (v == nullptr) return;
+  ventosync::nox::Inputs in;
+  in.now_ms = now;
+  in.enabled = nox_boost_switch_on() && auto_mode_active != nullptr && auto_mode_active->value();
+  in.nox_index = (nox_state::nox_index != nullptr)
+      ? sensor_value_or_nan(nox_state::sensor_component, nox_state::nox_index->state, nox_state::last_ok_ms)
+      : NAN;
+  const esphome::HardwareState hw = v->state_machine.get_target_state(now);
+  in.intake = hw.fan_enabled && hw.direction_in && hw.ramp_factor > 0.5f && !v->is_window_guard_active();
+  in.threshold = nox_state::threshold;
+
+  const ventosync::nox::Event ev = nox_state::detector.update(in);
+  if (ev != ventosync::nox::Event::NONE) {
+    ESP_LOGI("nox", "%s (Index %.0f, Schwelle %.0f)", ventosync::nox::event_label(ev), in.nox_index,
+             ventosync::nox::clamp_threshold(in.threshold));
+  }
+  if (ev == ventosync::nox::Event::ABORTED_OUTDOOR) fire_ventilation_event("nox_abbruch_aussenluft");
+  if (ev == ventosync::nox::Event::ABORTED_MAX_DURATION) fire_ventilation_event("nox_abbruch_max_dauer");
+
+  const bool active = nox_state::detector.active();
+  const bool strong = nox_state::detector.strong();
+  if (active != v->nox_local_active || strong != v->nox_local_strong) {
+    v->nox_local_active = active;
+    v->nox_local_strong = strong;
+    v->pending_broadcast = true; // MSG_SYNC: peers only refresh their PeerState
+  }
+}
+
 /**
  * @brief   Refreshes the room flags this device broadcasts to its peers.
  *
@@ -552,6 +626,7 @@ inline void refresh_local_room_flags(uint32_t now) {
     v->presence_local = presence;
     v->pending_broadcast = true; // MSG_SYNC: peers only refresh their PeerState
   }
+  update_nox_detector(now);
 }
 
 /**
@@ -665,7 +740,9 @@ inline void apply_override_level(uint32_t now) {
   if (v == nullptr || !v->level_override.active(now) || fan_intensity_level == nullptr ||
       fan_intensity_display == nullptr || fan_speed_update == nullptr) return;
   const auto &d = hvac_state::last_decision;
-  const bool emergency = override_state::co2_guard.latched ||
+  bool nox_strong = false, nox_from_peer = false;
+  const bool nox = room_nox_active(now, nox_strong, nox_from_peer);
+  const bool emergency = override_state::co2_guard.latched || nox ||
                          d.state == ventosync::hvac::State::EMERGENCY_CO2 ||
                          d.state == ventosync::hvac::State::EMERGENCY_HUMIDITY;
   const int current = static_cast<int>(fan_intensity_level->value());
@@ -871,6 +948,45 @@ inline void evaluate_auto_mode(bool force) {
     v->local_pid_demand = NAN;
   }
 
+  // 5b. NOx boost (gas hob, fireplace; room-wide switch, SGP41 devices):
+  //     full demand -> the automatic ramps to its maximum level. A strong
+  //     event (index >= 150) also lifts the Smart Climate Control cap below.
+  bool nox_strong = false, nox_from_peer = false;
+  const bool nox_active = auto_mode::room_nox_active(now, nox_strong, nox_from_peer);
+  const bool lift_ac_cap = nox_active && nox_strong;
+
+  // Snapshot for the "Automatik-Status" text (completed live in update_auto_status()).
+  {
+    auto &st = auto_status_state::last;
+    st.demand = demand;
+    st.co2_controlling = v->co2_is_controlling;
+    st.room_co2 = auto_mode::get_room_max_co2(now);
+    st.co2_setpoint = hvac.relaxed_co2_setpoint ? hvac.co2_setpoint
+        : (auto_co2_threshold_val != nullptr ? static_cast<float>(auto_co2_threshold_val->value()) : NAN);
+    const float local_rh = (scd41_humidity != nullptr) ? scd41_humidity->state : NAN;
+    st.room_rh = ventosync::room::room_max_humidity(local_rh, eff_in, v->peers, now,
+                                                    auto_mode::fusion_max_age_ms()).rh_percent;
+    st.rh_setpoint = (auto_humidity_threshold_val != nullptr)
+        ? static_cast<float>(auto_humidity_threshold_val->value()) : NAN;
+    st.nox_active = nox_active;
+    st.nox_strong = nox_strong;
+    st.nox_from_peer = nox_from_peer;
+    st.emergency_humidity = hvac.state == ventosync::hvac::State::EMERGENCY_HUMIDITY;
+    st.emergency_co2 = hvac.state == ventosync::hvac::State::EMERGENCY_CO2 ||
+                       (v->level_override.active(now) && override_state::co2_guard.latched);
+    st.ac_cap = hvac.restrict_levels && !lift_ac_cap;
+    st.ac_max_level = hvac.max_level;
+    auto_status_state::has_demand_snapshot = true;
+  }
+
+  static bool last_nox_active = false;
+  if (nox_active != last_nox_active) {
+    ESP_LOGI("auto_mode", "NOx-Stoßlüftung %s%s", nox_active ? "aktiv -> Bedarf 100 %" : "beendet",
+             (nox_active && nox_from_peer) ? " (anderes Gerät)" : "");
+    last_nox_active = nox_active;
+  }
+  if (nox_active) demand = 1.0f;
+
   // FIXED: If demand is NAN (e.g., all sensors offline/unstable), we abort to hold the last state
   if (std::isnan(demand)) {
      ESP_LOGV("auto_mode", "Demand is NAN, skipping update to hold last state.");
@@ -880,8 +996,9 @@ inline void evaluate_auto_mode(bool force) {
   // 6. Calculate target level with hysteresis and ramping
   int min_l = static_cast<int>(automatik_min_fan_level->value());
   int max_l = static_cast<int>(automatik_max_fan_level->value());
-  if (hvac.restrict_levels) {
-    // Smart Climate Control: hard cap while the AC is active. The minimum is
+  if (hvac.restrict_levels && !lift_ac_cap) {
+    // Smart Climate Control: hard cap while the AC is active (lifted by a
+    // strong NOx event like by the CO2 emergency). The minimum is
     // deliberately Level 1 (DIN 1946-6 base ventilation) — below the user's
     // normal moisture-protection minimum, because the AC handles dehumidification.
     min_l = hvac.min_level;
@@ -927,11 +1044,12 @@ inline void evaluate_auto_mode(bool force) {
   //     wins: the Smart Climate Control cap clamps it, a health emergency
   //     lets the automatic go higher. The automatic min/max window does not
   //     apply to the override.
-  const bool emergency = auto_mode::override_emergency(now, hvac);
+  const bool emergency = auto_mode::override_emergency(now, hvac) || nox_active;
   if (v->level_override.active(now)) {
     const int auto_level = target_level;
     target_level = ventosync::auto_override::resolve_level(v->level_override.level, auto_level,
-                                                           hvac.restrict_levels, min_l, max_l, emergency);
+                                                           hvac.restrict_levels && !lift_ac_cap, min_l, max_l,
+                                                           emergency);
     static bool last_override_emergency = false;
     if (emergency != last_override_emergency) {
       ESP_LOGI("auto_mode", "Level override %s (emergency)", emergency ? "lifted: automatic may go higher"
@@ -976,6 +1094,55 @@ inline void evaluate_auto_mode(bool force) {
     ESP_LOGI("auto_mode", "Automatic level %s %d -> %d (demand=%.2f)", 
              slave_following_master ? "synced" : "ramped", current_level, target_level, demand);
   }
+}
+
+/**
+ * @brief   "Automatik-Status": what the ventilation is doing and why.
+ *
+ * @details Called by the HA text sensor `automatik_status` every 10 s. Live
+ *          state (mode, window guard, vacation, level, override) is read here;
+ *          the regulation details (demand, room CO2 / humidity, NOx, AC cap)
+ *          come from the snapshot of the last evaluate_auto_mode() cycle.
+ *          Also publishes the stable reason key ("Automatik-Grund") and fires
+ *          the HA event "Lüftung Ereignis" once a new reason has persisted
+ *          30 s (auto_status.h ReasonTracker).
+ *
+ * @return  German status text (see ventosync::auto_status::describe()).
+ */
+inline std::string update_auto_status() {
+  namespace as = ventosync::auto_status;
+  auto *v = ventilation_ctrl;
+  const uint32_t now = millis();
+  as::Inputs in = auto_status_state::last;
+  in.auto_mode = auto_mode_active != nullptr && auto_mode_active->value();
+  if (!in.auto_mode) auto_status_state::has_demand_snapshot = false;
+  if (!auto_status_state::has_demand_snapshot) in.demand = NAN;
+  in.mode_off = (v != nullptr && v->state_machine.current_mode == esphome::MODE_OFF);
+  in.vacation = id(vacation_state) != ventosync::vacation::VACATION_INACTIVE;
+  in.window_paused = (v != nullptr && v->is_window_guard_active());
+  in.mode_label = (luefter_modus != nullptr) ? luefter_modus->current_option().c_str() : "";
+  in.level = (fan_intensity_level != nullptr) ? static_cast<int>(fan_intensity_level->value()) : 0;
+  in.summer_cooling = in.auto_mode && v != nullptr && v->state_machine.current_mode == esphome::MODE_VENTILATION;
+  in.nox_index = nox_state::detector.last_index;
+  in.override_active = in.auto_mode && v != nullptr && v->level_override.active(now);
+  in.override_remaining_min = in.override_active
+      ? static_cast<int>((v->level_override.remaining_ms(now) + 59999u) / 60000u) : 0;
+  if (!in.auto_mode) {
+    in.nox_active = false;
+    in.emergency_co2 = false;
+    in.emergency_humidity = false;
+  }
+
+  const as::Status status = as::describe(in);
+  if (automatik_grund != nullptr) {
+    const std::string key = as::reason_key(status.reason);
+    if (!automatik_grund->has_state() || automatik_grund->state != key) automatik_grund->publish_state(key);
+  }
+  as::Reason changed = as::Reason::BASE;
+  if (auto_status_state::tracker.update(status.reason, now, changed)) {
+    auto_mode::fire_ventilation_event(as::reason_key(changed));
+  }
+  return status.text;
 }
 
 /**

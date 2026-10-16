@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.38] - 2026-10-16
+
+### Added
+
+- **NOx boost ventilation** (SGP41 + SHT45 board, `sgp41` variants) — for kitchens with a gas hob and rooms with a fireplace or other combustion appliances:
+  - Only in **Smart-Automatik** and only while the new **room-wide switch `switch.nox_stossluftung`** ("NOx-Stoßlüftung", default **off**) is on — synced over ESP-NOW like `Klima-Koordination`, present on all variants so a Master without SGP41 follows the boost.
+  - Starts when the NOx index stays at or above **`number.nox_stossluftung_schwelle`** ("NOx-Stoßlüftung: Schwelle", **20–100**, default 20, per device with SGP41) for 60 s; the room demand is set to 100 % so the automatic ramps to `Smart-Automatik Max Lüfterstufe`. Ends 10 min after the index has fallen below half the threshold; hard cap 60 min.
+  - **Outdoor-air test:** while the boost runs, every intake phase of the SGP41 device must lower the NOx index. If it does not, the NOx comes from outside (road traffic) and the boost is **aborted immediately** (then locked until the index is back below half the threshold).
+  - A strong event (index ≥ 150) lifts the Smart Climate Control fan cap; any NOx boost counts as a health emergency for the level override.
+  - Room-wide via ESP-NOW room flags (bit 4 switch, bit 5 own boost, bit 6 own strong event) — **no protocol bump**, devices on 0.10.37 and 0.10.38 still work together. ⚠️ An older device acting as **Master** keeps the room's NOx switch off — update all devices of the room to use the NOx boost.
+  - Pure logic `components/ventilation_logic/nox_boost.h` (`ventosync::nox`), unit-tested (T-7x).
+- **`text_sensor.automatik_status`** ("Automatik-Status", all variants): what the ventilation is doing and why, e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`; notes the AC cap and the summer bypass.
+- **`text_sensor.automatik_grund`** ("Automatik-Grund"): the same reason as a stable key for automations (`co2`, `feuchte`, `nox`, `uebersteuerung`, `co2_notfall`, `schimmelschutz`, `grundlueftung`, `keine_daten`, `fenster`, `manuell`, `urlaub`, `aus`).
+- **`event.luftung_ereignis`** ("Lüftung Ereignis", HA event entity): fires the new reason key once it has persisted 30 s, and `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer` immediately. Pure logic `components/ventilation_logic/auto_status.h` (`ventosync::auto_status`), unit-tested (T-7y).
+
+### Changed
+
+- The roadmap item "NOx boost ventilation for gas hobs" is implemented and removed from the roadmap.
 ## [0.10.37] - 2026-10-16
 
 ### Added

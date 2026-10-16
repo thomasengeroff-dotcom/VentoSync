@@ -153,6 +153,39 @@ Pressing the **Level button (+)** (short press or hold) in Smart-Automatik — o
 - **Display**: `LED_WRG` pulses fast (effect `Automatik Override`); HA sensor `Automatik-Übersteuerung Restzeit` (min, 0 = automatic regulates, published immediately on every change); web dashboard hint below the level slider (`/state` key `auto_override_min`).
 - **Not an override**: internal level changes (vacation restore uses `set_fan_intensity_slider()`) never start one.
 
+### 8. NOx Boost (SGP41 + SHT45 board, since 0.10.38)
+In rooms with a gas hob, fireplace or other combustion appliances, the NOx index of the SGP41 (`sgp41` variants) raises the fan room-wide for a limited time (`ventosync::nox`, `components/ventilation_logic/nox_boost.h`):
+- **Only in Smart-Automatik** and only while the room-wide switch **`NOx-Stoßlüftung`** is on (default **off**, synced over ESP-NOW like `Klima-Koordination`).
+- **Start**: NOx index ≥ **`NOx-Stoßlüftung: Schwelle`** (HA number, 20–100, default 20, per device with SGP41) for **60 s**.
+- **Boost**: the room demand is set to 100 % → the automatic ramps (±1 level per cycle) to `Smart-Automatik Max Lüfterstufe`.
+- **End**: index below half the threshold for **10 min** (hold); hard cap **60 min**.
+- **Outdoor-air test**: while the boost runs, every intake phase of the SGP41 device (it blows outdoor air in) must **lower** the NOx index (end of the phase < start). If it does not, the NOx most likely comes from outside (road traffic) and more ventilation would import it — the boost is **aborted immediately**. Intake phases shorter than 20 s are not judged; continuous intake (summer bypass) is judged every 60 s. After an abort (outdoor air or 60 min) the detector is locked until the index has fallen below half the threshold.
+- **Room-wide**: each SGP41 device broadcasts only its **own** boost state (room flags bit 5 `ROOM_FLAG_NOX_ACTIVE`, bit 6 `ROOM_FLAG_NOX_STRONG`; switch = bit 4); every device ORs the fresh peers' flags, so push-pull pairs and a Master without SGP41 follow the boost. No protocol bump — older firmware ignores the bits; an older **Master** keeps the room switch off, so update all devices of the room.
+- **Safety**: a **strong event** (index ≥ 150) lifts the Smart Climate Control fan cap (like the CO2 emergency); any NOx boost counts as a health emergency for the level override (the automatic may go higher than the user's override level).
+- **Display**: `Automatik-Status` "NOx-Stoßlüftung: Index 85 → Stufe 7"; aborts fire the HA event `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`.
+
+### 9. Automatik-Status, Automatik-Grund & HA event (since 0.10.38)
+- **`text_sensor.automatik_status`** ("Automatik-Status", all variants, every 10 s): what the fan is doing and why, e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `CO2-Notfall: 1600 ppm → Stufe 7`, `Schimmelschutz: 78 % → Stufe 6`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`. Suffixes: `(Klimaanlage: max. Stufe 3)` while the AC cap applies, `· Sommer-Kühlung` in the summer bypass. Priority: Aus → Urlaub → Fenster → Manuell → NOx → CO2-Notfall → Schimmelschutz → Übersteuerung → keine Daten → CO2 → Feuchte → Grundlüftung (`components/ventilation_logic/auto_status.h`). CO2 / humidity values are the room-wide maxima (incl. peers); the CO2 value may be a VOC equivalent (BME680 / SGP41 variants).
+- **`text_sensor.automatik_grund`** ("Automatik-Grund"): the same reason as a stable key for automations — `aus`, `urlaub`, `fenster`, `manuell`, `nox`, `co2_notfall`, `schimmelschutz`, `uebersteuerung`, `keine_daten`, `co2`, `feuchte`, `grundlueftung`.
+- **`event.lueftung_ereignis`** ("Lüftung Ereignis", HA event entity): fires with the new reason key once it has persisted **30 s** (short flips are filtered), and immediately with `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`. Example automation:
+
+```yaml
+automation:
+  - alias: "Küche: NOx aus der Außenluft"
+    triggers:
+      - trigger: state
+        entity_id: event.kuche_luftung_ereignis
+    conditions:
+      - condition: state
+        entity_id: event.kuche_luftung_ereignis
+        attribute: event_type
+        state: "nox_abbruch_aussenluft"
+    actions:
+      - action: notify.notify
+        data:
+          message: "NOx-Stoßlüftung abgebrochen: NOx kommt von draußen – Fenster geschlossen halten."
+```
+
 ---
 
 ## ⚙️ Configuration Entities
@@ -169,6 +202,8 @@ Pressing the **Level button (+)** (short press or hold) in Smart-Automatik — o
 | `Klima-Koordination: CO2 Grenzwert` | `hvac_co2_threshold` | `hvac_co2_threshold_val` | 1200 ppm | Relaxed CO2 setpoint while the AC is active. |
 | `Klima-Koordination: Max Lüfterstufe` | `hvac_max_fan_level` | `hvac_max_fan_level_val` | 3 | Fan level cap while the AC is active. |
 | `Klima-Koordination: CO2 Notfallgrenze` | `hvac_emergency_co2` | `hvac_emergency_co2_val` | 1500 ppm | CO2 emergency override threshold. |
+| `NOx-Stoßlüftung` | `nox_boost_switch` | `nox_boost_enabled_val` | Off | Room-wide NOx boost switch (section 8). |
+| `NOx-Stoßlüftung: Schwelle` | `nox_boost_threshold` | `nox_boost_threshold_val` | 20 | NOx index that starts the boost (20–100, per device, `sgp41` variants only). |
 
 The HA entity IDs are derived from the display names (e.g. `number.smart_automatik_min_lufterstufe`) — see [📄 Home Assistant Entities](en_home-assistant-entities.md). All sliders and the HVAC switch are room-wide settings: a change on any device is sent to its peers as `MSG_STATE` and re-asserted by the Master's heartbeat.
 

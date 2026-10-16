@@ -26,7 +26,7 @@
 #                ventosync_base_v2.yaml  → PCB v2.0 (ESP32-C6-MINI-1U-H4, native GPIO)
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-10-11
+# Modified:    2026-10-16
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -197,6 +197,7 @@ ventilation_group:
   pre_vacation_mode_index_global: pre_vacation_mode_index
   pre_vacation_intensity_global: pre_vacation_intensity
   hvac_enabled_global: hvac_enabled_val
+  nox_boost_enabled_global: nox_boost_enabled_val
   auto_override_duration_global: auto_override_duration_val
 
 # Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)

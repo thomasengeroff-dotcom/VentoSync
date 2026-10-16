@@ -33,8 +33,46 @@
 #              the self-heating near the Traco power supply.
 # Author:      Thomas Engeroff
 # Created:     2026-10-15
-# Modified:    2026-10-15
+# Modified:    2026-10-16
 # ==========================================================================
+
+globals:
+  # NOx boost threshold (HA number below, 20–100, per device — only devices
+  # with this board detect NOx).
+  - id: nox_boost_threshold_val
+    type: int
+    initial_value: "20"
+    restore_value: true
+
+esphome:
+  on_boot:
+    priority: 200
+    then:
+      # Hand the SGP41 to the NOx boost detector (auto_mode.h / nox_boost.h).
+      - lambda: |-
+          nox_state::sensor_component = id(sgp41_sensor);
+          nox_state::nox_index = id(sgp41_nox_index);
+          nox_state::last_ok_ms = millis();
+          nox_state::threshold = ventosync::nox::clamp_threshold(id(nox_boost_threshold_val));
+
+number:
+  # NOx index that starts the NOx boost (held for 60 s). Ends below half of it.
+  - platform: template
+    name: "NOx-Stoßlüftung: Schwelle"
+    id: nox_boost_threshold
+    icon: "mdi:stove"
+    entity_category: config
+    min_value: 20
+    max_value: 100
+    step: 5
+    mode: slider
+    lambda: "return id(nox_boost_threshold_val);"
+    set_action:
+      - lambda: |-
+          id(nox_boost_threshold_val) = static_cast<int>(x);
+          nox_state::threshold = ventosync::nox::clamp_threshold(x);
+          ESP_LOGI("nox", "NOx-Stoßlüftung Schwelle: %.0f", x);
+          id(nox_boost_threshold).publish_state(x);
 
 substitutions:
   # Calibrate once against a reference thermometer (H2 sits close to the

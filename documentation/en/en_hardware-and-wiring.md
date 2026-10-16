@@ -65,16 +65,11 @@ These bands are rules of thumb, not official limits: an index of 50 does not mea
 **VOC index vs. NOx index:**
 
 - **VOC index:** normal state = **100**; below means better than usual, above worse. Reacts to odours, cooking fumes, cleaning agents, outgassing and people. Firmware: mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm) that drives the CO₂ regulation of Smart-Automatik.
-- **NOx index:** normal state = **1**, because there is usually no NOx at all. Only rises with combustion events. Firmware: shown in Home Assistant (`sensor.sgp41_nox_index`), **does not control the fan** (yet).
+- **NOx index:** normal state = **1**, because there is usually no NOx at all. Only rises with combustion events. Firmware: shown in Home Assistant (`sensor.sgp41_nox_index`) and drives the optional **NOx boost** (switch `NOx-Stoßlüftung`, off by default).
 
 After power-up the algorithm needs a few minutes before it reports values (NOx somewhat longer than VOC), and several hours to learn the room's air – do not over-interpret the first readings after flashing.
 
-**Why NOx does not control the fan (yet):**
-
-1. **The source can be outdoors.** If the NOx comes from the street, more ventilation brings it in instead of out – the sensor cannot tell where it comes from.
-2. **It is event-driven.** Without a gas hob the index stays at 1 almost all the time, a continuous control term would hardly help.
-
-A NOx boost for gas hobs is planned – see [Roadmap](en_roadmap-and-future-enhancements.md#-nox-boost-ventilation-for-gas-hobs).
+**NOx boost (since 0.10.38):** in Smart-Automatik, a NOx index above the threshold (HA number `NOx-Stoßlüftung: Schwelle`, 20–100) for 60 s raises the room's fan to the automatic maximum level; it ends 10 min after the index has fallen below half the threshold (max. 60 min). Because the NOx can also come from **outdoors** (road traffic), the boost is **aborted immediately** if the index does not fall while the device blows outdoor air in. The room-wide switch `NOx-Stoßlüftung` is **off by default** — enable it in rooms with a gas hob or fireplace. Details: [Smart Automatic Logic – NOx boost](en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01038).
 
 ### 🖱️ On-Device Control Panel
 

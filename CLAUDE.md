@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 1,998,306 / 2,031,616 B (~33 KB headroom, 0.10.35) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 2,007,922 / 2,031,616 B (~23 KB headroom, 0.10.38) — CI compiles it on every PR. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -128,7 +128,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   SCD41 *roles* by `!extend`-ing the mocks — SHT45 → `scd41_temperature` / `scd41_humidity` (room climate),
   SGP41 VOC index → `iaq_co2eq` (`VentilationLogic::voc_index_to_co2eq()`: 400 + 4 × (index − 50), 400–2200 ppm) →
   `effective_co2`. The variant must therefore include `mock_scd41.yaml` and `mock_bme680.yaml`. NOx index is
-  informational only. The mirrors go through `sensor_value_or_nan()` (`climate.h`): the drivers keep their last value on
+  used for the NOx boost (see ESP-NOW section). The mirrors go through `sensor_value_or_nan()` (`climate.h`): the drivers keep their last value on
   read errors, so the mirrors turn NaN after 2 min of warnings or a failed component. The package also sets
   `wrg_dashboard: voc_index_id / nox_index_id` (dashboard label "CO2-Äquivalent (VOC)" + index rows). The SGP41 board needs 3.3 V at H2 (identical on PCB v1 and v2).
 - **SCD43 stale guard** (`sensor_SCD41.yaml`, all variants with the real SCD43): `scd4x` also keeps its last values on read
@@ -204,6 +204,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
+  bits 4–6 (0.10.38, no bump): bit 4 room-wide NOx-boost switch, bit 5 the sender's own NOx boost, bit 6 its own
+  strong NOx event — an older Master never sets bit 4 and therefore keeps the room's NOx switch off;
   v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
   Smart-Automatik level override and its duration setting).
@@ -228,7 +230,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 - **Room-wide fusion** (`components/ventilation_logic/room_fusion.h`, `ventosync::room`):
   - Devices broadcast **only their own inputs**: `pid_demand` (NaN without sensors), `room_co2`,
     `room_humidity`, the HA-pushed AC / window state (`ROOM_FLAG_AC_ACTIVE`, `ROOM_FLAG_WINDOW_OPEN`), the own
-    radar presence held 30 s (`ROOM_FLAG_PRESENCE`).
+    radar presence held 30 s (`ROOM_FLAG_PRESENCE`), the own NOx boost (`ROOM_FLAG_NOX_ACTIVE` / `_STRONG`).
     **Never re-broadcast a fused/adopted value** —
     two devices would latch each other at a high level (feedback loop, CHANGELOG 0.10.21).
   - Receivers fuse the maximum (or OR) over all fresh peers — not only the last received packet. Freshness:
@@ -245,6 +247,16 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   only start or re-align it, never end it (a rebooted device must not cancel it). Countdown on each device's own clock,
   never restarted by an adoption. Ended by expiry or `cycle_operating_mode()`. Safety: HVAC cap clamps it, a health
   emergency (HVAC CO2 / mold guard or the override's `Co2Guard`) lets the automatic go higher (`resolve_level()`).
+- **NOx boost** (`nox_boost.h`, `ventosync::nox`, only fed on the `sgp41` variants via `nox_state` in `globals.h`):
+  Smart-Automatik only, room-wide switch `nox_boost_enabled_val` (room flag bit 4, synced like the HVAC switch),
+  threshold per device (`nox_boost_threshold_val`, 20–100). Start ≥ threshold for 60 s, end 10 min below half of it,
+  cap 60 min. **Outdoor-air test:** every intake window of the SGP41 device must lower the index, otherwise immediate
+  abort + lockout (event `nox_abbruch_aussenluft`). While the room boosts, `evaluate_auto_mode()` sets the demand to
+  1.0; a strong event (≥ 150) lifts the HVAC cap; any boost is a health emergency for the level override.
+- **Automatik-Status** (`auto_status.h`, `update_auto_status()` in `auto_mode.h`): text sensor `automatik_status`
+  (reason + level, every 10 s), `automatik_grund` (stable key) and event entity `lueftung_ereignis` (reason key after
+  30 s debounce, NOx aborts). `evaluate_auto_mode()` stores a snapshot in `auto_status_state::last`; keep the
+  `event_types` list in `ui_controls.yaml` in sync with `reason_key()`.
 - **HA-pushed room inputs** (API actions in `packages/integration/homeassistant.yaml`): `set_ac_active`,
   `set_window_open`. Stored as `ventosync::room::HaPushedFlag` (expires after 15 min, false while the API is
   down), shared room-wide via `room_flags`; a local change triggers an immediate `MSG_SYNC`
@@ -258,7 +270,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 Use `ventosync::` for project-wide constants, guards, and helper structs. Sub-namespaces in use:
 `ventosync::config`, `ventosync::espnow`, `ventosync::ha_fan`, `ventosync::health`, `ventosync::hrv`,
-`ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`.
+`ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`,
+`ventosync::nox`, `ventosync::auto_status`.
 
 ### Modular C++ Headers (`components/helpers/`)
 
@@ -297,6 +310,8 @@ Complex YAML lambda logic is extracted into focused header files:
     window / presence flags (freshness ≥ 5 min), `HaPushedFlag` for expiring HA-pushed inputs, `PresenceHold`.
   - `level_override.h` (`ventosync::auto_override`): Smart-Automatik level override (30–300 min) (`LevelOverride`
     countdown + packet adoption, `Co2Guard`, `resolve_level()`).
+  - `nox_boost.h` (`ventosync::nox`): NOx boost `Detector` (trigger, hold, cap, outdoor-air test, lockout).
+  - `auto_status.h` (`ventosync::auto_status`): Automatik-Status reason/text (`describe()`), keys, `ReasonTracker`.
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices
