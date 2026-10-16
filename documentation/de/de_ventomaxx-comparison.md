@@ -53,7 +53,6 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 | **Luftdruck** | ❌ Nein | ✅ **BMP390**: Wettertrend, Sturmwarnung, **Barometrische Kompensation** für SCD43 | ✅ **Korrekturen in Echtzeit** |
 | **BME680 Fallback** | ❌ Nein | ✅ **Zusatz-Sensor**: Automatisches Backup bei SCD43 Ausfall | ✅ **Fehlertoleranz** |
 | **Anwesenheit** | ❌ Nein | ✅ **HLK-LD2450 mmWave-Radar**: Präsenz, Moving/Still Targets, Target Count | ✅ **Raumgenaue Erfassung** |
-| **Drehzahl** | Tacho-Signal (LED blinkt bei Fehler) | ✅ **Pulse Counter**: Virtueller Tacho (Fallback) oder Echtzeit-RPM + Fehleralarm | ✅ **Quantitative Überwachung** |
 | **Richtungsanzeige** | ❌ Nein | ✅ **Klartext-Sensor**: "Zuluft", "Abluft", "Stillstand" in HA | ✅ **Sofortige Klarheit** |
 
 ---
@@ -62,7 +61,6 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 
 | Feature | VentoMaxx V-WRG (Original) | ESPHome Smart WRG (Dieses Projekt) | Vorteil ESPHome |
 | :--- | :--- | :--- | :--- |
-| **Lüfter-Überwachung** | Tacho-Signal (LED blinkt bei Fehler) | ✅ **Tacho-Monitor**: Alarm in Home Assistant + LED | ✅ **Push-Benachrichtigung** bei Ausfall |
 | **Frostschutz** | Abschaltung bei Zuluft < 5°C | ✅ **NTC-Überwachung** (Abschaltung/Vorheizregister) | ✅ **Visualisierung** der Temperaturen |
 | **Filterwechsel** | Timer-basiert (LED blinkt) | ✅ **Prädiktiver Alarm**: Betriebsstunden (>365d) + Kalenderzeit (>3 Jahre) + HA Push-Benachrichtigung + Reset-Button | ✅ **Präziser & proaktiv** |
 | **Fehlererkennung** | LED blinkt bei Tachofehler | ✅ **Master LED Strobe**: WiFi-Ausfall, ESP-NOW Timeout (3 Min), Hitze-Warnung | ✅ **Umfassender Schutz** |

@@ -44,7 +44,6 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 | **Air Humidity** | Rudimentary (fixed thresholds) | ✅ **SCD43** (Internal) + **Outdoor humidity** (HA weather service/sensor) | ✅ **PID-controlled + Outdoor check** |
 | **Air Pressure** | ❌ No | ✅ **BMP390**: Weather trend, storm warning, SCD43 altitude compensation | ✅ **Additional environmental data** |
 | **Presence** | ❌ No | ✅ **HLK-LD2450 mmWave Radar**: Presence, Moving/Still Targets, Target Count | ✅ **Room-accurate detection** |
-| **RPM** | Tacho signal (LED flashes on error) | ✅ **Pulse Counter**: RPM value in Home Assistant + error alarm | ✅ **Quantitative monitoring** |
 
 ---
 
@@ -52,7 +51,6 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 
 | Feature | VentoMaxx V-WRG (Original) | ESPHome Smart WRG (This Project) | ESPHome Advantage |
 | :--- | :--- | :--- | :--- |
-| **Fan Monitoring** | Tacho signal (LED flashes on error) | ✅ **Tacho Monitor**: Alarm in Home Assistant + LED | ✅ **Push notification** on failure |
 | **Frost Protection** | Shutdown if supply air < 5°C | ✅ **NTC Monitoring** (Shutdown/Pre-heating coil) | ✅ **Visualization** of temperatures |
 | **Filter Replacement** | Timer-based (LED flashes) | ✅ **Predictive Alarm**: Operating hours (>365d) + calendar time (>3 years) + HA push notification + reset button | ✅ **More precise & proactive** |
 | **Error Detection** | LED flashes on tacho error | ✅ **Master LED Strobe**: WiFi outage + ESP-NOW timeout (5 min) | ✅ **More comprehensive** |
@@ -67,7 +65,6 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 | Feature | VentoMaxx V-WRG (Original) | ESPHome Smart WRG (This Project) | ESPHome Advantage |
 | :--- | :--- | :--- | :--- |
 | **Control Panel** | Buttons + LEDs | ✅ **Supports Original Panel** (full functionality) | ⚖️ **Identical look & feel** |
-| **Display** | ❌ No | ✅ **SH1106 OLED** (128x64): 3 diagnostic pages (System, Climate, Network) | ✅ **Immediate diagnosis on device** |
 | **Remote Control** | IR remote (optional) | **Any smartphone / tablet / PC** | ✅ **No additional costs** |
 | **Smart Home** | ❌ No (proprietary) | ✅ **Native Home Assistant API** | ✅ **Full integration** |
 | **Group Control** | Master/Slave via cable | ✅ **ESP-NOW Group Controller**: All devices as one unit in HA dashboard | ✅ **Intuitive + wireless** |
