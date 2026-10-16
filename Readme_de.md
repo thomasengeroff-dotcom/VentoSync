@@ -142,7 +142,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD43](https://sensirion.com/de/produkte/katalog/SCD43).
   - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm), Integrierte Temperatur- und Feuchtigkeitsmessung (SCD43), Dokumentation: `EasyEDA-Pro/components/SCD43-Sensirion.pdf`
   - ✅ **BME680 Advanced IAQ Engine**: Der BME680 nutzt nun eine dedizierte C++ Engine für robustes Baseline-Tracking, dynamische Temperaturkompensation und intelligentes Flash-Wear-Leveling. Dies liefert hochwertige VOC/IAQ-Daten ohne den Overhead der BSEC-Bibliothek.
-  - ⚠️ **Hinweis:** Die Sensorboards (SCD43 und SGP41 + SHT45, v1.0) wurden am 15.10.2026 bestellt. Bis sie bestückt sind, dient der **BME680** als Fallback (IAQ-Index) — es wird die Firmware-Variante geflasht, die zu den bestückten Sensoren passt (siehe [Konfiguration & Kompilierung](#️-konfiguration--kompilierung)).
+  - ⚠️ **Hinweis:** Die Sensorboards (SCD43 und SGP41 + SHT45, v1.0) wurden am 15.10.2026 bestellt. Bis sie bestückt sind, dient der **BME680** als Fallback (IAQ-Index) — es wird die Firmware-Variante geflasht, die zu den bestückten Sensoren passt — z. B. `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml` für das SCD43-Board allein (siehe [Konfiguration & Kompilierung](#️-konfiguration--kompilierung)).
   - 💨 **Echte CO2-Messung**: Der SCD43 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
   - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD43, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**:
     - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
@@ -394,11 +394,14 @@ VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Har
 
 - **`ventosync.yaml`**: Vollversion (SCD43, BME680, LD2450)
 - **`ventosync_bme680_only.yaml`**: Variante mit BME680 (ohne SCD43/LD2450)
+- **`ventosync_scd43_only.yaml`**: Nur SCD43-CO2-Sensorboard an H2 (echtes CO2 + Raumtemperatur/-feuchte, ohne BME680/LD2450)
 - **`ventosync_radar_only.yaml`**: Variante mit Radar (ohne Klima-Sensoren)
 - **`ventosync_nosensor.yaml`**: Basis-Lüftungssteuerung ohne Sensoren
+- **`ventosync_sgp41.yaml`**: SGP41 + SHT45 Sensorboard an H2 statt des SCD43-Boards (VOC-/NOx-Index, Temperatur, Feuchte; der VOC-Index steuert die Smart-Automatik als CO2-Äquivalent, ohne LD2450)
 - **`ventosync_NTConly.yaml`**: Basis-Lüftungssteuerung nur mit NTC-Temperatursensoren
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U auf der Platine) – Basis-Lüftungssteuerung ohne Sensoren
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – Variante mit BME680 (ohne SCD43/LD2450)
+- **`ventosync_v2_scd43_only.yaml`**: **PCB v2.0** – Nur-SCD43-Variante (wie `ventosync_scd43_only.yaml`)
 - **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 Variante (wie `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimentell* – wie `ventosync_nosensor.yaml` plus Bluetooth-Proxy für Home Assistant; eigene Partitionstabelle, **Erstinstallation nur per USB** ([Leitfaden](documentation/de/de_bluetooth-proxy.md))
 
@@ -637,12 +640,14 @@ VentoSync/
 ├── tests/                     # C++ Unit-Tests & native Test-Suite
 ├── ventosync.yaml             # Hauptkonfiguration (Vollversion mit allen Sensoren)
 ├── ventosync_bme680_only.yaml # Hardware-Variante: BME680 Fallback (ohne SCD43/Radar)
+├── ventosync_scd43_only.yaml  # Hardware-Variante: nur SCD43-CO2-Sensorboard (ohne BME680/Radar)
 ├── ventosync_radar_only.yaml  # Hardware-Variante: Nur Radar-Anwesenheitssensor
 ├── ventosync_nosensor.yaml    # Hardware-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_NTConly.yaml     # Hardware-Variante: Basis-Lüftersteuerung nur mit NTCs
 ├── ventosync_sgp41.yaml       # Hardware-Variante: SGP41 + SHT45 VOC-Sensorboard
 ├── ventosync_v2_nosensor.yaml # PCB-v2.0-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_v2_bme680_only.yaml # PCB-v2.0-Variante: BME680 Fallback
+├── ventosync_v2_scd43_only.yaml # PCB-v2.0-Variante: nur SCD43-CO2-Sensorboard
 ├── ventosync_v2_sgp41.yaml    # PCB-v2.0-Variante: SGP41 + SHT45 VOC-Sensorboard
 ├── ventosync_nosensor_btproxy.yaml # Experimentell: nosensor + Bluetooth-Proxy (eigene Partitionstabelle)
 ├── upload_all.sh              # Batch-Kompilierungs- & OTA-Upload-Skript für alle Geräte

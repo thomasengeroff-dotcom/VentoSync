@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.37] - 2026-10-16
+
+### Added
+
+- **New firmware variants `ventosync_scd43_only` (PCB v1.0) and `ventosync_v2_scd43_only` (PCB v2.0)** for devices with the **SCD43 CO2 sensor board** at H2 as the only climate sensor (no BME680, no LD2450 radar) — the SCD43 board ordered together with the SGP41 + SHT45 board. OTA manifests `manifest-ventosync-scd43-only.json` / `manifest-ventosync-v2-scd43-only.json`.
+  - SCD43 (NDIR) CO2 → `Effektiver CO2 Wert`, SCD43 temperature / humidity → room climate for Smart-Automatik, humidity PID, enthalpy and mold guard and the room-wide fusion. Same entities as the SCD43 part of `ventosync.yaml` (`sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`); BME680 and radar entities are mocked and hidden.
+  - Build flags `NO_BME680` + `NO_RADAR` (existing code paths, no C++ change).
+  - CI builds both on push to `master` (13 variants) and validates both in `lint.yaml`.
+
+### Security / Stability
+
+- **SCD43 failure → NaN** (all variants with the SCD43, incl. `ventosync`): `scd4x` only raises a warning on a failed read and keeps its last CO2, temperature and humidity values, so a lost or loose sensor board froze the CO2 regulation, humidity PID, mold guard and the room-wide fusion at the last reading. After 2 minutes of read errors, or when the board is missing at boot, the three SCD43 sensors now turn NaN (`invalidate_stale_sensors()` in `climate.h`, checked every 10 s); the next successful read restores them. In `ventosync.yaml` the `Effektiver CO2 Wert` then falls back to the BME680 as intended; without a BME680 it turns NaN after its 5-minute hold. Log: `Sensor '…' stale (driver errors) - publishing NaN`.
+
+No protocol change — devices on 0.10.36 and 0.10.37 work together.
+
 ## [0.10.36] - 2026-10-15
 
 ### Added

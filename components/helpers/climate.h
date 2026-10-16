@@ -21,7 +21,7 @@
 // Description: Helper functions for climate monitoring and NTC filtering.
 // Author:      Thomas Engeroff
 // Created:     2025-03-29
-// Modified:    2026-10-15
+// Modified:    2026-10-16
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -64,6 +64,34 @@ inline float sensor_value_or_nan(esphome::Component *component, float value,
   return value;
 }
 
+
+/**
+ * @brief   Invalidates driver-published sensors once their driver is stale.
+ * @details For drivers whose sensors are consumed directly (`scd4x`: CO2, room
+ *          temperature / humidity feed the PID, room fusion and dashboard), so
+ *          `sensor_value_or_nan()` cannot be wrapped around every reader. The
+ *          `scd4x` driver only raises a warning on a failed read and keeps its
+ *          last state; once the grace time has elapsed (or the component is
+ *          failed) every sensor that still holds a value is set to NaN.
+ *          `internal_send_state_to_frontend()` bypasses the filters on purpose:
+ *          the `median` filter skips NaN and would keep the old value. The next
+ *          successful read publishes normally again. Call periodically (10 s).
+ * @param[in]     component   Driver component (e.g. `id(scd41_sensor)`).
+ * @param[in]     sensors     Sensors published by that driver (nullptr allowed).
+ * @param[in,out] last_ok_ms  Caller-owned timestamp of the last warning-free read.
+ */
+inline void invalidate_stale_sensors(
+    esphome::Component *component,
+    std::initializer_list<esphome::sensor::Sensor *> sensors,
+    uint32_t &last_ok_ms) {
+  if (!std::isnan(sensor_value_or_nan(component, 0.0f, last_ok_ms))) return;
+  for (auto *s : sensors) {
+    if (s == nullptr || std::isnan(s->state)) continue;
+    ESP_LOGW("climate", "Sensor '%s' stale (driver errors) - publishing NaN",
+             s->get_name().c_str());
+    s->internal_send_state_to_frontend(NAN);
+  }
+}
 
 // =====================================================================
 // NTC Stabilization Constants

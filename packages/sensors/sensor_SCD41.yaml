@@ -22,7 +22,7 @@
 #              Includes CO2, temperature, humidity, and calibration.
 # Author:      Thomas Engeroff
 # Created:     2026-03-05
-# Modified:    2026-04-21
+# Modified:    2026-10-16
 # ==========================================================================
 
 sensor:
@@ -31,6 +31,7 @@ sensor:
   # ---------------------------------------------------------
   # Will show as "unavailable" until sensor is connected to H2 header
   - platform: scd4x
+    id: scd41_sensor
     co2:
       name: "SCD41 CO2"
       id: scd41_co2
@@ -50,3 +51,19 @@ sensor:
       name: "SCD41 Luftfeuchtigkeit"
       id: scd41_humidity
       accuracy_decimals: 1
+
+# ---------------------------------------------------------
+# Stale sensor guard: scd4x keeps its last values on read errors, so a lost
+# sensor board would freeze CO2, humidity PID, mold guard and room fusion.
+# After 2 min of read errors (or a board missing at boot) the three sensors are
+# set to NaN — effective_co2 then falls back to the BME680 (if fitted) or
+# turns NaN after its own 5 min hold (invalidate_stale_sensors(), climate.h).
+# ---------------------------------------------------------
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          static uint32_t last_ok_ms = millis();
+          invalidate_stale_sensors(id(scd41_sensor),
+              {id(scd41_co2), id(scd41_temperature), id(scd41_humidity)},
+              last_ok_ms);
