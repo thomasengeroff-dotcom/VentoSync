@@ -145,7 +145,7 @@ All devices in a room find each other automatically upon startup or room change 
 - 🌡️ **Climate Data Acquisition**: High-precision measurement of temperature and relative humidity using [Sensirion SCD43](https://sensirion.com/de/produkte/katalog/SCD43).
   - ✅ **Photoacoustic sensing** for precise CO2 measurement (400-5000 ppm), integrated temperature and humidity measurement (SCD43), Documentation: `EasyEDA-Pro/components/SCD43-Sensirion.pdf`
   - ✅ **BME680 Advanced IAQ Engine**: The BME680 now uses a custom C++ engine for robust baseline tracking, dynamic thermal compensation, and smart flash wear-leveling. This provides high-quality VOC/IAQ data without the overhead of the BSEC library.
-  - ⚠️ **Note:** The sensor boards (SCD43 and SGP41 + SHT45, v1.0) were ordered on 2026-10-15. Until they are fitted, the **BME680** serves as a fallback (IAQ index) — flash the firmware variant that matches the fitted sensors (see [Configuration & Compilation](#️-configuration--compilation)).
+  - ⚠️ **Note:** The sensor boards (SCD43 and SGP41 + SHT45, v1.0) were ordered on 2026-10-15. Until they are fitted, the **BME680** serves as a fallback (IAQ index) — flash the firmware variant that matches the fitted sensors — e.g. `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml` for the SCD43 board alone (see [Configuration & Compilation](#️-configuration--compilation)).
   - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD43 but also acts as a **safety guard for the Traco power supply**:
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
     - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
@@ -396,12 +396,14 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 
 - **`ventosync.yaml`**: Full version (SCD43, BME680, LD2450)
 - **`ventosync_bme680_only.yaml`**: Fallback/Test version (BME680, no SCD43, no LD2450)
+- **`ventosync_scd43_only.yaml`**: SCD43 CO2 sensor board at H2 only (real CO2 + room temperature/humidity, no BME680, no LD2450)
 - **`ventosync_radar_only.yaml`**: Devices with mmWave presence detection but no climate sensors
 - **`ventosync_nosensor.yaml`**: Basic ventilation control without environmental sensors
 - **`ventosync_sgp41.yaml`**: SGP41 + SHT45 sensor board at H2 instead of the SCD43 board (VOC/NOx index, temperature, humidity; the VOC index drives Smart-Automatik as a CO2 equivalent, no LD2450)
 - **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U on board) – basic ventilation control without environmental sensors
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – BME680 variant (no SCD43, no LD2450)
+- **`ventosync_v2_scd43_only.yaml`**: **PCB v2.0** – SCD43-only variant (as `ventosync_scd43_only.yaml`)
 - **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 variant (as `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimental* – as `ventosync_nosensor.yaml` plus Home Assistant Bluetooth proxy; own partition table, **first flash over USB only** ([guide](documentation/en/en_bluetooth-proxy.md))
 
@@ -647,12 +649,14 @@ VentoSync/
 ├── tests/                     # C++ unit tests & native test runner suite
 ├── ventosync.yaml             # Main configuration entry point (Full sensor variant)
 ├── ventosync_bme680_only.yaml # Hardware variant: BME680 fallback (no SCD43/Radar)
+├── ventosync_scd43_only.yaml  # Hardware variant: SCD43 CO2 sensor board only (no BME680/Radar)
 ├── ventosync_radar_only.yaml  # Hardware variant: Radar presence only (no climate sensors)
 ├── ventosync_nosensor.yaml    # Hardware variant: Core HRV fan control without sensors
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
 ├── ventosync_sgp41.yaml       # Hardware variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_v2_nosensor.yaml # PCB v2.0 variant: core HRV fan control without sensors
 ├── ventosync_v2_bme680_only.yaml # PCB v2.0 variant: BME680 fallback
+├── ventosync_v2_scd43_only.yaml # PCB v2.0 variant: SCD43 CO2 sensor board only
 ├── ventosync_v2_sgp41.yaml    # PCB v2.0 variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_nosensor_btproxy.yaml # Experimental: nosensor + Bluetooth proxy (own partition table)
 ├── upload_all.sh              # Multi-device batch compilation & OTA flash script

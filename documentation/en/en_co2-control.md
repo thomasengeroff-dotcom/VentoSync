@@ -151,3 +151,4 @@ CO2 automation is primarily configured via Home Assistant or the web dashboard.
 | Fan never turns off completely | Check `CO2 Min Lüfterstufe` — this is intended behavior (moisture protection) |
 | Log: "SCD43 not connected" | Verify I2C wiring (SDA/SCL, cable continuity) |
 | CO2 readings fluctuate sharply | Median filtering is built into the SCD43 sensor driver (`window_size: 5`) |
+| CO2 / temperature / humidity of the SCD43 become `unknown` | The SCD43 has not answered for > 2 min (or was not found at boot). The firmware then sets its values to NaN instead of freezing the last reading — `Effektiver CO2 Wert` falls back to the BME680 (if fitted) or turns NaN after 5 more minutes. Check the sensor board at H2 (log: `Sensor '…' stale`) |

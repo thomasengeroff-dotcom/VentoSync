@@ -219,3 +219,4 @@ interval:
 | Lüfter dreht nie ab (auch bei gutem CO2) | `CO2 Min Lüfterstufe` prüfen — dies ist beabsichtigt (Feuchteschutz) |
 | Log: "SCD43 not connected" | I2C-Verbindung prüfen (SDA/SCL, Kabelbruch) |
 | CO2 Wert springt stark | Median-Filter im SCD43 Sensor bereits aktiv (window_size: 5) |
+| CO2 / Temperatur / Feuchte des SCD43 werden `unbekannt` | Der SCD43 antwortet seit > 2 min nicht (oder wurde beim Booten nicht gefunden). Die Firmware setzt seine Werte dann auf NaN, statt den letzten Messwert einzufrieren — `Effektiver CO2 Wert` fällt auf den BME680 zurück (falls bestückt) oder wird nach weiteren 5 Minuten NaN. Sensorboard an H2 prüfen (Log: `Sensor '…' stale`) |
