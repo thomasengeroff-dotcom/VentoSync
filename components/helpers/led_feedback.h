@@ -21,7 +21,7 @@
 // Description: Visual system status feedback via physical LEDs.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-11
+// Modified:    2026-10-16
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -155,7 +155,7 @@ inline void check_master_led_error() {
   } else if (thermal_warning) {
     target_effect = "Warning Safety";
     target_brightness = 1.0f;       // blink with full brightness of LED
-  } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_active() && !ventilation_ctrl->is_ignoring_window_guard()) {
+  } else if (ventilation_ctrl != nullptr && ventilation_ctrl->is_window_guard_pausing()) {
     // K2: Pulse the LED starting after 5s and until 35s to avoid disturbance at night.
     uint32_t lock_age = now - ventilation_ctrl->get_window_lock_activation_ms();
     if (lock_age >= 5000 && lock_age < 35000) {
