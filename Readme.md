@@ -94,7 +94,7 @@ If you own a VentoMaxx V-WRG system, you are in luck: you can easily upgrade you
 
 The heart of the project is a custom developed circuit board that fits perfectly into the existing housing of the VentoMaxx units.
 
-![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
+![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-10.webp)
 
 > [!TIP]
 > If you are interested in obtaining a PCB for your own devices, please feel free to contact me at **<thomas@engeroff.net>**.
@@ -257,18 +257,20 @@ VentoSync is actively maintained and continuously evolving with a focus on deepe
 
 ## 🎛️ Custom Circuit Board - PCB
 
-A custom-engineered PCB has been developed to integrate all core components (XIAO ESP32-C6, Traco Power DC/DC converters, logic-level shifters) into a compact, robust unit. The boards are manufactured by JLCPCB and are currently in the final validation phase.
+A custom-engineered PCB integrates all core components into a compact, robust unit that fits the existing VentoMaxx housing. The current **PCB v2.0** carries an **ESP32-C6-MINI-1U-H4** module directly on the board (external antenna via MHF III / W.FL), Traco TMPS10-112 (12 V) plus AP63205 (5 V) and AP63203 (3.3 V) buck converters, and **USB-C** for flashing (with ESD protection); the MCP23017 port expander of v1.0 is gone — buttons and the expansion header use native GPIOs. PCB v2.0 was ordered at JLCPCB on 2026-10-15; the predecessor **PCB v1.0** (Seeed XIAO ESP32-C6) is still fully supported by its own firmware variants. Production files, bring-up and GPIO map: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
 
 **Key Design Principles:**
 
 - **Long-Term Reliability**: Components were deliberately selected for a projected service life of >10 years under 24/7 continuous operation.
 - **Safety First**: Despite the low power consumption, the layout follows strict safety standards to ensure fire safety and voltage stability.
-- **Future-Proof Expansion**: The board includes dedicated expansion headers for future upgrades:
-  - **H4 (UART)**: High-speed serial connection (currently utilized for the mmWave Radar).
-  - **H3 (I²C)**: For additional environmental sensors or OLED displays.
-  - **H1 (GPIO)**: 6 free GPIOs including 3.3V/GND for custom DIY expansions.
+- **Future-Proof Expansion** (v2.0):
+  - **H2 (I²C)**: Plug-in sensor board (SCD43 or SGP41 + SHT45).
+  - **CN5 (UART)**: mmWave radar — also the rescue path for flashing via UART0.
+  - **I²C header** (GND / 3V3 / SCL / SDA): additional environmental sensors.
+  - **Expansion header U36**: 4 free GPIOs (GPB0–GPB3) plus I²C, 3V3 and GND for custom DIY expansions.
+  - **Status LEDs** for USB 5V, 5V and 3V3; a diode-OR lets the 3.3 V domain run from USB with or without mains.
 
-![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_ESPHome-WRG_ESP32_PWM_2026-08-28.png)
+![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
 ### Specialized SCD43 Sensor Board
 
@@ -276,9 +278,9 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 
 - **Thermal Isolation**: A specialized milling slot and copper-free zones "thermally decouple" the sensor from the PCB's heat mass.
 - **Precision Filtering**: Proper decoupling capacitors are placed in immediate proximity to the sensor.
-- **Perfect Fit**: Designed with a 1.25mm pitch connector to align perfectly with the VentoMaxx housing's ventilation intake (connector H2).
+- **Perfect Fit**: Designed with a 1.27 mm pitch right-angle header to align perfectly with the VentoMaxx housing's ventilation intake (connector H2).
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SCD43%20Gas%20Sensor_2026-08-28.png" alt="SCD43 Prototype" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43 sensor board v1.0" width="25%" />
 
 ### 🌿 Modular Sensor Ecosystem: The Right Metric for Every Room
 
@@ -288,7 +290,7 @@ In addition to the SCD43 CO₂ sensor board, the **SGP41 + SHT45 board** is desi
 - **Kitchen (Cooking Fumes, Odors & Combustion Gases)**: Indoor pollution is generated through cooking: aerosolized fats, strong odors, solvent fumes from cleaning agents, and nitrogen oxides (NOx) from gas stoves. CO₂ levels often remain low while air quality deteriorates significantly — a CO₂-only controller would fail to respond.
 - **Bathroom (Moisture & Volatile Compounds)**: Requires fast dehumidification combined with VOC odor removal.
 
-Both sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch connector, Header H2)**. This enables a **modular hardware architecture: One unified controller firmware across all units, but each room gets the sensor board perfectly tailored to its environment**:
+Both sensor boards share the exact same **4-pin I²C interface (1.27 mm pitch header, H2)**. This enables a **modular hardware architecture: One unified controller firmware across all units, but each room gets the sensor board perfectly tailored to its environment**:
 
 - **Sensirion SGP41**: Provides separate **VOC Index** and **NOx Index** signals — two dedicated metrics for volatile organic compounds and combustion gases.
 - **Sensirion SHT4x (e.g. SHT45)**: Delivers high-precision temperature and relative humidity for absolute humidity (enthalpy) calculation, crucial in kitchens and bathrooms.
@@ -305,7 +307,7 @@ Both sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch co
 **Firmware support (SGP41 + SHT45 board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). The SHT45 provides room temperature and humidity (humidity PID, enthalpy and mold guard, room-wide fusion) and compensates the SGP41. Because the SGP41 measures no CO₂, its VOC index is mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm: index 100 → 600 ppm, 200 → 1000 ppm = default CO₂ setpoint) that feeds `Effektiver CO2 Wert` and the CO₂ PID of Smart-Automatik. The VOC index is relative to the last 24 h (Sensirion algorithm), so it reacts to *events* like cooking or showering rather than to a constant pollution level. The NOx index drives the optional **NOx boost** (see Smart-Automatik features).
 
 <p align="center">
-  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
+  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_SGP41_SHT45_Sensor_2026-10-12.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
 </p>
 <p align="center"><em>SGP41 + SHT45 board (VOC, NOx, temperature, humidity)</em></p>
 

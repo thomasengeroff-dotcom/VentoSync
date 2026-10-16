@@ -91,7 +91,7 @@ Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherchen über al
 
 Das Herzstück des Projekts ist eine eigens entwickelte Platine, die exakt in das vorhandene Gehäuse der VentoMaxx-Geräte passt.
 
-![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
+![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-10.webp)
 
 > [!TIP]
 > Wenn du Interesse an einer Platine für deine eigenen Geräte hast, kannst du mich gerne unter **<thomas@engeroff.net>** kontaktieren.
@@ -254,18 +254,20 @@ VentoSync wird aktiv gepflegt und kontinuierlich weiterentwickelt, mit Fokus auf
 
 ## 🎛️ Eigene Platine - PCB
 
-Eine eigens entwickelte Platine (PCB) wurde entworfen, um alle Kernkomponenten (XIAO ESP32-C6, Traco Power DC/DC-Wandler, Pegelwandler) in einer kompakten und robusten Einheit zu vereinen. Die Platinen werden von JLCPCB gefertigt und befinden sich aktuell in der finalen Validierungsphase.
+Eine eigens entwickelte Platine (PCB) vereint alle Kernkomponenten in einer kompakten, robusten Einheit, die in das vorhandene VentoMaxx-Gehäuse passt. Die aktuelle **PCB v2.0** trägt ein **ESP32-C6-MINI-1U-H4**-Modul direkt auf der Platine (externe Antenne über MHF III / W.FL), Traco TMPS10-112 (12 V) sowie die Abwärtswandler AP63205 (5 V) und AP63203 (3,3 V) und **USB-C** zum Flashen (mit ESD-Schutz); der MCP23017-Portexpander der v1.0 entfällt — Tasten und Erweiterungs-Header liegen an nativen GPIOs. PCB v2.0 wurde am 15.10.2026 bei JLCPCB bestellt; die Vorgängerin **PCB v1.0** (Seeed XIAO ESP32-C6) wird mit eigenen Firmware-Varianten weiterhin voll unterstützt. Produktionsdaten, Inbetriebnahme und GPIO-Belegung: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
 
 **Wichtige Design-Prinzipien:**
 
 - **Hohe Zuverlässigkeit & Langlebigkeit**: Komponenten wurden gezielt für eine prognostizierte Lebensdauer von >10 Jahren im 24/7-Dauerbetrieb ausgewählt.
 - **Sicherheit an erster Stelle**: Trotz des geringen Stromverbrauchs folgt das Layout strengen Sicherheitsstandards, um Brandschutz und Spannungsstabilität zu gewährleisten.
-- **Zukunftssichere Erweiterbarkeit**: Die Platine verfügt über dedizierte Erweiterungs-Header für zukünftige Upgrades:
-  - **H4 (UART)**: Hochgeschwindigkeits-Serienverbindung (wird aktuell für das mmWave-Radar genutzt).
-  - **H3 (I²C)**: Für zusätzliche Umgebungssensoren oder OLED-Displays.
-  - **H1 (GPIO)**: 6 freie GPIOs inklusive 3,3V/GND für eigene DIY-Erweiterungen.
+- **Zukunftssichere Erweiterbarkeit** (v2.0):
+  - **H2 (I²C)**: Steck-Sensorboard (SCD43 oder SGP41 + SHT45).
+  - **CN5 (UART)**: mmWave-Radar — zugleich der Rettungsweg zum Flashen über UART0.
+  - **I²C-Header** (GND / 3V3 / SCL / SDA): zusätzliche Umgebungssensoren.
+  - **Erweiterungs-Header U36**: 4 freie GPIOs (GPB0–GPB3) plus I²C, 3V3 und GND für eigene DIY-Erweiterungen.
+  - **Status-LEDs** für USB-5V, 5V und 3V3; ein Dioden-ODER versorgt die 3,3-V-Domäne wahlweise über USB, mit oder ohne Netzspannung.
 
-![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_ESPHome-WRG_ESP32_PWM_2026-08-28.png)
+![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
 ### Passgenaues SCD43 Sensor Board
 
@@ -273,9 +275,9 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 
 - **Thermische Entkopplung**: Ein spezieller Frässchlitz und kupferfreie Zonen "entkoppeln" den Sensor thermisch von der Wärmekapazität der Hauptplatine.
 - **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
-- **Perfekte Passform**: Entwickelt mit einem 1,25-mm-Pitch-Anschluss, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
+- **Perfekte Passform**: Entwickelt mit einer 1,27-mm-Winkel-Stiftleiste, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SCD43%20Gas%20Sensor_2026-08-28.png" alt="SCD43 Prototyp" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0" width="25%" />
 
 ### 🌿 Modulares Sensor-Ökosystem: Die passende Messgröße pro Raum
 
@@ -285,7 +287,7 @@ Neben dem SCD43-Board gibt es das **SGP41 + SHT45-Board** — speziell konzipier
 - **Küche (Bratfette, Gerüche & Verbrennungsgase)**: Beim Kochen entstehen Belastungen durch Bratfette, starke Gerüche, Lösemittel aus Reinigern und bei einer Gasflamme zusätzlich Stickoxide (NOx). Der CO₂-Wert bleibt dabei oft niedrig, während die Luft längst schlecht ist — eine reine CO₂-Regelung würde hier nicht reagieren.
 - **Badezimmer & Feuchträume**: Erfordert schnelles Feuchtemanagement kombiniert mit VOC-Geruchserkennung.
 
-Beide Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 mm Pitch, Header H2)**. Dies ermöglicht ein modulares Konzept: **Ein Steuergerät — je Raum die perfekt passende Sensorplatine**:
+Beide Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,27 mm Raster, Header H2)**. Dies ermöglicht ein modulares Konzept: **Ein Steuergerät — je Raum die perfekt passende Sensorplatine**:
 
 - **Sensirion SGP41**: Liefert den **VOC- und NOx-Index** — zwei getrennte Kenngrößen für Gerüche und Verbrennungsgase.
 - **Sensirion SHT4x (z.B. SHT45)**: Ergänzt präzise Temperatur- und Feuchtemessung zur Berechnung der absoluten Feuchte (Enthalpie), entscheidend in Küche und Bad.
@@ -302,7 +304,7 @@ Beide Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25
 **Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index steuert die optionale **NOx-Stoßlüftung** (siehe Smart-Automatik-Funktionen).
 
 <p align="center">
-  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
+  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_SGP41_SHT45_Sensor_2026-10-12.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
 </p>
 <p align="center"><em>SGP41 + SHT45-Board (VOC, NOx, Temperatur, Feuchte)</em></p>
 
