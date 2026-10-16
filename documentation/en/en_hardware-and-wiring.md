@@ -22,7 +22,7 @@ This document provides detailed specifications of the central hardware component
 | Component | Description | Documentation |
 | :--- | :--- | :--- |
 | **Fan** | The original VentoMaxx V-WRG units use the **EBM-PAPST 4412 F/2 GLL (VarioPro)** **3-Pin PWM** (without tachometer signal) fan. Alternatively, a much more modern and quieter **AxiRev** (4-Pin PWM) can be used. For this, however, you would have to handle the mounting via a 3D-printed adapter. *Wiring shown below.* | [Fan Component](https://esphome.io/components/fan/speed.html) |
-| **SCD43** | Sensirion CO2 sensor (Real CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
+| **SCD43** | Sensirion CO2 sensor (Real CO2 400-5000ppm, Temp, Hum) via I²C. Plug-in sensor board for H2 (PCB v1 and v2). Firmware with the SCD43 board as the only climate sensor: `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); `ventosync.yaml` additionally expects BME680 + LD2450 | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **SGP41 + SHT45** | Alternative plug-in sensor board for H2 (PCB v1 and v2, instead of the SCD43 board): Sensirion SGP41 VOC/NOx index + SHT45 temperature/humidity via I²C (0x59 / 0x44, **3.3 V only**). Firmware `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2) — the SHT45 provides room temperature/humidity, the VOC index is mapped to a CO2 equivalent for Smart-Automatik. Board: [VentoSyncPCB Sensor-Boards](https://github.com/thomasengeroff-dotcom/VentoSyncPCB/blob/main/docs/Sensor-Boards.md) | [SGP4x](https://esphome.io/components/sensor/sgp4x.html), [SHT4x](https://esphome.io/components/sensor/sht4x.html) |
 | **BMP390** | Bosch high-precision barometric pressure sensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch gas sensor (fallback for IAQ/air quality) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
@@ -42,7 +42,7 @@ The complete Bill of Materials (BOM) is located in the [EasyEDA-Pro](../../EasyE
 - **SCD43 board** – for all rooms where the air quality is mainly determined by the **CO₂ exhaled by people**: living room, bedroom, children's room, home office.
 - **SGP41 + SHT45 board** – mainly for the **kitchen** and rooms with an **open fireplace, wood stove or other combustion appliances**. There, cooking fumes, odours and combustion gases (NOx) spoil the air while the CO₂ level often stays low. It also suits bathrooms (humidity + odours).
 
-Firmware: `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2).
+Firmware: SCD43 board `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); SGP41 + SHT45 board `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2).
 
 **What is NOx?** NOx stands for **nitrogen oxides**, mainly nitric oxide (NO) and nitrogen dioxide (NO₂). They are formed by combustion at high temperature:
 

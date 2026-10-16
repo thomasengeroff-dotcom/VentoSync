@@ -119,7 +119,7 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 * **`number.nox_stossluftung_schwelle`** („NOx-Stoßlüftung: Schwelle“, YAML-ID `nox_boost_threshold`) — NOx-Index, der die Stoßlüftung startet, 20–100, Schritt 5, Standard 20 (Konfiguration, pro Gerät, nur `sgp41`-Varianten).
 
 ### Hardware-Sensoren
-* **SCD43** (Präzisions-CO2): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
+* **SCD43** (Präzisions-CO2, `ventosync` / `ventosync_scd43_only` / `ventosync_v2_scd43_only`): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
 * **BME680** (Umwelt & IAQ): `sensor.bme680_temperatur`, `sensor.bme680_luftdruck_relativ`, `sensor.bme680_taupunkt`, `sensor.bme680_absolute_feuchtigkeit`, `sensor.bme680_gas_basiswert`, `sensor.bme680_luftqualitat_co2eq`, `sensor.bme680_iaq_trend`, `binary_sensor.bme680_sensor_health`, `text_sensor.bme680_iaq_bewertung`, `text_sensor.bme680_iaq_trendrichtung`, `text_sensor.bme680_sensor_status`
 * **SGP41 + SHT45 Sensorboard** (nur `ventosync_sgp41` / `ventosync_v2_sgp41`): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit` (Raumtemperatur / -feuchte für die Regelung), `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index` (Sensirion-Index 1–500, 100 bzw. 1 = normal, informativ), `sensor.sgp41_voc_co2_aquivalent` („SGP41 VOC CO2-Äquivalent“, VOC-Index abgebildet auf 400–2200 ppm, speist `Effektiver CO2 Wert`)
 * **BMP390** (Präzisions-Luftdruck): `sensor.bmp390_luftdruck`, `sensor.bmp390_temperatur`

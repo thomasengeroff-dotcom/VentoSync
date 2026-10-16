@@ -22,7 +22,7 @@ Dieses Dokument bietet detaillierte Spezifikationen der zentralen Hardware-Kompo
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
 | **Lüfter** | Original Ventomaxx V-WRG (EBM-PAPST 4412 F/2 GLL) 3-Pin PWM oder AxiRev (4-Pin PWM) | [Fan Component](https://esphome.io/components/fan/speed.html) |
-| **SCD43** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
+| **SCD43** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C. Steck-Sensorboard für H2 (PCB v1 und v2). Firmware mit dem SCD43-Board als einzigem Klimasensor: `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); `ventosync.yaml` erwartet zusätzlich BME680 + LD2450 | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **SGP41 + SHT45** | Alternatives Steck-Sensorboard für H2 (PCB v1 und v2, statt des SCD43-Boards): Sensirion SGP41 VOC-/NOx-Index + SHT45 Temperatur/Feuchte via I²C (0x59 / 0x44, **nur 3,3 V**). Firmware `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2) — der SHT45 liefert Raumtemperatur/-feuchte, der VOC-Index wird für die Smart-Automatik auf ein CO2-Äquivalent abgebildet. Board: [VentoSyncPCB Sensor-Boards](https://github.com/thomasengeroff-dotcom/VentoSyncPCB/blob/main/docs/Sensor-Boards.md) | [SGP4x](https://esphome.io/components/sensor/sgp4x.html), [SHT4x](https://esphome.io/components/sensor/sht4x.html) |
 | **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch Gas Sensor (Fallback für IAQ/Luftqualität) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
@@ -42,7 +42,7 @@ Die vollständige Stückliste (Bill of Materials) befindet sich im Unterordner [
 - **SCD43-Board** – für alle Räume, in denen die Luftqualität vor allem durch das **von Menschen ausgeatmete CO₂** bestimmt wird: Wohnzimmer, Schlafzimmer, Kinderzimmer, Büro.
 - **SGP41 + SHT45-Board** – vor allem für die **Küche** und Räume mit **offenem Kamin, Holzofen oder anderen Verbrennungsgeräten**. Dort verschlechtern Kochdünste, Gerüche und Verbrennungsgase (NOx) die Luft, während der CO₂-Wert oft niedrig bleibt. Auch für Bäder geeignet (Feuchte + Gerüche).
 
-Firmware: `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2).
+Firmware: SCD43-Board `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); SGP41 + SHT45-Board `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2).
 
 **Was ist NOx?** NOx steht für **Stickoxide**, vor allem Stickstoffmonoxid (NO) und Stickstoffdioxid (NO₂). Sie entstehen bei Verbrennung mit hoher Temperatur:
 

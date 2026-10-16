@@ -97,12 +97,14 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 |---|---|---|---|---|
 | `ventosync.yaml` | *(none)* | SCD41, BME680, LD2450 | `false` | Full: SCD43 + BME680 + radar + NTCs |
 | `ventosync_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | BME680 IAQ fallback + NTCs |
+| `ventosync_scd43_only.yaml` | `NO_BME680`, `NO_RADAR` | SCD41, mock BME680/radar | `false` | SCD43 board at H2 as the only climate sensor + NTCs |
 | `ventosync_radar_only.yaml` | `NO_SCD41`, `NO_BME680` | LD2450, mock SCD41/BME680 | `false` | Radar presence + NTCs, no climate sensor |
 | `ventosync_NTConly.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `false` | **NTCs fitted** (air temperature before/after fan & ceramic block), no I2C sensors |
 | `ventosync_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **No sensors at all** — not even NTCs |
 | `ventosync_v2_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **PCB v2.0** — as `nosensor` |
 | `ventosync_v2_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | **PCB v2.0** — as `bme680_only` |
 | `ventosync_sgp41.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41/BME680), mock radar | `false` | SGP41/SHT45 VOC board at H2 instead of the SCD43 board |
+| `ventosync_v2_scd43_only.yaml` | `NO_BME680`, `NO_RADAR` | SCD41, mock BME680/radar | `false` | **PCB v2.0** — as `scd43_only` |
 | `ventosync_v2_sgp41.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41/BME680), mock radar | `false` | **PCB v2.0** — as `sgp41` |
 | `ventosync_nosensor_btproxy.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks + `integration/bluetooth_proxy.yaml` | `true` | **Experimental** — `nosensor` + HA Bluetooth proxy, own partition table |
 
@@ -129,6 +131,10 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   used for the NOx boost (see ESP-NOW section). The mirrors go through `sensor_value_or_nan()` (`climate.h`): the drivers keep their last value on
   read errors, so the mirrors turn NaN after 2 min of warnings or a failed component. The package also sets
   `wrg_dashboard: voc_index_id / nox_index_id` (dashboard label "CO2-Äquivalent (VOC)" + index rows). The SGP41 board needs 3.3 V at H2 (identical on PCB v1 and v2).
+- **SCD43 stale guard** (`sensor_SCD41.yaml`, all variants with the real SCD43): `scd4x` also keeps its last values on read
+  errors, and its sensors are read directly everywhere (PID, room fusion, dashboard), so a 10 s `interval` calls
+  `invalidate_stale_sensors()` (`climate.h`): after 2 min of warnings or a failed component the three sensors are set to
+  NaN via `internal_send_state_to_frontend()` — **not** `publish_state()`, the `median` filter skips NaN.
 - PCB v2 variants use their own `firmware_variant` (`ventosync-v2-*`) and therefore their own OTA manifest —
   a v1 device is never offered v2 firmware and vice versa.
 - Adding a variant or flag: update this table, `build.yaml` (matrix), `lint.yaml` and `upload_all.sh`.
@@ -407,9 +413,9 @@ Triggered on push and pull request to `master`:
   - *Build* matrix: **pull requests build `ventosync-full`, `ventosync-v2-nosensor`, `ventosync-nosensor-btproxy` and
     `ventosync-v2-sgp41`** (one compile per board package + the size-critical Bluetooth proxy variant + the only variant
     with the SGP41/SHT45 drivers); push to `master` / `workflow_dispatch`
-    build all 11 variants (`ventosync-full`, `bme680-only`, `radar-only`, `nosensor`, `ntconly`, `sgp41`, `nosensor-mqtt`
-    (generated), `v2-nosensor`, `v2-bme680-only`, `v2-sgp41`, `nosensor-btproxy`), ESPHome pinned to `2026.9.0`, secret-free OTA
-    configs. The release job needs all 11 builds.
+    build all 13 variants (`ventosync-full`, `bme680-only`, `scd43-only`, `radar-only`, `nosensor`, `ntconly`, `sgp41`, `nosensor-mqtt`
+    (generated), `v2-nosensor`, `v2-bme680-only`, `v2-scd43-only`, `v2-sgp41`, `nosensor-btproxy`), ESPHome pinned to `2026.9.0`, secret-free OTA
+    configs. The release job needs all 13 builds.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).
