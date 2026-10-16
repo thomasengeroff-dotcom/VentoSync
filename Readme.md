@@ -83,7 +83,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 ## Motivation
 
 Many years ago, as part of a house renovation, I installed the V-WRG decentralized residential ventilation from Ventomaxx (10 units) and was very satisfied with it. However, the proprietary control and the lack of integration into my smart home system always bothered me. Therefore, I decided to develop my own circuit board (PCB) including control software based on ESPHome, as there was no ready-made solution. This solution is open source and is intended to help other users who are in the same situation as I was.
-For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD43), which is integrated directly into the board (via a small additional PCB; Note: Currently the Bosch BME680 serves as a fallback, as the SCD43 PCB is still in production). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German (at least for now).
+For ventilation control based on CO2, I use an extremely high-quality and precise CO2 sensor (Sensirion SCD43), which is integrated directly into the board (via a small additional PCB; the SCD43 board v1.0 was ordered on 2026-10-15 — until it is fitted, the Bosch BME680 serves as a fallback). This sensor measures the real CO2 concentration in the air and controls the ventilation intensity according to the presets (using modern PID control). All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German (at least for now).
 Since the ventilation units in the various rooms are usually in a very central position, I also use them directly for presence detection via a radar sensor, which can be mounted invisibly hidden behind the cover of the ventilation unit. The presence sensor is used for controlling the ventilation intensity in Smart automatic mode and can also be used in Home Assistant for any other automation.
 According to my research, the range of functionality of this project goes beyond everything currently found on the ventilation unit market!
 If you own a VentoMaxx V-WRG system, you are in luck: you can easily upgrade your system and boost it with advanced, 21st-century smart features!
@@ -145,7 +145,7 @@ All devices in a room find each other automatically upon startup or room change 
 - 🌡️ **Climate Data Acquisition**: High-precision measurement of temperature and relative humidity using [Sensirion SCD43](https://sensirion.com/de/produkte/katalog/SCD43).
   - ✅ **Photoacoustic sensing** for precise CO2 measurement (400-5000 ppm), integrated temperature and humidity measurement (SCD43), Documentation: `EasyEDA-Pro/components/SCD43-Sensirion.pdf`
   - ✅ **BME680 Advanced IAQ Engine**: The BME680 now uses a custom C++ engine for robust baseline tracking, dynamic thermal compensation, and smart flash wear-leveling. This provides high-quality VOC/IAQ data without the overhead of the BSEC library.
-  - ⚠️ **Note:** Since the SCD43 PCB is still in production, the **BME680** currently serves as a fallback (IAQ index). The code automatically detects if the SCD43 is present.
+  - ⚠️ **Note:** The sensor boards (SCD43 and SGP41 + SHT45, v1.0) were ordered on 2026-10-15. Until they are fitted, the **BME680** serves as a fallback (IAQ index) — flash the firmware variant that matches the fitted sensors (see [Configuration & Compilation](#️-configuration--compilation)).
   - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD43 but also acts as a **safety guard for the Traco power supply**:
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
     - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
@@ -246,6 +246,8 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
 
 VentoSync is actively maintained and continuously evolving with a focus on deeper sensor fusion, acoustic optimization, and next-generation smart automations.
 
+- 🔥 **NOx boost ventilation for gas hobs**: with the SGP41 + SHT45 board, a NOx index above a threshold (~20, typical for cooking on gas) temporarily raises the room's fan level; optional per room, because NOx can also come from road traffic outdoors.
+
 > 👉 *For complete descriptions and concepts of upcoming features and roadmap milestones, see [📄 Roadmap & Future Enhancements](documentation/en/en_roadmap-and-future-enhancements.md).*
 
 ## 🎛️ Custom Circuit Board - PCB
@@ -275,7 +277,7 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 
 ### 🌿 Modular Sensor Ecosystem: The Right Metric for Every Room
 
-In addition to the SCD43 CO₂ sensor board, **two additional specialized sensor boards with the Sensirion SGP41** are currently in development — designed for rooms where CO₂ alone does not adequately reflect air quality:
+In addition to the SCD43 CO₂ sensor board, **specialized sensor boards with the Sensirion SGP41** are designed for rooms where CO₂ alone does not adequately reflect air quality. The **SGP41 + SHT45 board** (v1.0) was ordered together with the SCD43 board on 2026-10-15 and is supported by the firmware; the SGP41-only board is not part of that order:
 
 - **Living & Sleeping Areas (Human Occupancy)**: CO₂ is directly proportional to human presence. In living rooms and bedrooms, human respiration is the primary source — the **SCD43** accurately tracks occupancy and controls ventilation accordingly.
 - **Kitchen (Cooking Fumes, Odors & Combustion Gases)**: Indoor pollution is generated through cooking: aerosolized fats, strong odors, solvent fumes from cleaning agents, and nitrogen oxides (NOx) from gas stoves. CO₂ levels often remain low while air quality deteriorates significantly — a CO₂-only controller would fail to respond.
@@ -289,8 +291,14 @@ All sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch con
 | Sensor Board | Integrated Sensors | Measured Parameters | Ideal Application |
 | :--- | :--- | :--- | :--- |
 | **SCD43 Board** | Sensirion SCD43 | CO₂, Temperature, Rel. Humidity | Living Room, Bedroom, Home Office |
-| **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC Index, NOx Index, Temperature, Humidity (Absolute Humidity) | Kitchen, Bathroom |
+| **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC Index, NOx Index, Temperature, Humidity (Absolute Humidity) | Kitchen, rooms with fireplace / combustion appliances, Bathroom |
 | **SGP41 Board** | Sensirion SGP41 | VOC Index, NOx Index | Kitchen (if climate data already exists via BME/NTC) |
+
+**Which board for which room?** The **SCD43 board** is meant for all rooms where the air quality is mainly about the **CO₂ concentration caused by people** (living room, bedroom, children's room, home office). The **SGP41 + SHT45 board** is meant above all for the **kitchen** and rooms with an **open fireplace, wood stove or other combustion appliances**, where cooking fumes, odours and nitrogen oxides spoil the air while CO₂ often stays low.
+
+**NOx in short:** nitrogen oxides (NO, NO₂) from combustion – gas hob, fireplace, candles indoors, road traffic outdoors. The SGP41 reports a **NOx index of 1–500**: **1** = normal (no event), ~2–20 slight increase, ~20–150 clear event (typical for cooking on gas), > 150 heavy load. It is a relative index, not a concentration in ppb. Details: [Hardware & Wiring – SGP41 + SHT45](documentation/en/en_hardware-and-wiring.md#-sgp41--sht45-sensor-board-voc--nox).
+
+**Firmware support (SGP41 + SHT45 board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). The SHT45 provides room temperature and humidity (humidity PID, enthalpy and mold guard, room-wide fusion) and compensates the SGP41. Because the SGP41 measures no CO₂, its VOC index is mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm: index 100 → 600 ppm, 200 → 1000 ppm = default CO₂ setpoint) that feeds `Effektiver CO2 Wert` and the CO₂ PID of Smart-Automatik. The VOC index is relative to the last 24 h (Sensirion algorithm), so it reacts to *events* like cooking or showering rather than to a constant pollution level. The NOx index is shown in Home Assistant but does not control the fan.
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
@@ -390,9 +398,11 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 - **`ventosync_bme680_only.yaml`**: Fallback/Test version (BME680, no SCD43, no LD2450)
 - **`ventosync_radar_only.yaml`**: Devices with mmWave presence detection but no climate sensors
 - **`ventosync_nosensor.yaml`**: Basic ventilation control without environmental sensors
+- **`ventosync_sgp41.yaml`**: SGP41 + SHT45 sensor board at H2 instead of the SCD43 board (VOC/NOx index, temperature, humidity; the VOC index drives Smart-Automatik as a CO2 equivalent, no LD2450)
 - **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U on board) – basic ventilation control without environmental sensors
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – BME680 variant (no SCD43, no LD2450)
+- **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 variant (as `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimental* – as `ventosync_nosensor.yaml` plus Home Assistant Bluetooth proxy; own partition table, **first flash over USB only** ([guide](documentation/en/en_bluetooth-proxy.md))
 
 > All variants without `_v2` are for **PCB v1.0** (Seeed XIAO ESP32-C6). Flash the variant that matches your board — the board packages differ in the button wiring (MCP23017 vs. native GPIO) and the antenna setup. PCB documentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
@@ -632,7 +642,7 @@ VentoSync/
 │   ├── globals/               # Separated global variables (automation, network, UI, fan)
 │   ├── integration/           # Home Assistant entity exposures & data exchange
 │   ├── io/                    # Fan PWM, buttons, PCA9685/MCP23017 hardware pinouts
-│   ├── sensors/               # Drivers & Mocks for SCD43, BME680, Radar, BMP390, NTCs
+│   ├── sensors/               # Drivers & Mocks for SCD43, SGP41/SHT45, BME680, Radar, BMP390, NTCs
 │   └── ui/                    # On-device front panel controls & diagnostic entities
 ├── tests/                     # C++ unit tests & native test runner suite
 ├── ventosync.yaml             # Main configuration entry point (Full sensor variant)
@@ -640,8 +650,10 @@ VentoSync/
 ├── ventosync_radar_only.yaml  # Hardware variant: Radar presence only (no climate sensors)
 ├── ventosync_nosensor.yaml    # Hardware variant: Core HRV fan control without sensors
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
+├── ventosync_sgp41.yaml       # Hardware variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_v2_nosensor.yaml # PCB v2.0 variant: core HRV fan control without sensors
 ├── ventosync_v2_bme680_only.yaml # PCB v2.0 variant: BME680 fallback
+├── ventosync_v2_sgp41.yaml    # PCB v2.0 variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_nosensor_btproxy.yaml # Experimental: nosensor + Bluetooth proxy (own partition table)
 ├── upload_all.sh              # Multi-device batch compilation & OTA flash script
 ├── version_bump.py            # Local build version bump (not used by CI)

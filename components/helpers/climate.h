@@ -21,7 +21,7 @@
 // Description: Helper functions for climate monitoring and NTC filtering.
 // Author:      Thomas Engeroff
 // Created:     2025-03-29
-// Modified:    2025-06-XX
+// Modified:    2026-10-15
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -34,6 +34,34 @@ inline std::string get_co2_classification(float co2_ppm) {
   if (std::isnan(co2_ppm) || co2_ppm < 0.0f) return "Unbekannt";
   if (co2_ppm > 10000.0f) return "Sensor-Fehler";
   return VentilationLogic::get_co2_classification(co2_ppm);
+}
+
+/// Read errors tolerated before a sensor value is treated as stale (2 min).
+constexpr uint32_t SENSOR_ERROR_GRACE_MS = 120000;
+
+/**
+ * @brief   Returns `value`, or NaN once its I2C driver has been failing too long.
+ * @details `sht4x` and `sgp4x` only raise a component warning on a failed read
+ *          and keep their last state (sgp4x even re-publishes it), so a lost
+ *          sensor board would freeze the regulation inputs. A single failed read
+ *          is bridged; after `SENSOR_ERROR_GRACE_MS` of continuous warnings, or
+ *          when the component is marked failed (not found at boot), NaN is
+ *          returned so the PIDs and room fusion treat the sensor as absent.
+ * @param[in]     component    Driver component (e.g. `id(sht45_sensor)`).
+ * @param[in]     value        Current sensor state.
+ * @param[in,out] last_ok_ms   Caller-owned timestamp of the last warning-free read.
+ * @return  `value`, or NaN while the driver is failed or has been erroring too long.
+ */
+inline float sensor_value_or_nan(esphome::Component *component, float value,
+                                 uint32_t &last_ok_ms) {
+  if (component == nullptr || component->is_failed()) return NAN;
+  const uint32_t now = esphome::millis();
+  if (!component->status_has_warning()) {
+    last_ok_ms = now;
+  } else if (now - last_ok_ms > SENSOR_ERROR_GRACE_MS) {
+    return NAN;
+  }
+  return value;
 }
 
 

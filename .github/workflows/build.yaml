@@ -4,7 +4,7 @@
 # Jobs:
 #   1. unit-tests   → C++ Unit Tests mit ASan/UBSan
 #   2. build        → ESPHome Matrix-Build (PR: ventosync-full + ventosync-v2-nosensor
-#                     + ventosync-nosensor-btproxy, push/workflow_dispatch: alle 9 Varianten)
+#                     + ventosync-nosensor-btproxy + ventosync-v2-sgp41, push/workflow_dispatch: alle 11 Varianten)
 #   3. release      → GitHub Release + OTA Manifeste
 #                     (übersprungen, wenn der Tag v<version.json> schon
 #                     existiert; Überschreiben nur per workflow_dispatch
@@ -100,7 +100,10 @@ jobs:
   #   code, their YAML is validated by lint.yaml on every PR.
   #   "Build ventosync-nosensor-btproxy" is compiled on PRs as well: its
   #   app partition has only ~37 KB headroom, so any growth must fail the PR.
-  # Push to master / workflow_dispatch: all 9 variants — the release job
+  #   "Build ventosync-v2-sgp41" is the only variant with the sgp4x/sht4x
+  #   drivers (Sensirion gas index library) — compiled on PRs so a broken
+  #   sensor package never reaches master.
+  # Push to master / workflow_dispatch: all 11 variants — the release job
   #   needs all of them, so a variant that breaks after the merge blocks
   #   the release instead of publishing incomplete assets.
   # fail-fast: false stellt sicher, dass ein fehlgeschlagener Build
@@ -119,7 +122,8 @@ jobs:
               && fromJSON('[
                    {"yaml":"ventosync.yaml","name":"ventosync-full"},
                    {"yaml":"ventosync_v2_nosensor.yaml","name":"ventosync-v2-nosensor"},
-                   {"yaml":"ventosync_nosensor_btproxy.yaml","name":"ventosync-nosensor-btproxy"}
+                   {"yaml":"ventosync_nosensor_btproxy.yaml","name":"ventosync-nosensor-btproxy"},
+                   {"yaml":"ventosync_v2_sgp41.yaml","name":"ventosync-v2-sgp41"}
                  ]')
               || fromJSON('[
                    {"yaml":"ventosync.yaml","name":"ventosync-full"},
@@ -127,9 +131,11 @@ jobs:
                    {"yaml":"ventosync_radar_only.yaml","name":"ventosync-radar-only"},
                    {"yaml":"ventosync_bme680_only.yaml","name":"ventosync-bme680-only"},
                    {"yaml":"ventosync_NTConly.yaml","name":"ventosync-ntconly"},
+                   {"yaml":"ventosync_sgp41.yaml","name":"ventosync-sgp41"},
                    {"yaml":"ventosync_nosensor_mqtt.yaml","name":"ventosync-nosensor-mqtt","mqtt_enabled":true},
                    {"yaml":"ventosync_v2_nosensor.yaml","name":"ventosync-v2-nosensor"},
                    {"yaml":"ventosync_v2_bme680_only.yaml","name":"ventosync-v2-bme680-only"},
+                   {"yaml":"ventosync_v2_sgp41.yaml","name":"ventosync-v2-sgp41"},
                    {"yaml":"ventosync_nosensor_btproxy.yaml","name":"ventosync-nosensor-btproxy"}
                  ]') }}
 
@@ -526,9 +532,11 @@ jobs:
           | \`ventosync-radar-only.ota.bin\` | Nur LD2450 Radar |
           | \`ventosync-bme680-only.ota.bin\` | Nur BME680 Sensor |
           | \`ventosync-ntconly.ota.bin\` | Nur NTC Sensoren (Wärmerückgewinnung) |
+          | \`ventosync-sgp41.ota.bin\` | SGP41 + SHT45 Sensorboard (VOC, Temperatur, Feuchte) |
           | \`ventosync-nosensor-mqtt.ota.bin\` | Ohne Sensoren, MQTT statt Home-Assistant-API |
           | \`ventosync-v2-nosensor.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): ohne Sensoren |
           | \`ventosync-v2-bme680-only.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): nur BME680 |
+          | \`ventosync-v2-sgp41.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): SGP41 + SHT45 Sensorboard (VOC, Temperatur, Feuchte) |
           | \`ventosync-nosensor-btproxy.factory.bin\` | **Experimentell**: ohne Sensoren + Bluetooth-Proxy, eigene Partitionstabelle – Erstinstallation nur per USB (factory.bin) |
 
           ### OTA Update

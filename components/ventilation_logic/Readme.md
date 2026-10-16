@@ -6,7 +6,7 @@ This component provides a pure, hardware-agnostic C++ utility library (`Ventilat
 
 | File | Description |
 | :--- | :--- |
-| **`ventilation_logic.h` / `.cpp`** | **Static Math & Logic Utilities (`VentilationLogic`)**: Stateless, pure functions for heat recovery efficiency calculation, bidirectional fan PWM mapping, dynamic cycle timing, virtual RPM estimation, and linear ramping. |
+| **`ventilation_logic.h` / `.cpp`** | **Static Math & Logic Utilities (`VentilationLogic`)**: Stateless, pure functions for heat recovery efficiency calculation, bidirectional fan PWM mapping, dynamic cycle timing, virtual RPM estimation, linear ramping, and the SGP41 VOC index → CO2 equivalent mapping (`voc_index_to_co2eq`). |
 | **`hvac_coordinator.h`** | **Smart Climate Control state machine (`ventosync::hvac::Coordinator`)**: AC debounce and expiry, CO2 emergency and mold guard, configuration ranges shared with the HA sliders. |
 | **`room_fusion.h`** | **Room-wide fusion helpers (`ventosync::room`)**: NaN-aware maxima of local and fresh (≥ 5 min, two heartbeats) ESP-NOW peer values for CO2, humidity, PID demand, room AC, window and radar presence state; `HaPushedFlag` (expiring HA-pushed inputs), `PresenceHold` (30 s off-delay). |
 | **`level_override.h`** | **Smart-Automatik level override (`ventosync::auto_override`)**: room-wide override (30–300 min, default 60) started with the Level button — wrap-safe countdown, adoption from ESP-NOW packets (never restarted, heartbeat cannot cancel), CO2 health guard and `resolve_level()` (HVAC cap clamps, emergency lets the automatic go higher). |

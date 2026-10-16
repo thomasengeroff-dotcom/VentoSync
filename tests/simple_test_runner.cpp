@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-11
+// Modified:    2026-10-15
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -202,6 +202,25 @@ bool test_co2_logic() {
   TEST_ASSERT(VentilationLogic::get_co2_classification(
                   std::numeric_limits<float>::quiet_NaN()) == "Unbekannt");
   TEST_ASSERT(VentilationLogic::get_co2_classification(0.0f) == "Unbekannt");
+
+  // SGP41 VOC index → CO2 equivalent (ventosync_v2_sgp41)
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  TEST_ASSERT(std::isnan(VentilationLogic::voc_index_to_co2eq(nan)));
+  TEST_ASSERT(std::isnan(VentilationLogic::voc_index_to_co2eq(0.0f)));
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(1.0f) == 400.0f);
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(50.0f) == 400.0f);
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(100.0f) == 600.0f);
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(200.0f) == 1000.0f);
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(325.0f) == 1500.0f);
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(500.0f) == 2200.0f);
+  TEST_ASSERT(VentilationLogic::voc_index_to_co2eq(800.0f) == 2200.0f);
+  // Monotonic over the full index range
+  float prev = VentilationLogic::voc_index_to_co2eq(1.0f);
+  for (int i = 2; i <= 500; ++i) {
+    const float cur = VentilationLogic::voc_index_to_co2eq(static_cast<float>(i));
+    TEST_ASSERT(cur >= prev);
+    prev = cur;
+  }
 
   return true;
 }

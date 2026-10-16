@@ -18,6 +18,7 @@ Dieses Dokument beschreibt geplante Funktionen, Architekturkonzepte und zukünft
 - [🔄 Closed-Loop Drehzahlüberwachung](#-closed-loop-drehzahlüberwachung)
 - [🌬️ Aerodynamische Rückwärts-Kompensation](#️-aerodynamische-rückwärts-kompensation)
 - [🧠 KI-gestützte vorausschauende Lüftungssteuerung](#-ki-gestützte-vorausschauende-lüftungssteuerung)
+- [🔥 NOx-Stoßlüftung für Gasherde](#-nox-stoßlüftung-für-gasherde)
 - [🔌 Erweiterungen & Gebäudeautomations-Gateways](#-erweiterungen--gebäudeautomations-gateways)
 - [❄️🔥 Intelligente Klimaanlagen-Koordination (Smart Climate Control)](#️-intelligente-klimaanlagen-koordination-smart-climate-control)
 
@@ -84,6 +85,15 @@ Dieses Dokument beschreibt geplante Funktionen, Architekturkonzepte und zukünft
 * **Proaktive Regelung**: Machine-Learning-Modelle und Wetterprognosen zur vorausschauenden Lüftung (z. B. vor heranziehenden Hitzewellen oder feuchtem Wetter).
 * **Personenzählung**: Abschätzung der Belegungsdichte über mmWave-Mehrziel-Tracking zur bedarfsgerechten Anpassung des Luftvolumenstroms (CFM/m³).
 * *Details siehe [📄 KI-gestützte Lüftungssteuerung](de_ai-powered-ventilation-control.md).*
+
+---
+
+## 🔥 NOx-Stoßlüftung für Gasherde
+
+* **Ereignisgesteuerte Stoßlüftung** mit dem SGP41 + SHT45 Board (`sgp41`-Varianten): Überschreitet der NOx-Index eine einstellbare Schwelle (Standard ~20, typisch beim Kochen auf dem Gasherd), erhöht der Raum vorübergehend die Lüfterstufe (z. B. zeitbegrenzt wie die Level-Übersteuerung) und kehrt zurück, sobald der Index eine Haltezeit lang wieder gefallen ist.
+* **Schutz vor Außenquellen**: NOx kann auch vom Straßenverkehr stammen. Die Stoßlüftung soll deshalb abschaltbar sein (Schalter pro Raum) und könnte pausieren, wenn Home Assistant hohe NO₂-Außenwerte meldet oder der NOx-Index nur in den Zuluftphasen steigt.
+* **Raumweit**: Wie bei den anderen Eingängen sendet jedes Gerät nur sein eigenes NOx-Flag (keine Weitergabe fusionierter Werte).
+* *Hintergrund zu NOx und den Indexwerten: [📄 Hardware & Verkabelung – SGP41 + SHT45](de_hardware-and-wiring.md#-sgp41--sht45-sensorboard-voc--nox).*
 
 ---
 

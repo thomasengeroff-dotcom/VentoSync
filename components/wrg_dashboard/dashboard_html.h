@@ -21,7 +21,7 @@
 // Description: HTML/CSS strings for the WRG web dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-11
+// Modified:    2026-10-15
 // ==========================================================================
 #pragma once
 
@@ -109,7 +109,10 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         <!-- Air Quality -->
         <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 flex-1">
           <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität</h2>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">CO2:</span> <span class="font-medium text-lg"><span id="val_room_co2">--</span> ppm</span></div>
+          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" id="lbl_room_co2">CO2:</span> <span class="font-medium text-lg"><span id="val_room_co2">--</span> ppm</span></div>
+          <!-- SGP41 board: only shown when /state reports voc_index / nox_index (sensor_SGP41_SHT45.yaml) -->
+          <div id="voc_index_row" class="hidden flex justify-between items-center"><span class="text-gray-400 text-sm">VOC-Index:</span> <span class="font-medium text-lg" id="val_voc_index">--</span></div>
+          <div id="nox_index_row" class="hidden flex justify-between items-center"><span class="text-gray-400 text-sm">NOx-Index:</span> <span class="font-medium text-lg" id="val_nox_index">--</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Bewertung:</span> <span class="font-medium text-lg" id="val_room_co2_bewertung">--</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur:</span> <span class="font-medium text-lg"><span id="val_room_temperature">--</span> °C</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg"><span id="val_room_humidity">--</span> %</span></div>
@@ -373,6 +376,19 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         const dirEl = document.getElementById("val_direction_display");
         if (dirEl && data.direction_display !== null) {
           dirEl.textContent = sanitizeHTML(String(data.direction_display));
+        }
+
+        // SGP41 board: label the VOC-based CO2 equivalent, show VOC / NOx index
+        if (data.voc_index !== undefined) {
+          document.getElementById("lbl_room_co2").textContent = "CO2-Äquivalent (VOC):";
+          document.getElementById("voc_index_row").classList.remove("hidden");
+          document.getElementById("val_voc_index").textContent =
+            (data.voc_index === null) ? "--" : Math.round(data.voc_index);
+        }
+        if (data.nox_index !== undefined) {
+          document.getElementById("nox_index_row").classList.remove("hidden");
+          document.getElementById("val_nox_index").textContent =
+            (data.nox_index === null) ? "--" : Math.round(data.nox_index);
         }
 
         // CO2 Bewertung

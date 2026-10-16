@@ -21,7 +21,7 @@
 // Description: Core ventilation math and logic utilities.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-09-23
+// Modified:    2026-10-15
 // ==========================================================================
 #pragma once
 
@@ -138,4 +138,27 @@ public:
    * @return  Classification string (e.g. "Gut", "Schlecht").
    */
   static std::string get_co2_classification(float co2_ppm);
+
+  /// @name SGP41 VOC index → CO2 equivalent (ventosync_v2_sgp41 variant)
+  /// @{
+  static constexpr float VOC_CO2EQ_BASE_INDEX = 50.0f;  ///< Index mapped to the floor.
+  static constexpr float VOC_CO2EQ_PPM_PER_INDEX = 4.0f;
+  static constexpr float VOC_CO2EQ_MIN_PPM = 400.0f;    ///< Outdoor air level.
+  static constexpr float VOC_CO2EQ_MAX_PPM = 2200.0f;   ///< Reached at VOC index 500.
+  /// @}
+
+  /**
+   * @brief   Maps a Sensirion VOC index (1–500) to a CO2-equivalent in ppm.
+   * @details The SGP41 measures no CO2. To drive the CO2 PID and the CO2 guards
+   *          of Smart-Automatik, its VOC index is mapped linearly:
+   *          ppm = 400 + 4 × (index − 50), clamped to 400–2200 ppm.
+   *          Index 100 (the sensor's learned 24 h average) → 600 ppm,
+   *          200 → 1000 ppm (default CO2 setpoint), 325 → 1500 ppm
+   *          (default CO2 emergency limit), 500 → 2200 ppm.
+   *          The VOC index is relative to the last 24 h — a constant pollution
+   *          level drifts back towards 100.
+   * @param[in] voc_index  VOC index from the ESPHome `sgp4x` platform.
+   * @return  CO2 equivalent in ppm, NaN if the index is NaN or < 1 (no data).
+   */
+  static float voc_index_to_co2eq(float voc_index);
 };

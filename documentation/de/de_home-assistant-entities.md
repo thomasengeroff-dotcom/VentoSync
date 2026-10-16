@@ -103,7 +103,7 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 ## 3. Sensordaten & Klima
 
 ### Kombinierte & berechnete Werte
-* **`sensor.effektiver_co2_wert`** („Effektiver CO2 Wert“, YAML-ID `effective_co2`) — CO2 für die Regelung: SCD43 (NDIR), BME680-CO2-Schätzung als Rückfall.
+* **`sensor.effektiver_co2_wert`** („Effektiver CO2 Wert“, YAML-ID `effective_co2`) — CO2 für die Regelung: SCD43 (NDIR), BME680-CO2-Schätzung als Rückfall; in den `sgp41`-Varianten das CO2-Äquivalent des SGP41-VOC-Index.
 * **`text_sensor.co2_bewertung`** („CO2 Bewertung“, YAML-ID `effective_co2_bewertung`) — qualitative Einstufung des CO2-Werts.
 * **`sensor.wrg_effizienz`** („WRG Effizienz“, YAML-ID `heat_recovery_efficiency`) — gemessener WRG-Wirkungsgrad (%), siehe [Wärmerückgewinnung & Effizienz](de_heat-recovery-and-efficiency.md).
 * **`sensor.wrg_effizienz_zyklus`** („WRG Effizienz (Zyklus)“) / **`sensor.wrg_energie_zyklus`** („WRG Energie (Zyklus)“) — Wirkungsgrad und rückgewonnene Energie (Wh) des letzten Push-Pull-Zyklus.
@@ -112,6 +112,7 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 ### Hardware-Sensoren
 * **SCD43** (Präzisions-CO2): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
 * **BME680** (Umwelt & IAQ): `sensor.bme680_temperatur`, `sensor.bme680_luftdruck_relativ`, `sensor.bme680_taupunkt`, `sensor.bme680_absolute_feuchtigkeit`, `sensor.bme680_gas_basiswert`, `sensor.bme680_luftqualitat_co2eq`, `sensor.bme680_iaq_trend`, `binary_sensor.bme680_sensor_health`, `text_sensor.bme680_iaq_bewertung`, `text_sensor.bme680_iaq_trendrichtung`, `text_sensor.bme680_sensor_status`
+* **SGP41 + SHT45 Sensorboard** (nur `ventosync_sgp41` / `ventosync_v2_sgp41`): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit` (Raumtemperatur / -feuchte für die Regelung), `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index` (Sensirion-Index 1–500, 100 bzw. 1 = normal, informativ), `sensor.sgp41_voc_co2_aquivalent` („SGP41 VOC CO2-Äquivalent“, VOC-Index abgebildet auf 400–2200 ppm, speist `Effektiver CO2 Wert`)
 * **BMP390** (Präzisions-Luftdruck): `sensor.bmp390_luftdruck`, `sensor.bmp390_temperatur`
 * **NTC-Thermistoren** (Luft im Rohr): `sensor.temp_abluft_innen` („Temp. Abluft (Innen)“), `sensor.temp_zuluft_aussen` („Temp. Zuluft (Außen)“), dazu die Diagnosewerte `…_raw`
 

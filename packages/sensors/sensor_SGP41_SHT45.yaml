@@ -1,0 +1,132 @@
+# ==========================================================================
+# VentoSync HRV – ESPHome Configuration for the SGP41 + SHT45 sensor board
+# https://github.com/thomasengeroff-dotcom/VentoSync
+#
+# Copyright (c) 2026 Thomas Engeroff
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# File:        sensor_SGP41_SHT45.yaml
+# Description: Plug-in VOC sensor board at H2 (PCB v1 and v2; VentoSyncPCB, docs/Sensor-Boards.md):
+#              Sensirion SGP41 (VOC / NOx index, 0x59) + SHT45 (temperature /
+#              humidity, 0x44) on I2C bus_a. The board replaces the SCD43 board,
+#              so this package takes over the SCD41 *roles*:
+#                - SHT45 → scd41_temperature / scd41_humidity (room climate:
+#                  humidity PID, mold guard, enthalpy, room fusion, dashboard)
+#                - SGP41 VOC index → iaq_co2eq (VOC-based CO2 equivalent, like
+#                  the BME680 estimate) → effective_co2 → CO2 PID / CO2 guards
+#              Requires mock_scd41.yaml and mock_bme680.yaml in the same variant
+#              (their template sensors are extended here, which keeps the
+#              TemplateSensor types expected by globals.h with VENTOSYNC_NO_SCD41).
+#              Substitution sht45_temperature_offset (°C, default 0.0) corrects
+#              the self-heating near the Traco power supply.
+# Author:      Thomas Engeroff
+# Created:     2026-10-15
+# Modified:    2026-10-15
+# ==========================================================================
+
+substitutions:
+  # Calibrate once against a reference thermometer (H2 sits close to the
+  # Traco power supply). Negative value = sensor reads too warm.
+  sht45_temperature_offset: "0.0"
+
+sensor:
+  # ---------------------------------------------------------
+  # SHT45 TEMPERATURE / HUMIDITY (0x44)
+  # ---------------------------------------------------------
+  - platform: sht4x
+    id: sht45_sensor
+    i2c_id: bus_a
+    address: 0x44
+    precision: High
+    update_interval: 10s
+    temperature:
+      name: "SHT45 Temperatur"
+      id: sht45_temperature
+      accuracy_decimals: 1
+      filters:
+        - offset: ${sht45_temperature_offset}
+    humidity:
+      name: "SHT45 Luftfeuchtigkeit"
+      id: sht45_humidity
+      accuracy_decimals: 1
+      filters:
+        - clamp:
+            min_value: 0
+            max_value: 100
+
+  # ---------------------------------------------------------
+  # SGP41 VOC / NOx INDEX (0x59)
+  # ---------------------------------------------------------
+  # The index algorithm needs about 1 minute (VOC) / 5 minutes (NOx) after
+  # boot and ~12 h to learn the room's baseline. The SHT45 compensates the
+  # raw signals (same air stream, same board).
+  - platform: sgp4x
+    id: sgp41_sensor
+    i2c_id: bus_a
+    address: 0x59
+    update_interval: 10s
+    store_baseline: true
+    voc_index:
+      name: "SGP41 VOC Index"
+      id: sgp41_voc_index
+      accuracy_decimals: 0
+    nox_index:
+      name: "SGP41 NOx Index"
+      id: sgp41_nox_index
+      accuracy_decimals: 0
+    compensation:
+      humidity_source: sht45_humidity
+      temperature_source: sht45_temperature
+
+  # ---------------------------------------------------------
+  # SCD41 / BME680 ROLES (extend the mocks)
+  # ---------------------------------------------------------
+  # Room temperature / humidity used by the logic, the room fusion and the
+  # web dashboard. Internal — HA shows the SHT45 entities above.
+  # sensor_value_or_nan() (climate.h) turns them NaN after 2 min of read errors
+  # or a missing board — the drivers themselves keep their last value.
+  - id: !extend scd41_temperature
+    name: "Raumtemperatur (SHT45)"
+    update_interval: 10s
+    lambda: |-
+      static uint32_t last_ok_ms = millis();
+      return sensor_value_or_nan(id(sht45_sensor), id(sht45_temperature).state, last_ok_ms);
+
+  - id: !extend scd41_humidity
+    name: "Raumfeuchte (SHT45)"
+    update_interval: 10s
+    lambda: |-
+      static uint32_t last_ok_ms = millis();
+      return sensor_value_or_nan(id(sht45_sensor), id(sht45_humidity).state, last_ok_ms);
+
+  # VOC-based CO2 equivalent → effective_co2 (sensors_climate.yaml).
+  # Mapping and limits: VentilationLogic::voc_index_to_co2eq().
+  - id: !extend iaq_co2eq
+    name: "SGP41 VOC CO2-Äquivalent"
+    internal: false
+    device_class: "carbon_dioxide"
+    state_class: "measurement"
+    icon: "mdi:molecule-co2"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      static uint32_t last_ok_ms = millis();
+      return VentilationLogic::voc_index_to_co2eq(
+          sensor_value_or_nan(id(sgp41_sensor), id(sgp41_voc_index).state, last_ok_ms));
+
+# Web dashboard: VOC / NOx index rows, CO2 value labelled "CO2-Äquivalent (VOC)"
+wrg_dashboard:
+  voc_index_id: sgp41_voc_index
+  nox_index_id: sgp41_nox_index

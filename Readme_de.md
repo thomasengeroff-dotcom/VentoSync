@@ -81,7 +81,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 ## Motivation
 
 Ich habe vor vielen Jahren im Rahmen der Haussanierung die dezentrale Wohnraumlüftung V-WRG von Ventomaxx installiert (10 Geräte) und war damit auch sehr zufrieden. Allerdings hat mich die proprietäre Steuerung und die fehlende Integration in mein Smart Home System immer gestört. Daher habe ich mich entschlossen, eine eigene Platine (PCB) inkl. der Steuerungssoftware auf Basis von ESPHome zu entwickeln, da es keine fertige Lösung gab. Diese Lösung ist Open Source und soll anderen Nutzern helfen, die in der gleichen Situation wie ich sind.
-Für die Steuerung der Lüftung auf Basis von CO2 nutze ich einen extrem hochwertigen und präzisen CO2-Sensor (Sensirion SCD43), der direkt in die Platine (per kleines Zusatz-PCB) integriert ist (Hinweis: Aktuell dient der BME680 als Fallback, da das SCD43-PCB noch in Fertigung ist). Dieser Sensor misst die echte CO2-Konzentration in der Luft und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung). Sämtliche Code-Kommentare und die interne Dokumentation wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt, während das User-Interface weiterhin auf Deutsch bleibt.
+Für die Steuerung der Lüftung auf Basis von CO2 nutze ich einen extrem hochwertigen und präzisen CO2-Sensor (Sensirion SCD43), der direkt in die Platine (per kleines Zusatz-PCB) integriert ist (das SCD43-Board v1.0 wurde am 15.10.2026 bestellt — bis es bestückt ist, dient der BME680 als Fallback). Dieser Sensor misst die echte CO2-Konzentration in der Luft und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung). Sämtliche Code-Kommentare und die interne Dokumentation wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt, während das User-Interface weiterhin auf Deutsch bleibt.
 Da die Lüftungsgeräte in den verschiedenen Räumen meistens eine sehr zentrale Position haben, nutze ich diese auch direkt zur Anwesenheitserkennung mittels Radar-Sensor, der unsichtbar hinter der Blende des Lüftungsgerätes versteckt montiert werden kann. Der Anwesenheitssensor wird für die Steuerung der Lüftungsintensität im Smart-Automatik Modus genutzt und kann darüber hinaus in Home Assistant für jegliche weitere Automatisierungen genutzt werden.
 Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherechen über alles hinaus, was aktuell am Markt der Lüftungsgeräte zu finden ist!
 
@@ -142,7 +142,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
 - 🌡️ **Klimadatenerfassung**: Hochpräzise Messung von Temperatur und relativer Luftfeuchtigkeit mittels [Sensirion SCD43](https://sensirion.com/de/produkte/katalog/SCD43).
   - ✅ **Photoacoustic sensing** für präzise CO2-Messung (400-5000 ppm), Integrierte Temperatur- und Feuchtigkeitsmessung (SCD43), Dokumentation: `EasyEDA-Pro/components/SCD43-Sensirion.pdf`
   - ✅ **BME680 Advanced IAQ Engine**: Der BME680 nutzt nun eine dedizierte C++ Engine für robustes Baseline-Tracking, dynamische Temperaturkompensation und intelligentes Flash-Wear-Leveling. Dies liefert hochwertige VOC/IAQ-Daten ohne den Overhead der BSEC-Bibliothek.
-  - ⚠️ **Hinweis:** Da das SCD43-PCB noch in Fertigung ist, dient der **BME680** aktuell als Fallback (IAQ-Index). Der Code erkennt automatisch, ob der SCD43 vorhanden ist.
+  - ⚠️ **Hinweis:** Die Sensorboards (SCD43 und SGP41 + SHT45, v1.0) wurden am 15.10.2026 bestellt. Bis sie bestückt sind, dient der **BME680** als Fallback (IAQ-Index) — es wird die Firmware-Variante geflasht, die zu den bestückten Sensoren passt (siehe [Konfiguration & Kompilierung](#️-konfiguration--kompilierung)).
   - 💨 **Echte CO2-Messung**: Der SCD43 nutzt **photoacoustic sensing** zur direkten CO2-Messung (400-5000 ppm) statt berechneter Äquivalente - ideal für bedarfsgerechte Lüftungssteuerung.
   - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD43, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**:
     - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
@@ -244,6 +244,8 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
 
 VentoSync wird aktiv gepflegt und kontinuierlich weiterentwickelt, mit Fokus auf tiefere Sensorfusion, akustische Optimierung und moderne Gebäudeautomation.
 
+- 🔥 **NOx-Stoßlüftung für Gasherde**: Mit dem SGP41 + SHT45 Board erhöht ein NOx-Index über einer Schwelle (~20, typisch beim Kochen mit Gas) vorübergehend die Lüfterstufe des Raums; pro Raum abschaltbar, da NOx auch vom Straßenverkehr draußen stammen kann.
+
 > 👉 *Detaillierte Beschreibungen und Konzepte aller geplanten Features und Roadmap-Meilensteine siehe [📄 Roadmap & Zukünftige Erweiterungen](documentation/de/de_roadmap-and-future-enhancements.md).*
 
 ## 🎛️ Eigene Platine - PCB
@@ -273,7 +275,7 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 
 ### 🌿 Modulares Sensor-Ökosystem: Die passende Messgröße pro Raum
 
-Neben dem SCD43-Board befinden sich aktuell **zwei weitere Sensorplatinen mit dem Sensirion SGP41** in Entwicklung — speziell konzipiert für Räume, in denen CO₂ die tatsächliche Luftqualität nicht ideal beschreibt:
+Neben dem SCD43-Board gibt es **Sensorplatinen mit dem Sensirion SGP41** — speziell konzipiert für Räume, in denen CO₂ die tatsächliche Luftqualität nicht ideal beschreibt. Das **SGP41 + SHT45-Board** (v1.0) wurde zusammen mit dem SCD43-Board am 15.10.2026 bestellt und wird von der Firmware unterstützt; das reine SGP41-Board ist nicht Teil dieser Bestellung:
 
 - **Wohn- und Schlafbereich (Personenbelegung)**: CO₂ ist ein direktes Maß für die Anwesenheit von Menschen. Im Wohn- und Schlafbereich ist der Mensch die Quelle — dort regelt der **SCD43** exakt richtig.
 - **Küche (Bratfette, Gerüche & Verbrennungsgase)**: Beim Kochen entstehen Belastungen durch Bratfette, starke Gerüche, Lösemittel aus Reinigern und bei einer Gasflamme zusätzlich Stickoxide (NOx). Der CO₂-Wert bleibt dabei oft niedrig, während die Luft längst schlecht ist — eine reine CO₂-Regelung würde hier nicht reagieren.
@@ -287,8 +289,14 @@ Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 
 | Sensorplatine | Bestückung | Messgrößen | Idealer Einsatzbereich |
 | :--- | :--- | :--- | :--- |
 | **SCD43 Board** | Sensirion SCD43 | CO₂, Temperatur, rel. Feuchte | Wohnzimmer, Schlafzimmer, Büro |
-| **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC-Index, NOx-Index, Temperatur, Feuchte (absolute Feuchte) | Küche, Badezimmer |
+| **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC-Index, NOx-Index, Temperatur, Feuchte (absolute Feuchte) | Küche, Räume mit Kamin / Verbrennungsgeräten, Badezimmer |
 | **SGP41 Board** | Sensirion SGP41 | VOC-Index, NOx-Index | Küche (wenn Klimadaten bereits vorliegen) |
+
+**Welches Board für welchen Raum?** Das **SCD43-Board** ist für alle Räume gedacht, in denen es vor allem um die **durch Menschen verursachte CO₂-Konzentration** geht (Wohnzimmer, Schlafzimmer, Kinderzimmer, Büro). Das **SGP41 + SHT45-Board** ist vor allem für die **Küche** und Räume mit **offenem Kamin, Holzofen oder anderen Verbrennungsgeräten** gedacht, in denen Kochdünste, Gerüche und Stickoxide die Luft verschlechtern, während der CO₂-Wert oft niedrig bleibt.
+
+**NOx kurz erklärt:** Stickoxide (NO, NO₂) aus Verbrennung – drinnen Gasherd, Kamin, Kerzen, draußen der Straßenverkehr. Der SGP41 liefert einen **NOx-Index von 1–500**: **1** = Normalzustand (kein Ereignis), ~2–20 leichte Erhöhung, ~20–150 deutliches Ereignis (typisch beim Kochen mit Gas), > 150 starke Belastung. Es ist ein relativer Index, keine Konzentration in ppb. Details: [Hardware & Verkabelung – SGP41 + SHT45](documentation/de/de_hardware-and-wiring.md#-sgp41--sht45-sensorboard-voc--nox).
+
+**Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index wird in Home Assistant angezeigt, steuert den Lüfter aber nicht.
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
@@ -391,6 +399,7 @@ VentoSync nutzt eine modulare Hardware-Architektur. Wähle je nach verbauter Har
 - **`ventosync_NTConly.yaml`**: Basis-Lüftungssteuerung nur mit NTC-Temperatursensoren
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U auf der Platine) – Basis-Lüftungssteuerung ohne Sensoren
 - **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – Variante mit BME680 (ohne SCD43/LD2450)
+- **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 Variante (wie `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimentell* – wie `ventosync_nosensor.yaml` plus Bluetooth-Proxy für Home Assistant; eigene Partitionstabelle, **Erstinstallation nur per USB** ([Leitfaden](documentation/de/de_bluetooth-proxy.md))
 
 > Alle Varianten ohne `_v2` sind für **PCB v1.0** (Seeed XIAO ESP32-C6). Flashe die Variante, die zu deiner Platine passt – die Board-Pakete unterscheiden sich bei der Tasteranbindung (MCP23017 vs. native GPIOs) und der Antennen-Initialisierung. PCB-Dokumentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
@@ -623,7 +632,7 @@ VentoSync/
 │   ├── globals/               # Strukturierte globale Variablen (Automation, Netzwerk, UI, Lüfter)
 │   ├── integration/           # Home Assistant Entitäten & Datenanbindung
 │   ├── io/                    # Lüfter-PWM, Taster, PCA9685/MCP23017 Pinbelegungen
-│   ├── sensors/               # Treiber & Mocks für SCD43, BME680, Radar, BMP390, NTCs
+│   ├── sensors/               # Treiber & Mocks für SCD43, SGP41/SHT45, BME680, Radar, BMP390, NTCs
 │   └── ui/                    # Bedienpanel-Steuerung & Diagnose-Entitäten
 ├── tests/                     # C++ Unit-Tests & native Test-Suite
 ├── ventosync.yaml             # Hauptkonfiguration (Vollversion mit allen Sensoren)
@@ -631,8 +640,10 @@ VentoSync/
 ├── ventosync_radar_only.yaml  # Hardware-Variante: Nur Radar-Anwesenheitssensor
 ├── ventosync_nosensor.yaml    # Hardware-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_NTConly.yaml     # Hardware-Variante: Basis-Lüftersteuerung nur mit NTCs
+├── ventosync_sgp41.yaml       # Hardware-Variante: SGP41 + SHT45 VOC-Sensorboard
 ├── ventosync_v2_nosensor.yaml # PCB-v2.0-Variante: Basis-Lüftersteuerung ohne Sensoren
 ├── ventosync_v2_bme680_only.yaml # PCB-v2.0-Variante: BME680 Fallback
+├── ventosync_v2_sgp41.yaml    # PCB-v2.0-Variante: SGP41 + SHT45 VOC-Sensorboard
 ├── ventosync_nosensor_btproxy.yaml # Experimentell: nosensor + Bluetooth-Proxy (eigene Partitionstabelle)
 ├── upload_all.sh              # Batch-Kompilierungs- & OTA-Upload-Skript für alle Geräte
 ├── version_bump.py            # Versionserhöhung bei lokalen Builds (nicht in der CI)
