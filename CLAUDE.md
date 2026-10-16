@@ -408,6 +408,14 @@ Fan curve & PWM mapping (50 % = standstill, level 1 = 30 %/70 %, level 10 = 5 %/
 
 Triggered on push and pull request to `master`:
 
+- **Docs-only changes skip the firmware jobs:** `build.yaml` (job *Detect Changes*), `lint.yaml` and `codeql.yaml`
+  run `.github/scripts/detect_changes.py`; when every changed file matches `DOC_ONLY_PATTERNS` (`*.md`,
+  `documentation/`, `images/`, `EasyEDA-Pro/`, `ha_integration_example/`, `ESPHome-VentoMaxx-Analyser/`, image/PDF
+  files, `LICENSE`), the jobs start but skip their steps, so every check still reports success (a skipped matrix
+  job would leave required checks pending). Unknown files, `workflow_dispatch`, `schedule` and an undeterminable diff
+  always build; a push also builds while the tag `v<version.json>` is missing (pending release). This is independent
+  of the `no-release` label — a firmware PR labelled `no-release` is still compiled. Adding a docs-only
+  directory: extend `DOC_ONLY_PATTERNS`.
 - **`build.yaml`**
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
   - *Build* matrix: **pull requests build `ventosync-full`, `ventosync-v2-nosensor`, `ventosync-nosensor-btproxy` and
