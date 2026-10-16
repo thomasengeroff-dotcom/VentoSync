@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.38",
+    "project_version": "0.10.39",
     "project_date": "2026-10-16",
-    "project_description": "NOx boost ventilation for the SGP41 board (Smart-Automatik, room-wide switch, outdoor-air test) and the HA text Automatik-Status / Automatik-Grund plus event entity Lüftung Ereignis."
+    "project_description": "Automatik-Status / Lüftung Ereignis and the NOx outdoor-air test respect the switch Fenstersperre ignorieren."
 }
