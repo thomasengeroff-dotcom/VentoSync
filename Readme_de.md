@@ -91,7 +91,7 @@ Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherchen über al
 
 Das Herzstück des Projekts ist eine eigens entwickelte Platine, die exakt in das vorhandene Gehäuse der VentoMaxx-Geräte passt.
 
-![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
+![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-10.webp)
 
 > [!TIP]
 > Wenn du Interesse an einer Platine für deine eigenen Geräte hast, kannst du mich gerne unter **<thomas@engeroff.net>** kontaktieren.

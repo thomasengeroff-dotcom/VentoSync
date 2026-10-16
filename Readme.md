@@ -94,7 +94,7 @@ If you own a VentoMaxx V-WRG system, you are in luck: you can easily upgrade you
 
 The heart of the project is a custom developed circuit board that fits perfectly into the existing housing of the VentoMaxx units.
 
-![Custom PCB](EasyEDA-Pro/PCB%20Prototype%20Images/pcb4.jpg)
+![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-10.webp)
 
 > [!TIP]
 > If you are interested in obtaining a PCB for your own devices, please feel free to contact me at **<thomas@engeroff.net>**.
