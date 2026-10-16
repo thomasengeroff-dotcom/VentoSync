@@ -19,25 +19,42 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Docs-only changes skip the remaining steps (the job still reports
+      # success, so a required check never stays pending).
+      - name: Detect firmware changes
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: python3 .github/scripts/detect_changes.py
 
       - name: Create dummy secrets.yaml
+        if: steps.changes.outputs.firmware == 'true'
         run: |
           cp secrets_example.yaml secrets.yaml
           # MQTT secrets are commented out in the example (optional package)
           printf 'mqtt_broker: "127.0.0.1"\nmqtt_port: "1883"\nmqtt_username: "ci_dummy"\nmqtt_password: "ci_dummy"\n' >> secrets.yaml
 
       - name: Set up Python
+        if: steps.changes.outputs.firmware == 'true'
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Install ESPHome
+        if: steps.changes.outputs.firmware == 'true'
         run: pip install "esphome==${ESPHOME_VERSION}"
 
       # All variants are validated here on every PR — the firmware build of a
       # PR only compiles ventosync-full (build.yaml), the other variants are
       # compiled after the merge.
       - name: Verify Configuration (all variants)
+        if: steps.changes.outputs.firmware == 'true'
         run: |
           set -euo pipefail
           cp ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml

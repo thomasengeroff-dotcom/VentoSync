@@ -2,6 +2,9 @@
 # VentoSync – GitHub Actions CI/CD Pipeline
 # =============================================================
 # Jobs:
+#   0. changes      → firmware=true|false (.github/scripts/detect_changes.py):
+#                     docs-only changes (README, documentation/, images,
+#                     PCB files) skip the steps of all jobs below
 #   1. unit-tests   → C++ Unit Tests mit ASan/UBSan
 #   2. build        → ESPHome Matrix-Build (PR: ventosync-full + ventosync-v2-nosensor
 #                     + ventosync-nosensor-btproxy + ventosync-v2-sgp41, push/workflow_dispatch: alle 13 Varianten)
@@ -58,9 +61,21 @@ env:
 # Firmware-Build gestartet (needs: unit-tests im build-Job).
 # ==================================================================
 jobs:
-  unit-tests:
-    name: Run Unit Tests
+  # ==================================================================
+  # JOB 0 – CHANGE DETECTION
+  # firmware=false only when every changed file is documentation (see
+  # DOC_ONLY_PATTERNS in detect_changes.py); workflow_dispatch always
+  # builds, a push also builds while the release tag is still missing.
+  # The jobs below still start and only skip their steps, so the check
+  # names ("Run Unit Tests", "Build ventosync-full", …) report success —
+  # a skipped matrix job would report an unexpanded name instead and
+  # leave required status checks pending.
+  # ==================================================================
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
+    outputs:
+      firmware: ${{ steps.detect.outputs.firmware }}
 
     steps:
       - name: Checkout Repository
@@ -68,7 +83,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect firmware changes
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: python3 .github/scripts/detect_changes.py --release
+
+  unit-tests:
+    name: Run Unit Tests
+    needs: changes
+    runs-on: ubuntu-latest
+    env:
+      FIRMWARE: ${{ needs.changes.outputs.firmware }}
+
+    steps:
+      - name: Skip (documentation only)
+        if: env.FIRMWARE != 'true'
+        run: echo "::notice::Documentation-only change — unit tests skipped."
+
+      - name: Checkout Repository
+        if: env.FIRMWARE == 'true'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Compile Tests
+        if: env.FIRMWARE == 'true'
         # -std=c++17          → Expliziter Standard (entspricht ESPHome/IDF C++ Standard)
         # -Wall -Wextra       → Alle relevanten Compiler-Warnungen aktivieren
         # -Wpedantic          → ISO-Konformität erzwingen
@@ -88,6 +131,7 @@ jobs:
               -Icomponents
 
       - name: Run Tests
+        if: env.FIRMWARE == 'true'
         run: |
           set -euo pipefail
           ./simple_test
@@ -111,8 +155,10 @@ jobs:
   # ==================================================================
   build:
     name: "Build ${{ matrix.name }}"
-    needs: unit-tests
+    needs: [changes, unit-tests]
     runs-on: ubuntu-latest
+    env:
+      FIRMWARE: ${{ needs.changes.outputs.firmware }}
 
     strategy:
       fail-fast: false # Alle Varianten durchlaufen, auch wenn eine fehlschlägt
@@ -142,7 +188,12 @@ jobs:
                  ]') }}
 
     steps:
+      - name: Skip (documentation only)
+        if: env.FIRMWARE != 'true'
+        run: echo "::notice::Documentation-only change — firmware build skipped."
+
       - name: Checkout Repository
+        if: env.FIRMWARE == 'true'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -156,6 +207,7 @@ jobs:
       # in der Shell referenziert — das ist der offizielle GitHub-Ansatz.
       # ----------------------------------------------------------------
       - name: Create dummy secrets for CI compilation
+        if: env.FIRMWARE == 'true'
         env:
           API_KEY: ${{ secrets.API_ENCRYPTION_KEY }}
           EVENT_NAME: ${{ github.event_name }}
@@ -197,6 +249,7 @@ jobs:
       # Lösung: Existenz prüfen bevor sed ausgeführt wird.
       # ----------------------------------------------------------------
       - name: Prepare OTA build config (secret-free WiFi and hotspot)
+        if: env.FIRMWARE == 'true'
         run: |
           set -euo pipefail
 
@@ -225,7 +278,7 @@ jobs:
       # include. Only runs for the mqtt_enabled matrix entry.
       # ----------------------------------------------------------------
       - name: Prepare MQTT variant file
-        if: matrix.mqtt_enabled
+        if: env.FIRMWARE == 'true' && matrix.mqtt_enabled
         run: |
           set -euo pipefail
           cp ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml
@@ -235,6 +288,7 @@ jobs:
           cat ventosync_nosensor_mqtt.yaml
 
       - name: Setup Python
+        if: env.FIRMWARE == 'true'
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -248,6 +302,7 @@ jobs:
       # Hash der Quelldateien, sodass Änderungen den Cache invalidieren.
       # ----------------------------------------------------------------
       - name: Cache pip packages
+        if: env.FIRMWARE == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.cache/pip
@@ -256,6 +311,7 @@ jobs:
             pip-${{ runner.os }}-esphome-
 
       - name: Cache PlatformIO toolchain
+        if: env.FIRMWARE == 'true'
         uses: actions/cache@v6
         with:
           path: |
@@ -268,6 +324,7 @@ jobs:
             pio-${{ runner.os }}-esphome-${{ env.ESPHOME_VERSION }}-
 
       - name: Install ESPHome and compile firmware
+        if: env.FIRMWARE == 'true'
         run: |
           set -euo pipefail
           pip install wheel "esphome==${ESPHOME_VERSION}"
@@ -281,6 +338,7 @@ jobs:
       # benennen sie nach der Matrix-Variante um für den Artifact-Upload.
       # ----------------------------------------------------------------
       - name: Locate firmware binary
+        if: env.FIRMWARE == 'true'
         id: firmware
         run: |
           set -euo pipefail
@@ -305,6 +363,7 @@ jobs:
           fi
 
       - name: Upload firmware artifacts
+        if: env.FIRMWARE == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.name }}
@@ -330,11 +389,13 @@ jobs:
   # ==================================================================
   release:
     name: Create Release
-    needs: build
+    needs: [changes, build]
     runs-on: ubuntu-latest
 
-    # Nur bei Push auf master (nicht bei PRs) oder manuell erzwungen
+    # Nur bei Push auf master (nicht bei PRs) oder manuell erzwungen —
+    # und nur, wenn tatsächlich Firmware gebaut wurde (changes job).
     if: >-
+      needs.changes.outputs.firmware == 'true' &&
       github.ref == 'refs/heads/master' &&
       (github.event_name == 'push' ||
        (github.event_name == 'workflow_dispatch' && inputs.force_release))
