@@ -114,13 +114,15 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | | VentoMaxx (Original) | ESPHome Smart WRG |
 | :--- | :---: | :---: |
 | Operating Modes | 3 | **5+** (incl. smart automation) |
-| Sensors | 0-1 (opt. VOC) | **6** (CO2, Temp, Humidity, Pressure, Radar, Tachometer) |
-| Fan Control | 5 fixed levels | **10 levels (discrete PID)** |
+| Sensors | 0-1 (opt. VOC) | **Modular per room**: SCD43 board (real CO2) **or** SGP41 + SHT45 board (VOC, NOx), plus temperature/humidity, pressure, NTC supply/extract air, mmWave radar |
+| Air-Quality Control | Fixed humidity thresholds | ✅ CO2 + humidity PID (enthalpy guard), **NOx boost** for gas hobs / fireplaces with outdoor-air check |
+| Fan Control | 3 fixed levels | **10 levels (discrete PID)** |
+| Transparency | ❌ | ✅ `Automatik-Status` in HA (what the ventilation does and why) + HA events |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
 | Synchronization | Power line | ✅ Wireless (**ESP-NOW Protocol**) & Real-time Sync |
 | Updates | Service technician (must be sent in) | ✅ Over-the-Air (OTA) |
-| Versioning | Manual | ✅ Fully automatic (Patch-Level) |
+| Versioning | Manual | ✅ Automatic release per change, OTA manifest per hardware variant |
 | Extendability | ❌ | ✅ System can be extended with additional sensors and actuators or individual functions |
 | License | Proprietary | ✅ Open Source (GPL v3) |
 
