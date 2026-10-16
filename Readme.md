@@ -172,7 +172,7 @@ All devices in a room find each other automatically upon startup or room change 
   > 👉 *Concept, state machine & HA template sensor: [📄 Smart Climate Control](documentation/en/en_smart-climate-control.md).*
 - 🔥 **NOx Boost (SGP41 + SHT45 board)**: in Smart-Automatik a NOx event (gas hob, fireplace) raises the room's fan to the automatic maximum for a limited time (threshold 20–100 adjustable in HA, 10 min hold, max. 60 min). If the NOx does not fall while outdoor air is blown in, it comes from outside and the boost is aborted immediately. Room-wide switch `NOx-Stoßlüftung`, off by default.
 - 💬 **Automatik-Status & HA event**: `text_sensor.automatik_status` explains what the fan does and why (e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`); `text_sensor.automatik_grund` gives the reason as a key and the event entity `Lüftung Ereignis` fires on every (stable) reason change and on NOx aborts — ready for HA automations.
-  > 👉 *Details: [📄 Smart automatic Mode – sections 8 and 9](documentation/en/en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01037).*
+  > 👉 *Details: [📄 Smart automatic Mode – sections 8 and 9](documentation/en/en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01038).*
 
 - 🌟 **Advanced Comfort & Protection Features**:
   - 📈 **Phase Continuity & Soft Start**: Proportional cycle scaling during speed changes and smooth speed transitions (~5%/s) for minimal wear and quiet operation.

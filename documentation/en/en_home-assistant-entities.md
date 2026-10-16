@@ -109,12 +109,12 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 * **`sensor.wrg_effizienz_zyklus`** ("WRG Effizienz (Zyklus)") / **`sensor.wrg_energie_zyklus`** ("WRG Energie (Zyklus)") — efficiency and recovered energy (Wh) of the last push-pull cycle.
 * **`text_sensor.wrg_referenz_messpunkt`** ("WRG Referenz-Messpunkt", YAML ID `wrg_reference_sensor`) — which sensor currently provides the room temperature reference.
 
-### Automatik-Status & Event (since 0.10.37)
-* **`text_sensor.automatik_status`** ("Automatik-Status", YAML ID `automatik_status`) — what the fan is doing and why, e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`. See [Smart Automatic Logic §9](en_smart-automatic-logic.md#9-automatik-status-automatik-grund--ha-event-since-01037).
+### Automatik-Status & Event (since 0.10.38)
+* **`text_sensor.automatik_status`** ("Automatik-Status", YAML ID `automatik_status`) — what the fan is doing and why, e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`. See [Smart Automatic Logic §9](en_smart-automatic-logic.md#9-automatik-status-automatik-grund--ha-event-since-01038).
 * **`text_sensor.automatik_grund`** ("Automatik-Grund", YAML ID `automatik_grund`) — reason as a stable key: `aus`, `urlaub`, `fenster`, `manuell`, `nox`, `co2_notfall`, `schimmelschutz`, `uebersteuerung`, `keine_daten`, `co2`, `feuchte`, `grundlueftung`.
 * **`event.luftung_ereignis`** ("Lüftung Ereignis", YAML ID `lueftung_ereignis`) — HA event entity: fires the new reason key once it has persisted 30 s, and `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer` immediately when a NOx boost is aborted.
 
-### NOx Boost (since 0.10.37)
+### NOx Boost (since 0.10.38)
 * **`switch.nox_stossluftung`** ("NOx-Stoßlüftung", YAML ID `nox_boost_switch`) — enables the NOx boost in Smart-Automatik, **room-wide** (config, persisted, default off). All variants carry it so the room's Master follows the boost.
 * **`number.nox_stossluftung_schwelle`** ("NOx-Stoßlüftung: Schwelle", YAML ID `nox_boost_threshold`) — NOx index that starts the boost, 20–100, step 5, default 20 (config, per device, `sgp41` variants only).
 

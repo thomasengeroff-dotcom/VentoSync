@@ -69,7 +69,7 @@ Die Abstufungen sind Faustwerte, keine offiziellen Grenzwerte: Ein Index von 50 
 
 Nach dem Einschalten braucht der Algorithmus ein paar Minuten, bis überhaupt Werte kommen (NOx etwas länger als VOC), und mehrere Stunden, bis er die Raumluft gelernt hat – die ersten Werte nach dem Flashen also nicht überbewerten.
 
-**NOx-Stoßlüftung (seit 0.10.37):** In der Smart-Automatik erhöht ein NOx-Index über der Schwelle (HA-Zahl `NOx-Stoßlüftung: Schwelle`, 20–100) für 60 s die Lüftung des Raums auf die Automatik-Maximalstufe; sie endet 10 min, nachdem der Index unter die halbe Schwelle gefallen ist (max. 60 min). Weil NOx auch von **draußen** kommen kann (Straßenverkehr), wird die Stoßlüftung **sofort abgebrochen**, wenn der Index nicht sinkt, während das Gerät Außenluft hineinbläst. Der raumweite Schalter `NOx-Stoßlüftung` ist **standardmäßig aus** — in Räumen mit Gasherd oder Kamin einschalten. Details: [Smart-Automatik Logik – NOx-Stoßlüftung](de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01037).
+**NOx-Stoßlüftung (seit 0.10.38):** In der Smart-Automatik erhöht ein NOx-Index über der Schwelle (HA-Zahl `NOx-Stoßlüftung: Schwelle`, 20–100) für 60 s die Lüftung des Raums auf die Automatik-Maximalstufe; sie endet 10 min, nachdem der Index unter die halbe Schwelle gefallen ist (max. 60 min). Weil NOx auch von **draußen** kommen kann (Straßenverkehr), wird die Stoßlüftung **sofort abgebrochen**, wenn der Index nicht sinkt, während das Gerät Außenluft hineinbläst. Der raumweite Schalter `NOx-Stoßlüftung` ist **standardmäßig aus** — in Räumen mit Gasherd oder Kamin einschalten. Details: [Smart-Automatik Logik – NOx-Stoßlüftung](de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01038).
 
 ### 🖱️ Bedienpanel am Gerät
 

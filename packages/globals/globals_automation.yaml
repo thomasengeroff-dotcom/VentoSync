@@ -155,7 +155,7 @@ globals:
     restore_value: true
 
   # Room-wide "NOx-Stoßlüftung" switch (ESP-NOW room flag
-  # ROOM_FLAG_NOX_BOOST_ENABLED, since 0.10.37). Off by default — enable it in
+  # ROOM_FLAG_NOX_BOOST_ENABLED, since 0.10.38). Off by default — enable it in
   # rooms with a gas hob / fireplace (NOx can also come from road traffic).
   - id: nox_boost_enabled_val
     type: bool

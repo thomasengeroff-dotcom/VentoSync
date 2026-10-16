@@ -906,7 +906,7 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     dirty = true;
   }
 
-  // Room-wide NOx boost switch (room flag bit, 0.10.37). Older firmware never
+  // Room-wide NOx boost switch (room flag bit, 0.10.38). Older firmware never
   // sets the bit, so an older Master keeps the room's switch off (safe side).
   const bool peer_nox_enabled = (pkt->room_flags & esphome::ROOM_FLAG_NOX_BOOST_ENABLED) != 0;
   if (nox_boost_enabled_val != nullptr && peer_nox_enabled != nox_boost_enabled_val->value()) {

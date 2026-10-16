@@ -154,7 +154,7 @@ Ein Druck auf die **Stufen-Taste (+)** (kurz oder gedrückt halten) in der Smart
 - **Anzeige**: `LED_WRG` pulsiert schnell (Effekt `Automatik Override`); HA-Sensor `Automatik-Übersteuerung Restzeit` (min, 0 = Automatik regelt, bei jeder Änderung sofort veröffentlicht); Hinweis im Web-Dashboard unter dem Stufen-Slider (`/state`-Schlüssel `auto_override_min`).
 - **Keine Übersteuerung**: Interne Stufenänderungen (Wiederherstellung nach dem Urlaubsmodus über `set_fan_intensity_slider()`) starten nie eine.
 
-### 8. NOx-Stoßlüftung (SGP41 + SHT45 Board, seit 0.10.37)
+### 8. NOx-Stoßlüftung (SGP41 + SHT45 Board, seit 0.10.38)
 In Räumen mit Gasherd, Kamin oder anderen Verbrennungsgeräten erhöht der NOx-Index des SGP41 (`sgp41`-Varianten) die Lüftung raumweit für begrenzte Zeit (`ventosync::nox`, `components/ventilation_logic/nox_boost.h`):
 - **Nur in der Smart-Automatik** und nur, solange der raumweite Schalter **`NOx-Stoßlüftung`** an ist (Standard **aus**, per ESP-NOW synchronisiert wie `Klima-Koordination`).
 - **Start**: NOx-Index ≥ **`NOx-Stoßlüftung: Schwelle`** (HA-Zahl, 20–100, Standard 20, pro Gerät mit SGP41) für **60 s**.
@@ -165,7 +165,7 @@ In Räumen mit Gasherd, Kamin oder anderen Verbrennungsgeräten erhöht der NOx-
 - **Sicherheit**: Ein **starkes Ereignis** (Index ≥ 150) hebt die Obergrenze der Klima-Koordination auf (wie der CO2-Notfall); jede NOx-Stoßlüftung zählt für die Stufen-Übersteuerung als Gesundheitsnotfall (die Automatik darf über die Übersteuerungsstufe gehen).
 - **Anzeige**: `Automatik-Status` „NOx-Stoßlüftung: Index 85 → Stufe 7“; Abbrüche lösen das HA-Ereignis `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer` aus.
 
-### 9. Automatik-Status, Automatik-Grund & HA-Ereignis (seit 0.10.37)
+### 9. Automatik-Status, Automatik-Grund & HA-Ereignis (seit 0.10.38)
 - **`text_sensor.automatik_status`** („Automatik-Status“, alle Varianten, alle 10 s): was der Lüfter gerade macht und warum, z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `CO2-Notfall: 1600 ppm → Stufe 7`, `Schimmelschutz: 78 % → Stufe 6`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`. Zusätze: `(Klimaanlage: max. Stufe 3)` während der Klima-Obergrenze, `· Sommer-Kühlung` im Sommer-Bypass. Priorität: Aus → Urlaub → Fenster → Manuell → NOx → CO2-Notfall → Schimmelschutz → Übersteuerung → keine Daten → CO2 → Feuchte → Grundlüftung (`components/ventilation_logic/auto_status.h`). CO2- und Feuchtewerte sind die raumweiten Maxima (inkl. Peers); der CO2-Wert kann ein VOC-Äquivalent sein (BME680- / SGP41-Varianten).
 - **`text_sensor.automatik_grund`** („Automatik-Grund“): derselbe Grund als stabiler Schlüssel für Automationen — `aus`, `urlaub`, `fenster`, `manuell`, `nox`, `co2_notfall`, `schimmelschutz`, `uebersteuerung`, `keine_daten`, `co2`, `feuchte`, `grundlueftung`.
 - **`event.lueftung_ereignis`** („Lüftung Ereignis“, HA-Ereignis-Entität): wird mit dem neuen Grund-Schlüssel ausgelöst, sobald dieser **30 s** besteht (kurzes Hin und Her wird gefiltert), und sofort mit `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`. Beispiel-Automation:

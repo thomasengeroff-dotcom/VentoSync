@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,007,922 / 2,031,616 B (~23 KB headroom, 0.10.37) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 2,007,922 / 2,031,616 B (~23 KB headroom, 0.10.38) — CI compiles it on every PR. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -204,7 +204,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
-  bits 4–6 (0.10.37, no bump): bit 4 room-wide NOx-boost switch, bit 5 the sender's own NOx boost, bit 6 its own
+  bits 4–6 (0.10.38, no bump): bit 4 room-wide NOx-boost switch, bit 5 the sender's own NOx boost, bit 6 its own
   strong NOx event — an older Master never sets bit 4 and therefore keeps the room's NOx switch off;
   v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's

@@ -108,7 +108,7 @@ static constexpr uint8_t ROOM_FLAG_WINDOW_OPEN = 0x04;  ///< Sender's OWN Home A
 /// 0.10.23 without a protocol bump: same layout, older v10 firmware simply
 /// never sets it (its presence is then not shared).
 static constexpr uint8_t ROOM_FLAG_PRESENCE = 0x08;
-/// NOx boost (0.10.37, no protocol bump — same layout; older firmware never
+/// NOx boost (0.10.38, no protocol bump — same layout; older firmware never
 /// sets these bits and ignores them):
 /// Room-wide "NOx-Stoßlüftung" switch (setting, synced like the HVAC switch).
 static constexpr uint8_t ROOM_FLAG_NOX_BOOST_ENABLED = 0x10;

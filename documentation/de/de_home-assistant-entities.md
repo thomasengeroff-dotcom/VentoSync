@@ -109,12 +109,12 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 * **`sensor.wrg_effizienz_zyklus`** („WRG Effizienz (Zyklus)“) / **`sensor.wrg_energie_zyklus`** („WRG Energie (Zyklus)“) — Wirkungsgrad und rückgewonnene Energie (Wh) des letzten Push-Pull-Zyklus.
 * **`text_sensor.wrg_referenz_messpunkt`** („WRG Referenz-Messpunkt“, YAML-ID `wrg_reference_sensor`) — welcher Sensor aktuell die Raumtemperatur-Referenz liefert.
 
-### Automatik-Status & Ereignis (seit 0.10.37)
-* **`text_sensor.automatik_status`** („Automatik-Status“, YAML-ID `automatik_status`) — was der Lüfter gerade macht und warum, z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`. Siehe [Smart-Automatik Logik §9](de_smart-automatic-logic.md#9-automatik-status-automatik-grund--ha-ereignis-seit-01037).
+### Automatik-Status & Ereignis (seit 0.10.38)
+* **`text_sensor.automatik_status`** („Automatik-Status“, YAML-ID `automatik_status`) — was der Lüfter gerade macht und warum, z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Pausiert: Fenster offen`, `Manuell: Wärmerückgewinnung → Stufe 5`. Siehe [Smart-Automatik Logik §9](de_smart-automatic-logic.md#9-automatik-status-automatik-grund--ha-ereignis-seit-01038).
 * **`text_sensor.automatik_grund`** („Automatik-Grund“, YAML-ID `automatik_grund`) — Grund als stabiler Schlüssel: `aus`, `urlaub`, `fenster`, `manuell`, `nox`, `co2_notfall`, `schimmelschutz`, `uebersteuerung`, `keine_daten`, `co2`, `feuchte`, `grundlueftung`.
 * **`event.luftung_ereignis`** („Lüftung Ereignis“, YAML-ID `lueftung_ereignis`) — HA-Ereignis-Entität: löst mit dem neuen Grund-Schlüssel aus, sobald er 30 s besteht, und sofort mit `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`, wenn eine NOx-Stoßlüftung abgebrochen wird.
 
-### NOx-Stoßlüftung (seit 0.10.37)
+### NOx-Stoßlüftung (seit 0.10.38)
 * **`switch.nox_stossluftung`** („NOx-Stoßlüftung“, YAML-ID `nox_boost_switch`) — aktiviert die NOx-Stoßlüftung in der Smart-Automatik, **raumweit** (Konfiguration, gespeichert, Standard aus). Alle Varianten haben ihn, damit der Master des Raums mitlüftet.
 * **`number.nox_stossluftung_schwelle`** („NOx-Stoßlüftung: Schwelle“, YAML-ID `nox_boost_threshold`) — NOx-Index, der die Stoßlüftung startet, 20–100, Schritt 5, Standard 20 (Konfiguration, pro Gerät, nur `sgp41`-Varianten).
 

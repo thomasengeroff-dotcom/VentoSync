@@ -170,7 +170,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
   > 👉 *Konzept, Zustandsautomat & HA-Template-Sensor: [📄 Intelligente Klimaanlagen-Koordination](documentation/de/de_smart-climate-control.md).*
 - 🔥 **NOx-Stoßlüftung (SGP41 + SHT45 Board)**: In der Smart-Automatik erhöht ein NOx-Ereignis (Gasherd, Kamin) die Lüftung des Raums für begrenzte Zeit auf die Automatik-Maximalstufe (Schwelle 20–100 in HA einstellbar, 10 min Nachlauf, max. 60 min). Sinkt das NOx nicht, während Außenluft hereingeblasen wird, kommt es von draußen, und die Stoßlüftung wird sofort abgebrochen. Raumweiter Schalter `NOx-Stoßlüftung`, standardmäßig aus.
 - 💬 **Automatik-Status & HA-Ereignis**: `text_sensor.automatik_status` erklärt, was der Lüfter macht und warum (z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`); `text_sensor.automatik_grund` liefert den Grund als Schlüssel, und die Ereignis-Entität `Lüftung Ereignis` löst bei jedem (stabilen) Grundwechsel und bei NOx-Abbrüchen aus — bereit für HA-Automationen.
-  > 👉 *Details: [📄 Smart-Automatik Logik – Abschnitte 8 und 9](documentation/de/de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01037).*
+  > 👉 *Details: [📄 Smart-Automatik Logik – Abschnitte 8 und 9](documentation/de/de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01038).*
 
 - 🌟 **Erweiterte Komfort- & Schutzfunktionen**:
   - 📈 **Phasen-Kontinuität & Sanftanlauf**: Proportionalskalierung bei Stufenwechseln und sanfte Geschwindigkeitsübergänge (~5%/s) für minimalen Verschleiß und leisen Betrieb.

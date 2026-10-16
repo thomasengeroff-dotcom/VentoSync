@@ -69,7 +69,7 @@ These bands are rules of thumb, not official limits: an index of 50 does not mea
 
 After power-up the algorithm needs a few minutes before it reports values (NOx somewhat longer than VOC), and several hours to learn the room's air – do not over-interpret the first readings after flashing.
 
-**NOx boost (since 0.10.37):** in Smart-Automatik, a NOx index above the threshold (HA number `NOx-Stoßlüftung: Schwelle`, 20–100) for 60 s raises the room's fan to the automatic maximum level; it ends 10 min after the index has fallen below half the threshold (max. 60 min). Because the NOx can also come from **outdoors** (road traffic), the boost is **aborted immediately** if the index does not fall while the device blows outdoor air in. The room-wide switch `NOx-Stoßlüftung` is **off by default** — enable it in rooms with a gas hob or fireplace. Details: [Smart Automatic Logic – NOx boost](en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01037).
+**NOx boost (since 0.10.38):** in Smart-Automatik, a NOx index above the threshold (HA number `NOx-Stoßlüftung: Schwelle`, 20–100) for 60 s raises the room's fan to the automatic maximum level; it ends 10 min after the index has fallen below half the threshold (max. 60 min). Because the NOx can also come from **outdoors** (road traffic), the boost is **aborted immediately** if the index does not fall while the device blows outdoor air in. The room-wide switch `NOx-Stoßlüftung` is **off by default** — enable it in rooms with a gas hob or fireplace. Details: [Smart Automatic Logic – NOx boost](en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01038).
 
 ### 🖱️ On-Device Control Panel
 
