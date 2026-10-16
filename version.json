@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.36",
-    "project_date": "2026-10-15",
-    "project_description": "New firmware variants ventosync_sgp41 (PCB v1.0) and ventosync_v2_sgp41 (PCB v2.0) for the SGP41 + SHT45 VOC sensor board (SHT45 room climate, VOC index as CO2 equivalent for Smart-Automatik)."
+    "project_version": "0.10.37",
+    "project_date": "2026-10-16",
+    "project_description": "New firmware variants ventosync_scd43_only (PCB v1.0) and ventosync_v2_scd43_only (PCB v2.0) for the SCD43 CO2 sensor board as the only climate sensor (no BME680, no radar)."
 }
