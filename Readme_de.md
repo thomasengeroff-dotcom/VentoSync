@@ -275,7 +275,7 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 
 - **Thermische Entkopplung**: Ein spezieller Frässchlitz und kupferfreie Zonen "entkoppeln" den Sensor thermisch von der Wärmekapazität der Hauptplatine.
 - **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
-- **Perfekte Passform**: Entwickelt mit einem 1,25-mm-Pitch-Anschluss, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
+- **Perfekte Passform**: Entwickelt mit einer 1,27-mm-Winkel-Stiftleiste, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
 
 <img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0" width="25%" />
 
