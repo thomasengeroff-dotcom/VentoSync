@@ -268,7 +268,7 @@ A custom-engineered PCB has been developed to integrate all core components (XIA
   - **H3 (I²C)**: For additional environmental sensors or OLED displays.
   - **H1 (GPIO)**: 6 free GPIOs including 3.3V/GND for custom DIY expansions.
 
-![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_ESPHome-WRG_ESP32_PWM_2026-08-28.png)
+![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
 ### Specialized SCD43 Sensor Board
 
@@ -278,7 +278,7 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 - **Precision Filtering**: Proper decoupling capacitors are placed in immediate proximity to the sensor.
 - **Perfect Fit**: Designed with a 1.25mm pitch connector to align perfectly with the VentoMaxx housing's ventilation intake (connector H2).
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SCD43%20Gas%20Sensor_2026-08-28.png" alt="SCD43 Prototype" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43 sensor board v1.0" width="25%" />
 
 ### 🌿 Modular Sensor Ecosystem: The Right Metric for Every Room
 
@@ -305,7 +305,7 @@ Both sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch co
 **Firmware support (SGP41 + SHT45 board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). The SHT45 provides room temperature and humidity (humidity PID, enthalpy and mold guard, room-wide fusion) and compensates the SGP41. Because the SGP41 measures no CO₂, its VOC index is mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm: index 100 → 600 ppm, 200 → 1000 ppm = default CO₂ setpoint) that feeds `Effektiver CO2 Wert` and the CO₂ PID of Smart-Automatik. The VOC index is relative to the last 24 h (Sensirion algorithm), so it reacts to *events* like cooking or showering rather than to a constant pollution level. The NOx index drives the optional **NOx boost** (see Smart-Automatik features).
 
 <p align="center">
-  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
+  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_SGP41_SHT45_Sensor_2026-10-12.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
 </p>
 <p align="center"><em>SGP41 + SHT45 board (VOC, NOx, temperature, humidity)</em></p>
 

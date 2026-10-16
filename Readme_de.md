@@ -265,7 +265,7 @@ Eine eigens entwickelte Platine (PCB) wurde entworfen, um alle Kernkomponenten (
   - **H3 (I²C)**: Für zusätzliche Umgebungssensoren oder OLED-Displays.
   - **H1 (GPIO)**: 6 freie GPIOs inklusive 3,3V/GND für eigene DIY-Erweiterungen.
 
-![PCB Prototype](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_ESPHome-WRG_ESP32_PWM_2026-08-28.png)
+![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
 ### Passgenaues SCD43 Sensor Board
 
@@ -275,7 +275,7 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 - **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
 - **Perfekte Passform**: Entwickelt mit einem 1,25-mm-Pitch-Anschluss, der perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SCD43%20Gas%20Sensor_2026-08-28.png" alt="SCD43 Prototyp" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0" width="25%" />
 
 ### 🌿 Modulares Sensor-Ökosystem: Die passende Messgröße pro Raum
 
@@ -302,7 +302,7 @@ Beide Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25
 **Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index steuert die optionale **NOx-Stoßlüftung** (siehe Smart-Automatik-Funktionen).
 
 <p align="center">
-  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
+  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_SGP41_SHT45_Sensor_2026-10-12.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
 </p>
 <p align="center"><em>SGP41 + SHT45-Board (VOC, NOx, Temperatur, Feuchte)</em></p>
 
