@@ -1118,7 +1118,7 @@ inline std::string update_auto_status() {
   if (!in.auto_mode) auto_status_state::has_demand_snapshot = false;
   if (!auto_status_state::has_demand_snapshot) in.demand = NAN;
   in.mode_off = (v != nullptr && v->state_machine.current_mode == esphome::MODE_OFF);
-  in.vacation = id(vacation_state) != VACATION_INACTIVE;
+  in.vacation = id(vacation_state) != ventosync::vacation::VACATION_INACTIVE;
   in.window_paused = (v != nullptr && v->is_window_guard_active());
   in.mode_label = (luefter_modus != nullptr) ? luefter_modus->current_option().c_str() : "";
   in.level = (fan_intensity_level != nullptr) ? static_cast<int>(fan_intensity_level->value()) : 0;
