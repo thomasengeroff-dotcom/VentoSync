@@ -168,6 +168,9 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
   > 👉 *Einrichtungsanleitung & Details: [📄 Fenstersperre Setup Guide](documentation/de/de_window-guard-ha-setup.md).*
 - ❄️🔥 **Klima-Koordination (Smart Climate Control)**: Solange die Raumklimaanlage aktiv ist, drosselt die `Smart-Automatik` auf eine reine CO2-Regelung (gelockertes Ziel 1200 ppm, Lüfter-Obergrenze Stufe 3, erzwungene Wärmerückgewinnung), damit die Lüftung keine heiße Außenluft importiert. CO2-Notfall (1500 ppm) und Schimmelschutz (70 % rH) stellen die volle Regelung automatisch wieder her; die Freigabe ist entprellt (120 s).
   > 👉 *Konzept, Zustandsautomat & HA-Template-Sensor: [📄 Intelligente Klimaanlagen-Koordination](documentation/de/de_smart-climate-control.md).*
+- 🔥 **NOx-Stoßlüftung (SGP41 + SHT45 Board)**: In der Smart-Automatik erhöht ein NOx-Ereignis (Gasherd, Kamin) die Lüftung des Raums für begrenzte Zeit auf die Automatik-Maximalstufe (Schwelle 20–100 in HA einstellbar, 10 min Nachlauf, max. 60 min). Sinkt das NOx nicht, während Außenluft hereingeblasen wird, kommt es von draußen, und die Stoßlüftung wird sofort abgebrochen. Raumweiter Schalter `NOx-Stoßlüftung`, standardmäßig aus.
+- 💬 **Automatik-Status & HA-Ereignis**: `text_sensor.automatik_status` erklärt, was der Lüfter macht und warum (z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`); `text_sensor.automatik_grund` liefert den Grund als Schlüssel, und die Ereignis-Entität `Lüftung Ereignis` löst bei jedem (stabilen) Grundwechsel und bei NOx-Abbrüchen aus — bereit für HA-Automationen.
+  > 👉 *Details: [📄 Smart-Automatik Logik – Abschnitte 8 und 9](documentation/de/de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01037).*
 
 - 🌟 **Erweiterte Komfort- & Schutzfunktionen**:
   - 📈 **Phasen-Kontinuität & Sanftanlauf**: Proportionalskalierung bei Stufenwechseln und sanfte Geschwindigkeitsübergänge (~5%/s) für minimalen Verschleiß und leisen Betrieb.
@@ -244,8 +247,6 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
 
 VentoSync wird aktiv gepflegt und kontinuierlich weiterentwickelt, mit Fokus auf tiefere Sensorfusion, akustische Optimierung und moderne Gebäudeautomation.
 
-- 🔥 **NOx-Stoßlüftung für Gasherde**: Mit dem SGP41 + SHT45 Board erhöht ein NOx-Index über einer Schwelle (~20, typisch beim Kochen mit Gas) vorübergehend die Lüfterstufe des Raums; pro Raum abschaltbar, da NOx auch vom Straßenverkehr draußen stammen kann.
-
 > 👉 *Detaillierte Beschreibungen und Konzepte aller geplanten Features und Roadmap-Meilensteine siehe [📄 Roadmap & Zukünftige Erweiterungen](documentation/de/de_roadmap-and-future-enhancements.md).*
 
 ## 🎛️ Eigene Platine - PCB
@@ -296,7 +297,7 @@ Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 
 
 **NOx kurz erklärt:** Stickoxide (NO, NO₂) aus Verbrennung – drinnen Gasherd, Kamin, Kerzen, draußen der Straßenverkehr. Der SGP41 liefert einen **NOx-Index von 1–500**: **1** = Normalzustand (kein Ereignis), ~2–20 leichte Erhöhung, ~20–150 deutliches Ereignis (typisch beim Kochen mit Gas), > 150 starke Belastung. Es ist ein relativer Index, keine Konzentration in ppb. Details: [Hardware & Verkabelung – SGP41 + SHT45](documentation/de/de_hardware-and-wiring.md#-sgp41--sht45-sensorboard-voc--nox).
 
-**Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index wird in Home Assistant angezeigt, steuert den Lüfter aber nicht.
+**Firmware-Unterstützung (SGP41 + SHT45 Board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). Der SHT45 liefert Raumtemperatur und -feuchte (Feuchte-PID, Enthalpie- und Schimmelschutz, raumweite Fusion) und kompensiert den SGP41. Da der SGP41 kein CO₂ misst, wird sein VOC-Index auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm: Index 100 → 600 ppm, 200 → 1000 ppm = Standard-CO₂-Sollwert), das `Effektiver CO2 Wert` und den CO₂-PID der Smart-Automatik speist. Der VOC-Index ist relativ zu den letzten 24 h (Sensirion-Algorithmus) und reagiert daher auf *Ereignisse* wie Kochen oder Duschen, nicht auf eine konstante Belastung. Der NOx-Index steuert die optionale **NOx-Stoßlüftung** (siehe Smart-Automatik-Funktionen).
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
@@ -532,6 +533,10 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
   - `number.klima_koordination_co2_notfallgrenze` — CO2-Notfallgrenze, 1200–2000 ppm (Standard: `1500`)
   - `text_sensor.klima_koordination_status` — Aktueller Koordinator-Zustand (Diagnose)
   - `binary_sensor.klima_aktiv_ha_signal` — Zuletzt von Home Assistant gesendeter Klima-Status (Diagnose)
+- **NOx-Stoßlüftung** *(Konfiguration, SGP41 + SHT45 Board)*:
+  - `switch.nox_stossluftung` — NOx-Stoßlüftung in der Smart-Automatik aktivieren, **raumweit** (Standard: aus)
+  - `number.nox_stossluftung_schwelle` — NOx-Index, der die Stoßlüftung startet, 20–100 (Standard: `20`, nur auf Geräten mit SGP41-Board)
+- **Automatik-Status**: `text_sensor.automatik_status` (was der Lüfter macht und warum), `text_sensor.automatik_grund` (Grund-Schlüssel), `event.luftung_ereignis` (Grundwechsel, NOx-Abbrüche)
   > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v12) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)

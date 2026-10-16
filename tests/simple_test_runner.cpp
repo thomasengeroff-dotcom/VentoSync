@@ -21,13 +21,15 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-15
+// Modified:    2026-10-16
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
 #include "../components/ventilation_logic/hvac_coordinator.h"
 #include "../components/ventilation_logic/room_fusion.h"
 #include "../components/ventilation_logic/level_override.h"
+#include "../components/ventilation_logic/nox_boost.h"
+#include "../components/ventilation_logic/auto_status.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -227,6 +229,246 @@ bool test_co2_logic() {
 
 #include "../components/ventilation_group/ventilation_state_machine.h"
 #include <limits>
+
+// ============================================================
+// [0.10.37] NOx boost (SGP41) — trigger, hold, outdoor test, caps
+// ============================================================
+bool test_nox_boost() {
+  using namespace ventosync::nox;
+  const uint32_t S = 1000u;
+  auto in = [](uint32_t t, float idx, bool intake, bool enabled = true, float thr = 20.0f) {
+    Inputs i;
+    i.now_ms = t;
+    i.nox_index = idx;
+    i.intake = intake;
+    i.enabled = enabled;
+    i.threshold = thr;
+    return i;
+  };
+
+  // Threshold clamp + release level
+  TEST_ASSERT(clamp_threshold(5.0f) == 20.0f);
+  TEST_ASSERT(clamp_threshold(500.0f) == 100.0f);
+  TEST_ASSERT(clamp_threshold(std::numeric_limits<float>::quiet_NaN()) == 20.0f);
+  TEST_ASSERT(release_level(40.0f) == 20.0f);
+
+  // Trigger only after TRIGGER_MS above threshold
+  {
+    Detector d;
+    TEST_ASSERT(d.update(in(0, 25, false)) == Event::NONE);
+    TEST_ASSERT(d.state == State::ARMING);
+    TEST_ASSERT(d.update(in(30 * S, 25, false)) == Event::NONE);
+    TEST_ASSERT(!d.active());
+    // dips below threshold -> back to IDLE, timer restarts
+    TEST_ASSERT(d.update(in(40 * S, 15, false)) == Event::NONE);
+    TEST_ASSERT(d.state == State::IDLE);
+    d.update(in(50 * S, 30, false));
+    TEST_ASSERT(d.update(in(50 * S + TRIGGER_MS, 30, false)) == Event::STARTED);
+    TEST_ASSERT(d.active());
+  }
+
+  // Hold: below release (10) for HOLD_MS ends normally; rising again keeps it
+  {
+    Detector d;
+    d.update(in(0, 40, false));
+    TEST_ASSERT(d.update(in(TRIGGER_MS, 40, false)) == Event::STARTED);
+    uint32_t t = TRIGGER_MS + 10 * S;
+    d.update(in(t, 8, false));
+    TEST_ASSERT(d.state == State::HOLD && d.active());
+    d.update(in(t + 60 * S, 12, false));      // above release again
+    TEST_ASSERT(d.state == State::ACTIVE);
+    d.update(in(t + 70 * S, 5, false));
+    TEST_ASSERT(d.state == State::HOLD);
+    TEST_ASSERT(d.update(in(t + 70 * S + HOLD_MS - 1, 5, false)) == Event::NONE);
+    TEST_ASSERT(d.update(in(t + 70 * S + HOLD_MS, 5, false)) == Event::ENDED);
+    TEST_ASSERT(!d.active() && d.state == State::IDLE);
+  }
+
+  // Outdoor test: index falls during intake -> boost continues
+  {
+    Detector d;
+    d.update(in(0, 60, false));
+    d.update(in(TRIGGER_MS, 60, false));
+    uint32_t t = TRIGGER_MS;
+    d.update(in(t + 10 * S, 60, true));       // intake window starts
+    d.update(in(t + 40 * S, 55, true));
+    TEST_ASSERT(d.update(in(t + 60 * S, 50, false)) == Event::NONE);  // closed, fell
+    TEST_ASSERT(d.active());
+    // Next intake window: index does NOT fall -> abort immediately
+    d.update(in(t + 120 * S, 50, true));
+    d.update(in(t + 150 * S, 52, true));
+    TEST_ASSERT(d.update(in(t + 175 * S, 50, false)) == Event::ABORTED_OUTDOOR);  // equal = not sinking
+    TEST_ASSERT(!d.active() && d.state == State::LOCKOUT);
+    // Locked until the index is below release (10), no re-trigger meanwhile
+    d.update(in(t + 300 * S, 60, false));
+    TEST_ASSERT(d.state == State::LOCKOUT);
+    d.update(in(t + 400 * S, 9, false));
+    TEST_ASSERT(d.state == State::IDLE);
+  }
+
+  // Short intake windows (< INTAKE_TEST_MIN_MS) are not judged
+  {
+    Detector d;
+    d.update(in(0, 60, false));
+    d.update(in(TRIGGER_MS, 60, false));
+    const uint32_t t = TRIGGER_MS;
+    d.update(in(t + 10 * S, 60, true));
+    TEST_ASSERT(d.update(in(t + 20 * S, 70, false)) == Event::NONE);  // only 10 s
+    TEST_ASSERT(d.active());
+  }
+
+  // Continuous intake (summer bypass): judged every INTAKE_TEST_MAX_MS
+  {
+    Detector d;
+    d.update(in(0, 60, true));
+    d.update(in(TRIGGER_MS, 60, true));       // started while blowing in -> window starts
+    const uint32_t t = TRIGGER_MS;
+    TEST_ASSERT(d.update(in(t + INTAKE_TEST_MAX_MS, 40, true)) == Event::NONE);  // fell
+    TEST_ASSERT(d.update(in(t + 2 * INTAKE_TEST_MAX_MS, 45, true)) == Event::ABORTED_OUTDOOR);
+  }
+
+  // Max duration cap -> lockout
+  {
+    Detector d;
+    d.update(in(0, 60, false));
+    d.update(in(TRIGGER_MS, 60, false));
+    TEST_ASSERT(d.remaining_max_ms(TRIGGER_MS) == MAX_DURATION_MS);
+    TEST_ASSERT(d.update(in(TRIGGER_MS + MAX_DURATION_MS, 60, false)) == Event::ABORTED_MAX_DURATION);
+    TEST_ASSERT(d.state == State::LOCKOUT);
+  }
+
+  // Strong event, disable and sensor loss end the boost
+  {
+    Detector d;
+    d.update(in(0, 200, false));
+    d.update(in(TRIGGER_MS, 200, false));
+    TEST_ASSERT(d.strong());
+    d.update(in(TRIGGER_MS + 10 * S, 100, false));
+    TEST_ASSERT(d.active() && !d.strong());
+    TEST_ASSERT(d.update(in(TRIGGER_MS + 20 * S, 100, false, false)) == Event::ENDED);
+    TEST_ASSERT(!d.active());
+    d.update(in(0, 60, false));
+    d.update(in(TRIGGER_MS, 60, false));
+    TEST_ASSERT(d.update(in(TRIGGER_MS + 10 * S, std::numeric_limits<float>::quiet_NaN(), false)) ==
+                Event::ENDED);
+  }
+
+  // Configurable threshold (e.g. 80)
+  {
+    Detector d;
+    d.update(in(0, 60, false, true, 80.0f));
+    TEST_ASSERT(d.state == State::IDLE);
+    d.update(in(10 * S, 85, false, true, 80.0f));
+    TEST_ASSERT(d.state == State::ARMING);
+  }
+
+  // Wrap-safe timing across the millis() overflow
+  {
+    Detector d;
+    const uint32_t base = 0xFFFFFFFFu - 20 * S;
+    d.update(in(base, 60, false));
+    TEST_ASSERT(d.update(in(base + TRIGGER_MS, 60, false)) == Event::STARTED);
+  }
+  return true;
+}
+
+// ============================================================
+// [0.10.37] Automatik-Status text + reason debounce
+// ============================================================
+bool test_auto_status() {
+  using namespace ventosync::auto_status;
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  Inputs base;
+  base.auto_mode = true;
+  base.level = 3;
+  base.demand = 0.0f;
+  base.co2_setpoint = 1000.0f;
+  base.rh_setpoint = 60.0f;
+
+  // Base ventilation
+  TEST_ASSERT(describe(base).reason == Reason::BASE);
+  TEST_ASSERT(describe(base).text == "Grundlüftung: kein Bedarf → Stufe 3");
+
+  // CO2 demand
+  Inputs c = base;
+  c.demand = 0.3f;
+  c.room_co2 = 1150.0f;
+  c.co2_controlling = true;
+  c.level = 5;
+  TEST_ASSERT(describe(c).reason == Reason::CO2);
+  TEST_ASSERT(describe(c).text == "CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5");
+  TEST_ASSERT(std::string(reason_key(Reason::CO2)) == "co2");
+
+  // Humidity demand
+  Inputs h = base;
+  h.demand = 0.2f;
+  h.room_co2 = 700.0f;
+  h.room_rh = 68.0f;
+  TEST_ASSERT(describe(h).reason == Reason::HUMIDITY);
+  TEST_ASSERT(describe(h).text == "Feuchte erhöht: 68 % (Soll 60 %) → Stufe 3");
+
+  // NOx beats everything in the automatic, AC cap note unless strong
+  Inputs n = c;
+  n.nox_active = true;
+  n.nox_index = 85.0f;
+  n.override_active = true;
+  n.emergency_co2 = true;
+  n.ac_cap = true;
+  n.ac_max_level = 3;
+  n.level = 7;
+  TEST_ASSERT(describe(n).reason == Reason::NOX);
+  TEST_ASSERT(describe(n).text == "NOx-Stoßlüftung: Index 85 → Stufe 7 (Klimaanlage: max. Stufe 3)");
+  n.nox_strong = true;
+  n.nox_index = 180.0f;
+  TEST_ASSERT(describe(n).text == "NOx-Stoßlüftung: Index 180, stark → Stufe 7");
+  n.nox_from_peer = true;
+  n.nox_index = nan;
+  TEST_ASSERT(describe(n).text == "NOx-Stoßlüftung (anderes Gerät im Raum), stark → Stufe 7");
+
+  // Emergency / override / no data
+  Inputs e = c;
+  e.emergency_co2 = true;
+  e.room_co2 = 1600.0f;
+  TEST_ASSERT(describe(e).text == "CO2-Notfall: 1600 ppm → Stufe 5");
+  Inputs o = base;
+  o.override_active = true;
+  o.override_remaining_min = 35;
+  o.level = 4;
+  TEST_ASSERT(describe(o).text == "Übersteuerung: noch 35 min → Stufe 4");
+  Inputs d = base;
+  d.demand = nan;
+  TEST_ASSERT(describe(d).reason == Reason::NO_DATA);
+
+  // Outside the automatic
+  Inputs m = base;
+  m.auto_mode = false;
+  m.mode_label = "Wärmerückgewinnung";
+  TEST_ASSERT(describe(m).text == "Manuell: Wärmerückgewinnung → Stufe 3");
+  Inputs w = c;
+  w.window_paused = true;
+  TEST_ASSERT(describe(w).text == "Pausiert: Fenster offen");
+  Inputs off = base;
+  off.mode_off = true;
+  TEST_ASSERT(describe(off).reason == Reason::OFF);
+
+  // Summer bypass suffix
+  Inputs sc = base;
+  sc.summer_cooling = true;
+  TEST_ASSERT(describe(sc).text == "Grundlüftung: kein Bedarf → Stufe 3 · Sommer-Kühlung");
+
+  // Debounce: first reason silent, a flip shorter than 30 s does not fire
+  ReasonTracker tr;
+  Reason out = Reason::BASE;
+  TEST_ASSERT(!tr.update(Reason::BASE, 0, out));
+  TEST_ASSERT(!tr.update(Reason::CO2, 10000, out));
+  TEST_ASSERT(!tr.update(Reason::BASE, 20000, out));
+  TEST_ASSERT(!tr.update(Reason::BASE, 60000, out));
+  TEST_ASSERT(!tr.update(Reason::NOX, 70000, out));
+  TEST_ASSERT(!tr.update(Reason::NOX, 70000 + EVENT_DEBOUNCE_MS - 1, out));
+  TEST_ASSERT(tr.update(Reason::NOX, 70000 + EVENT_DEBOUNCE_MS, out) && out == Reason::NOX);
+  TEST_ASSERT(!tr.update(Reason::NOX, 200000, out));
+  return true;
+}
 
 // ============================================================
 // [0.10.13] Smart Climate Control — HVAC Coordinator
@@ -1681,6 +1923,8 @@ int main() {
     {"T-7u: Mode-switch hold-off (wrap-safe, re-armable)", test_mode_switch_holdoff},
     {"T-7v: Vacation snapshot from the room leader", test_vacation_snapshot},
     {"T-7w: Smart-Automatik level override (countdown, adopt, safety)", test_level_override},
+    {"T-7x: NOx boost (trigger, hold, outdoor-air test, caps)", test_nox_boost},
+    {"T-7y: Automatik-Status text + reason debounce", test_auto_status},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

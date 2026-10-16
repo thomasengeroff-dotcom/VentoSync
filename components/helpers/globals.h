@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-11
+// Modified:    2026-10-16
 // ==========================================================================
 #pragma once
 
@@ -70,6 +70,8 @@
 #include "esphome/components/ventilation_logic/ventilation_logic.h"
 #include "esphome/components/ventilation_logic/hvac_coordinator.h"
 #include "esphome/components/ventilation_logic/room_fusion.h"
+#include "esphome/components/ventilation_logic/nox_boost.h"
+#include "esphome/components/ventilation_logic/auto_status.h"
 
 // --- Constants ---------------------------------------------------------
 static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR = 22.0f;
@@ -356,6 +358,40 @@ namespace presence_state {
   /// Own radar presence with 30 s off-delay (broadcast as ROOM_FLAG_PRESENCE).
   inline ventosync::room::PresenceHold hold;
 }
+
+/// @name NOx boost (SGP41) & Automatik-Status
+/// @{
+extern esphome::globals::RestoringGlobalsComponent<bool>
+    *const nox_boost_enabled_val; ///< Room-wide "NOx-Stoßlüftung" switch (NVS, ESP-NOW synced).
+extern esphome::template_::TemplateSwitch
+    *const nox_boost_switch; ///< HA switch "NOx-Stoßlüftung" (mirrors nox_boost_enabled_val).
+extern esphome::template_::TemplateTextSensor
+    *const automatik_status; ///< HA text "Automatik-Status" — what the fan does and why.
+extern esphome::template_::TemplateTextSensor
+    *const automatik_grund; ///< HA text "Automatik-Grund" — stable reason key.
+extern esphome::template_::TemplateEvent
+    *const lueftung_ereignis; ///< HA event "Lüftung Ereignis" (reason changes, NOx aborts).
+
+namespace nox_state {
+  /// Own NOx boost detector (only fed on the sgp41 variants).
+  inline ventosync::nox::Detector detector;
+  /// SGP41 driver + NOx index, registered by sensor_SGP41_SHT45.yaml at boot
+  /// (nullptr on every other variant — the detector then never triggers).
+  inline esphome::Component *sensor_component = nullptr;
+  inline esphome::sensor::Sensor *nox_index = nullptr;
+  /// Threshold (HA number "NOx-Stoßlüftung: Schwelle", 20–100, per device).
+  inline float threshold = static_cast<float>(ventosync::nox::THRESHOLD_DEFAULT);
+  /// Grace for read errors of the SGP41 (see sensor_value_or_nan()).
+  inline uint32_t last_ok_ms = 0;
+}
+
+namespace auto_status_state {
+  /// Snapshot filled by evaluate_auto_mode(), completed live by update_auto_status().
+  inline ventosync::auto_status::Inputs last;
+  inline bool has_demand_snapshot = false;
+  inline ventosync::auto_status::ReasonTracker tracker;
+}
+/// @}
 
 namespace override_state {
   /// CO2 health guard of the Smart-Automatik level override (runtime only).

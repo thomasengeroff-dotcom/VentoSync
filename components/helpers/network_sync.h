@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-11
+// Modified:    2026-10-16
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -903,6 +903,17 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     if (smart_climate_control != nullptr) smart_climate_control->publish_state(peer_hvac_enabled);
     ESP_LOGI("hvac", "Klima-Koordination %s (room-wide sync from device %d)",
              peer_hvac_enabled ? "aktiviert" : "deaktiviert", pkt->device_id);
+    dirty = true;
+  }
+
+  // Room-wide NOx boost switch (room flag bit, 0.10.37). Older firmware never
+  // sets the bit, so an older Master keeps the room's switch off (safe side).
+  const bool peer_nox_enabled = (pkt->room_flags & esphome::ROOM_FLAG_NOX_BOOST_ENABLED) != 0;
+  if (nox_boost_enabled_val != nullptr && peer_nox_enabled != nox_boost_enabled_val->value()) {
+    nox_boost_enabled_val->value() = peer_nox_enabled;
+    if (nox_boost_switch != nullptr) nox_boost_switch->publish_state(peer_nox_enabled);
+    ESP_LOGI("nox", "NOx-Stoßlüftung %s (room-wide sync from device %d)",
+             peer_nox_enabled ? "aktiviert" : "deaktiviert", pkt->device_id);
     dirty = true;
   }
 

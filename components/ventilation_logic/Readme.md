@@ -10,6 +10,8 @@ This component provides a pure, hardware-agnostic C++ utility library (`Ventilat
 | **`hvac_coordinator.h`** | **Smart Climate Control state machine (`ventosync::hvac::Coordinator`)**: AC debounce and expiry, CO2 emergency and mold guard, configuration ranges shared with the HA sliders. |
 | **`room_fusion.h`** | **Room-wide fusion helpers (`ventosync::room`)**: NaN-aware maxima of local and fresh (≥ 5 min, two heartbeats) ESP-NOW peer values for CO2, humidity, PID demand, room AC, window and radar presence state; `HaPushedFlag` (expiring HA-pushed inputs), `PresenceHold` (30 s off-delay). |
 | **`level_override.h`** | **Smart-Automatik level override (`ventosync::auto_override`)**: room-wide override (30–300 min, default 60) started with the Level button — wrap-safe countdown, adoption from ESP-NOW packets (never restarted, heartbeat cannot cancel), CO2 health guard and `resolve_level()` (HVAC cap clamps, emergency lets the automatic go higher). |
+| **`nox_boost.h`** | **NOx boost (`ventosync::nox`)**: SGP41 NOx-index detector — 60 s trigger above the HA threshold (20–100), 10 min hold below half of it, 60 min cap, outdoor-air test (every intake window must lower the index, else immediate abort + lockout), strong event (≥ 150) lifts the AC cap. |
+| **`auto_status.h`** | **Automatik-Status (`ventosync::auto_status`)**: reason selection (priority order), German status text, stable reason keys and the 30 s debounce (`ReasonTracker`) for the HA event. |
 | **`__init__.py`** | **ESPHome Code Injector**: Registers the component with ESPHome and injects the `#include` header globally into the generated firmware build. |
 
 ## ⚙️ Key Calculations & Functions

@@ -34,6 +34,7 @@ CONF_VACATION_STATE_GLOBAL = 'vacation_state_global'
 CONF_PRE_VAC_MODE_GLOBAL = 'pre_vacation_mode_index_global'
 CONF_PRE_VAC_INTENSITY_GLOBAL = 'pre_vacation_intensity_global'
 CONF_HVAC_ENABLED_GLOBAL = 'hvac_enabled_global'
+CONF_NOX_BOOST_ENABLED_GLOBAL = 'nox_boost_enabled_global'
 CONF_OVERRIDE_DURATION_GLOBAL = 'auto_override_duration_global'
 
 CONFIG_SCHEMA = cv.Schema({
@@ -65,6 +66,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_PRE_VAC_MODE_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_PRE_VAC_INTENSITY_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_HVAC_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_NOX_BOOST_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_OVERRIDE_DURATION_GLOBAL): cv.use_id(GlobalsComponent),
 }).extend(cv.COMPONENT_SCHEMA)
 
@@ -152,6 +154,9 @@ async def to_code(config):
     if CONF_HVAC_ENABLED_GLOBAL in config:
         g = await cg.get_variable(config[CONF_HVAC_ENABLED_GLOBAL])
         cg.add(var.set_hvac_enabled_global(g))
+    if CONF_NOX_BOOST_ENABLED_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_NOX_BOOST_ENABLED_GLOBAL])
+        cg.add(var.set_nox_boost_enabled_global(g))
     if CONF_OVERRIDE_DURATION_GLOBAL in config:
         g = await cg.get_variable(config[CONF_OVERRIDE_DURATION_GLOBAL])
         cg.add(var.set_auto_override_duration_global(g))

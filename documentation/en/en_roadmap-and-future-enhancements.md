@@ -18,7 +18,6 @@ This document outlines planned features, architectural concepts, and upcoming ha
 - [🔄 Closed-Loop Speed & RPM Monitoring](#-closed-loop-speed--rpm-monitoring)
 - [🌬️ Aerodynamic Reverse Compensation](#️-aerodynamic-reverse-compensation)
 - [🧠 AI-Powered Predictive Ventilation Control](#-ai-powered-predictive-ventilation-control)
-- [🔥 NOx Boost Ventilation for Gas Hobs](#-nox-boost-ventilation-for-gas-hobs)
 - [🔌 Hardware Expansion & Industrial Smart Home Gateways](#-hardware-expansion--industrial-smart-home-gateways)
 - [❄️🔥 Smart Climate Control — HVAC Coordination](#️-smart-climate-control--hvac-coordination)
 
@@ -85,15 +84,6 @@ This document outlines planned features, architectural concepts, and upcoming ha
 * **Proactive Adaptation**: Machine learning models and weather forecast integrations to pre-ventilate spaces before high humidity or heatwaves set in.
 * **Occupancy Estimation & Person Counting**: Estimating the number of occupants via mmWave multi-target tracking to dynamically calculate required CFM / m³ airflow rates.
 * *For technical architecture, see [📄 AI-Powered Ventilation Control](en_ai-powered-ventilation-control.md).*
-
----
-
-## 🔥 NOx Boost Ventilation for Gas Hobs
-
-* **Event-driven boost** with the SGP41 + SHT45 board (`sgp41` variants): when the NOx index exceeds a configurable threshold (default ~20, typical when cooking on a gas hob), the room temporarily raises the fan level (e.g. a timed boost like the level override), and returns to normal once the index has fallen back for a hold time.
-* **Outdoor-source guard**: NOx can also come from road traffic. The boost should therefore be optional (switch per room) and could pause when Home Assistant reports high outdoor NO₂ or when the NOx index rises during intake phases only.
-* **Room-wide**: like the other inputs, each device would broadcast only its own NOx flag (no re-broadcast of fused values).
-* *Background on NOx and the index values: [📄 Hardware & Wiring – SGP41 + SHT45](en_hardware-and-wiring.md#-sgp41--sht45-sensor-board-voc--nox).*
 
 ---
 

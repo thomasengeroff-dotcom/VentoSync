@@ -170,6 +170,9 @@ All devices in a room find each other automatically upon startup or room change 
   > 👉 *Setup guide & behavior details: [📄 Window Guard Setup Guide](documentation/en/en_window-guard-ha-setup.md).*
 - ❄️🔥 **Smart Climate Control (HVAC Coordination)**: While the room air conditioner is active, `Smart-Automatik` throttles to a CO2-only loop (relaxed 1200 ppm target, fan cap Level 3, enforced heat recovery) so the ventilation stops importing hot outdoor air. CO2 emergency (1500 ppm) and mold guard (70 % rH) restore full regulation automatically; AC release is debounced (120 s).
   > 👉 *Concept, state machine & HA template sensor: [📄 Smart Climate Control](documentation/en/en_smart-climate-control.md).*
+- 🔥 **NOx Boost (SGP41 + SHT45 board)**: in Smart-Automatik a NOx event (gas hob, fireplace) raises the room's fan to the automatic maximum for a limited time (threshold 20–100 adjustable in HA, 10 min hold, max. 60 min). If the NOx does not fall while outdoor air is blown in, it comes from outside and the boost is aborted immediately. Room-wide switch `NOx-Stoßlüftung`, off by default.
+- 💬 **Automatik-Status & HA event**: `text_sensor.automatik_status` explains what the fan does and why (e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `NOx-Stoßlüftung: Index 85 → Stufe 7`); `text_sensor.automatik_grund` gives the reason as a key and the event entity `Lüftung Ereignis` fires on every (stable) reason change and on NOx aborts — ready for HA automations.
+  > 👉 *Details: [📄 Smart automatic Mode – sections 8 and 9](documentation/en/en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01037).*
 
 - 🌟 **Advanced Comfort & Protection Features**:
   - 📈 **Phase Continuity & Soft Start**: Proportional cycle scaling during speed changes and smooth speed transitions (~5%/s) for minimal wear and quiet operation.
@@ -246,8 +249,6 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
 
 VentoSync is actively maintained and continuously evolving with a focus on deeper sensor fusion, acoustic optimization, and next-generation smart automations.
 
-- 🔥 **NOx boost ventilation for gas hobs**: with the SGP41 + SHT45 board, a NOx index above a threshold (~20, typical for cooking on gas) temporarily raises the room's fan level; optional per room, because NOx can also come from road traffic outdoors.
-
 > 👉 *For complete descriptions and concepts of upcoming features and roadmap milestones, see [📄 Roadmap & Future Enhancements](documentation/en/en_roadmap-and-future-enhancements.md).*
 
 ## 🎛️ Custom Circuit Board - PCB
@@ -298,7 +299,7 @@ All sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch con
 
 **NOx in short:** nitrogen oxides (NO, NO₂) from combustion – gas hob, fireplace, candles indoors, road traffic outdoors. The SGP41 reports a **NOx index of 1–500**: **1** = normal (no event), ~2–20 slight increase, ~20–150 clear event (typical for cooking on gas), > 150 heavy load. It is a relative index, not a concentration in ppb. Details: [Hardware & Wiring – SGP41 + SHT45](documentation/en/en_hardware-and-wiring.md#-sgp41--sht45-sensor-board-voc--nox).
 
-**Firmware support (SGP41 + SHT45 board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). The SHT45 provides room temperature and humidity (humidity PID, enthalpy and mold guard, room-wide fusion) and compensates the SGP41. Because the SGP41 measures no CO₂, its VOC index is mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm: index 100 → 600 ppm, 200 → 1000 ppm = default CO₂ setpoint) that feeds `Effektiver CO2 Wert` and the CO₂ PID of Smart-Automatik. The VOC index is relative to the last 24 h (Sensirion algorithm), so it reacts to *events* like cooking or showering rather than to a constant pollution level. The NOx index is shown in Home Assistant but does not control the fan.
+**Firmware support (SGP41 + SHT45 board):** `ventosync_sgp41.yaml` (PCB v1.0) / `ventosync_v2_sgp41.yaml` (PCB v2.0). The SHT45 provides room temperature and humidity (humidity PID, enthalpy and mold guard, room-wide fusion) and compensates the SGP41. Because the SGP41 measures no CO₂, its VOC index is mapped to a CO₂ equivalent (`400 + 4 × (index − 50)`, 400–2200 ppm: index 100 → 600 ppm, 200 → 1000 ppm = default CO₂ setpoint) that feeds `Effektiver CO2 Wert` and the CO₂ PID of Smart-Automatik. The VOC index is relative to the last 24 h (Sensirion algorithm), so it reacts to *events* like cooking or showering rather than to a constant pollution level. The NOx index drives the optional **NOx boost** (see Smart-Automatik features).
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
@@ -535,6 +536,10 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
   - `number.klima_koordination_co2_notfallgrenze` — CO2 emergency override, 1200–2000 ppm (default: `1500`)
   - `text_sensor.klima_koordination_status` — Current coordinator state (diagnostic)
   - `binary_sensor.klima_aktiv_ha_signal` — AC state last pushed by Home Assistant (diagnostic)
+- **NOx Boost** *(Configuration, SGP41 + SHT45 board)*:
+  - `switch.nox_stossluftung` — Enable the NOx boost in Smart-Automatik, **room-wide** (default: off)
+  - `number.nox_stossluftung_schwelle` — NOx index that starts the boost, 20–100 (default: `20`, only on devices with the SGP41 board)
+- **Automatik-Status**: `text_sensor.automatik_status` (what the fan does and why), `text_sensor.automatik_grund` (reason key), `event.luftung_ereignis` (reason changes, NOx aborts)
   > The switch and the three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v12), so they only have to be set once per room. Home Assistant pushes the AC state with the API action `set_ac_active` to at least one device per room; it is shared room-wide as well. *→ [Setup in 📄 Smart Climate Control](documentation/en/en_smart-climate-control.md#️-home-assistant-setup)*
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 - **Vacation Mode** *(Configuration)*:

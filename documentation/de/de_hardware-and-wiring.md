@@ -65,16 +65,11 @@ Die Abstufungen sind Faustwerte, keine offiziellen Grenzwerte: Ein Index von 50 
 **VOC-Index vs. NOx-Index:**
 
 - **VOC-Index:** Normalzustand = **100**; darunter besser als üblich, darüber schlechter. Reagiert auf Gerüche, Kochdünste, Reinigungsmittel, Ausdünstungen und Menschen. Firmware: wird auf ein CO₂-Äquivalent abgebildet (`400 + 4 × (Index − 50)`, 400–2200 ppm), das die CO₂-Regelung der Smart-Automatik steuert.
-- **NOx-Index:** Normalzustand = **1**, weil es in der Regel gar kein NOx gibt. Schlägt nur bei Verbrennungsereignissen aus. Firmware: wird in Home Assistant angezeigt (`sensor.sgp41_nox_index`), **steuert den Lüfter (noch) nicht**.
+- **NOx-Index:** Normalzustand = **1**, weil es in der Regel gar kein NOx gibt. Schlägt nur bei Verbrennungsereignissen aus. Firmware: wird in Home Assistant angezeigt (`sensor.sgp41_nox_index`) und steuert die optionale **NOx-Stoßlüftung** (Schalter `NOx-Stoßlüftung`, Standard aus).
 
 Nach dem Einschalten braucht der Algorithmus ein paar Minuten, bis überhaupt Werte kommen (NOx etwas länger als VOC), und mehrere Stunden, bis er die Raumluft gelernt hat – die ersten Werte nach dem Flashen also nicht überbewerten.
 
-**Warum NOx den Lüfter (noch) nicht steuert:**
-
-1. **Die Quelle kann draußen sein.** Kommt das NOx von der Straße, würde mehr Lüften die Belastung reinholen statt rauszubringen – der Sensor kann nicht unterscheiden, woher es stammt.
-2. **Es tritt nur bei Ereignissen auf.** Ohne Gasherd bleibt der Index fast immer bei 1, ein dauerhafter Regelanteil hätte kaum Nutzen.
-
-Eine NOx-Stoßlüftung für Gasherde ist geplant – siehe [Roadmap](de_roadmap-and-future-enhancements.md#-nox-stoßlüftung-für-gasherde).
+**NOx-Stoßlüftung (seit 0.10.37):** In der Smart-Automatik erhöht ein NOx-Index über der Schwelle (HA-Zahl `NOx-Stoßlüftung: Schwelle`, 20–100) für 60 s die Lüftung des Raums auf die Automatik-Maximalstufe; sie endet 10 min, nachdem der Index unter die halbe Schwelle gefallen ist (max. 60 min). Weil NOx auch von **draußen** kommen kann (Straßenverkehr), wird die Stoßlüftung **sofort abgebrochen**, wenn der Index nicht sinkt, während das Gerät Außenluft hineinbläst. Der raumweite Schalter `NOx-Stoßlüftung` ist **standardmäßig aus** — in Räumen mit Gasherd oder Kamin einschalten. Details: [Smart-Automatik Logik – NOx-Stoßlüftung](de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01037).
 
 ### 🖱️ Bedienpanel am Gerät
 
