@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.39] - 2026-10-16
+
+### Fixed
+
+- **Automatik-Status ignored "Fenstersperre ignorieren"** — with an open window and the switch
+  `Fenstersperre ignorieren` on, the fan keeps running, but `Automatik-Status` still showed
+  `Pausiert: Fenster offen`, `Automatik-Grund` stayed `fenster` and the event `Lüftung Ereignis` fired
+  `fenster`. The status now uses the effective lock (`VentilationController::is_window_guard_pausing()`:
+  lock active **and** not ignored) and shows the regular reason (CO2, humidity, base ventilation …).
+- **NOx outdoor-air test with an ignored window lock** — intake windows of a device whose fan keeps running
+  because the window lock is ignored now count for the outdoor-air test (they were skipped before).
+- The master LED's window-open pulse uses the same helper (behaviour unchanged).
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.38] - 2026-10-16
 
 ### Added

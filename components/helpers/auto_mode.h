@@ -577,7 +577,7 @@ inline void update_nox_detector(uint32_t now) {
       ? sensor_value_or_nan(nox_state::sensor_component, nox_state::nox_index->state, nox_state::last_ok_ms)
       : NAN;
   const esphome::HardwareState hw = v->state_machine.get_target_state(now);
-  in.intake = hw.fan_enabled && hw.direction_in && hw.ramp_factor > 0.5f && !v->is_window_guard_active();
+  in.intake = hw.fan_enabled && hw.direction_in && hw.ramp_factor > 0.5f && !v->is_window_guard_pausing();
   in.threshold = nox_state::threshold;
 
   const ventosync::nox::Event ev = nox_state::detector.update(in);
@@ -1119,7 +1119,9 @@ inline std::string update_auto_status() {
   if (!auto_status_state::has_demand_snapshot) in.demand = NAN;
   in.mode_off = (v != nullptr && v->state_machine.current_mode == esphome::MODE_OFF);
   in.vacation = id(vacation_state) != ventosync::vacation::VACATION_INACTIVE;
-  in.window_paused = (v != nullptr && v->is_window_guard_active());
+  // Only a guard that really stops the fan pauses the automatic — with
+  // "Fenstersperre ignorieren" the fan keeps running and the regular reason applies.
+  in.window_paused = (v != nullptr && v->is_window_guard_pausing());
   in.mode_label = (luefter_modus != nullptr) ? luefter_modus->current_option().c_str() : "";
   in.level = (fan_intensity_level != nullptr) ? static_cast<int>(fan_intensity_level->value()) : 0;
   in.summer_cooling = in.auto_mode && v != nullptr && v->state_machine.current_mode == esphome::MODE_VENTILATION;

@@ -385,6 +385,9 @@ public:
   bool is_window_guard_active() const { return window_guard_active_; }
   /** @return true if the window guard is being bypassed. */
   bool is_ignoring_window_guard() const { return ignore_window_guard_; }
+  /** @return true if the window guard actually stops this device's fan
+   *          (lock active and not bypassed by "Fenstersperre ignorieren"). */
+  bool is_window_guard_pausing() const { return window_guard_active_ && !ignore_window_guard_; }
   /** @return timestamp when the window guard was activated. */
   uint32_t get_window_lock_activation_ms() const { return window_lock_activation_ms_; }
   /** @brief Bypasses or restores the window guard safety lock. */
@@ -821,7 +824,7 @@ public:
     bool enable_fan = state.fan_enabled;
 
     // Apply Window Guard lock (using filtered state)
-    if (window_guard_active_ && !ignore_window_guard_) {
+    if (is_window_guard_pausing()) {
       enable_fan = false;
     }
 
