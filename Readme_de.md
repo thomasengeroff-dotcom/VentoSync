@@ -279,13 +279,13 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 
 ### 🌿 Modulares Sensor-Ökosystem: Die passende Messgröße pro Raum
 
-Neben dem SCD43-Board gibt es **Sensorplatinen mit dem Sensirion SGP41** — speziell konzipiert für Räume, in denen CO₂ die tatsächliche Luftqualität nicht ideal beschreibt. Das **SGP41 + SHT45-Board** (v1.0) wurde zusammen mit dem SCD43-Board am 15.10.2026 bestellt und wird von der Firmware unterstützt; das reine SGP41-Board ist nicht Teil dieser Bestellung:
+Neben dem SCD43-Board gibt es das **SGP41 + SHT45-Board** — speziell konzipiert für Räume, in denen CO₂ die tatsächliche Luftqualität nicht ideal beschreibt. Beide Boards (v1.0) wurden am 15.10.2026 bestellt und werden von der Firmware unterstützt:
 
 - **Wohn- und Schlafbereich (Personenbelegung)**: CO₂ ist ein direktes Maß für die Anwesenheit von Menschen. Im Wohn- und Schlafbereich ist der Mensch die Quelle — dort regelt der **SCD43** exakt richtig.
 - **Küche (Bratfette, Gerüche & Verbrennungsgase)**: Beim Kochen entstehen Belastungen durch Bratfette, starke Gerüche, Lösemittel aus Reinigern und bei einer Gasflamme zusätzlich Stickoxide (NOx). Der CO₂-Wert bleibt dabei oft niedrig, während die Luft längst schlecht ist — eine reine CO₂-Regelung würde hier nicht reagieren.
 - **Badezimmer & Feuchträume**: Erfordert schnelles Feuchtemanagement kombiniert mit VOC-Geruchserkennung.
 
-Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 mm Pitch, Header H2)**. Dies ermöglicht ein modulares Konzept: **Ein Steuergerät — je Raum die perfekt passende Sensorplatine**:
+Beide Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 mm Pitch, Header H2)**. Dies ermöglicht ein modulares Konzept: **Ein Steuergerät — je Raum die perfekt passende Sensorplatine**:
 
 - **Sensirion SGP41**: Liefert den **VOC- und NOx-Index** — zwei getrennte Kenngrößen für Gerüche und Verbrennungsgase.
 - **Sensirion SHT4x (z.B. SHT45)**: Ergänzt präzise Temperatur- und Feuchtemessung zur Berechnung der absoluten Feuchte (Enthalpie), entscheidend in Küche und Bad.
@@ -294,7 +294,6 @@ Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 
 | :--- | :--- | :--- | :--- |
 | **SCD43 Board** | Sensirion SCD43 | CO₂, Temperatur, rel. Feuchte | Wohnzimmer, Schlafzimmer, Büro |
 | **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC-Index, NOx-Index, Temperatur, Feuchte (absolute Feuchte) | Küche, Räume mit Kamin / Verbrennungsgeräten, Badezimmer |
-| **SGP41 Board** | Sensirion SGP41 | VOC-Index, NOx-Index | Küche (wenn Klimadaten bereits vorliegen) |
 
 **Welches Board für welchen Raum?** Das **SCD43-Board** ist für alle Räume gedacht, in denen es vor allem um die **durch Menschen verursachte CO₂-Konzentration** geht (Wohnzimmer, Schlafzimmer, Kinderzimmer, Büro). Das **SGP41 + SHT45-Board** ist vor allem für die **Küche** und Räume mit **offenem Kamin, Holzofen oder anderen Verbrennungsgeräten** gedacht, in denen Kochdünste, Gerüche und Stickoxide die Luft verschlechtern, während der CO₂-Wert oft niedrig bleibt.
 
@@ -304,10 +303,8 @@ Alle Sensorplatinen nutzen die identische **vierpolige I²C-Schnittstelle (1,25 
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 VOC Sensor Board" />
 </p>
-<p align="center"><em>Links: SGP41 + SHT4x Kombi-Board (VOC, NOx, Temp, Feuchte) &nbsp;|&nbsp; Rechts: SGP41 Board (VOC, NOx)</em></p>
+<p align="center"><em>SGP41 + SHT45-Board (VOC, NOx, Temperatur, Feuchte)</em></p>
 
 > 👉 *Detaillierte Komponentenspezifikationen, die vollständige Stückliste (BOM), Lüfter-Verdrahtung, GPIO-Pinbelegung des XIAO ESP32-C6 und schematische Blockschaltbilder siehe [📄 Hardware, BOM & Verdrahtung Guide](documentation/de/de_hardware-and-wiring.md).*
 

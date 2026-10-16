@@ -282,13 +282,13 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 
 ### 🌿 Modular Sensor Ecosystem: The Right Metric for Every Room
 
-In addition to the SCD43 CO₂ sensor board, **specialized sensor boards with the Sensirion SGP41** are designed for rooms where CO₂ alone does not adequately reflect air quality. The **SGP41 + SHT45 board** (v1.0) was ordered together with the SCD43 board on 2026-10-15 and is supported by the firmware; the SGP41-only board is not part of that order:
+In addition to the SCD43 CO₂ sensor board, the **SGP41 + SHT45 board** is designed for rooms where CO₂ alone does not adequately reflect air quality. Both boards (v1.0) were ordered on 2026-10-15 and are supported by the firmware:
 
 - **Living & Sleeping Areas (Human Occupancy)**: CO₂ is directly proportional to human presence. In living rooms and bedrooms, human respiration is the primary source — the **SCD43** accurately tracks occupancy and controls ventilation accordingly.
 - **Kitchen (Cooking Fumes, Odors & Combustion Gases)**: Indoor pollution is generated through cooking: aerosolized fats, strong odors, solvent fumes from cleaning agents, and nitrogen oxides (NOx) from gas stoves. CO₂ levels often remain low while air quality deteriorates significantly — a CO₂-only controller would fail to respond.
 - **Bathroom (Moisture & Volatile Compounds)**: Requires fast dehumidification combined with VOC odor removal.
 
-All sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch connector, Header H2)**. This enables a **modular hardware architecture: One unified controller firmware across all units, but each room gets the sensor board perfectly tailored to its environment**:
+Both sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch connector, Header H2)**. This enables a **modular hardware architecture: One unified controller firmware across all units, but each room gets the sensor board perfectly tailored to its environment**:
 
 - **Sensirion SGP41**: Provides separate **VOC Index** and **NOx Index** signals — two dedicated metrics for volatile organic compounds and combustion gases.
 - **Sensirion SHT4x (e.g. SHT45)**: Delivers high-precision temperature and relative humidity for absolute humidity (enthalpy) calculation, crucial in kitchens and bathrooms.
@@ -297,7 +297,6 @@ All sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch con
 | :--- | :--- | :--- | :--- |
 | **SCD43 Board** | Sensirion SCD43 | CO₂, Temperature, Rel. Humidity | Living Room, Bedroom, Home Office |
 | **SGP41 + SHT4x Board** | Sensirion SGP41 + SHT45 | VOC Index, NOx Index, Temperature, Humidity (Absolute Humidity) | Kitchen, rooms with fireplace / combustion appliances, Bathroom |
-| **SGP41 Board** | Sensirion SGP41 | VOC Index, NOx Index | Kitchen (if climate data already exists via BME/NTC) |
 
 **Which board for which room?** The **SCD43 board** is meant for all rooms where the air quality is mainly about the **CO₂ concentration caused by people** (living room, bedroom, children's room, home office). The **SGP41 + SHT45 board** is meant above all for the **kitchen** and rooms with an **open fireplace, wood stove or other combustion appliances**, where cooking fumes, odours and nitrogen oxides spoil the air while CO₂ often stays low.
 
@@ -307,10 +306,8 @@ All sensor boards share the exact same **4-pin I²C interface (1.25 mm pitch con
 
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20SHT4x%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 + SHT4x Sensor Board" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB%20SGP41%20VOC%20Sensor_2026-08-28.png" width="25%" alt="3D PCB SGP41 VOC Sensor Board" />
 </p>
-<p align="center"><em>Left: SGP41 + SHT4x Combo Board (VOC, NOx, Temp, Humidity) &nbsp;|&nbsp; Right: SGP41 Board (VOC, NOx)</em></p>
+<p align="center"><em>SGP41 + SHT45 board (VOC, NOx, temperature, humidity)</em></p>
 
 > 👉 *For complete component specifications, the full Bill of Materials (BOM), fan wiring details, XIAO ESP32-C6 GPIO pin assignments, and schematic block diagrams, see [📄 Hardware, BOM & Wiring Guide](documentation/en/en_hardware-and-wiring.md).*
 
