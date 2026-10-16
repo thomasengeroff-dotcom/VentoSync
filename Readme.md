@@ -116,7 +116,7 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | Operating Modes | 3 | **5+** (incl. smart automation) |
 | Sensors | 0-1 (opt. VOC) | **Modular per room**: SCD43 board (real CO2) **or** SGP41 + SHT45 board (VOC, NOx), plus temperature/humidity, pressure, NTC supply/extract air, mmWave radar |
 | Air-Quality Control | Fixed humidity thresholds | ✅ CO2 + humidity PID (enthalpy guard), **NOx boost** for gas hobs / fireplaces with outdoor-air check |
-| Fan Control | 3 fixed levels | **10 levels (discrete PID)** |
+| Fan Control | 5 fixed levels | **10 levels (discrete PID)** |
 | Transparency | ❌ | ✅ `Automatik-Status` in HA (what the ventilation does and why) + HA events |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |

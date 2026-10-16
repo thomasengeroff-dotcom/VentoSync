@@ -25,7 +25,7 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 | **Cross Ventilation (Summer)** | Only possible in paired configuration | ✅ Yes (via App/Panel/Automation) | ⚖️ Equivalent |
 | **Auto Summer Mode** | ❌ No (manual switch required) | ✅ **Automatic cross ventilation** when outdoor temp < indoor temp (NTC + ESP-NOW group data) | ✅ **No manual switching necessary** |
 | **Boost Ventilation** | 15 min. one-way, then 105 min pause | ✅ Yes (same 15/105 min cycle, one-way bursts; level freely selectable 1–10, synchronized room-wide) | ✅ **More flexible** |
-| **Fan Control** | 3 fixed levels | **10 levels + stepless PID control** (silent, no audible speed jumps) | ✅ **Fine-grained & silent** |
+| **Fan Control** | 5 fixed levels | **10 levels + stepless PID control** (silent, no audible speed jumps) | ✅ **Fine-grained & silent** |
 | **Automation (CO2)** | ❌ No (only optional VOC estimation) | ✅ **SCD43 (Real CO2)**: Stepless PID control with deadband hysteresis, configurable min/max levels | ✅ **Precise & quiet** |
 | **Automation (VOC / NOx)** | ❌ No | ✅ **SGP41 + SHT45 board**: VOC index as CO2 equivalent for the PID; **NOx boost** (gas hob, fireplace) with outdoor-air check that aborts if the NOx comes from outside | ✅ **Kitchen & combustion appliances** covered |
 | **Automation (Humidity)** | Fixed thresholds: 55%, 65%, 75% rH | ✅ **PID controller** with configurable limit (40-100%), outdoor humidity comparison, deadband hysteresis (±2%) | ✅ **Customizable** + Outdoor check |
@@ -84,7 +84,7 @@ The ESPHome solution is a **"drop-in replacement"** for the original VentoMaxx c
 | :--- | :---: | :---: |
 | Operating Modes | 3 | **5+** (incl. automation) |
 | Sensors | 0-1 (opt. VOC) | **Modular**: SCD43 (CO2) or SGP41 + SHT45 (VOC, NOx), pressure, NTCs, radar |
-| Fan Levels | 3 | **10 + stepless (PID)** |
+| Fan Levels | 5 | **10 + stepless (PID)** |
 | Smart Home | ❌ | ✅ Home Assistant |
 | Maintenance Alarm | Timer LED | ✅ **Predictive + Push** |
 | Cable for Sync | Yes | ❌ **Wireless (ESP-NOW)** |

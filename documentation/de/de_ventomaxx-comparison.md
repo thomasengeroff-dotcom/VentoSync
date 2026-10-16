@@ -100,7 +100,7 @@ Die ESPHome-Lösung ist ein **"Drop-in Replacement"** für die originale VentoMa
 | :--- | :---: | :---: |
 | Betriebsmodi | 3 | **5+** (inkl. Automatiken) |
 | Sensorik | 0-1 (opt. VOC) | **Modular**: SCD43 (CO2) oder SGP41 + SHT45 (VOC, NOx), Luftdruck, NTCs, Radar |
-| Lüfterstufen | 3 / 5 | **10 (diskrete PID-Regelung)** |
+| Lüfterstufen | 5 | **10 (diskrete PID-Regelung)** |
 | Smart Home | ❌ | ✅ Home Assistant (Native) |
 | Wartungsalarm | Timer-LED | ✅ **Prädiktiv + Push-Benachrichtigung** |
 | Kommunikation | Kabel | ✅ **Drahtlos (ESP-NOW)** |
