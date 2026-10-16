@@ -9,7 +9,7 @@
 ## 🚀 Summary & Overview
 
 This open-source project offers a professional, decentralized heat recovery ventilation (HRV) control system based on ESPHome. It replaces the control system of the VentoMaxx V-WRG series using a custom developed printed circuit board (PCB) based on an ESP32-C6 microcontroller, controlling the reversible 12V fan for heat recovery.
-It optionally monitors air quality (CO2, humidity, and temperature) using a high-quality Sensirion SCD43 sensor, calculates effective heat recovery and uses the **original VentoMaxx control panel** for seamless integration and intuitive operation.
+It optionally monitors air quality with one of two plug-in Sensirion sensor boards: the **SCD43 board** measures real CO2, humidity and temperature – ideal for living rooms, bedrooms and offices, where people are the main source – while the **SGP41 + SHT45 board** measures VOC and NOx (nitrogen oxides), humidity and temperature – made for kitchens and rooms with a fireplace or other combustion appliances, where cooking fumes and combustion gases spoil the air while CO2 stays low; a NOx event (e.g. a gas hob) can trigger a room-wide boost. VentoSync calculates the effective heat recovery, explains in Home Assistant what the ventilation is doing and why, and uses the **original VentoMaxx control panel** for seamless integration and intuitive operation.
 Furthermore, a mmWave radar sensor for presence detection can be optionally integrated and mounted invisibly behind the front cover of the ventilation unit.
 Communication between individual ventilation units takes place via the stable ESP-NOW protocol, so no Wi-Fi or power line communication is required.
 
