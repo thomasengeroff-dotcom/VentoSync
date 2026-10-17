@@ -549,7 +549,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
   > Beide am **Master** (Geräte-ID 1) einstellen — er schaltet und stellt den Urlaubsmodus für den ganzen Raum wieder her.
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
-👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/de/de_home-assistant-entities.md)**.
+👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/de/de_home-assistant-entities.md)**. Eine ausführliche Home-Assistant-Dokumentation im Stil von developers.home-assistant.io — alle Entitäten mit Wertebereichen und Gültigkeit (Raum / Gerät), API-Actions, Events sowie Beispiel-Automationen und Dashboard-Karten — liegt unter **[documentation/ha-docs](documentation/ha-docs/docs/intro.md)** (Docusaurus-Site, auf Deutsch).
 
 #### 📊 Lüftergeschwindigkeit pro Stufe (VentoMaxx V-Kennlinie)
 
