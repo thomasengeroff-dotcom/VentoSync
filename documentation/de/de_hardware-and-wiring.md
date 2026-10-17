@@ -23,8 +23,8 @@ Dieses Dokument bietet detaillierte Spezifikationen der zentralen Hardware-Kompo
 | :--- | :--- | :--- |
 | **Lüfter** | Original Ventomaxx V-WRG (EBM-PAPST 4412 F/2 GLL) 3-Pin PWM oder AxiRev (4-Pin PWM) | [Fan Component](https://esphome.io/components/fan/speed.html) |
 | **SCD43** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C. Steck-Sensorboard für H2 (PCB v1 und v2). Firmware mit dem SCD43-Board als einzigem Klimasensor: `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); `ventosync.yaml` erwartet zusätzlich BME680 + LD2450 | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
-| **SGP41 + SHT45** | Alternatives Steck-Sensorboard für H2 (PCB v1 und v2, statt des SCD43-Boards): Sensirion SGP41 VOC-/NOx-Index + SHT45 Temperatur/Feuchte via I²C (0x59 / 0x44, **nur 3,3 V**). Firmware `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2) — der SHT45 liefert Raumtemperatur/-feuchte, der VOC-Index wird für die Smart-Automatik auf ein CO2-Äquivalent abgebildet. Board: [VentoSyncPCB Sensor-Boards](https://github.com/thomasengeroff-dotcom/VentoSyncPCB/blob/main/docs/Sensor-Boards.md) | [SGP4x](https://esphome.io/components/sensor/sgp4x.html), [SHT4x](https://esphome.io/components/sensor/sht4x.html) |
-| **BMP390** | Bosch Hochpräziser Barometrischer Drucksensor via I²C | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
+| **SGP41 + SHT45** | Alternatives Steck-Sensorboard für H2 (PCB v1 und v2, statt des SCD43-Boards): Sensirion SGP41 VOC-/NOx-Index + SHT45 Temperatur/Feuchte via I²C (0x59 / 0x44, **nur 3,3 V**). Firmware `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2) — der SHT45 liefert Raumtemperatur/-feuchte, der VOC-Index wird für die Smart-Automatik auf ein CO2-Äquivalent abgebildet. | [SGP4x](https://esphome.io/components/sensor/sgp4x.html), [SHT4x](https://esphome.io/components/sensor/sht4x.html) |
+| **BMP390** / **BMP388** | Bosch Hochpräziser Barometrischer Drucksensor via I²C — BMP390 auf PCB v1, BMP388 auf PCB v2 (pin- und treiberkompatibel, gleiche Adresse 0x76; der BMP390 war bei JLCPCB nicht lieferbar) | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
 | **BME680** | Bosch Gas Sensor (Fallback für IAQ/Luftqualität) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
@@ -70,6 +70,21 @@ Die Abstufungen sind Faustwerte, keine offiziellen Grenzwerte: Ein Index von 50 
 Nach dem Einschalten braucht der Algorithmus ein paar Minuten, bis überhaupt Werte kommen (NOx etwas länger als VOC), und mehrere Stunden, bis er die Raumluft gelernt hat – die ersten Werte nach dem Flashen also nicht überbewerten.
 
 **NOx-Stoßlüftung (seit 0.10.38):** In der Smart-Automatik erhöht ein NOx-Index über der Schwelle (HA-Zahl `NOx-Stoßlüftung: Schwelle`, 20–100) für 60 s die Lüftung des Raums auf die Automatik-Maximalstufe; sie endet 10 min, nachdem der Index unter die halbe Schwelle gefallen ist (max. 60 min). Weil NOx auch von **draußen** kommen kann (Straßenverkehr), wird die Stoßlüftung **sofort abgebrochen**, wenn der Index nicht sinkt, während das Gerät Außenluft hineinbläst. Der raumweite Schalter `NOx-Stoßlüftung` ist **standardmäßig aus** — in Räumen mit Gasherd oder Kamin einschalten. Details: [Smart-Automatik Logik – NOx-Stoßlüftung](de_smart-automatic-logic.md#8-nox-stoßlüftung-sgp41--sht45-board-seit-01038).
+
+### 🔌 Erweiterungsanschlüsse PCB v2.0 (JST SH)
+
+Alle Erweiterungsanschlüsse der PCB v2.0 sind **JST SH** (1,0 mm Rastermaß, stehend, SMD). Die I²C-Leitungen an U36 und CN4 sind **derselbe 3,3-V-Bus** wie das Sensorboard an H2 (4,7-kΩ-Pull-ups auf der Hauptplatine) — an beiden kann also ein weiterer externer I²C-Sensor angeschlossen werden.
+
+| Anschluss | Position | Belegung (Bestückungsdruck) | Bauteil auf der Platine | Gegenstecker (Kabelseite) |
+| :--- | :--- | :--- | :--- | :--- |
+| **U36** – Erweiterung | – | GND · 3V · GPB0 · GPB1 · GPB2 · GPB3 · SCL · SDA (8-polig) | JST BM08B-SRSS-TB | JST-Gehäuse **SHR-08V-S-B** + Crimpkontakte **SSH-003T-P0.2** (AWG 28–32) |
+| **CN4** – I²C | rechter Platinenrand, unter CN5 | GND · 3V3 · SCL · SDA (4-polig) | JST BM04B-SRSS-TB | JST-Gehäuse **SHR-04V-S-B** + Crimpkontakte **SSH-003T-P0.2** |
+| **CN5** – Radar (UART0) | rechter Platinenrand, über CN4 | 5V · GND · TX · RX (4-polig) | JST BM04B-SRSS-TB | JST-Gehäuse **SHR-04V-S-B** + Crimpkontakte **SSH-003T-P0.2** |
+
+- **Kabel:** Die winzigen SH-Kontakte lassen sich nur mit Spezialzange crimpen — praktischer sind fertig gecrimpte JST-SH-1,0-mm-Kabel (Einzellitzen oder 4-/8-polige Kabel mit Gehäuse an einem oder beiden Enden).
+- **Qwiic / STEMMA QT:** Diese Kabel nutzen ebenfalls 4-polige JST-SH-Stecker, aber mit der Reihenfolge GND · 3V3 · **SDA · SCL**. Vor dem Einstecken mit dem Bestückungsdruck von CN4 vergleichen — vertauschte SDA/SCL beschädigen nichts, aber der Sensor antwortet nicht.
+- **Belegte I²C-Adressen:** 0x40 (PCA9685), 0x76 (BMP388), 0x77 (BME680) und das Sensorboard an H2 (SCD43 0x62 bzw. SGP41 0x59 + SHT45 0x44). Ein externer Sensor braucht eine freie Adresse und eine eigene ESPHome-Konfiguration — die Firmware-Varianten enthalten keine.
+- **GPB0–GPB3** (U36) sind IO4, IO5, IO14 und IO15. IO4, IO5 und IO15 sind Strapping-Pins des ESP32-C6: Externe Beschaltung darf beim Reset keinen festen Pegel erzwingen.
 
 ### 🖱️ Bedienpanel am Gerät
 

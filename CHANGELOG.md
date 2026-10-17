@@ -118,7 +118,7 @@ No protocol change — devices on 0.10.34 and 0.10.35 work together.
 
 ### Added
 
-- **PCB v2.0 support** (ESP32-C6-MINI-1U-H4 on board, no MCP23017, U.FL antenna without RF switch — hardware: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB), pinout in `docs/Bring-Up.md`):
+- **PCB v2.0 support** (ESP32-C6-MINI-1U-H4 on board, no MCP23017, U.FL antenna without RF switch):
   - New variants **`ventosync_v2_nosensor.yaml`** and **`ventosync_v2_bme680_only.yaml`** — same features, build flags and sensor packages as `ventosync_nosensor.yaml` / `ventosync_bme680_only.yaml`.
   - Own `firmware_variant` values `ventosync-v2-nosensor` / `ventosync-v2-bme680-only` → own OTA manifests. A v1 device is never offered v2 firmware and vice versa.
   - Front panel buttons on native GPIOs: Power **GPIO2**, Mode **GPIO3**, Level **GPIO6** (external 10 kΩ pull-ups on the PCB). All other GPIOs (I2C 22/23, PCA9685 OE 21, fan 19/20, NTC 0/1, radar UART 16/17) are identical to v1.
