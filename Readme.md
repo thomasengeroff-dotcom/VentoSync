@@ -150,7 +150,7 @@ All devices in a room find each other automatically upon startup or room change 
   - 🛡️ **Sensor failure detection**: if a board stops answering, its values turn "unavailable" after 2 minutes, so the regulation never runs on frozen values.
   - ✅ **BME680 Advanced IAQ Engine** (fallback): a custom C++ engine for robust baseline tracking, dynamic thermal compensation and smart flash wear-leveling provides VOC/IAQ estimates without the BSEC library — useful only until a sensor board is fitted.
   - ⚠️ **Note:** The sensor boards (SCD43 and SGP41 + SHT45, v1.0) were ordered on 2026-10-15. Flash the firmware variant that matches the fitted sensors — `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml` for the SCD43 board, `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml` for the SGP41 + SHT45 board (see [Configuration & Compilation](#️-configuration--compilation)).
-  - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) not only provides local weather data and barometric compensation for the SCD43 but also acts as a **safety guard for the Traco power supply**:
+  - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390 / BMP388**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) (PCB v1; PCB v2 carries the pin- and driver-compatible BMP388, because the BMP390 was not available at JLCPCB) not only provides local weather data and barometric compensation for the SCD43 but also acts as a **safety guard for the Traco power supply**:
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
     - **Emergency Shutdown**: At critical temperatures (>60°C), a safety protocol starts (fan stop and 60min deep sleep) to protect the hardware from overheating and sends a corresponding warning to Home Assistant.
 
@@ -257,17 +257,17 @@ VentoSync is actively maintained and continuously evolving with a focus on deepe
 
 ## 🎛️ Custom Circuit Board - PCB
 
-A custom-engineered PCB integrates all core components into a compact, robust unit that fits the existing VentoMaxx housing. The current **PCB v2.0** carries an **ESP32-C6-MINI-1U-H4** module directly on the board (external antenna via MHF III / W.FL), Traco TMPS10-112 (12 V) plus AP63205 (5 V) and AP63203 (3.3 V) buck converters, and **USB-C** for flashing (with ESD protection); the MCP23017 port expander of v1.0 is gone — buttons and the expansion header use native GPIOs. PCB v2.0 was ordered at JLCPCB on 2026-10-15; the predecessor **PCB v1.0** (Seeed XIAO ESP32-C6) is still fully supported by its own firmware variants. Production files, bring-up and GPIO map: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
+A custom-engineered PCB integrates all core components into a compact, robust unit that fits the existing VentoMaxx housing. The current **PCB v2.0** carries an **ESP32-C6-MINI-1U-H4** module directly on the board (external antenna via MHF III / W.FL), Traco TMPS10-112 (12 V) plus AP63205 (5 V) and AP63203 (3.3 V) buck converters, and **USB-C** for flashing (with ESD protection); the MCP23017 port expander of v1.0 is gone — buttons and the expansion header use native GPIOs. PCB v2.0 was ordered at JLCPCB on 2026-10-15; the predecessor **PCB v1.0** (Seeed XIAO ESP32-C6) is still fully supported by its own firmware variants.
 
 **Key Design Principles:**
 
 - **Long-Term Reliability**: Components were deliberately selected for a projected service life of >10 years under 24/7 continuous operation.
 - **Safety First**: Despite the low power consumption, the layout follows strict safety standards to ensure fire safety and voltage stability.
 - **Future-Proof Expansion** (v2.0):
-  - **H2 (I²C)**: Plug-in sensor board (SCD43 or SGP41 + SHT45).
+  - **H2 (I²C)**: Sensor board (SCD43 or SGP41 + SHT45). H2 itself is not populated — the right-angle pins of the sensor board are soldered directly into the H2 holes (no plug connection). **Mind the orientation:** pin 1 (GND, square pad) of the sensor board must land on pin 1 of H2; turned the other way, GND and VDD are swapped.
   - **CN5 (UART)**: mmWave radar — also the rescue path for flashing via UART0.
-  - **I²C header** (GND / 3V3 / SCL / SDA): additional environmental sensors.
-  - **Expansion header U36**: 4 free GPIOs (GPB0–GPB3) plus I²C, 3V3 and GND for custom DIY expansions.
+  - **CN4 (I²C)** (GND / 3V3 / SCL / SDA), at the right edge of the board directly below CN5: additional environmental sensors.
+  - **Expansion header U36**: 4 free GPIOs (GPB0–GPB3 = IO4, IO5, IO14, IO15) plus I²C, 3V3 and GND for custom DIY expansions. IO4, IO5 and IO15 are ESP32-C6 strapping pins — external circuitry must not force a fixed level on them during reset.
   - **Status LEDs** for USB 5V, 5V and 3V3; a diode-OR lets the 3.3 V domain run from USB with or without mains.
 
 ![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
@@ -278,7 +278,7 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 
 - **Thermal Isolation**: A specialized milling slot and copper-free zones "thermally decouple" the sensor from the PCB's heat mass.
 - **Precision Filtering**: Proper decoupling capacitors are placed in immediate proximity to the sensor.
-- **Perfect Fit**: Designed with a 1.27 mm pitch right-angle header to align perfectly with the VentoMaxx housing's ventilation intake (connector H2).
+- **Perfect Fit**: Designed with a 1.27 mm pitch right-angle header, soldered directly into connector H2, to align perfectly with the VentoMaxx housing's ventilation intake.
 
 <img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43 sensor board v1.0" width="25%" />
 
@@ -411,7 +411,7 @@ VentoSync now uses a modular hardware architecture. Depending on your hardware s
 - **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 variant (as `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimental* – as `ventosync_nosensor.yaml` plus Home Assistant Bluetooth proxy; own partition table, **first flash over USB only** ([guide](documentation/en/en_bluetooth-proxy.md))
 
-> All variants without `_v2` are for **PCB v1.0** (Seeed XIAO ESP32-C6). Flash the variant that matches your board — the board packages differ in the button wiring (MCP23017 vs. native GPIO) and the antenna setup. PCB documentation: [VentoSyncPCB](https://github.com/thomasengeroff-dotcom/VentoSyncPCB).
+> All variants without `_v2` are for **PCB v1.0** (Seeed XIAO ESP32-C6). Flash the variant that matches your board — the board packages differ in the button wiring (MCP23017 vs. native GPIO) and the antenna setup.
 
 Use the provided `upload_all.sh` script to automatically compile and upload the correct variant to all your devices locally:
 
