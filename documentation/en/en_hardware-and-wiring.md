@@ -71,6 +71,21 @@ After power-up the algorithm needs a few minutes before it reports values (NOx s
 
 **NOx boost (since 0.10.38):** in Smart-Automatik, a NOx index above the threshold (HA number `NOx-Stoßlüftung: Schwelle`, 20–100) for 60 s raises the room's fan to the automatic maximum level; it ends 10 min after the index has fallen below half the threshold (max. 60 min). Because the NOx can also come from **outdoors** (road traffic), the boost is **aborted immediately** if the index does not fall while the device blows outdoor air in. The room-wide switch `NOx-Stoßlüftung` is **off by default** — enable it in rooms with a gas hob or fireplace. Details: [Smart Automatic Logic – NOx boost](en_smart-automatic-logic.md#8-nox-boost-sgp41--sht45-board-since-01038).
 
+### 🔌 PCB v2.0 Expansion Connectors (JST SH)
+
+All expansion connectors of PCB v2.0 are **JST SH** (1.0 mm pitch, vertical, SMD). The I²C lines on U36 and CN4 are the **same 3.3 V bus** as the sensor board at H2 (4.7 kΩ pull-ups on the main board), so an additional external I²C sensor can be connected to either of them.
+
+| Connector | Position | Assignment (silkscreen) | Part on the board | Mating connector (cable side) |
+| :--- | :--- | :--- | :--- | :--- |
+| **U36** – expansion | – | GND · 3V · GPB0 · GPB1 · GPB2 · GPB3 · SCL · SDA (8-pin) | JST BM08B-SRSS-TB | JST **SHR-08V-S-B** housing + **SSH-003T-P0.2** crimp contacts (AWG 28–32) |
+| **CN4** – I²C | right board edge, below CN5 | GND · 3V3 · SCL · SDA (4-pin) | JST BM04B-SRSS-TB | JST **SHR-04V-S-B** housing + **SSH-003T-P0.2** crimp contacts |
+| **CN5** – radar (UART0) | right board edge, above CN4 | 5V · GND · TX · RX (4-pin) | JST BM04B-SRSS-TB | JST **SHR-04V-S-B** housing + **SSH-003T-P0.2** crimp contacts |
+
+- **Cables:** crimping the tiny SH contacts needs a special tool — pre-crimped JST SH 1.0 mm cables (single leads or 4/8-pin cables with a housing on one or both ends) are the practical choice.
+- **Qwiic / STEMMA QT:** these cables also use 4-pin JST SH, but with the pin order GND · 3V3 · **SDA · SCL**. Compare with the silkscreen of CN4 before plugging one in — swapped SDA/SCL does no damage, but the sensor will not respond.
+- **I²C addresses already in use:** 0x40 (PCA9685), 0x76 (BMP388), 0x77 (BME680) and the sensor board at H2 (SCD43 0x62 or SGP41 0x59 + SHT45 0x44). An external sensor needs a free address and its own ESPHome configuration — the firmware variants do not include one.
+- **GPB0–GPB3** (U36) are IO4, IO5, IO14 and IO15. IO4, IO5 and IO15 are ESP32-C6 strapping pins: external circuitry must not force a fixed level on them during reset.
+
 ### 🖱️ On-Device Control Panel
 
 | Component | Description | Documentation |

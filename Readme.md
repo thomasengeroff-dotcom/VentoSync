@@ -265,9 +265,9 @@ A custom-engineered PCB integrates all core components into a compact, robust un
 - **Safety First**: Despite the low power consumption, the layout follows strict safety standards to ensure fire safety and voltage stability.
 - **Future-Proof Expansion** (v2.0):
   - **H2 (I²C)**: Sensor board (SCD43 or SGP41 + SHT45). H2 itself is not populated — the right-angle pins of the sensor board are soldered directly into the H2 holes (no plug connection). **Mind the orientation:** pin 1 (GND, square pad) of the sensor board must land on pin 1 of H2; turned the other way, GND and VDD are swapped.
-  - **CN5 (UART)**: mmWave radar — also the rescue path for flashing via UART0.
-  - **CN4 (I²C)** (GND / 3V3 / SCL / SDA), at the right edge of the board directly below CN5: additional environmental sensors.
-  - **Expansion header U36**: 4 free GPIOs (GPB0–GPB3 = IO4, IO5, IO14, IO15) plus I²C, 3V3 and GND for custom DIY expansions. IO4, IO5 and IO15 are ESP32-C6 strapping pins — external circuitry must not force a fixed level on them during reset.
+  - **CN5 (UART, JST SH 4-pin)**: mmWave radar — also the rescue path for flashing via UART0.
+  - **CN4 (I²C, JST SH 4-pin)** (GND / 3V3 / SCL / SDA), at the right edge of the board directly below CN5: additional environmental sensors.
+  - **Expansion header U36 (JST SH 8-pin)**: 4 free GPIOs (GPB0–GPB3 = IO4, IO5, IO14, IO15) plus I²C, 3V3 and GND for custom DIY expansions — the I²C lines also take another external I²C sensor. IO4, IO5 and IO15 are ESP32-C6 strapping pins — external circuitry must not force a fixed level on them during reset. Mating connectors, cables and free I²C addresses: [Hardware Guide – PCB v2.0 Expansion Connectors](documentation/en/en_hardware-and-wiring.md#-pcb-v20-expansion-connectors-jst-sh).
   - **Status LEDs** for USB 5V, 5V and 3V3; a diode-OR lets the 3.3 V domain run from USB with or without mains.
 
 ![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)

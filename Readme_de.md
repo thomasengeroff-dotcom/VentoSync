@@ -262,9 +262,9 @@ Eine eigens entwickelte Platine (PCB) vereint alle Kernkomponenten in einer komp
 - **Sicherheit an erster Stelle**: Trotz des geringen Stromverbrauchs folgt das Layout strengen Sicherheitsstandards, um Brandschutz und Spannungsstabilität zu gewährleisten.
 - **Zukunftssichere Erweiterbarkeit** (v2.0):
   - **H2 (I²C)**: Sensorboard (SCD43 oder SGP41 + SHT45). H2 selbst ist nicht bestückt — die gewinkelten Stifte des Sensorboards werden direkt in die H2-Bohrungen gelötet (keine Steckverbindung). **Auf die Ausrichtung achten:** Pin 1 (GND, eckiges Pad) des Sensorboards muss auf Pin 1 von H2 sitzen; andersherum sind GND und VDD vertauscht.
-  - **CN5 (UART)**: mmWave-Radar — zugleich der Rettungsweg zum Flashen über UART0.
-  - **CN4 (I²C)** (GND / 3V3 / SCL / SDA), am rechten Platinenrand direkt unter CN5: zusätzliche Umgebungssensoren.
-  - **Erweiterungs-Header U36**: 4 freie GPIOs (GPB0–GPB3 = IO4, IO5, IO14, IO15) plus I²C, 3V3 und GND für eigene DIY-Erweiterungen. IO4, IO5 und IO15 sind Strapping-Pins des ESP32-C6 — externe Beschaltung darf beim Reset keinen festen Pegel erzwingen.
+  - **CN5 (UART, JST SH 4-polig)**: mmWave-Radar — zugleich der Rettungsweg zum Flashen über UART0.
+  - **CN4 (I²C, JST SH 4-polig)** (GND / 3V3 / SCL / SDA), am rechten Platinenrand direkt unter CN5: zusätzliche Umgebungssensoren.
+  - **Erweiterungs-Header U36 (JST SH 8-polig)**: 4 freie GPIOs (GPB0–GPB3 = IO4, IO5, IO14, IO15) plus I²C, 3V3 und GND für eigene DIY-Erweiterungen — über I²C lässt sich hier auch ein weiterer externer I²C-Sensor anschließen. IO4, IO5 und IO15 sind Strapping-Pins des ESP32-C6 — externe Beschaltung darf beim Reset keinen festen Pegel erzwingen. Gegenstecker, Kabel und freie I²C-Adressen: [Hardware-Anleitung – Erweiterungsanschlüsse PCB v2.0](documentation/de/de_hardware-and-wiring.md#-erweiterungsanschlüsse-pcb-v20-jst-sh).
   - **Status-LEDs** für USB-5V, 5V und 3V3; ein Dioden-ODER versorgt die 3,3-V-Domäne wahlweise über USB, mit oder ohne Netzspannung.
 
 ![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
