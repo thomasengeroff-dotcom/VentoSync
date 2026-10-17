@@ -1,0 +1,42 @@
+/* VentoSync – Farbschema angelehnt an developers.home-assistant.io */
+
+:root {
+  --ifm-color-primary: #03a9f4;
+  --ifm-color-primary-dark: #0398dc;
+  --ifm-color-primary-darker: #0390cf;
+  --ifm-color-primary-darkest: #0276ab;
+  --ifm-color-primary-light: #1cb3f5;
+  --ifm-color-primary-lighter: #29b7f5;
+  --ifm-color-primary-lightest: #4fc4f7;
+  --ifm-code-font-size: 92%;
+  --ifm-navbar-background-color: #03a9f4;
+  --ifm-navbar-link-color: #ffffff;
+  --ifm-navbar-link-hover-color: #e1f5fe;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #4fc4f7;
+  --ifm-color-primary-dark: #30baf6;
+  --ifm-color-primary-darker: #21b5f5;
+  --ifm-color-primary-darkest: #0a9bdb;
+  --ifm-color-primary-light: #6ecef8;
+  --ifm-color-primary-lighter: #7dd3f9;
+  --ifm-color-primary-lightest: #aae2fb;
+  --ifm-navbar-background-color: #1c1e21;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.navbar__title,
+.navbar .navbar__link {
+  color: var(--ifm-navbar-link-color);
+}
+
+.navbar__toggle {
+  color: #ffffff;
+}
+
+/* Entitäts-Tabellen: Spalten nicht unnötig umbrechen */
+.markdown table code {
+  white-space: nowrap;
+}
