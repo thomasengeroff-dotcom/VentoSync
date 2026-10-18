@@ -1925,6 +1925,23 @@ bool test_espnow_auth() {
   m[5] = 1;
   TEST_ASSERT(small.accept(m, ea::Counter{1, 1}, ts += 1000u)); // sender 1 was evicted -> accepted again
 
+  // Known-answer self-test (run on the device before the first frame)
+  TEST_ASSERT(ea::self_test());
+
+  // Idle expiry follows the heartbeat interval: >= 15 min, > 2 heartbeats
+  TEST_ASSERT(ea::replay_expiry_ms(60000u) == ea::ReplayGuard::DEFAULT_IDLE_EXPIRY_MS);        // 1 min
+  TEST_ASSERT(ea::replay_expiry_ms(7u * 60000u) == ea::ReplayGuard::DEFAULT_IDLE_EXPIRY_MS);   // 7 min
+  TEST_ASSERT(ea::replay_expiry_ms(30u * 60000u) == 60u * 60000u);                             // 30 min -> 1 h
+  TEST_ASSERT(ea::replay_expiry_ms(360u * 60000u) == 720u * 60000u);                           // 6 h -> 12 h
+  TEST_ASSERT(ea::replay_expiry_ms(0xFFFFFFFFu) == 2u * ea::MAX_SYNC_INTERVAL_MS);              // capped, no overflow
+  // With a 30 min heartbeat an entry survives the silent gap: a replay of an
+  // older frame is still rejected 31 min after the last accepted frame.
+  ea::ReplayGuard slow;
+  slow.set_idle_expiry_ms(ea::replay_expiry_ms(30u * 60000u));
+  TEST_ASSERT(slow.accept(mac_a, ea::Counter{7, 5}, 1000u));
+  TEST_ASSERT(!slow.accept(mac_a, ea::Counter{7, 4}, 1000u + 31u * 60000u));
+  TEST_ASSERT(slow.accept(mac_a, ea::Counter{7, 6}, 1000u + 31u * 60000u));
+
   return true;
 }
 

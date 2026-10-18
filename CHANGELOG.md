@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.46] - 2026-10-18
+
+Fixes from the code review of 0.10.41 – 0.10.45.
+
+### Security / Stability
+
+- **M-1: Replay protection with a long ESP-NOW sync interval** — the replay memory forgot a sender after a fixed
+  15 min. With a sync interval above 7.5 min (configurable up to 6 h) every entry expired between two heartbeats, so a
+  recorded frame (e.g. `Aus`) could be replayed after each silent gap. The expiry is now
+  max(15 min, 2 × sync interval) (`ventosync::espnow_auth::replay_expiry_ms()`, unit-tested).
+- **ESP-NOW duplicate guard dropped distinct frames** — `handle_espnow_receive()` treated two frames of the same sender
+  within 50 ms as duplicates when their first 8 bytes matched (e.g. two `MSG_SYNC` with different room flags), so the
+  second, newer frame was lost. It now hashes the whole frame incl. the authentication counter — only exact duplicates
+  are suppressed.
+
+### Changed
+
+- **HMAC-SHA256 on the device via mbedtls** (hardware SHA of the ESP32-C6, already linked by ESP-IDF) instead of the
+  software implementation, which remains the native unit-test implementation; a known-answer self-test (RFC 4231) runs
+  before the first ESP-NOW frame and keeps ESP-NOW off if it fails. Firmware −910 bytes (Bluetooth proxy image
+  2,011,136 / 2,031,616 B).
+- The ESP-NOW room key setter uses ESPHome's `parse_hex()` and logs an invalid key.
+- `handle_config_sync()` no longer repeats the range checks `ventosync::packet::parse()` already did.
+- CI: the CLAUDE.md variant-table check only counts table rows (a file named in prose no longer hides a missing row);
+  `ci_config.py check` fails if a generated variant file is tracked by git; `ventosync_nosensor_mqtt.yaml` is in
+  `.gitignore`.
+- `Modified:` headers of the YAML files changed in 0.10.43 / 0.10.45 updated.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.45] - 2026-10-18
 
 ### Changed

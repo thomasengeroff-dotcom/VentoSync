@@ -247,11 +247,22 @@ namespace espnow_auth_state {
   inline uint32_t dropped = 0;
   inline uint32_t last_drop_log_ms = 0;
   inline bool missing_key_logged = false;
+  /// HMAC known-answer test: 0 = not run, 1 = passed, -1 = failed.
+  inline int8_t self_test_result = 0;
   constexpr uint32_t DROP_LOG_INTERVAL_MS = 60000;
 }
 
-/// @brief True if the room key was configured (espnow_key); fail closed otherwise.
+/**
+ * @brief   True if the room key is configured (espnow_key) and the HMAC
+ *          implementation passed its known-answer test; fail closed otherwise.
+ */
 inline bool espnow_auth_key_ready() {
+  if (espnow_auth_state::self_test_result == 0) {
+    const bool ok = ventosync::espnow_auth::self_test();
+    espnow_auth_state::self_test_result = ok ? 1 : -1;
+    if (!ok) ESP_LOGE("espnow_auth", "HMAC-SHA256 self-test FAILED — ESP-NOW disabled");
+  }
+  if (espnow_auth_state::self_test_result < 0) return false;
   if (ventilation_ctrl != nullptr && ventilation_ctrl->espnow_auth_key_set) return true;
   if (!espnow_auth_state::missing_key_logged) {
     ESP_LOGE("espnow_auth", "No ESP-NOW room key configured (espnow_key) — ESP-NOW disabled");
@@ -314,6 +325,9 @@ inline bool espnow_open_frame(const std::vector<uint8_t> &frame, const uint8_t *
   namespace ea = ventosync::espnow_auth;
   if (!espnow_auth_key_ready()) return false;
   const uint32_t now = millis();
+  // Replay memory must outlive two heartbeats of the configured interval.
+  espnow_auth_state::replay_guard.set_idle_expiry_ms(
+      ventosync::espnow_auth::replay_expiry_ms(ventilation_ctrl->sync_interval_ms));
   size_t payload_len = 0;
   ea::Counter ctr;
   const ea::Verdict verdict =
@@ -861,6 +875,9 @@ inline void handle_status_request(const esphome::VentilationPacket *pkt, const u
  * @param[in] pkt  Pointer to the parsed VentilationPacket.
  */
 inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
+  // The packet was range-checked by ventosync::packet::parse() (levels 1-10,
+  // sync interval 1-1440, vent timer <= 1440) — only ranges parse() does not
+  // cover (HA slider / setting ranges) are checked here.
   bool dirty = false;
   auto *v = ventilation_ctrl;
   if (v == nullptr) return;
@@ -868,7 +885,6 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   // 1. Automatik Min/Max levels (Sliders)
   if (automatik_min_fan_level != nullptr &&
       automatik_min_luefterstufe != nullptr &&
-      pkt->automatik_min_fan_level >= 1 && pkt->automatik_min_fan_level <= 10 &&
       pkt->automatik_min_fan_level != automatik_min_fan_level->value()) {
     automatik_min_fan_level->value() = pkt->automatik_min_fan_level;
     automatik_min_luefterstufe->publish_state(pkt->automatik_min_fan_level);
@@ -877,7 +893,6 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
 
   if (automatik_max_fan_level != nullptr &&
       automatik_max_luefterstufe != nullptr &&
-      pkt->automatik_max_fan_level >= 1 && pkt->automatik_max_fan_level <= 10 &&
       pkt->automatik_max_fan_level != automatik_max_fan_level->value()) {
     automatik_max_fan_level->value() = pkt->automatik_max_fan_level;
     automatik_max_luefterstufe->publish_state(pkt->automatik_max_fan_level);
@@ -980,8 +995,7 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   }
 
   // 3. System Timers
-  if (sync_interval_config != nullptr && pkt->sync_interval_min >= 1 &&
-      pkt->sync_interval_min <= 1440 &&
+  if (sync_interval_config != nullptr &&
       v->sync_interval_ms != static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000)) {
     v->sync_interval_ms = static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000);
     sync_interval_config->publish_state(pkt->sync_interval_min);
@@ -990,7 +1004,7 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
 
   // Note: vent_timer intentionally does not set dirty because it does not
   // affect auto-mode evaluation (only the ventilation duration timer).
-  if (vent_timer != nullptr && pkt->vent_timer_min <= 1440 &&
+  if (vent_timer != nullptr &&
       static_cast<uint32_t>(pkt->vent_timer_min * 60 * 1000) !=
           v->state_machine.ventilation_duration_ms) {
     v->state_machine.ventilation_duration_ms = pkt->vent_timer_min * 60 * 1000;
@@ -1093,20 +1107,22 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
  *          All shared state access is protected by rx_queue_mutex.
  */
 inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
-  // ✅ Lightweight deduplication guard (prevent double-queueing within 50ms)
-  // Uses only local statics — no shared state, no mutex needed.
+  // ✅ Exact-duplicate guard (same frame within 50 ms is not queued twice).
+  // Hashes the WHOLE frame incl. the authentication trailer, whose counter
+  // makes every genuine frame unique — so distinct frames are never dropped
+  // (hashing only the header bytes could drop a second, different frame).
+  // Uses only local statics — no shared state, no mutex needed. Replays are
+  // rejected later by the ReplayGuard (espnow_open_frame()).
   static uint32_t last_rx_time = 0;
   static uint32_t last_rx_hash = 0;
   uint32_t now = millis();
 
-  uint32_t hash = static_cast<uint32_t>(data.size());
-  for (size_t i = 0; i < std::min(data.size(), static_cast<size_t>(8)); i++)
-    hash = hash * 31 + data[i];
-  for (size_t i = 0; i < 6; i++)
-    hash = hash * 31 + src_mac[i];
+  uint32_t hash = 2166136261u; // FNV-1a
+  for (uint8_t b : data) hash = (hash ^ b) * 16777619u;
+  for (size_t i = 0; i < 6; i++) hash = (hash ^ src_mac[i]) * 16777619u;
 
   if (hash == last_rx_hash && (now - last_rx_time) < 50) {
-    return; // Duplicate suppressed
+    return; // Exact duplicate suppressed
   }
   last_rx_hash = hash;
   last_rx_time = now;

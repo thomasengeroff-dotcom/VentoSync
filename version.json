@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.45",
+    "project_version": "0.10.46",
     "project_date": "2026-10-18",
-    "project_description": "Single source for factory defaults (YAML substitutions + defaults.h, CI-checked) and for the CI variant list (.github/variants.json)."
+    "project_description": "Code-review fixes: replay expiry follows the ESP-NOW sync interval, exact-duplicate RX guard, HMAC via mbedtls on the device."
 }
