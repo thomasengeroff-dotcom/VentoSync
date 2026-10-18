@@ -67,8 +67,21 @@ sequenceDiagram
 
 * **Magic Header Validation**: Every packet begins with a fixed magic byte (`0x42`) to immediately discard foreign or malformed 2.4 GHz packets.
 * **Firmware Version Guard**: Strict version validation ensures that packets from incompatible firmware builds are rejected cleanly.
-* **Loop Prevention**: Settings updates contain sequence tokens to prevent cyclic broadcast loops when mirroring configuration values across peers.
+* **Loop Prevention**: adopted values are applied without a new broadcast (`notify = false`), and devices only broadcast their **own** inputs, never a value fused from peers — so mirrored settings and room-wide maxima cannot ping-pong or latch between devices. (There are no sequence numbers in the packet.)
 * **Level override (v12)**: every packet carries the room's Smart-Automatik level override (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` from any device starts, changes or ends it; the Master heartbeat only starts / re-aligns it. Firmware ≥ 0.10.34 rejects v11 packets — **flash all devices of a room**.
+
+---
+
+## ⚠️ Security: No Encryption, No Authentication
+
+ESP-NOW traffic between VentoSync devices is **neither encrypted nor authenticated**. The checks above (magic byte, protocol version, packet size, value ranges, Floor/Room ID) only reject foreign or malformed packets — they are no protection against a deliberate attacker:
+
+* **Readable**: anyone within radio range (typically one building, more with a directional antenna) can receive the packets and read mode, fan level, CO2, humidity and temperatures.
+* **Forgeable**: the packet format is public (this repository). A nearby ESP32 can send matching packets with any sender MAC and switch the room's mode (e.g. `Aus`), change its level or the room-wide settings (Smart-Automatik limits, CO2/humidity thresholds, Smart Climate Control). Floor and Room ID can be read from the device's own packets.
+* **Not affected**: Wi-Fi, the Home Assistant API and OTA updates are separate channels (see *OTA Security* in the README); firmware cannot be replaced via ESP-NOW. The thermal cutoff runs locally on each device. Note that the window guard also listens to the peers' window flag, so a forged packet can pause the fans as well.
+* **Why not ESP-NOW encryption?** ESPHome 2026.9.1 does not support it (peers are always added unencrypted), and ESP-NOW's built-in encryption would only cover unicast (discovery and status requests are broadcasts) and is limited to a few encrypted peers. A key compiled into the public release binaries would also be extractable by anyone. Message authentication with a per-installation key is being evaluated.
+
+**Recommendation:** treat ESP-NOW like an unprotected local bus. It is fine for a private house; for exposed installations (shared buildings, offices, multi-family houses with neighbouring flats in radio range) weigh the risk — a forged packet can switch the ventilation off until someone switches it on again.
 
 ---
 

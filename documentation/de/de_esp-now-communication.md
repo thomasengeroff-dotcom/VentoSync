@@ -67,8 +67,21 @@ sequenceDiagram
 
 * **Magic Header**: Jedes Datenpaket beginnt mit einem festen Prüfbyte (`0x42`), um fremde oder fehlerhafte 2,4-GHz-Pakete sofort zu verwerfen.
 * **Firmware-Versionsprüfung**: Strikte Validierung verhindert Fehlinterpretationen bei unterschiedlichen Firmware-Ständen.
-* **Schleifen-Schutz**: Einstellungsänderungen enthalten Sequenz-Token, um zirkuläre Broadcast-Schleifen beim Spiegeln von Parametern zu verhindern.
+* **Schleifen-Schutz**: Übernommene Werte werden ohne neuen Broadcast angewendet (`notify = false`), und Geräte senden nur ihre **eigenen** Eingangswerte, nie einen aus Peers fusionierten Wert — gespiegelte Einstellungen und raumweite Maxima können daher nicht zwischen Geräten hin- und herspringen oder sich gegenseitig festhalten. (Sequenznummern gibt es im Paket nicht.)
 * **Stufen-Übersteuerung (v12)**: Jedes Paket trägt die Stufen-Übersteuerung der Smart-Automatik des Raums (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` eines beliebigen Geräts startet, ändert oder beendet sie; der Master-Heartbeat startet bzw. synchronisiert sie nur. Firmware ≥ 0.10.34 verwirft v11-Pakete — **alle Geräte eines Raums flashen**.
+
+---
+
+## ⚠️ Sicherheit: keine Verschlüsselung, keine Authentifizierung
+
+Der ESP-NOW-Verkehr zwischen VentoSync-Geräten ist **weder verschlüsselt noch authentifiziert**. Die Prüfungen oben (Magic Byte, Protokollversion, Paketgröße, Wertebereiche, Etagen-/Raum-ID) verwerfen nur fremde oder fehlerhafte Pakete — gegen einen gezielten Angreifer schützen sie nicht:
+
+* **Mitlesbar**: Jeder in Funkreichweite (typisch ein Gebäude, mit Richtantenne mehr) kann die Pakete empfangen und Modus, Lüfterstufe, CO2, Luftfeuchte und Temperaturen lesen.
+* **Fälschbar**: Das Paketformat ist öffentlich (dieses Repository). Ein ESP32 in der Nähe kann passende Pakete mit beliebiger Absender-MAC senden und den Modus des Raums umschalten (z. B. `Aus`), die Stufe oder die raumweiten Einstellungen ändern (Grenzen der Smart-Automatik, CO2-/Feuchte-Schwellen, Klima-Koordination). Etagen- und Raum-ID lassen sich aus den Paketen des Geräts selbst ablesen.
+* **Nicht betroffen**: WLAN, die Home-Assistant-API und OTA-Updates sind getrennte Kanäle (siehe *OTA-Sicherheit* in der README); über ESP-NOW lässt sich keine Firmware austauschen. Die Übertemperatur-Abschaltung läuft lokal auf jedem Gerät. Die Fenstersperre wertet auch das Fenster-Flag der Peers aus, ein gefälschtes Paket kann die Lüfter also ebenfalls anhalten.
+* **Warum keine ESP-NOW-Verschlüsselung?** ESPHome 2026.9.1 unterstützt sie nicht (Peers werden immer unverschlüsselt angelegt), und die eingebaute ESP-NOW-Verschlüsselung deckt nur Unicast ab (Discovery und Statusabfragen sind Broadcasts) und ist auf wenige verschlüsselte Peers begrenzt. Ein in die öffentlichen Release-Binaries kompilierter Schlüssel wäre zudem für jeden auslesbar. Eine Nachrichten-Authentifizierung mit einem Schlüssel pro Installation wird geprüft.
+
+**Empfehlung:** ESP-NOW wie einen ungeschützten lokalen Bus behandeln. Für ein Einfamilienhaus ist das unkritisch; bei exponierten Installationen (Mehrparteienhaus mit Nachbarwohnungen in Funkreichweite, Büros) das Risiko abwägen — ein gefälschtes Paket kann die Lüftung ausschalten, bis jemand sie wieder einschaltet.
 
 ---
 

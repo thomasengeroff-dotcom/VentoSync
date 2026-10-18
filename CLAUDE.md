@@ -212,6 +212,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 - **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
+- **No encryption / authentication:** ESP-NOW packets are plaintext and unauthenticated (ESPHome 2026.9.1 adds
+  peers without LMK; broadcasts could not be encrypted anyway). The validation only rejects malformed packets —
+  documented as a known limitation (`en_esp-now-communication.md`, README "ESP-NOW Security"). Keep it documented.
 - **Safe deserialization:** only via `std::memcpy` into a stack-local struct in
   `espnow_handler::validate_and_parse_packet()` — **never** cast `uint8_t*` to a struct pointer.
 - **Discovery:** broadcast `ROOM_DISC` on boot → matching Floor + Room ID → unicast pairing.
