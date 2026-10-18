@@ -33,6 +33,7 @@
 #include "ventilation_state_machine.h"
 #include "esphome/components/ventilation_logic/room_fusion.h"
 #include "esphome/components/ventilation_logic/level_override.h"
+#include "esphome/components/ventilation_logic/espnow_auth.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -96,7 +97,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 12; // Bumped: room-wide Smart-Automatik level override
+static constexpr uint8_t PROTOCOL_VERSION = 13; // Bumped: HMAC-authenticated frames (espnow_auth.h trailer)
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -185,8 +186,8 @@ struct __attribute__((packed)) VentilationPacket {
   uint16_t auto_override_duration_min; ///< Room-wide override duration setting (30-300 min).
 };
 
-static_assert(sizeof(VentilationPacket) <= 250,
-    "VentilationPacket must fit into a single ESP-NOW payload (250 bytes)");
+static_assert(sizeof(VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250,
+    "VentilationPacket + authentication trailer must fit into a single ESP-NOW payload (250 bytes)");
 
 /// @brief Represents the latest known state of a peer device in the same room.
 struct PeerState {
@@ -296,6 +297,10 @@ public:
   /// Smart-Automatik). Shared in every packet; adopted in network_sync.h.
   ventosync::auto_override::LevelOverride level_override;
 
+  // --- ESP-NOW AUTHENTICATION (protocol v13, see espnow_auth.h) ---
+  ventosync::espnow_auth::Key espnow_auth_key{}; ///< Room key (set by codegen).
+  bool espnow_auth_key_set = false;              ///< False -> no ESP-NOW traffic at all (fail closed).
+
   // --- PEER TRACKING (dashboard + room-wide sensor/demand fusion) ---
   std::vector<PeerState> peers; ///< List of recently seen peers
   bool is_state_synced =
@@ -393,6 +398,25 @@ public:
   void set_ignore_window_guard(bool ignore) { 
     ignore_window_guard_ = ignore;
     update_hardware();
+  }
+  /**
+   * @brief Sets the ESP-NOW room key (64 hex chars, derived from the
+   *        `espnow_key` secret by __init__.py at compile time).
+   */
+  void set_espnow_auth_key_hex(const char *hex) {
+    auto nibble = [](char c) -> int {
+      if (c >= '0' && c <= '9') return c - '0';
+      if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+      if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+      return -1;
+    };
+    if (hex == nullptr || std::strlen(hex) != espnow_auth_key.size() * 2) return;
+    for (size_t i = 0; i < espnow_auth_key.size(); i++) {
+      const int h = nibble(hex[2 * i]), l = nibble(hex[2 * i + 1]);
+      if (h < 0 || l < 0) return;
+      espnow_auth_key[i] = static_cast<uint8_t>((h << 4) | l);
+    }
+    espnow_auth_key_set = true;
   }
   /** @brief Sets the floor group for ESP-NOW filtering. */
   void set_floor_id(uint8_t id) { floor_id = id; }

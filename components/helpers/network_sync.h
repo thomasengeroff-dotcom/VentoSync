@@ -63,18 +63,15 @@ inline std::optional<std::pair<int,int>> get_local_room_ids() {
 }
 
 /**
- * @brief   Checks if a given MAC address matches the local device.
+ * @brief   This device's STA MAC — the sender address peers see for our
+ *          ESP-NOW frames (also bound into the frame authentication tag).
  *
  * @details Reads the local STA MAC exactly once using std::call_once, which
  *          provides a guaranteed-single, thread-safe initialisation even when
  *          called concurrently from the WiFi task and the main loop.
  *          (K-2 Fix: replaced non-atomic `cached` bool with std::call_once)
- *
- * @param[in] mac  Pointer to a 6-byte MAC address.
- *
- * @return  true   if the MAC matches this device.
  */
-inline bool is_local_mac(const uint8_t *mac) {
+inline const uint8_t *local_sta_mac() {
   static uint8_t local_mac[6] = {0};
   static std::once_flag init_flag;
   std::call_once(init_flag, []() {
@@ -82,7 +79,12 @@ inline bool is_local_mac(const uint8_t *mac) {
     ESP_LOGI("espnow_disc", "Local MAC detected: %02X:%02X:%02X:%02X:%02X:%02X",
              local_mac[0], local_mac[1], local_mac[2], local_mac[3], local_mac[4], local_mac[5]);
   });
-  return memcmp(mac, local_mac, 6) == 0;
+  return local_mac;
+}
+
+/** @brief True if `mac` is this device's STA MAC (see local_sta_mac()). */
+inline bool is_local_mac(const uint8_t *mac) {
+  return memcmp(mac, local_sta_mac(), 6) == 0;
 }
 
 // --- Peer Cache Helpers -------------------------------------------------
@@ -228,6 +230,125 @@ inline void remove_stale_peer(const uint8_t *mac) {
 
   ESP_LOGW("espnow_recovery", "Stale peer %s removed (cache: %zu peers remaining)",
            mac_str.c_str(), peer_cache.size());
+}
+
+
+// =========================================================
+// SECTION: Frame Authentication (protocol v13, espnow_auth.h)
+// =========================================================
+
+namespace espnow_auth_state {
+  /// Newest accepted (epoch, seq) per sender — rejects replayed frames.
+  inline ventosync::espnow_auth::ReplayGuard replay_guard;
+  /// Own frame counter: epoch persisted once per boot, seq per frame.
+  inline ventosync::espnow_auth::Counter tx{};
+  inline bool tx_ready = false;
+  /// Dropped frames since the last summary log (rate-limited warning).
+  inline uint32_t dropped = 0;
+  inline uint32_t last_drop_log_ms = 0;
+  inline bool missing_key_logged = false;
+  constexpr uint32_t DROP_LOG_INTERVAL_MS = 60000;
+}
+
+/// @brief True if the room key was configured (espnow_key); fail closed otherwise.
+inline bool espnow_auth_key_ready() {
+  if (ventilation_ctrl != nullptr && ventilation_ctrl->espnow_auth_key_set) return true;
+  if (!espnow_auth_state::missing_key_logged) {
+    ESP_LOGE("espnow_auth", "No ESP-NOW room key configured (espnow_key) — ESP-NOW disabled");
+    espnow_auth_state::missing_key_logged = true;
+  }
+  return false;
+}
+
+/**
+ * @brief   Starts this boot's frame counter: increments the persisted epoch.
+ *
+ * @details Written to flash immediately (one write per boot), so the epoch of
+ *          the next boot is always larger and receivers accept it (seq
+ *          restarts at 0). If the write fails, the epoch can repeat after a
+ *          reboot; peers then reject this device until its frames are newer
+ *          again or the replay entry expired (15 min).
+ */
+inline void espnow_auth_start_tx() {
+  if (espnow_auth_state::tx_ready) return;
+  auto pref = esphome::global_preferences->make_preference<uint32_t>(
+      esphome::fnv1_hash("ventosync_espnow_tx_epoch"), true);
+  uint32_t epoch = 0;
+  if (!pref.load(&epoch)) epoch = 0;
+  epoch++;
+  if (!pref.save(&epoch) || !esphome::global_preferences->sync()) {
+    ESP_LOGE("espnow_auth", "Could not persist the ESP-NOW frame epoch %u", static_cast<unsigned>(epoch));
+  }
+  espnow_auth_state::tx.epoch = epoch;
+  espnow_auth_state::tx.seq = 0;
+  espnow_auth_state::tx_ready = true;
+  ESP_LOGI("espnow_auth", "Frame authentication active (epoch %u)", static_cast<unsigned>(epoch));
+}
+
+/**
+ * @brief   Appends the authentication trailer to an outgoing frame.
+ * @return  false if no room key is configured (the frame must not be sent).
+ */
+inline bool espnow_seal_frame(std::vector<uint8_t> &frame) {
+  if (!espnow_auth_key_ready()) return false;
+  espnow_auth_start_tx();
+  espnow_auth_state::tx.seq++;
+  ventosync::espnow_auth::seal(ventilation_ctrl->espnow_auth_key, local_sta_mac(), frame,
+                               espnow_auth_state::tx);
+  return true;
+}
+
+/**
+ * @brief   Verifies a received frame (tag + replay) and strips the trailer.
+ *
+ * @details Every rejected frame is counted; a summary warning is logged at
+ *          most once per minute, so a neighbour's devices with another key —
+ *          or an attacker — cannot flood the log.
+ *
+ * @param[out] payload  The authenticated payload (without trailer).
+ * @return  true if the frame is authentic and newer than the last one of
+ *          this sender.
+ */
+inline bool espnow_open_frame(const std::vector<uint8_t> &frame, const uint8_t *src_mac,
+                              std::vector<uint8_t> &payload) {
+  namespace ea = ventosync::espnow_auth;
+  if (!espnow_auth_key_ready()) return false;
+  const uint32_t now = millis();
+  size_t payload_len = 0;
+  ea::Counter ctr;
+  const ea::Verdict verdict =
+      ea::verify(ventilation_ctrl->espnow_auth_key, src_mac, frame.data(), frame.size(), payload_len, ctr);
+  const char *reason = nullptr;
+  if (verdict == ea::Verdict::TOO_SHORT) {
+    reason = "unsigned (firmware < 0.10.43?)";
+  } else if (verdict == ea::Verdict::BAD_TAG) {
+    reason = "bad tag (other espnow_key, firmware < 0.10.43 or forged)";
+  } else if (!espnow_auth_state::replay_guard.accept(src_mac, ctr, now)) {
+    reason = "replayed / outdated counter";
+  }
+  if (reason != nullptr) {
+    espnow_auth_state::dropped++;
+    if (espnow_auth_state::last_drop_log_ms == 0 ||
+        now - espnow_auth_state::last_drop_log_ms >= espnow_auth_state::DROP_LOG_INTERVAL_MS) {
+      ESP_LOGW("espnow_auth", "Dropped %u unauthenticated ESP-NOW frame(s); last from %s: %s",
+               static_cast<unsigned>(espnow_auth_state::dropped), format_mac(src_mac).c_str(), reason);
+      espnow_auth_state::dropped = 0;
+      espnow_auth_state::last_drop_log_ms = now;
+    }
+    return false;
+  }
+  payload.assign(frame.begin(), frame.begin() + static_cast<std::ptrdiff_t>(payload_len));
+  return true;
+}
+
+/**
+ * @brief   Seals and sends one ESP-NOW frame (the only send path, so every
+ *          frame — unicast, broadcast, discovery — is authenticated).
+ */
+inline void espnow_send_frame(const uint8_t *dest, std::vector<uint8_t> frame,
+                              const esphome::espnow::send_callback_t &callback = nullptr) {
+  if (!esphome::espnow::global_esp_now || !espnow_seal_frame(frame)) return;
+  esphome::espnow::global_esp_now->send(dest, frame, callback);
 }
 
 // =========================================================
@@ -462,14 +583,13 @@ inline void send_discovery_broadcast() {
 
   std::string msg(buffer);
   std::vector<uint8_t> data(msg.begin(), msg.end());
-  esphome::espnow::global_esp_now->send(BROADCAST_MAC, data,
-                                        [msg, primary_chan](esp_err_t err) {
-                                          if (err == ESP_OK) {
-                                            ESP_LOGI("espnow_disc", "Sent discovery broadcast: %s (Channel: %d)", msg.c_str(), primary_chan);
-                                          } else {
-                                            ESP_LOGE("espnow_disc", "Discovery broadcast SEND FAILED! (Err: %d, Channel: %d)", err, primary_chan);
-                                          }
-                                        });
+  espnow_send_frame(BROADCAST_MAC, std::move(data), [msg, primary_chan](esp_err_t err) {
+    if (err == ESP_OK) {
+      ESP_LOGI("espnow_disc", "Sent discovery broadcast: %s (Channel: %d)", msg.c_str(), primary_chan);
+    } else {
+      ESP_LOGE("espnow_disc", "Discovery broadcast SEND FAILED! (Err: %d, Channel: %d)", err, primary_chan);
+    }
+  });
 }
 
 /** @brief Requests current status from all known peers.
@@ -482,8 +602,7 @@ inline void request_peer_status() {
   if (peer_cache.empty()) {
     // No known peers — broadcast required
     ESP_LOGI("vent_sync", "No known peers, broadcasting status request...");
-    esphome::espnow::global_esp_now->send(BROADCAST_MAC, data,
-                                          [](esp_err_t err) {});
+    espnow_send_frame(BROADCAST_MAC, std::move(data));
   } else {
     // Known peers — unicast (more reliable due to HW-ACK)
     ESP_LOGI("vent_sync", "Requesting status via UNICAST from %zu peer(s)...",
@@ -514,7 +633,7 @@ inline void send_discovery_confirmation(const uint8_t *target_mac) {
 
   std::string msg(buffer);
   std::vector<uint8_t> data(msg.begin(), msg.end());
-  esphome::espnow::global_esp_now->send(target_mac, data, [](esp_err_t err) {});
+  espnow_send_frame(target_mac, std::move(data));
 }
 
 /**
@@ -574,6 +693,10 @@ inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
   if (!esphome::espnow::global_esp_now || peer_cache.empty())
     return;
 
+  // Seal once: every peer receives the identical frame (same counter).
+  std::vector<uint8_t> frame = data;
+  if (!espnow_seal_frame(frame)) return;
+
   // ✅ MAC snapshot prevents iterator-invalidation if cache mutates later
   std::vector<std::array<uint8_t, 6>> mac_snapshot;
   mac_snapshot.reserve(peer_cache.size());
@@ -583,7 +706,7 @@ inline void send_sync_to_all_peers(const std::vector<uint8_t> &data) {
 
   for (const auto &peer_mac : mac_snapshot) {
     esphome::espnow::global_esp_now->send(
-        peer_mac.data(), data,
+        peer_mac.data(), frame,
         // ✅ WiFi-task callback: ONLY enqueue — never read/write peer_cache!
         [peer_mac](esp_err_t err) {
           PeerEvent ev;
@@ -784,11 +907,7 @@ inline void handle_status_request(const esphome::VentilationPacket *pkt, const u
 
     ESP_LOGI("vent_sync", "Status request from peer %d. Sending UNICAST response...",
              pkt->device_id);
-    auto resp = build_and_populate_packet(esphome::MSG_STATUS_RESPONSE);
-    if (esphome::espnow::global_esp_now) {
-      esphome::espnow::global_esp_now->send(src_mac, resp,
-                                            [](esp_err_t err) {});
-    }
+    espnow_send_frame(src_mac, build_and_populate_packet(esphome::MSG_STATUS_RESPONSE));
   }
 }
 
@@ -1074,15 +1193,21 @@ inline void handle_espnow_receive(const std::vector<uint8_t> &data, const uint8_
  *          safe access to globals, flash/NVS, peer registration, and UI
  *          components without risking Interrupt WDT timeouts.
  *
- * @param[in] data      Packet payload.
+ * @param[in] frame     Received frame (payload + authentication trailer).
  * @param[in] src_mac   Sender MAC address.
  */
-inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const uint8_t *src_mac) {
+inline void process_espnow_packet_local(const std::vector<uint8_t> &frame, const uint8_t *src_mac) {
   // --- DEBUG LOGGING ---
-  if (!data.empty()) {
+  if (!frame.empty()) {
     ESP_LOGD("espnow_raw", "RX from %s | Len: %zu | First: 0x%02X",
-             format_mac(src_mac).c_str(), data.size(), data[0]);
+             format_mac(src_mac).c_str(), frame.size(), frame[0]);
   }
+
+  // Protocol v13: nothing is interpreted before the frame is authenticated
+  // (tag over sender MAC + payload + counter, replay guard). Covers the
+  // plaintext discovery strings as well as VentilationPackets.
+  std::vector<uint8_t> data;
+  if (!espnow_open_frame(frame, src_mac, data)) return;
 
   // Intercept discovery strings before validate_packet().
   // Discovery packets are plaintext, not VentilationPacket structs.

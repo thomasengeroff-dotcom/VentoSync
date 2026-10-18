@@ -15,7 +15,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
   naming — do not rename to `scd43_*`.
-- Communication: ESP-NOW (protocol v12) for multi-device sync (no Wi-Fi router required between units),
+- Communication: ESP-NOW (protocol v13, HMAC-authenticated) for multi-device sync (no Wi-Fi router required between units),
   ESPHome Native API to Home Assistant (optional MQTT variant)
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names,
   UI labels, and user-facing strings remain in **German**.
@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,008,388 / 2,031,616 B (~23 KB headroom, 0.10.42) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 2,011,970 / 2,031,616 B (~19 KB headroom, 0.10.43) — CI compiles it on every PR. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -200,7 +200,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v12` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 12` in `ventilation_group.h`;
+- **Protocol version:** `v13` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 13` in `ventilation_group.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
@@ -208,13 +208,18 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   strong NOx event — an older Master never sets bit 4 and therefore keeps the room's NOx switch off;
   v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
-  Smart-Automatik level override and its duration setting).
+  Smart-Automatik level override and its duration setting; v13 added the authentication trailer, see below).
 - **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
-- **No encryption / authentication:** ESP-NOW packets are plaintext and unauthenticated (ESPHome 2026.9.1 adds
-  peers without LMK; broadcasts could not be encrypted anyway). The validation only rejects malformed packets —
-  documented as a known limitation (`en_esp-now-communication.md`, README "ESP-NOW Security"). Keep it documented.
+- **Frame authentication (v13, `espnow_auth.h`, `ventosync::espnow_auth`):** every frame (VentilationPacket and
+  the ROOM_DISC / ROOM_CONF strings, unicast and broadcast) ends with `epoch | seq | tag` (16 bytes,
+  HMAC-SHA256 over sender MAC ‖ payload ‖ counter, truncated to 8 bytes). Send **only** via `espnow_send_frame()` /
+  `espnow_seal_frame()` and parse only what `espnow_open_frame()` returned (`network_sync.h`) — never call
+  `global_esp_now->send()` with an unsealed payload. Key: `espnow_key` secret → SHA-256 in `ventilation_group/__init__.py`
+  (CI: repository secret `ESPNOW_KEY`, required for release builds). `epoch` is persisted once per boot (ESPHome
+  preference `ventosync_espnow_tx_epoch`); the `ReplayGuard` (RAM, 16 senders) forgets a sender after 15 min without
+  an accepted frame. Not encrypted — payloads stay readable; the release key is extractable (documented like the API key).
 - **Safe deserialization:** only via `std::memcpy` into a stack-local struct in
   `espnow_handler::validate_and_parse_packet()` — **never** cast `uint8_t*` to a struct pointer.
 - **Discovery:** broadcast `ROOM_DISC` on boot → matching Floor + Room ID → unicast pairing.
@@ -274,7 +279,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 Use `ventosync::` for project-wide constants, guards, and helper structs. Sub-namespaces in use:
 `ventosync::config`, `ventosync::espnow`, `ventosync::ha_fan`, `ventosync::health`, `ventosync::hrv`,
 `ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`,
-`ventosync::nox`, `ventosync::auto_status`.
+`ventosync::nox`, `ventosync::auto_status`, `ventosync::espnow_auth`.
 
 ### Modular C++ Headers (`components/helpers/`)
 
@@ -292,7 +297,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v12 mesh communication, packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v13 mesh communication (frame authentication glue), packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock
@@ -315,6 +320,7 @@ Complex YAML lambda logic is extracted into focused header files:
     countdown + packet adoption, `Co2Guard`, `resolve_level()`).
   - `nox_boost.h` (`ventosync::nox`): NOx boost `Detector` (trigger, hold, cap, outdoor-air test, lockout).
   - `auto_status.h` (`ventosync::auto_status`): Automatik-Status reason/text (`describe()`), keys, `ReasonTracker`.
+  - `espnow_auth.h` (`ventosync::espnow_auth`): SHA-256 / HMAC-SHA256, frame trailer `seal()` / `verify()`, `ReplayGuard`.
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices

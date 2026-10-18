@@ -242,7 +242,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v12, dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v13 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -435,7 +435,7 @@ esphome upload ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
 
 ### ⚡ Erstmaliges Flashen & Inbetriebnahme
 
-1. **Firmware vorbereiten**: Kompiliere die Firmware mit deinen eigenen WLAN-Zugangsdaten (via `secrets.yaml`).
+1. **Firmware vorbereiten**: Kompiliere die Firmware mit deinen eigenen WLAN-Zugangsdaten (via `secrets.yaml`, Vorlage `secrets_example.yaml`). Seit 0.10.43 braucht sie außerdem `espnow_key` — denselben Raum-Schlüssel auf allen Geräten eines Raums (siehe *ESP-NOW-Sicherheit* unten).
 2. **Initiales Flashen**: Flashe den ESP (XIAO) initial per USB mit der VentoSync Firmware über das ESPHome Dashboard oder per ESPHome CLI-Befehl:
 
    ```bash
@@ -480,9 +480,14 @@ Die Weboberflächen (`http://<geräte-ip>/` und das VentoSync-Dashboard `/ui`) h
 - **Login aktivieren** im eigenen Build: den `auth:`-Block unter `web_server:` in `packages/base/esp32c6_common.yaml` einkommentieren und `webuser` / `webpw` in `secrets.yaml` eintragen. Er schützt die native Seite **und** das Dashboard (`/ui`, `/state`, `/set`). Die Release-Binaries lassen ihn aus, weil sie ohne Secrets gebaut werden.
 - **Schutz gegen Überflutung** (seit 0.10.42): Das Dashboard hält höchstens 16 offene Änderungen vor; weitere `/set`-Anfragen bekommen HTTP 503, bis die Warteschlange abgearbeitet ist (alle 100 ms), und Werte mit mehr als 32 Zeichen werden abgelehnt.
 
-#### 📡 ESP-NOW-Sicherheit (unverschlüsselt)
+#### 📡 ESP-NOW-Sicherheit (authentifiziert, nicht verschlüsselt)
 
-Der ESP-NOW-Verkehr zwischen den Geräten eines Raums ist **weder verschlüsselt noch authentifiziert**. Jeder in Funkreichweite kann ihn mitlesen, und ein ESP32 in der Nähe kann Pakete fälschen, die den Modus des Raums umschalten (z. B. `Aus`) oder Stufe und raumweite Einstellungen ändern — das Paketformat ist öffentlich. WLAN, die Home-Assistant-API und OTA sind nicht betroffen. Details und warum keine ESP-NOW-Verschlüsselung verwendet wird: [ESP-NOW-Kommunikation → Sicherheit](documentation/de/de_esp-now-communication.md).
+Seit 0.10.43 (Protokoll v13) ist jeder ESP-NOW-Frame zwischen den Geräten eines Raums mit einem Raum-Schlüssel **authentifiziert** (HMAC-SHA256, Replay-Schutz): Geräte ohne Schlüssel können weder den Modus umschalten noch Stufen und Einstellungen ändern. Die Frames sind **nicht verschlüsselt** — jeder in Funkreichweite kann die Werte weiterhin lesen.
+
+- **Ein Schlüssel pro Raum:** `espnow_key` in der `secrets.yaml` (16–128 Zeichen) muss auf allen Geräten eines Raums gleich sein; Release-Firmware verwendet das Repository-Secret `ESPNOW_KEY`. Geräte mit anderem Schlüssel ignorieren sich gegenseitig.
+- **⚠️ Dieselbe Einschränkung wie beim API-Schlüssel:** In den öffentlichen Release-Binaries ist der Schlüssel für alle gleich und auslesbar. Für echten Schutz mit eigenem `espnow_key` bauen und auf diesen Geräten keine GitHub-Releases installieren.
+
+Details: [ESP-NOW-Kommunikation → Sicherheit](documentation/de/de_esp-now-communication.md).
 
 ### 🌡️ Kalibrierung der NTC-Sensoren
 
@@ -553,7 +558,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
   - `switch.nox_stossluftung` — NOx-Stoßlüftung in der Smart-Automatik aktivieren, **raumweit** (Standard: aus)
   - `number.nox_stossluftung_schwelle` — NOx-Index, der die Stoßlüftung startet, 20–100 (Standard: `20`, nur auf Geräten mit SGP41-Board)
 - **Automatik-Status**: `text_sensor.automatik_status` (was der Lüfter macht und warum), `text_sensor.automatik_grund` (Grund-Schlüssel), `event.luftung_ereignis` (Grundwechsel, NOx-Abbrüche)
-  > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v12) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
+  > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v13) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)
