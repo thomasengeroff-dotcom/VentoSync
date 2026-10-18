@@ -275,19 +275,9 @@ public:
    *        `espnow_key` secret by __init__.py at compile time).
    */
   void set_espnow_auth_key_hex(const char *hex) {
-    auto nibble = [](char c) -> int {
-      if (c >= '0' && c <= '9') return c - '0';
-      if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-      if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-      return -1;
-    };
-    if (hex == nullptr || std::strlen(hex) != espnow_auth_key.size() * 2) return;
-    for (size_t i = 0; i < espnow_auth_key.size(); i++) {
-      const int h = nibble(hex[2 * i]), l = nibble(hex[2 * i + 1]);
-      if (h < 0 || l < 0) return;
-      espnow_auth_key[i] = static_cast<uint8_t>((h << 4) | l);
-    }
-    espnow_auth_key_set = true;
+    espnow_auth_key_set = hex != nullptr &&
+                          esphome::parse_hex(hex, espnow_auth_key.data(), espnow_auth_key.size());
+    if (!espnow_auth_key_set) ESP_LOGE("espnow_auth", "Invalid ESP-NOW room key (expected 64 hex characters)");
   }
   /** @brief Sets the floor group for ESP-NOW filtering. */
   void set_floor_id(uint8_t id) { floor_id = id; }

@@ -26,11 +26,16 @@
 // ==========================================================================
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <vector>
+
+#if defined(ESP_PLATFORM)
+#include "mbedtls/md.h"
+#endif
 
 /// @file espnow_auth.h
 /// @brief Authenticated ESP-NOW frames (protocol v13).
@@ -50,11 +55,16 @@
 /// Scope: authenticity and replay protection only — the payload stays
 /// readable (no encryption). Known gaps (documented in
 /// en_esp-now-communication.md): the ReplayGuard lives in RAM, so after a
-/// receiver reboots — or after a sender was silent for `idle_expiry_ms`
-/// (default 15 min) — the first frame of that sender is accepted even if it is
-/// an old capture; the sender's next genuine frame supersedes it. The expiry
-/// lets a device whose NVS was erased (USB flash, epoch restarts at 1) rejoin
-/// its room without rebooting the other devices.
+/// receiver reboots — or after a sender was silent for the idle expiry
+/// (replay_expiry_ms(): max(15 min, 2 heartbeats)) — the first frame of that
+/// sender is accepted even if it is an old capture; the sender's next genuine
+/// frame supersedes it. The expiry lets a device whose NVS was erased (USB
+/// flash, epoch restarts at 1) rejoin its room without rebooting the others.
+///
+/// Implementation: on the device HmacSha256 uses mbedtls (hardware SHA on the
+/// ESP32-C6, already linked by ESP-IDF); the portable Sha256 below is the
+/// native unit-test implementation. self_test() checks either against
+/// RFC 4231 and is run before the first frame (fail closed).
 namespace ventosync {
 namespace espnow_auth {
 
@@ -169,8 +179,37 @@ class Sha256 {
 };
 
 // ---------------------------------------------------------------------------
-// HMAC-SHA256 (RFC 2104) for keys up to 64 bytes.
+// HMAC-SHA256 (RFC 2104)
 // ---------------------------------------------------------------------------
+#if defined(ESP_PLATFORM)
+/// Device implementation: mbedtls (hardware-accelerated SHA-256). A setup
+/// error yields an all-zero digest, so tags never verify (fail closed).
+class HmacSha256 {
+ public:
+  HmacSha256(const uint8_t *key, size_t key_len) {
+    mbedtls_md_init(&ctx_);
+    ok_ = mbedtls_md_setup(&ctx_, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1) == 0 &&
+          mbedtls_md_hmac_starts(&ctx_, key, key_len) == 0;
+  }
+  ~HmacSha256() { mbedtls_md_free(&ctx_); }
+  HmacSha256(const HmacSha256 &) = delete;
+  HmacSha256 &operator=(const HmacSha256 &) = delete;
+
+  void update(const uint8_t *data, size_t len) {
+    if (ok_) ok_ = mbedtls_md_hmac_update(&ctx_, data, len) == 0;
+  }
+
+  void finish(Digest &out) {
+    out.fill(0);
+    if (!ok_ || mbedtls_md_hmac_finish(&ctx_, out.data()) != 0) out.fill(0);
+  }
+
+ private:
+  mbedtls_md_context_t ctx_;
+  bool ok_ = false;
+};
+#else
+/// Portable implementation (native unit tests), keys of any length.
 class HmacSha256 {
  public:
   HmacSha256(const uint8_t *key, size_t key_len) {
@@ -207,6 +246,24 @@ class HmacSha256 {
   uint8_t ipad_[64];
   uint8_t opad_[64];
 };
+#endif
+
+/**
+ * @brief   Known-answer test of HmacSha256 (RFC 4231 test case 2).
+ * @return  true if the active implementation (mbedtls or portable) is correct.
+ */
+inline bool self_test() {
+  static constexpr uint8_t EXPECTED[DIGEST_SIZE] = {
+      0x5b, 0xdc, 0xc1, 0x46, 0xbf, 0x60, 0x75, 0x4e, 0x6a, 0x04, 0x24, 0x26, 0x08, 0x95, 0x75, 0xc7,
+      0x5a, 0x00, 0x3f, 0x08, 0x9d, 0x27, 0x39, 0x83, 0x9d, 0xec, 0x58, 0xb9, 0x64, 0xec, 0x38, 0x43};
+  static constexpr char KEY[] = "Jefe";
+  static constexpr char MSG[] = "what do ya want for nothing?";
+  HmacSha256 hmac(reinterpret_cast<const uint8_t *>(KEY), sizeof(KEY) - 1);
+  hmac.update(reinterpret_cast<const uint8_t *>(MSG), sizeof(MSG) - 1);
+  Digest out;
+  hmac.finish(out);
+  return std::memcmp(out.data(), EXPECTED, DIGEST_SIZE) == 0;
+}
 
 // ---------------------------------------------------------------------------
 // Frame counter
@@ -316,6 +373,10 @@ class ReplayGuard {
 
   explicit ReplayGuard(uint32_t idle_expiry_ms = DEFAULT_IDLE_EXPIRY_MS) : idle_expiry_ms_(idle_expiry_ms) {}
 
+  /// Adapts the idle expiry (see replay_expiry_ms()); applies to all entries.
+  void set_idle_expiry_ms(uint32_t ms) { idle_expiry_ms_ = ms; }
+  uint32_t idle_expiry_ms() const { return idle_expiry_ms_; }
+
   /// @return true if `ctr` is newer than the last accepted frame of `mac`
   ///         (or `mac` is unknown / expired); the counter is then remembered.
   /// @param now_ms  millis(); all comparisons are wrap-safe.
@@ -358,6 +419,23 @@ class ReplayGuard {
   std::array<Entry, CAPACITY> entries_{};
   uint32_t idle_expiry_ms_;
 };
+
+/// Longest heartbeat interval accepted on the wire (sync_interval_min <= 1440).
+constexpr uint32_t MAX_SYNC_INTERVAL_MS = 1440u * 60u * 1000u;
+
+/**
+ * @brief   Idle expiry of the ReplayGuard for a given heartbeat interval.
+ *
+ * @details At least 15 min, and always longer than two heartbeats — a fixed
+ *          15 min would expire every entry between heartbeats once the user
+ *          configures a longer ESP-NOW sync interval, and then any recorded
+ *          frame could be replayed after each silent gap. Trade-off: a device
+ *          whose NVS was erased waits up to this long before its room accepts
+ *          it again (or until the other devices reboot).
+ */
+constexpr uint32_t replay_expiry_ms(uint32_t sync_interval_ms) {
+  return std::max(ReplayGuard::DEFAULT_IDLE_EXPIRY_MS, 2u * std::min(sync_interval_ms, MAX_SYNC_INTERVAL_MS));
+}
 
 }  // namespace espnow_auth
 }  // namespace ventosync

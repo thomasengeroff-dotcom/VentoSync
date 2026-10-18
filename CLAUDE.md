@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,012,046 / 2,031,616 B (~19 KB headroom, 0.10.45) — CI compiles it only after the merge (PRs build
+  logger INFO. Image 2,011,136 / 2,031,616 B (~20 KB headroom, 0.10.46) — CI compiles it only after the merge (PRs build
   `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
@@ -226,8 +226,12 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   `espnow_seal_frame()` and parse only what `espnow_open_frame()` returned (`network_sync.h`) — never call
   `global_esp_now->send()` with an unsealed payload. Key: `espnow_key` secret → SHA-256 in `ventilation_group/__init__.py`
   (CI: repository secret `ESPNOW_KEY`, required for release builds). `epoch` is persisted once per boot (ESPHome
-  preference `ventosync_espnow_tx_epoch`); the `ReplayGuard` (RAM, 16 senders) forgets a sender after 15 min without
-  an accepted frame. Not encrypted — payloads stay readable; the release key is extractable (documented like the API key).
+  preference `ventosync_espnow_tx_epoch`); the `ReplayGuard` (RAM, 16 senders) forgets a sender after
+  `replay_expiry_ms()` = max(15 min, 2 × sync interval) without an accepted frame — never a fixed value below two
+  heartbeats, or replays pass in every silent gap. HMAC on the device = mbedtls (`#if ESP_PLATFORM`), the portable
+  SHA-256 is the native test implementation; `self_test()` (RFC 4231) gates ESP-NOW at runtime. The pre-queue
+  duplicate guard in `handle_espnow_receive()` hashes the whole frame (counter makes genuine frames unique).
+  Not encrypted — payloads stay readable; the release key is extractable (documented like the API key).
 - **Safe deserialization:** only via `std::memcpy` into a stack-local struct in `ventosync::packet::parse()`
   (pure, unit-tested; `espnow_handler::validate_and_parse_packet()` only logs) — **never** cast `uint8_t*` to a
   struct pointer.
