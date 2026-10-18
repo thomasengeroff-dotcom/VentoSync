@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.42",
+    "project_version": "0.10.43",
     "project_date": "2026-10-18",
-    "project_description": "Web dashboard /set flood protection (bounded action queue, HTTP 503) and documented optional web login."
+    "project_description": "Authenticated ESP-NOW frames (protocol v13, HMAC-SHA256 + replay protection, new secret espnow_key) — flash all devices of a room."
 }
