@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.39",
-    "project_date": "2026-10-16",
-    "project_description": "Automatik-Status / Lüftung Ereignis and the NOx outdoor-air test respect the switch Fenstersperre ignorieren."
+    "project_version": "0.10.40",
+    "project_date": "2026-10-18",
+    "project_description": "Update to ESPHome 2026.9.1 (encrypted OTA uploads in safe mode, crash report of the previous boot)."
 }

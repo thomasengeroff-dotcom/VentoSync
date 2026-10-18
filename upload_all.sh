@@ -7,7 +7,7 @@ set -e
 # ESPHome version pinned by CI (.github/workflows/build.yaml, lint.yaml).
 # Local builds must use the same version, otherwise the flashed firmware
 # differs from the release binaries. Override: ALLOW_ESPHOME_MISMATCH=1
-ESPHOME_VERSION="2026.9.0"
+ESPHOME_VERSION="2026.9.1"
 installed_esphome=$(esphome version 2>/dev/null | awk '{print $2}')
 if [ "$installed_esphome" != "$ESPHOME_VERSION" ]; then
     echo "❌ Installed ESPHome: ${installed_esphome:-none}, CI uses ${ESPHOME_VERSION}."

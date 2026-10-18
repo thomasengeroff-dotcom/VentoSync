@@ -8,7 +8,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 **Key facts:**
 
-- Platform: ESP32-C6 (RISC-V), ESPHome `2026.9.0`
+- Platform: ESP32-C6 (RISC-V), ESPHome `2026.9.1`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
 - Sensors: Sensirion **SCD43** (CO2 / temperature / humidity) or **SGP41 + SHT45** board (VOC / NOx / temperature / humidity), BME680 (IAQ fallback), BMP390 (pressure),
   2× NTC thermistors, HLK-LD2450 (mmWave radar).
@@ -174,7 +174,7 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-f
     -Icomponents && ./simple_test && rm -f simple_test
 ```
 
-Always validate before uploading. CI pins ESPHome to `2026.9.0` (needs Python 3.12–3.14) — use the same version
+Always validate before uploading. CI pins ESPHome to `2026.9.1` (needs Python 3.12–3.14) — use the same version
 locally; `upload_all.sh` aborts on a mismatch (override `ALLOW_ESPHOME_MISMATCH=1`).
 **ESPHome upgrade:** change `ESPHOME_VERSION` in `.github/workflows/build.yaml`, `.github/workflows/lint.yaml` and
 `upload_all.sh`, plus the version in this file and both READMEs; validate all variants (see `lint.yaml`).
@@ -375,7 +375,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **Local builds bump `version.json`** via `version_bump.py` — never commit that local bump.
 - **OTA is encrypted with the api key** (`ota: - platform: esphome` + bare `encryption:`, since 0.10.31): no OTA
   password, uploads without the key are rejected, `web_server: ota: false` closes the plaintext `/update` endpoint
-  (ESPHome still warns about it — false positive). All devices and the repository secret `API_ENCRYPTION_KEY` must
+  (ESPHome ≥ 2026.9.1 no longer warns about it). All devices and the repository secret `API_ENCRYPTION_KEY` must
   share one key; `build.yaml` refuses to build non-PR firmware without that secret. Never re-add `password:` —
   ESPHome rejects `password` together with `encryption`.
   The key is compiled into the **public** release binaries, so for release firmware it is not secret (extractable);
@@ -422,7 +422,7 @@ Triggered on push and pull request to `master`:
     `ventosync-v2-sgp41`** (one compile per board package + the size-critical Bluetooth proxy variant + the only variant
     with the SGP41/SHT45 drivers); push to `master` / `workflow_dispatch`
     build all 13 variants (`ventosync-full`, `bme680-only`, `scd43-only`, `radar-only`, `nosensor`, `ntconly`, `sgp41`, `nosensor-mqtt`
-    (generated), `v2-nosensor`, `v2-bme680-only`, `v2-scd43-only`, `v2-sgp41`, `nosensor-btproxy`), ESPHome pinned to `2026.9.0`, secret-free OTA
+    (generated), `v2-nosensor`, `v2-bme680-only`, `v2-scd43-only`, `v2-sgp41`, `nosensor-btproxy`), ESPHome pinned to `2026.9.1`, secret-free OTA
     configs. The release job needs all 13 builds.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section

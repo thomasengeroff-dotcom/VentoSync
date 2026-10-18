@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.40] - 2026-10-18
+
+### Changed
+
+- **ESPHome 2026.9.1** — CI, YAML lint, `upload_all.sh` and the READMEs pin ESPHome `2026.9.1` (was `2026.9.0`).
+  Bug-fix release; relevant for VentoSync:
+  - the OTA encryption key is kept when the api server is not running, so uploads in **safe mode** work again
+    with the encrypted OTA (esphome#19349);
+  - the crash report of the previous boot is printed before the logger reads it (esphome#19351);
+  - the warning "OTA encryption does not cover the web_server OTA platform" is no longer logged, because
+    `web_server: ota: false` disables that endpoint (esphome#19348).
+- Local builds: `upload_all.sh` aborts with ESPHome 2026.9.0 — update with `pip install esphome==2026.9.1`.
+
 ## [0.10.39] - 2026-10-16
 
 ### Fixed

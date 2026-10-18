@@ -21,7 +21,7 @@
 # Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-09-26
+# Modified:    2026-10-18
 # ==========================================================================
 
 substitutions:
@@ -176,9 +176,9 @@ web_server:
   # No firmware upload via http://<device-ip>/update: that endpoint is plaintext
   # and unauthenticated and would bypass the OTA encryption above. The captive
   # portal keeps its upload page while the fallback hotspot is active (recovery).
-  # ESPHome 2026.9 still logs "OTA encryption does not cover the web_server OTA
-  # platform" — it does not look at this option; the endpoint is disabled
-  # (USE_WEBSERVER_OTA_DISABLED).
+  # Disables the endpoint (USE_WEBSERVER_OTA_DISABLED); since ESPHome 2026.9.1
+  # this also silences the "OTA encryption does not cover the web_server OTA
+  # platform" warning.
   ota: false
   # auth:
   #   username: !secret webuser

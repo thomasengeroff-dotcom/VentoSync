@@ -361,7 +361,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # 3. Install ESPHome (same version as the CI / release builds)
-pip install esphome==2026.9.0
+pip install esphome==2026.9.1
 ```
 
 *(Note: Always remember to run `source venv/bin/activate` before using the `esphome` command in a new terminal session.)*
@@ -376,7 +376,7 @@ To keep your development environment up to date, use the following commands:
 # Ensure venv is active
 source venv/bin/activate
 # Update to the version pinned by CI (ESPHOME_VERSION in .github/workflows/build.yaml)
-pip install esphome==2026.9.0
+pip install esphome==2026.9.1
 ```
 
 `upload_all.sh` aborts if the installed ESPHome differs from that version (override: `ALLOW_ESPHOME_MISMATCH=1`).
