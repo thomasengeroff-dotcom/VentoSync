@@ -65,6 +65,14 @@ Das Web-Dashboard scannt und visualisiert alle aktiven Lüftungsgeräte im selbe
 
 ---
 
+## 🔒 Zugriff & Sicherheit
+
+* **Standardmäßig ohne Login** — wie die native ESPHome-Seite sind `/ui`, `/state` und `/set` für jeden Client im Netzwerk offen. Betreibe die Geräte in einem vertrauenswürdigen Netz (oder einem eigenen VLAN).
+* **Optionaler Login** — im eigenen Build `auth:` unter `web_server:` in `packages/base/esp32c6_common.yaml` aktivieren (Zugangsdaten `webuser` / `webpw` in `secrets.yaml`). Das Dashboard registriert sich über `web_server_base::add_handler()`, daher schützt derselbe Login alle drei Endpunkte.
+* **Grenzen für `/set`** — nur die freigegebenen Schlüssel werden angenommen, Werte sind auf 32 Zeichen begrenzt (`400 Value too long`), und höchstens 16 Änderungen warten auf die Hauptschleife (`503 Busy`, wenn voll; das Gerät loggt pro Abarbeitung eine zusammenfassende Warnung). Die Seite meldet eine abgelehnte Änderung in der Browser-Konsole.
+
+---
+
 ## 🌐 Hybrider Offline-Betrieb
 
 > [!IMPORTANT]

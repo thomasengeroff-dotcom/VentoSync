@@ -180,6 +180,9 @@ web_server:
   # this also silences the "OTA encryption does not cover the web_server OTA
   # platform" warning.
   ota: false
+  # Optional login for the native page AND the VentoSync dashboard (/ui, /state,
+  # /set — registered via add_handler(), so covered by this auth). Off in the
+  # release builds (no secrets in CI); needs webuser / webpw in secrets.yaml.
   # auth:
   #   username: !secret webuser
   #   password: !secret webpw

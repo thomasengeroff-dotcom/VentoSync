@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,007,922 / 2,031,616 B (~23 KB headroom, 0.10.38) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 2,008,388 / 2,031,616 B (~23 KB headroom, 0.10.42) — CI compiles it on every PR. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.

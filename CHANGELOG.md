@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.42] - 2026-10-18
+
+### Security / Stability
+
+- **M-1: Web dashboard `/set` flood protection** — the action queue between the web server task and the main loop
+  had no limit; a client in the LAN sending `/set` requests faster than the 100 ms drain could exhaust the heap.
+  The queue now holds at most 16 pending changes (`WrgDashboard::MAX_PENDING_ACTIONS`); further requests get
+  **HTTP 503 Busy**, and the device logs one summary warning per drain instead of one line per request. Values
+  longer than 32 characters are rejected with HTTP 400. The page logs a rejected change in the browser console.
+- **Documented: the web interfaces have no login** — `http://<device-ip>/` and the dashboard (`/ui`, `/state`,
+  `/set`) are open to every client in the network. READMEs and the web dashboard guides explain how to enable the
+  optional `web_server: auth:` login in your own build; it also protects the dashboard endpoints.
+
+### Fixed
+
+- `wrg_dashboard.h`: the VOC / NOx index sensor members were declared only with `USE_SWITCH` while their setters are
+  always compiled (latent build error for a configuration without any switch; no effect on the current variants).
+- `components/wrg_dashboard/Readme.md` named the `/set` parameter `key` — it is `id`.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.41] - 2026-10-18
 
 ### Fixed
