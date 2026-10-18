@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.43",
+    "project_version": "0.10.44",
     "project_date": "2026-10-18",
-    "project_description": "Authenticated ESP-NOW frames (protocol v13, HMAC-SHA256 + replay protection, new secret espnow_key) — flash all devices of a room."
+    "project_description": "Refactoring: packet validation, Smart-Automatik level ramp and summer bypass moved into unit-tested pure headers (no behaviour change)."
 }
