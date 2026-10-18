@@ -31,6 +31,9 @@
 #include "../components/ventilation_logic/nox_boost.h"
 #include "../components/ventilation_logic/auto_status.h"
 #include "../components/ventilation_logic/espnow_auth.h"
+#include "../components/ventilation_logic/auto_level.h"
+#include "../components/ventilation_logic/summer_bypass.h"
+#include "../components/ventilation_group/ventilation_packet.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -1925,6 +1928,212 @@ bool test_espnow_auth() {
   return true;
 }
 
+// ============================================================
+// T-8a: ESP-NOW packet parsing (ventilation_packet.h)
+// ============================================================
+static esphome::VentilationPacket valid_packet() {
+  esphome::VentilationPacket pkt;
+  std::memset(&pkt, 0, sizeof(pkt));
+  pkt.magic_header = PACKET_MAGIC;
+  pkt.protocol_version = esphome::PROTOCOL_VERSION;
+  pkt.floor_id = 1;
+  pkt.room_id = 2;
+  pkt.device_id = 1;
+  pkt.msg_type = esphome::MSG_STATE;
+  pkt.current_mode = esphome::MODE_ECO_RECOVERY;
+  pkt.current_mode_index = 1;
+  pkt.fan_intensity = 5;
+  pkt.automatik_min_fan_level = 2;
+  pkt.automatik_max_fan_level = 7;
+  pkt.hvac_max_fan_level = 3;
+  pkt.sync_interval_min = 1;
+  pkt.vent_timer_min = 0;
+  return pkt;
+}
+
+static std::vector<uint8_t> to_bytes(const esphome::VentilationPacket &pkt) {
+  std::vector<uint8_t> v(sizeof(pkt));
+  std::memcpy(v.data(), &pkt, sizeof(pkt));
+  return v;
+}
+
+bool test_packet_parse() {
+  namespace vp = ventosync::packet;
+  vp::ParseResult res;
+
+  // Valid packet round-trips
+  auto bytes = to_bytes(valid_packet());
+  auto pkt = vp::parse(bytes.data(), bytes.size(), res);
+  TEST_ASSERT(pkt.has_value() && res.error == vp::ParseError::NONE);
+  TEST_ASSERT(pkt->room_id == 2 && pkt->fan_intensity == 5 && pkt->current_mode_index == 1);
+
+  // Header / version / size
+  TEST_ASSERT(!vp::parse(bytes.data(), 1, res) && res.error == vp::ParseError::TOO_SMALL);
+  TEST_ASSERT(!vp::parse(nullptr, 0, res) && res.error == vp::ParseError::TOO_SMALL);
+  auto bad = bytes;
+  bad[0] = 0x41;
+  TEST_ASSERT(!vp::parse(bad.data(), bad.size(), res) && res.error == vp::ParseError::BAD_MAGIC);
+  bad = bytes;
+  bad[1] = static_cast<uint8_t>(esphome::PROTOCOL_VERSION - 1);
+  TEST_ASSERT(!vp::parse(bad.data(), bad.size(), res) && res.error == vp::ParseError::VERSION_MISMATCH);
+  TEST_ASSERT(res.value == esphome::PROTOCOL_VERSION - 1);
+  TEST_ASSERT(!vp::parse(bytes.data(), bytes.size() - 1, res) && res.error == vp::ParseError::BAD_SIZE);
+  bad = bytes;
+  bad.push_back(0);
+  TEST_ASSERT(!vp::parse(bad.data(), bad.size(), res) && res.error == vp::ParseError::BAD_SIZE);
+
+  // Field ranges: each mutation must be rejected with the right field name
+  struct Case {
+    const char *field;
+    void (*mutate)(esphome::VentilationPacket &);
+  };
+  const Case cases[] = {
+      {"fan_intensity", [](esphome::VentilationPacket &p) { p.fan_intensity = 11; }},
+      {"automatik_min_fan_level", [](esphome::VentilationPacket &p) { p.automatik_min_fan_level = 0; }},
+      {"automatik_max_fan_level", [](esphome::VentilationPacket &p) { p.automatik_max_fan_level = 11; }},
+      {"hvac_max_fan_level", [](esphome::VentilationPacket &p) { p.hvac_max_fan_level = 0; }},
+      {"sync_interval_min", [](esphome::VentilationPacket &p) { p.sync_interval_min = 1441; }},
+      {"current_mode_index", [](esphome::VentilationPacket &p) { p.current_mode_index = 5; }},
+      {"current_mode", [](esphome::VentilationPacket &p) { p.current_mode = 4; }},
+      {"vent_timer_min", [](esphome::VentilationPacket &p) { p.vent_timer_min = 1441; }},
+  };
+  for (const auto &c : cases) {
+    auto p = valid_packet();
+    c.mutate(p);
+    auto b = to_bytes(p);
+    TEST_ASSERT(!vp::parse(b.data(), b.size(), res));
+    TEST_ASSERT(res.error == vp::ParseError::OUT_OF_RANGE);
+    TEST_ASSERT(std::string(res.field) == c.field);
+  }
+
+  // Boundaries that are valid
+  auto edge = valid_packet();
+  edge.fan_intensity = 0; // 0 = not set (followers ignore it)
+  edge.current_mode = esphome::MODE_STOSSLUEFTUNG;
+  edge.current_mode_index = 4;
+  edge.sync_interval_min = 1440;
+  edge.vent_timer_min = 1440;
+  auto eb = to_bytes(edge);
+  TEST_ASSERT(vp::parse(eb.data(), eb.size(), res).has_value());
+
+  // Wire size incl. the authentication trailer fits into one ESP-NOW frame
+  TEST_ASSERT(sizeof(esphome::VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250);
+  return true;
+}
+
+// ============================================================
+// T-8b: Packet -> PeerState (room flags decoding)
+// ============================================================
+bool test_peer_state_from_packet() {
+  auto pkt = valid_packet();
+  pkt.device_id = 3;
+  pkt.fan_intensity = 6;
+  pkt.room_co2 = 850.0f;
+  pkt.room_flags = esphome::ROOM_FLAG_HVAC_ENABLED | esphome::ROOM_FLAG_WINDOW_OPEN | esphome::ROOM_FLAG_NOX_ACTIVE;
+  pkt.vacation_pre_mode_index = 0xFF;
+  const uint8_t mac[6] = {1, 2, 3, 4, 5, 6};
+  esphome::PeerState peer{};
+  ventosync::packet::update_peer_state(peer, pkt, mac, 12345u);
+  TEST_ASSERT(peer.mac[0] == 1 && peer.mac[5] == 6);
+  TEST_ASSERT(peer.last_seen_ms == 12345u && peer.device_id == 3 && peer.fan_intensity == 6);
+  TEST_ASSERT(peer.room_co2 == 850.0f);
+  TEST_ASSERT(peer.window_open && peer.nox_active);
+  TEST_ASSERT(!peer.hvac_ac_active && !peer.presence && !peer.nox_strong);
+  TEST_ASSERT(peer.vacation_pre_mode_index == 0xFF);
+
+  pkt.room_flags = esphome::ROOM_FLAG_AC_ACTIVE | esphome::ROOM_FLAG_PRESENCE | esphome::ROOM_FLAG_NOX_STRONG;
+  ventosync::packet::update_peer_state(peer, pkt, mac, 20000u);
+  TEST_ASSERT(peer.hvac_ac_active && peer.presence && peer.nox_strong);
+  TEST_ASSERT(!peer.window_open && !peer.nox_active);
+  TEST_ASSERT(peer.last_seen_ms == 20000u);
+  return true;
+}
+
+// ============================================================
+// T-8c: Smart-Automatik level ramp + Master following (auto_level.h)
+// ============================================================
+bool test_auto_level() {
+  namespace al = ventosync::auto_level;
+  const uint8_t ECO = esphome::MODE_ECO_RECOVERY, VENT = esphome::MODE_VENTILATION;
+
+  al::RampState st;
+  TEST_ASSERT(al::ramp_level(3, 8, ECO, st) == 4);  // first evaluation: ±1
+  TEST_ASSERT(al::ramp_level(4, 8, ECO, st) == 5);
+  TEST_ASSERT(al::ramp_level(5, 8, VENT, st) == 7); // mode changed (summer bypass): ±2 once
+  TEST_ASSERT(al::ramp_level(7, 1, VENT, st) == 6); // back to ±1, downwards too
+  TEST_ASSERT(al::ramp_level(6, 6, VENT, st) == 6); // on target
+  TEST_ASSERT(al::ramp_level(6, 5, ECO, st) == 5);  // ±2 allowed but target is only 1 away
+  TEST_ASSERT(al::ramp_level(5, 1, ECO, st) == 4);
+
+  al::RampState fresh;
+  TEST_ASSERT(al::ramp_level(5, 1, VENT, fresh) == 4); // first evaluation never boosts
+
+  struct P {
+    uint8_t device_id;
+    uint32_t last_seen_ms;
+    uint8_t fan_intensity;
+  };
+  std::vector<P> peers = {{2, 1000u, 9}, {1, 1000u, 4}};
+  constexpr uint32_t TIMEOUT = 900000u;
+  auto m = al::master_level(peers, 2000u, TIMEOUT, 1);
+  TEST_ASSERT(m.has_value() && *m == 4);
+  TEST_ASSERT(!al::master_level(peers, 1000u + TIMEOUT, TIMEOUT, 1).has_value()); // stale
+  TEST_ASSERT(!al::master_level(std::vector<P>{{2, 1000u, 9}}, 2000u, TIMEOUT, 1).has_value());
+  // Wrap-safe across the millis() overflow
+  std::vector<P> wrap = {{1, 0xFFFFFF00u, 6}};
+  auto w = al::master_level(wrap, 0x00000100u, TIMEOUT, 1);
+  TEST_ASSERT(w.has_value() && *w == 6);
+  return true;
+}
+
+// ============================================================
+// T-8d: Summer bypass decision + re-measure guard (summer_bypass.h)
+// ============================================================
+bool test_summer_bypass() {
+  namespace sb = ventosync::summer;
+  const float NaN = std::nanf("");
+
+  // Activation needs summer, indoor > threshold and outdoor >= 1.5 °C cooler
+  auto d = sb::decide(false, 24.0f, 20.0f, true, 22.0f, false);
+  TEST_ASSERT(d.bypass && d.reason == sb::Reason::ACTIVATED);
+  TEST_ASSERT(!sb::decide(false, 24.0f, 22.6f, true, 22.0f, false).bypass); // only 1.4 °C cooler
+  TEST_ASSERT(!sb::decide(false, 22.0f, 15.0f, true, 22.0f, false).bypass); // not above threshold
+  TEST_ASSERT(!sb::decide(false, 24.0f, 20.0f, false, 22.0f, false).bypass); // not summer
+
+  // Hysteresis while active
+  d = sb::decide(true, 23.0f, 22.0f, true, 22.0f, false); // 1.0 °C cooler: keep
+  TEST_ASSERT(d.bypass && d.reason == sb::Reason::HOLD);
+  d = sb::decide(true, 23.0f, 22.5f, true, 22.0f, false); // only 0.5 °C cooler: stop
+  TEST_ASSERT(!d.bypass && d.reason == sb::Reason::DEACTIVATED_HYSTERESIS);
+  TEST_ASSERT(sb::decide(true, 21.6f, 15.0f, true, 22.0f, false).bypass);  // within indoor hysteresis
+  d = sb::decide(true, 21.4f, 15.0f, true, 22.0f, false);                  // indoor cooled down
+  TEST_ASSERT(!d.bypass && d.reason == sb::Reason::DEACTIVATED_HYSTERESIS);
+  d = sb::decide(true, 25.0f, 15.0f, false, 22.0f, false);                 // season over
+  TEST_ASSERT(!d.bypass && d.reason == sb::Reason::DEACTIVATED_SEASON);
+
+  // Smart Climate Control lock and missing data
+  d = sb::decide(true, 25.0f, 15.0f, true, 22.0f, true);
+  TEST_ASSERT(!d.bypass && d.reason == sb::Reason::AC_LOCK);
+  TEST_ASSERT(sb::decide(true, NaN, 15.0f, true, 22.0f, false).bypass);   // hold (guard decides)
+  TEST_ASSERT(!sb::decide(false, 25.0f, NaN, true, 22.0f, false).bypass);
+
+  // Re-measure guard
+  sb::RemeasureGuard g;
+  bool ended = false;
+  TEST_ASSERT(g.apply(true, true, 24.0f, 20.0f, 1000u, ended) && !ended); // measurable: pass through
+  TEST_ASSERT(!g.apply(true, true, 24.0f, NaN, 2000u, ended) && ended);   // unmeasurable: end + block
+  TEST_ASSERT(g.blocked());
+  TEST_ASSERT(!g.apply(false, true, 24.0f, 20.0f, 2000u + sb::REMEASURE_MS - 1u, ended) && !ended);
+  TEST_ASSERT(g.apply(false, true, 24.0f, 20.0f, 2000u + sb::REMEASURE_MS, ended)); // block over
+  TEST_ASSERT(!g.blocked());
+  TEST_ASSERT(!g.apply(false, false, 24.0f, NaN, 9000000u, ended) && !ended); // not active: no block
+  // Wrap-safe block window
+  sb::RemeasureGuard w;
+  TEST_ASSERT(!w.apply(true, true, NaN, 20.0f, 0xFFFFFF00u, ended) && ended);
+  TEST_ASSERT(!w.apply(false, true, 24.0f, 20.0f, 0x00010000u, ended)); // ~65 s later: still blocked
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -2078,6 +2287,10 @@ int main() {
     {"T-7x: NOx boost (trigger, hold, outdoor-air test, caps)", test_nox_boost},
     {"T-7y: Automatik-Status text + reason debounce", test_auto_status},
     {"T-7z: ESP-NOW authentication (HMAC trailer, replay guard)", test_espnow_auth},
+    {"T-8a: ESP-NOW packet parsing (header, size, field ranges)", test_packet_parse},
+    {"T-8b: Packet -> PeerState (room flags decoding)", test_peer_state_from_packet},
+    {"T-8c: Smart-Automatik level ramp + Master following", test_auto_level},
+    {"T-8d: Summer bypass decision + re-measure guard", test_summer_bypass},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

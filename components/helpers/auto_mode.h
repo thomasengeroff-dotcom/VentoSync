@@ -72,6 +72,31 @@ inline float calculate_absolute_humidity(float rh_percent, float temp_c) {
     return result;
 }
 
+/**
+ * @brief   Runtime state of the Smart-Automatik evaluation.
+ *
+ * @details Formerly function-local `static`s inside the helpers below. They are
+ *          shared by the whole firmware (one device = one instance) and persist
+ *          across mode switches; keeping them in one place makes that visible.
+ *          The decisions themselves are pure and unit-tested
+ *          (summer_bypass.h, auto_level.h, room_fusion.h).
+ */
+namespace auto_mode_state {
+  /// Last valid local NTC / room readings (stand-in for max. 30 min).
+  inline ventosync::room::HeldReading held_in, held_out;
+  /// Summer bypass re-measure block (summer_bypass.h).
+  inline ventosync::summer::RemeasureGuard summer_guard;
+  /// millis() of the last evaluation (2 s rate limit).
+  inline uint32_t last_eval_ms = 0;
+  /// Hold-off after switching into Smart-Automatik (stale PID outputs).
+  inline ventosync::room::Holdoff mode_switch_holdoff;
+  /// Soft ramp of the fan level (auto_level.h).
+  inline ventosync::auto_level::RampState ramp;
+  /// Edge detection for log messages.
+  inline bool last_nox_active = false;
+  inline bool last_override_emergency = false;
+}
+
 namespace auto_mode {
 
 /**
@@ -153,7 +178,8 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
   v->local_t_out = local_out;
 
   // Remember the last valid local readings (stand-in for max. 30 min)
-  static ventosync::room::HeldReading held_in, held_out;
+  auto &held_in = auto_mode_state::held_in;
+  auto &held_out = auto_mode_state::held_out;
   held_in.store(local_in, now);
   held_out.store(local_out, now);
 
@@ -177,98 +203,61 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
  * @brief   Logic for Summer Cooling / Bypass mode.
  *
  * @details Switches from Heat Recovery (MODE_ECO_RECOVERY) to Ventilation
- *          (MODE_VENTILATION) if:
- *          1. The HA "Sommerbetrieb" binary sensor confirms warm season
- *             (April-October AND outdoor temp > 18°C).
- *          2. The indoor temperature exceeds 22°C.
- *          3. The outdoor air is at least 1.5°C cooler.
- *          Includes a deactivation hysteresis to prevent mode oscillations.
- *          When HA is offline, sommerbetrieb defaults to false (safe: heat
- *          recovery stays active).
+ *          (MODE_VENTILATION) if the HA "Sommerbetrieb" binary sensor confirms
+ *          the warm season, the indoor temperature exceeds the threshold
+ *          (HA number, default 22 °C) and the outdoor air is at least 1.5 °C
+ *          cooler, with a deactivation hysteresis. When HA is offline,
+ *          sommerbetrieb reads false (safe: heat recovery stays active).
+ *          Decision: ventosync::summer::decide() (pure, unit-tested).
  */
 inline esphome::VentilationMode determine_auto_operating_mode(float eff_in, float eff_out, esphome::VentilationMode current_mode,
                                                              bool lock_eco_mode = false) {
-  // Smart Climate Control: while the room AC is active, cross-ventilation /
-  // summer bypass is counter-productive (imports air the AC has to re-condition).
-  // Heat recovery is enforced regardless of the temperature comparison.
-  if (lock_eco_mode) {
-    if (current_mode == esphome::MODE_VENTILATION) {
-      ESP_LOGI("auto_mode", "Sommer-Kühlung DEAKTIVIERT (Klima-Koordination aktiv: WRG erzwungen)");
-    }
-    return esphome::MODE_ECO_RECOVERY;
-  }
-
-  // Summer cooling requires the HA "Sommerbetrieb" sensor to confirm warm season.
-  // Default false when HA is offline → heat recovery stays active (safe fallback).
+  namespace sb = ventosync::summer;
   const bool is_summer = (sommerbetrieb != nullptr && sommerbetrieb->has_state() && sommerbetrieb->state);
-
-  // Runtime-configurable indoor threshold from HA entity
   const float threshold = (summer_cooling_threshold != nullptr)
       ? static_cast<float>(summer_cooling_threshold->value())
-      : SUMMER_COOLING_THRESHOLD_INDOOR;
-  const float threshold_hysteresis = threshold - 0.5f;
+      : sb::DEFAULT_THRESHOLD_C;
+  const bool bypass_active = (current_mode == esphome::MODE_VENTILATION);
 
-  if (std::isnan(eff_in) || std::isnan(eff_out)) {
-    return (current_mode == esphome::MODE_VENTILATION || current_mode == esphome::MODE_ECO_RECOVERY) 
-           ? current_mode : esphome::MODE_ECO_RECOVERY;
-  }
-
-  if (current_mode != esphome::MODE_VENTILATION) {
-    // Activation: Only when summer AND indoor > threshold AND outdoor is sufficiently cooler
-    if (is_summer && eff_in > threshold && eff_out < (eff_in - SUMMER_COOLING_MIN_DELTA)) {
-      ESP_LOGI("auto_mode", "Sommer-Kühlung AKTIVIERT: Innen=%.1f°C, Außen=%.1f°C (Schwelle=%.1f°C)", eff_in, eff_out, threshold);
-      return esphome::MODE_VENTILATION;
-    }
-    return esphome::MODE_ECO_RECOVERY;
-  } else {
-    // Deactivation: When NOT summer anymore OR hysteresis triggers
-    if (!is_summer || eff_out >= (eff_in - SUMMER_COOLING_HYSTERESIS) || eff_in < threshold_hysteresis) {
+  const sb::Decision d = sb::decide(bypass_active, eff_in, eff_out, is_summer, threshold, lock_eco_mode);
+  switch (d.reason) {
+    case sb::Reason::AC_LOCK:
+      if (bypass_active) ESP_LOGI("auto_mode", "Sommer-Kühlung DEAKTIVIERT (Klima-Koordination aktiv: WRG erzwungen)");
+      break;
+    case sb::Reason::ACTIVATED:
+      ESP_LOGI("auto_mode", "Sommer-Kühlung AKTIVIERT: Innen=%.1f°C, Außen=%.1f°C (Schwelle=%.1f°C)", eff_in, eff_out,
+               threshold);
+      break;
+    case sb::Reason::DEACTIVATED_SEASON:
+    case sb::Reason::DEACTIVATED_HYSTERESIS:
       ESP_LOGI("auto_mode", "Sommer-Kühlung DEAKTIVIERT%s: Innen=%.1f°C, Außen=%.1f°C",
-               !is_summer ? " (Sommerbetrieb OFF)" : " (Hysterese)", eff_in, eff_out);
-      return esphome::MODE_ECO_RECOVERY;
-    }
-    return esphome::MODE_VENTILATION;
+               d.reason == sb::Reason::DEACTIVATED_SEASON ? " (Sommerbetrieb OFF)" : " (Hysterese)", eff_in, eff_out);
+      break;
+    default:
+      break;
   }
+  return d.bypass ? esphome::MODE_VENTILATION : esphome::MODE_ECO_RECOVERY;
 }
 
 /**
- * @brief   Summer bypass re-measure guard.
+ * @brief   Summer bypass re-measure guard (ventosync::summer::RemeasureGuard).
  *
  * @details In continuous ventilation an exhaust-only device cannot measure
  *          the outdoor temperature (and an intake-only one the indoor NTC).
  *          If neither a peer nor the held reading (<= 30 min) can provide it,
  *          the bypass returns to heat recovery — where both NTCs are measured
  *          again — and re-entering the bypass is blocked for
- *          SUMMER_COOLING_REMEASURE_MS so the NTCs publish fresh values first.
- *          Without this, determine_auto_operating_mode() would keep the bypass
- *          running forever on missing data.
- *
- * @param[in] current  Current mode.
- * @param[in] target   Mode proposed by determine_auto_operating_mode().
- * @param[in] eff_in   Effective indoor temperature (NaN = unknown).
- * @param[in] eff_out  Effective outdoor temperature (NaN = unknown).
- * @param[in] now      Current millis().
+ *          ventosync::summer::REMEASURE_MS so the NTCs publish fresh values first.
  */
 inline esphome::VentilationMode guard_summer_bypass(esphome::VentilationMode current,
                                                     esphome::VentilationMode target,
                                                     float eff_in, float eff_out, uint32_t now) {
-  static bool blocked = false;
-  static uint32_t blocked_since_ms = 0;
-
-  if (current == esphome::MODE_VENTILATION && (std::isnan(eff_in) || std::isnan(eff_out))) {
-    ESP_LOGI("auto_mode", "Sommer-Kühlung beendet: Temperatur nicht messbar -> WRG zum Nachmessen");
-    blocked = true;
-    blocked_since_ms = now;
-    return esphome::MODE_ECO_RECOVERY;
-  }
-  if (blocked) {
-    if (now - blocked_since_ms < SUMMER_COOLING_REMEASURE_MS) {
-      if (target == esphome::MODE_VENTILATION) return esphome::MODE_ECO_RECOVERY;
-    } else {
-      blocked = false;
-    }
-  }
-  return target;
+  bool ended = false;
+  const bool bypass = auto_mode_state::summer_guard.apply(current == esphome::MODE_VENTILATION,
+                                                         target == esphome::MODE_VENTILATION, eff_in, eff_out,
+                                                         now, ended);
+  if (ended) ESP_LOGI("auto_mode", "Sommer-Kühlung beendet: Temperatur nicht messbar -> WRG zum Nachmessen");
+  return bypass ? esphome::MODE_VENTILATION : esphome::MODE_ECO_RECOVERY;
 }
 
 /**
@@ -883,9 +872,8 @@ inline void evaluate_auto_mode(bool force) {
 
   // Rate-limiting: Prevent multiple calls (e.g., from timer + network handler) 
   // from bypassing ramping limits.
-  static uint32_t last_eval_ms = 0;
-  if (!force && now - last_eval_ms < 2000) return; // Allow max once per 2 seconds
-  last_eval_ms = now;
+  if (!force && now - auto_mode_state::last_eval_ms < 2000) return; // Allow max once per 2 seconds
+  auto_mode_state::last_eval_ms = now;
 
   // 1. Snapshot common states to avoid race conditions during evaluation
   esphome::VentilationMode current_mode = v->state_machine.current_mode;
@@ -932,7 +920,7 @@ inline void evaluate_auto_mode(bool force) {
   // the reset-to-zero values set in system_lifecycle.h). Hold the fan at
   // min_level until the first genuine sensor cycle has completed
   // (MODE_SWITCH_HOLDOFF_MS = 1.5 CO2 PID cycles at the SCD4x's ~5-30 s rate).
-  static ventosync::room::Holdoff mode_switch_holdoff;
+  auto &mode_switch_holdoff = auto_mode_state::mode_switch_holdoff;
   if (force) {
     // evaluate_auto_mode(true) is called from system_lifecycle on mode switch
     mode_switch_holdoff.arm(now);
@@ -978,11 +966,10 @@ inline void evaluate_auto_mode(bool force) {
     auto_status_state::has_demand_snapshot = true;
   }
 
-  static bool last_nox_active = false;
-  if (nox_active != last_nox_active) {
+  if (nox_active != auto_mode_state::last_nox_active) {
     ESP_LOGI("auto_mode", "NOx-Stoßlüftung %s%s", nox_active ? "aktiv -> Bedarf 100 %" : "beendet",
              (nox_active && nox_from_peer) ? " (anderes Gerät)" : "");
-    last_nox_active = nox_active;
+    auto_mode_state::last_nox_active = nox_active;
   }
   if (nox_active) demand = 1.0f;
 
@@ -1009,19 +996,14 @@ inline void evaluate_auto_mode(bool force) {
 
   // AUTHORITY RULE: In Auto Mode, Slaves should follow the Master's discrete intensity.
   // This prevents the "jumping" behavior where nodes fight over level boundaries.
+  // v->peers is updated in process_espnow_packet_local() from every packet;
+  // maximum staleness PEER_TIMEOUT_MS (auto_level.h, unit-tested).
   bool slave_following_master = false;
   if (!is_master()) { // I am a Slave
-    // Check if we have a recent state from the Master
-    // NOTE: v->peers is updated in process_espnow_packet_local() when
-    // a MSG_STATE or MSG_STATUS_RESPONSE is received. It mirrors the
-    // fan_intensity and device_id from the last received packet.
-    // Maximum staleness: PEER_TIMEOUT_MS (defined in globals.h).
-    for (const auto &peer : v->peers) {
-      if (peer.device_id == MASTER_DEVICE_ID && (now - peer.last_seen_ms < PEER_TIMEOUT_MS)) {
-        target_level = peer.fan_intensity;
-        slave_following_master = true;
-        break;
-      }
+    const auto master = ventosync::auto_level::master_level(v->peers, now, PEER_TIMEOUT_MS, MASTER_DEVICE_ID);
+    if (master.has_value()) {
+      target_level = *master;
+      slave_following_master = true;
     }
   }
 
@@ -1049,33 +1031,17 @@ inline void evaluate_auto_mode(bool force) {
     target_level = ventosync::auto_override::resolve_level(v->level_override.level, auto_level,
                                                            hvac.restrict_levels && !lift_ac_cap, min_l, max_l,
                                                            emergency);
-    static bool last_override_emergency = false;
-    if (emergency != last_override_emergency) {
+    if (emergency != auto_mode_state::last_override_emergency) {
       ESP_LOGI("auto_mode", "Level override %s (emergency)", emergency ? "lifted: automatic may go higher"
                                                                        : "restored");
-      last_override_emergency = emergency;
+      auto_mode_state::last_override_emergency = emergency;
     }
   }
 
-  // Soft Ramping: Maximum ±1 level per evaluation cycle (10s)
-  // Boost: Allow ±2 steps if mode just changed to reach target faster
-  static bool first_eval = true;
-  static esphome::VentilationMode last_committed_mode = esphome::MODE_ECO_RECOVERY;
-  int max_ramp_step = 1;
-  
-  if (first_eval) {
-    last_committed_mode = current_mode;
-    first_eval = false;
-  } else if (current_mode != last_committed_mode) {
-    max_ramp_step = 2;
-    last_committed_mode = current_mode;
-  }
-
-  if (target_level > current_level) {
-    target_level = std::min(target_level, current_level + max_ramp_step);
-  } else if (target_level < current_level) {
-    target_level = std::max(target_level, current_level - max_ramp_step);
-  }
+  // Soft Ramping: ±1 level per evaluation cycle (10 s), ±2 right after the
+  // operating mode changed (auto_level.h, unit-tested).
+  target_level = ventosync::auto_level::ramp_level(current_level, target_level,
+                                                   static_cast<uint8_t>(current_mode), auto_mode_state::ramp);
 
   // 6. Commit State Updates
   if (current_level != target_level) {

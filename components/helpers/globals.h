@@ -71,15 +71,11 @@
 #include "esphome/components/ventilation_logic/room_fusion.h"
 #include "esphome/components/ventilation_logic/nox_boost.h"
 #include "esphome/components/ventilation_logic/auto_status.h"
+#include "esphome/components/ventilation_logic/auto_level.h"
+#include "esphome/components/ventilation_logic/summer_bypass.h"
 
 // --- Constants ---------------------------------------------------------
-static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR = 22.0f;
-static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
-static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
-/// After the summer bypass ended because a temperature was not measurable,
-/// stay in heat recovery at least this long so both NTCs publish fresh values
-/// (> 2 full push-pull cycles incl. NTC stabilisation) before re-entering.
-static constexpr uint32_t SUMMER_COOLING_REMEASURE_MS = 300000u;
+// Summer bypass thresholds: ventosync::summer (summer_bypass.h).
 
 /// After switching into Smart-Automatik the CO2/humidity PID outputs are still
 /// stale for a few cycles. Hold the fan at the minimum level for this long
@@ -117,6 +113,8 @@ static constexpr int MODE_INDEX_AUS = 4;
 /// @brief Number of operating modes (valid indices: 0 … MODE_INDEX_COUNT - 1).
 static constexpr int MODE_INDEX_COUNT = static_cast<int>(sizeof(MODE_NAMES) / sizeof(MODE_NAMES[0]));
 static_assert(MODE_INDEX_AUS == MODE_INDEX_COUNT - 1, "\"Aus\" must be the last mode index");
+static_assert(MODE_INDEX_COUNT == ventosync::packet::MODE_INDEX_COUNT,
+              "MODE_NAMES must match the mode indices accepted on the wire (ventilation_packet.h)");
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.
