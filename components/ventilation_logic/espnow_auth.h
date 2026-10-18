@@ -189,13 +189,13 @@ class HmacSha256 {
 
   void update(const uint8_t *data, size_t len) { inner_.update(data, len); }
 
-  void finish(uint8_t out[DIGEST_SIZE]) {
-    uint8_t inner_digest[DIGEST_SIZE];
-    inner_.finish(inner_digest);
+  void finish(std::array<uint8_t, DIGEST_SIZE> &out) {
+    std::array<uint8_t, DIGEST_SIZE> inner_digest{};
+    inner_.finish(inner_digest.data());
     Sha256 outer;
     outer.update(opad_, 64);
-    outer.update(inner_digest, DIGEST_SIZE);
-    outer.finish(out);
+    outer.update(inner_digest.data(), DIGEST_SIZE);
+    outer.finish(out.data());
   }
 
  private:
