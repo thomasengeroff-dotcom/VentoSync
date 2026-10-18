@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.41",
+    "project_version": "0.10.42",
     "project_date": "2026-10-18",
-    "project_description": "Tech-debt cleanup: wrap-safe peer timeout, stricter ESP-NOW packet validation, named constants, less log noise."
+    "project_description": "Web dashboard /set flood protection (bounded action queue, HTTP 503) and documented optional web login."
 }
