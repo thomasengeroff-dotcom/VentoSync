@@ -116,7 +116,52 @@ Das System basiert auf dem [Seeed XIAO ESP32C6](https://wiki.seeedstudio.com/xia
 | **D9** | GPIO20 | [Pulse Counter](https://esphome.io/components/sensor/pulse_counter.html) | **Fan Tacho** (Pullup via 3V3) |
 | **D10** | GPIO18 | - | Unbelegt (NC) |
 
-### 📊 Schematische Darstellung (Konzept)
+### 📊 Schematische Darstellung (Konzept, PCB v2.0)
+
+Blockschaltbild der aktuellen **PCB v2.0** (ESP32-C6-MINI-1U-H4, GPIO-Nummern des Moduls). Die Pin-Tabelle oben und das eingeklappte Diagramm unten beschreiben die Vorgängerin **PCB v1.0** (Seeed XIAO ESP32-C6 + MCP23017).
+
+```mermaid
+graph TD
+    MAINS["230V AC"] -->|"Sicherung FH1"| TRACO["Traco TMPS10-112 (230V→12V)"]
+    TRACO --> AP5V["AP63205 (12V→5V)"]
+    TRACO -->|"Dioden-ODER"| AP3V["AP63203 (→3.3V)"]
+    USBC["USB-C"] -->|"Dioden-ODER"| AP3V
+    AP3V --> ESP["ESP32-C6-MINI-1U-H4<br/>Antenne MHF III / W.FL"]
+    USBC -->|"USB D-/D+ IO12/IO13 (USBLC6)"| ESP
+
+    subgraph Digital_Bus_I2C ["I2C Bus (IO22 SDA / IO23 SCL)"]
+    ESP --> PCA9685["PCA9685 LED-Treiber"]
+    ESP --> BMP388["BMP388 Drucksensor"]
+    ESP --> H2["H2: Sensorboard<br/>SCD43 oder SGP41 + SHT45"]
+    ESP --> EXT_I2C["CN4 / U36: externer I2C-Sensor"]
+    end
+
+    subgraph Panel ["VentoMaxx Bedienpanel (14-pol. FPC, U8)"]
+    PCA9685 -->|"OE IO21"| LEDS["Panel-LEDs"]
+    BTNS["Tasten Power / Modus / Stufe"] -->|"IO2 / IO3 / IO6"| ESP
+    end
+
+    subgraph Power_Fan ["Lüfter-Steuerung"]
+    ESP -->|"PWM IO19"| FAN_CTRL["Lüfter-Interface"]
+    FAN_CTRL -->|"CN1 4-polig"| FAN["Lüfter 12V"]
+    FAN -->|"Tacho IO20"| ESP
+    end
+    TRACO -->|12V| FAN
+
+    subgraph Sensors ["Sensoren"]
+    NTCS["NTC-Sensoren (U17 / U18)"] -->|"ADC IO0 / IO1"| ESP
+    end
+
+    subgraph UART_EXT ["CN5: UART0 (auch Rettungs-Flashen)"]
+    ESP <-->|"TXD0 IO16 / RXD0 IO17"| RADAR["HLK-LD2450 Radar"]
+    end
+    AP5V -->|5V| RADAR
+
+    ESP -->|"IO4 / IO5 / IO14 / IO15"| GPB["U36: GPB0–GPB3"]
+```
+
+<details>
+<summary>PCB v1.0 (Seeed XIAO ESP32-C6 + MCP23017)</summary>
 
 ```mermaid
 graph TD
@@ -148,3 +193,5 @@ graph TD
     XIAO -->|TX D6 / RX D7| UART_CON[UART-Anschluss / HLK-LD2450]
     end
 ```
+
+</details>
