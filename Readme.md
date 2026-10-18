@@ -711,7 +711,7 @@ Every merge into `master` publishes a firmware release; the version is managed p
 
 - **One version per PR**: `version.json` is the single source of truth. Each firmware PR bumps it once and adds the matching top entry to `CHANGELOG.md`; pure documentation/tooling PRs carry the label `no-release` instead.
 - **Version Guard**: A required PR check (`.github/scripts/check_version.py`) verifies that the version is higher than on `master`, matches the top CHANGELOG entry and that its tag does not exist yet.
-- **CI builds**: The firmware variants are listed once in `.github/variants.json`. Pull requests run the unit tests, a consistency check (variant list, YAML ↔ C++ factory defaults), the YAML validation of all variants and the firmware builds of `ventosync-full`, `ventosync-v2-nosensor`, `ventosync-nosensor-btproxy` and `ventosync-v2-sgp41`; after the merge all 13 variants are built.
+- **CI builds**: The firmware variants are listed once in `.github/variants.json`. Pull requests run the unit tests, a consistency check (variant list, YAML ↔ C++ factory defaults), the YAML validation of all variants and the `ventosync-full` firmware build; after the merge all 13 variants are built.
 - **Release**: The merge creates the GitHub release `v<version>` with `.ota.bin` / `.factory.bin` and an OTA manifest per variant; the release notes are the top CHANGELOG section. An existing tag is never overwritten.
 - **OTA & transparency**: Devices find updates via their variant manifest (`update.firmware_update`); the version is shown in Home Assistant (`text_sensor.projektversion`) and on the local web dashboard.
 - **Local builds**: `version_bump.py` only bumps the version for local builds (`esphome compile`, `upload_all.sh`) — such bumps are never committed.
