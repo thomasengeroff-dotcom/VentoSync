@@ -701,7 +701,7 @@ Jeder Merge in `master` veröffentlicht ein Firmware-Release; die Version wird p
 
 - **Eine Version pro PR**: `version.json` ist die einzige Quelle der Wahrheit. Jeder Firmware-PR erhöht sie einmal und ergänzt den passenden obersten Eintrag in `CHANGELOG.md`; reine Doku-/Tooling-PRs tragen stattdessen das Label `no-release`.
 - **Version Guard**: Ein verpflichtender PR-Check (`.github/scripts/check_version.py`) prüft, dass die Version höher als auf `master` ist, zum obersten CHANGELOG-Eintrag passt und ihr Tag noch nicht existiert.
-- **CI-Builds**: Pull Requests führen die Unit-Tests, die YAML-Validierung aller Varianten und den Firmware-Build `ventosync-full` aus; nach dem Merge werden alle 6 Varianten gebaut.
+- **CI-Builds**: Die Firmware-Varianten stehen an einer Stelle in `.github/variants.json`. Pull Requests führen die Unit-Tests, eine Konsistenzprüfung (Variantenliste, Werkseinstellungen YAML ↔ C++), die YAML-Validierung aller Varianten und die Firmware-Builds von `ventosync-full` und `ventosync-v2-sgp41` aus; nach dem Merge werden alle 13 Varianten gebaut.
 - **Release**: Der Merge erzeugt das GitHub-Release `v<version>` mit `.ota.bin` / `.factory.bin` und einem OTA-Manifest pro Variante; die Release-Notes sind der oberste CHANGELOG-Abschnitt. Ein bestehender Tag wird nie überschrieben.
 - **OTA & Transparenz**: Die Geräte finden Updates über ihr Varianten-Manifest (`update.firmware_update`); die Version wird in Home Assistant (`text_sensor.projektversion`) und im lokalen Web-Dashboard angezeigt.
 - **Lokale Builds**: `version_bump.py` erhöht die Version nur bei lokalen Builds (`esphome compile`, `upload_all.sh`) — solche Erhöhungen werden nie committet.

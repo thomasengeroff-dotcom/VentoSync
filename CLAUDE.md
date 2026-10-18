@@ -44,7 +44,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 ```text
 VentoSync/
-├── .github/                   # CI/CD workflows (build, lint, codeql, security, version-guard) + scripts/
+├── .github/                   # CI/CD workflows (build, lint, codeql, security, version-guard), scripts/, variants.json
 ├── components/                # Custom ESPHome C++ external components & helper libraries
 │   ├── helpers/               # Modular C++ headers included by the YAML lambdas (see list below)
 │   ├── ventilation_group/     # VentilationController (ESP-NOW group, peers) & VentilationStateMachine
@@ -120,7 +120,8 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,012,010 / 2,031,616 B (~19 KB headroom, 0.10.44) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 2,012,046 / 2,031,616 B (~19 KB headroom, 0.10.45) — CI compiles it only after the merge (PRs build
+  `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -137,7 +138,11 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   NaN via `internal_send_state_to_frontend()` — **not** `publish_state()`, the `median` filter skips NaN.
 - PCB v2 variants use their own `firmware_variant` (`ventosync-v2-*`) and therefore their own OTA manifest —
   a v1 device is never offered v2 firmware and vice versa.
-- Adding a variant or flag: update this table, `build.yaml` (matrix), `lint.yaml` and `upload_all.sh`.
+- Adding a variant or flag: add it to **`.github/variants.json`** (single source of the CI build matrix, the YAML lint
+  and the generated MQTT variant; `"pr": true` = also compiled on pull requests) and to this table.
+  `python3 .github/scripts/ci_config.py check` (runs in `lint.yaml`) fails if a `ventosync*.yaml` is not listed, its
+  `firmware_variant` differs from the `name`, or the table misses it. `upload_all.sh` is **not** derived from it — it
+  only lists the maintainer's manually updated test devices; do not extend it.
 
 ---
 
@@ -284,7 +289,7 @@ Use `ventosync::` for project-wide constants, guards, and helper structs. Sub-na
 `ventosync::config`, `ventosync::espnow`, `ventosync::ha_fan`, `ventosync::health`, `ventosync::hrv`,
 `ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`,
 `ventosync::nox`, `ventosync::auto_status`, `ventosync::espnow_auth`, `ventosync::auto_level`, `ventosync::summer`,
-`ventosync::packet`.
+`ventosync::packet`, `ventosync::defaults`.
 
 ### Modular C++ Headers (`components/helpers/`)
 
@@ -330,6 +335,7 @@ Complex YAML lambda logic is extracted into focused header files:
     change) and `master_level()` (slaves follow a fresh Master).
   - `summer_bypass.h` (`ventosync::summer`): summer bypass `decide()` (thresholds, hysteresis, AC lock) and
     `RemeasureGuard`; owns the `SUMMER_*` constants.
+  - `defaults.h` (`ventosync::defaults`): factory defaults of the Smart-Automatik settings (see *Factory defaults*).
 - **`ventilation_group/ventilation_packet.h`** (pure, unit-tested): wire format (`VentilationPacket`, `MessageType`,
   `ROOM_FLAG_*`, `PROTOCOL_VERSION`), `PeerState`, `ventosync::packet::parse()` and `update_peer_state()`.
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
@@ -349,6 +355,13 @@ Complex YAML lambda logic is extracted into focused header files:
 - Use `make_call()` for fan and climate state changes, not direct state assignment
 - `internal: true` on HA entities that depend on sensors absent in some hardware variants
 - Template sensors reading C++ globals require an explicit `update_interval` (e.g., `1s` or `5s`)
+
+### Factory defaults
+
+First-boot values of the room-wide Smart-Automatik settings exist on two sides: the `default_*` / `hvac_default_*`
+substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA numbers) and the C++ constants in
+`components/ventilation_logic/defaults.h` / `hvac_coordinator.h` (fallbacks, e.g. in `build_packet()`). Change both —
+`ci_config.py check` fails on a mismatch. Never hard-code a default value in C++ or YAML.
 
 ### NVS / Flash wear
 
@@ -439,17 +452,20 @@ Triggered on push and pull request to `master`:
   directory: extend `DOC_ONLY_PATTERNS`.
 - **`build.yaml`**
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
-  - *Build* matrix: **pull requests build `ventosync-full`, `ventosync-v2-nosensor`, `ventosync-nosensor-btproxy` and
-    `ventosync-v2-sgp41`** (one compile per board package + the size-critical Bluetooth proxy variant + the only variant
-    with the SGP41/SHT45 drivers); push to `master` / `workflow_dispatch`
-    build all 13 variants (`ventosync-full`, `bme680-only`, `scd43-only`, `radar-only`, `nosensor`, `ntconly`, `sgp41`, `nosensor-mqtt`
-    (generated), `v2-nosensor`, `v2-bme680-only`, `v2-scd43-only`, `v2-sgp41`, `nosensor-btproxy`), ESPHome pinned to `2026.9.1`, secret-free OTA
-    configs. The release job needs all 13 builds.
+  - *Build* matrix from `.github/variants.json` (`ci_config.py matrix`, computed in the *Detect Changes* job):
+    **pull requests build the `"pr": true` variants `ventosync-full`** (required check `Build ventosync-full`) **and
+    `ventosync-v2-sgp41`** (PCB v2.0 board package + the only variant with the SGP41/SHT45 drivers); the size-critical
+    Bluetooth proxy image is compiled only after the merge — compile it locally when a change adds code. Push to
+    `master` / `workflow_dispatch` build all
+    variants (incl. the generated `nosensor-mqtt`), ESPHome pinned to `2026.9.1`, secret-free OTA configs. The release
+    job needs all builds. Check names stay `Build <name>` — renaming a variant changes a required check.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).
-- **`lint.yaml`**: `esphome config` validation of **all** variants incl. the generated MQTT one (dummy secrets) —
-  catches YAML errors of the variants that PRs no longer compile.
+- **`lint.yaml`**: `ci_config.py check` (variant list ↔ files / `firmware_variant` / CLAUDE.md table, YAML
+  `default_*` substitutions ↔ C++ defaults; runs on every change) and `esphome config` validation of **all** variants
+  of `variants.json` incl. the generated MQTT one (dummy secrets) — catches YAML errors of the variants that PRs no
+  longer compile.
 - **`codeql.yaml`**: CodeQL analysis of the C/C++ code.
 - **`security.yaml`**: TruffleHog secret scanner.
 - **`version-guard.yaml`** (PRs only): runs `.github/scripts/check_version.py` — `version.json` must be

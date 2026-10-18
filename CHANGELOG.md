@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.45] - 2026-10-18
+
+### Changed
+
+- **Factory defaults from one place** (no behaviour change) — the first-boot values of the Smart-Automatik settings
+  (min / max level 2 / 7, CO2 setpoint 1000 ppm, humidity setpoint 60 %, LED brightness 80 %) were written separately
+  into the globals, the HA numbers and several C++ fallbacks (some of them different: `build_packet()` used 1 / 10
+  for the level window). Now:
+  - YAML: `default_*` substitutions in `packages/base/ventosync_core.yaml`, used by the globals and HA numbers;
+  - C++: `components/ventilation_logic/defaults.h` (`ventosync::defaults`) and the existing `DEFAULT_*` of
+    `hvac_coordinator.h`, used by `build_packet()` and `auto_mode.h`;
+  - `.github/scripts/ci_config.py check` (lint workflow) fails if both sides differ.
+- **CI: one variant list** — `.github/variants.json` is the single source of the firmware variants. The build matrix
+  (pull requests: `"pr": true`), the YAML lint and the generated MQTT variant are derived from it by
+  `.github/scripts/ci_config.py`; `check` also verifies that every `ventosync*.yaml` is listed, its `firmware_variant`
+  matches the variant name and the CLAUDE.md variant table lists it. Check names (`Build <variant>`) are unchanged.
+  `upload_all.sh` stays a manually maintained list of test devices.
+- **CI: pull requests build `ventosync-full` and `ventosync-v2-sgp41`** (PCB v2.0 + SGP41/SHT45 drivers; was: also
+  `ventosync-v2-nosensor` and `ventosync-nosensor-btproxy`) — faster PR feedback; the other variants are still
+  validated by the YAML lint on every PR and compiled after the merge. READMEs (EN/DE): the outdated *CI builds*
+  paragraph (1 / 6 variants) now says 2 / 13.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.44] - 2026-10-18
 
 ### Changed

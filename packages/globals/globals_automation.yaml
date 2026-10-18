@@ -49,7 +49,7 @@ globals:
   # Even at minimum, the system maintains a base air exchange rate.
   - id: automatik_min_fan_level
     type: int
-    initial_value: "2"
+    initial_value: "${default_auto_min_fan_level}"
     restore_value: true
 
   # Maximum fan level in Smart-Automatik mode.
@@ -57,7 +57,7 @@ globals:
   # especially important for bedroom installations.
   - id: automatik_max_fan_level
     type: int
-    initial_value: "7"
+    initial_value: "${default_auto_max_fan_level}"
     restore_value: true
 
   # ---------------------------------------------------------
@@ -69,14 +69,14 @@ globals:
   # The PID controller uses this as the setpoint.
   - id: auto_co2_threshold_val
     type: int
-    initial_value: "1000"
+    initial_value: "${default_auto_co2_threshold}"
     restore_value: true
 
   # Relative humidity threshold in % – above this value, the system ramps up.
   # Default 60% prevents mold growth (critical threshold: 65% at wall surface).
   - id: auto_humidity_threshold_val
     type: int
-    initial_value: "60"
+    initial_value: "${default_auto_humidity_threshold}"
     restore_value: true
 
   # ---------------------------------------------------------
