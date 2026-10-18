@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.github/scripts/ci_config.py`; `check` also verifies that every `ventosync*.yaml` is listed, its `firmware_variant`
   matches the variant name and the CLAUDE.md variant table lists it. Check names (`Build <variant>`) are unchanged.
   `upload_all.sh` stays a manually maintained list of test devices.
+- READMEs (EN/DE): the *CI builds* paragraph was outdated (PRs build 4 variants, a merge builds all 13, not 1 / 6).
 
 No ESP-NOW protocol change — devices can be updated individually.
 
