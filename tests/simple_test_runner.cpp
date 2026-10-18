@@ -1787,19 +1787,19 @@ static std::string to_hex(const uint8_t *d, size_t n) {
 
 bool test_espnow_auth() {
   namespace ea = ventosync::espnow_auth;
-  uint8_t out[32];
+  ea::Digest out;
 
   // --- SHA-256 (FIPS 180-4 examples) ---
   {
     ea::Sha256 h;
     h.update(reinterpret_cast<const uint8_t *>("abc"), 3);
     h.finish(out);
-    TEST_ASSERT(to_hex(out, 32) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    TEST_ASSERT(to_hex(out.data(), out.size()) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   }
   {
     ea::Sha256 h;
     h.finish(out);
-    TEST_ASSERT(to_hex(out, 32) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    TEST_ASSERT(to_hex(out.data(), out.size()) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
   }
   {
     // 56 bytes: padding spills into a second block
@@ -1807,7 +1807,7 @@ bool test_espnow_auth() {
     ea::Sha256 h;
     h.update(reinterpret_cast<const uint8_t *>(m), 56);
     h.finish(out);
-    TEST_ASSERT(to_hex(out, 32) == "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
+    TEST_ASSERT(to_hex(out.data(), out.size()) == "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
   }
 
   // --- HMAC-SHA256 (RFC 4231 test cases 1, 2 and 6) ---
@@ -1817,14 +1817,14 @@ bool test_espnow_auth() {
     ea::HmacSha256 m(key, sizeof(key));
     m.update(reinterpret_cast<const uint8_t *>("Hi There"), 8);
     m.finish(out);
-    TEST_ASSERT(to_hex(out, 32) == "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7");
+    TEST_ASSERT(to_hex(out.data(), out.size()) == "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7");
   }
   {
     ea::HmacSha256 m(reinterpret_cast<const uint8_t *>("Jefe"), 4);
     const char *msg = "what do ya want for nothing?";
     m.update(reinterpret_cast<const uint8_t *>(msg), std::strlen(msg));
     m.finish(out);
-    TEST_ASSERT(to_hex(out, 32) == "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843");
+    TEST_ASSERT(to_hex(out.data(), out.size()) == "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843");
   }
   {
     uint8_t key[131];
@@ -1833,7 +1833,7 @@ bool test_espnow_auth() {
     const char *msg = "Test Using Larger Than Block-Size Key - Hash Key First";
     m.update(reinterpret_cast<const uint8_t *>(msg), std::strlen(msg));
     m.finish(out);
-    TEST_ASSERT(to_hex(out, 32) == "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54");
+    TEST_ASSERT(to_hex(out.data(), out.size()) == "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54");
   }
 
   // --- seal / verify ---

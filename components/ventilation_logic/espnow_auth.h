@@ -66,6 +66,8 @@ constexpr size_t DIGEST_SIZE = 32;
 
 using Key = std::array<uint8_t, KEY_SIZE>;
 using Mac = std::array<uint8_t, MAC_SIZE>;
+using Digest = std::array<uint8_t, DIGEST_SIZE>;
+using Tag = std::array<uint8_t, TAG_SIZE>;
 
 // ---------------------------------------------------------------------------
 // SHA-256 (FIPS 180-4) — small, dependency-free, verified by the unit tests.
@@ -97,7 +99,7 @@ class Sha256 {
     }
   }
 
-  void finish(std::array<uint8_t, DIGEST_SIZE> &out) {
+  void finish(Digest &out) {
     const uint64_t bit_len = total_len_ * 8u;
     const uint8_t pad = 0x80;
     update(&pad, 1);
@@ -117,7 +119,7 @@ class Sha256 {
  private:
   static uint32_t rotr(uint32_t x, int n) { return (x >> n) | (x << (32 - n)); }
 
-  void compress(const uint8_t block[64]) {
+  void compress(const uint8_t *block) { // 64 bytes
     static constexpr uint32_t K[64] = {
         0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
         0xd807aa98u, 0x12835b01u, 0x243185beu, 0x550c7dc3u, 0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u, 0xc19bf174u,
@@ -172,13 +174,15 @@ class Sha256 {
 class HmacSha256 {
  public:
   HmacSha256(const uint8_t *key, size_t key_len) {
-    uint8_t k[64] = {0};
-    if (key_len > 64) {
+    std::array<uint8_t, 64> k{};
+    if (key_len > k.size()) {
       Sha256 kh;
       kh.update(key, key_len);
-      kh.finish(k);
+      Digest kd;
+      kh.finish(kd);
+      std::memcpy(k.data(), kd.data(), kd.size());
     } else {
-      std::memcpy(k, key, key_len);
+      std::memcpy(k.data(), key, key_len);
     }
     for (size_t i = 0; i < 64; i++) {
       ipad_[i] = static_cast<uint8_t>(k[i] ^ 0x36u);
@@ -189,13 +193,13 @@ class HmacSha256 {
 
   void update(const uint8_t *data, size_t len) { inner_.update(data, len); }
 
-  void finish(std::array<uint8_t, DIGEST_SIZE> &out) {
-    std::array<uint8_t, DIGEST_SIZE> inner_digest{};
-    inner_.finish(inner_digest.data());
+  void finish(Digest &out) {
+    Digest inner_digest{};
+    inner_.finish(inner_digest);
     Sha256 outer;
     outer.update(opad_, 64);
-    outer.update(inner_digest.data(), DIGEST_SIZE);
-    outer.finish(out.data());
+    outer.update(inner_digest.data(), inner_digest.size());
+    outer.finish(out);
   }
 
  private:
@@ -235,7 +239,7 @@ inline uint32_t get_u32_le(const uint8_t *p) {
  * @brief   Computes the truncated tag over src_mac | payload | epoch | seq.
  */
 inline void compute_tag(const Key &key, const uint8_t *src_mac, const uint8_t *payload, size_t len,
-                        const Counter &ctr, uint8_t tag[TAG_SIZE]) {
+                        const Counter &ctr, Tag &tag) {
   HmacSha256 hmac(key.data(), key.size());
   hmac.update(src_mac, MAC_SIZE);
   hmac.update(payload, len);
@@ -243,9 +247,9 @@ inline void compute_tag(const Key &key, const uint8_t *src_mac, const uint8_t *p
   put_u32_le(ctr_le, ctr.epoch);
   put_u32_le(ctr_le + 4, ctr.seq);
   hmac.update(ctr_le, sizeof(ctr_le));
-  uint8_t digest[DIGEST_SIZE];
+  Digest digest;
   hmac.finish(digest);
-  std::memcpy(tag, digest, TAG_SIZE);
+  std::memcpy(tag.data(), digest.data(), tag.size());
 }
 
 /**
@@ -258,13 +262,13 @@ inline void compute_tag(const Key &key, const uint8_t *src_mac, const uint8_t *p
  * @param[in]     ctr      Frame counter (caller increments seq per frame).
  */
 inline void seal(const Key &key, const uint8_t *src_mac, std::vector<uint8_t> &frame, const Counter &ctr) {
-  uint8_t tag[TAG_SIZE];
+  Tag tag;
   compute_tag(key, src_mac, frame.data(), frame.size(), ctr, tag);
   const size_t off = frame.size();
   frame.resize(off + TRAILER_SIZE);
   put_u32_le(frame.data() + off, ctr.epoch);
   put_u32_le(frame.data() + off + 4, ctr.seq);
-  std::memcpy(frame.data() + off + 8, tag, TAG_SIZE);
+  std::memcpy(frame.data() + off + 8, tag.data(), tag.size());
 }
 
 /// Result of verify().
@@ -287,7 +291,7 @@ inline Verdict verify(const Key &key, const uint8_t *src_mac, const uint8_t *dat
   Counter c;
   c.epoch = get_u32_le(data + plen);
   c.seq = get_u32_le(data + plen + 4);
-  uint8_t expected[TAG_SIZE];
+  Tag expected;
   compute_tag(key, src_mac, data, plen, c, expected);
   uint8_t diff = 0;
   for (size_t i = 0; i < TAG_SIZE; i++) diff |= static_cast<uint8_t>(expected[i] ^ data[plen + 8 + i]);
