@@ -34,6 +34,8 @@
 #include "ventilation_packet.h"
 #include "esphome/components/ventilation_logic/room_fusion.h"
 #include "esphome/components/ventilation_logic/level_override.h"
+#include "esphome/components/ventilation_logic/defaults.h"
+#include "esphome/components/ventilation_logic/hvac_coordinator.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -787,17 +789,21 @@ public:
     pkt.timestamp_ms = now;
     
     // Populate Config with explicit null checks to ensure valid packets
-    pkt.automatik_min_fan_level = automatik_min_fan_level_global_ != nullptr ? static_cast<uint8_t>(automatik_min_fan_level_global_->value()) : 1;
-    pkt.automatik_max_fan_level = automatik_max_fan_level_global_ != nullptr ? static_cast<uint8_t>(automatik_max_fan_level_global_->value()) : 10;
-    pkt.auto_co2_threshold_val = auto_co2_threshold_global_ != nullptr ? static_cast<uint16_t>(auto_co2_threshold_global_->value()) : 1000;
-    pkt.auto_humidity_threshold_val = auto_humidity_threshold_global_ != nullptr ? static_cast<uint8_t>(auto_humidity_threshold_global_->value()) : 60;
+    // Fallbacks = factory defaults (defaults.h / hvac_coordinator.h, mirrored by the YAML substitutions)
+    namespace df = ventosync::defaults;
+    namespace hv = ventosync::hvac;
+    pkt.automatik_min_fan_level = static_cast<uint8_t>(automatik_min_fan_level_global_ != nullptr ? automatik_min_fan_level_global_->value() : df::AUTO_MIN_FAN_LEVEL);
+    pkt.automatik_max_fan_level = static_cast<uint8_t>(automatik_max_fan_level_global_ != nullptr ? automatik_max_fan_level_global_->value() : df::AUTO_MAX_FAN_LEVEL);
+    pkt.auto_co2_threshold_val = static_cast<uint16_t>(auto_co2_threshold_global_ != nullptr ? auto_co2_threshold_global_->value() : df::AUTO_CO2_THRESHOLD_PPM);
+    pkt.auto_humidity_threshold_val = static_cast<uint8_t>(auto_humidity_threshold_global_ != nullptr ? auto_humidity_threshold_global_->value() : df::AUTO_HUMIDITY_THRESHOLD_PCT);
     pkt.auto_presence_val = auto_presence_global_ != nullptr ? static_cast<int8_t>(auto_presence_global_->value()) : 0;
-    pkt.max_led_brightness = max_led_brightness_global_ != nullptr ? static_cast<float>(max_led_brightness_global_->value()) : 0.8f;
+    pkt.max_led_brightness = max_led_brightness_global_ != nullptr ? static_cast<float>(max_led_brightness_global_->value())
+                                                                   : df::LED_MAX_BRIGHTNESS_PCT / 100.0f;
 
     // Smart Climate Control config (room-wide, adopted by peers via handle_config_sync)
-    pkt.hvac_co2_threshold = hvac_co2_threshold_global_ != nullptr ? static_cast<uint16_t>(hvac_co2_threshold_global_->value()) : 1200;
-    pkt.hvac_emergency_co2 = hvac_emergency_co2_global_ != nullptr ? static_cast<uint16_t>(hvac_emergency_co2_global_->value()) : 1500;
-    pkt.hvac_max_fan_level = hvac_max_fan_level_global_ != nullptr ? static_cast<uint8_t>(hvac_max_fan_level_global_->value()) : 3;
+    pkt.hvac_co2_threshold = static_cast<uint16_t>(hvac_co2_threshold_global_ != nullptr ? static_cast<float>(hvac_co2_threshold_global_->value()) : hv::DEFAULT_CO2_THRESHOLD_PPM);
+    pkt.hvac_emergency_co2 = static_cast<uint16_t>(hvac_emergency_co2_global_ != nullptr ? static_cast<float>(hvac_emergency_co2_global_->value()) : hv::DEFAULT_EMERGENCY_CO2_PPM);
+    pkt.hvac_max_fan_level = static_cast<uint8_t>(hvac_max_fan_level_global_ != nullptr ? hvac_max_fan_level_global_->value() : hv::DEFAULT_MAX_FAN_LEVEL);
     pkt.room_flags = 0;
     if (hvac_enabled_global_ != nullptr && hvac_enabled_global_->value()) pkt.room_flags |= ROOM_FLAG_HVAC_ENABLED;
     if (hvac_local_ac_active) pkt.room_flags |= ROOM_FLAG_AC_ACTIVE;    // own HA state only

@@ -33,6 +33,12 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
         run: python3 .github/scripts/detect_changes.py
 
+      # Variant list, CLAUDE.md variant table and YAML / C++ defaults must
+      # agree — pure Python, runs on every change (also docs-only, since the
+      # variant table lives in CLAUDE.md).
+      - name: Check variant list and defaults
+        run: python3 .github/scripts/ci_config.py check
+
       - name: Create dummy secrets.yaml
         if: steps.changes.outputs.firmware == 'true'
         run: |
@@ -50,19 +56,15 @@ jobs:
         if: steps.changes.outputs.firmware == 'true'
         run: pip install "esphome==${ESPHOME_VERSION}"
 
-      # All variants are validated here on every PR — the firmware build of a
-      # PR only compiles ventosync-full (build.yaml), the other variants are
-      # compiled after the merge.
+      # All variants (.github/variants.json) are validated here on every PR —
+      # the firmware build of a PR only compiles the "pr" variants
+      # (build.yaml), the others are compiled after the merge.
       - name: Verify Configuration (all variants)
         if: steps.changes.outputs.firmware == 'true'
         run: |
           set -euo pipefail
-          cp ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml
-          echo '  mqtt_integration: !include packages/integration/mqtt.yaml' >> ventosync_nosensor_mqtt.yaml
-          for f in ventosync.yaml ventosync_bme680_only.yaml ventosync_radar_only.yaml \
-                   ventosync_NTConly.yaml ventosync_nosensor.yaml ventosync_nosensor_mqtt.yaml ventosync_sgp41.yaml ventosync_scd43_only.yaml \
-                   ventosync_v2_nosensor.yaml ventosync_v2_bme680_only.yaml ventosync_v2_sgp41.yaml ventosync_v2_scd43_only.yaml \
-                   ventosync_nosensor_btproxy.yaml; do
+          python3 .github/scripts/ci_config.py generate
+          for f in $(python3 .github/scripts/ci_config.py list); do
             echo "::group::esphome config $f"
             esphome config "$f" > /dev/null
             echo "::endgroup::"

@@ -47,6 +47,17 @@ substitutions:
   # "set_window_open" (see documentation/en/en_window-guard-ha-setup.md) and
   # shared with the room over ESP-NOW — no per-room entity ID needed here.
 
+  # FACTORY DEFAULTS (first boot) of the room-wide Smart-Automatik settings.
+  # Used by the globals and HA numbers below. The C++ fallbacks mirror them in
+  # components/ventilation_logic/defaults.h (hvac_default_*: DEFAULT_* in
+  # hvac_coordinator.h) — `.github/scripts/ci_config.py check` (lint) fails
+  # if both sides differ. Runtime changes via HA are persisted and synced.
+  default_auto_min_fan_level: "2"        # 1-3, moisture protection (DIN 1946-6)
+  default_auto_max_fan_level: "7"        # 5-10, noise limit
+  default_auto_co2_threshold: "1000"     # ppm, CO2 PID setpoint (Pettenkofer)
+  default_auto_humidity_threshold: "60"  # %, humidity PID setpoint (mold protection)
+  default_led_max_brightness: "80"       # %, status LED brightness limit
+
   # SMART CLIMATE CONTROL (HVAC COORDINATION) CONFIG
   # The AC state is pushed by Home Assistant via the API action
   # "set_ac_active" (see documentation/en/en_smart-climate-control.md) and

@@ -90,7 +90,7 @@ number:
     min_value: 5
     max_value: 100
     step: 5
-    initial_value: 80
+    initial_value: ${default_led_max_brightness}
     optimistic: true
     restore_value: true
     set_action:
@@ -111,7 +111,7 @@ number:
     step: 1
     mode: slider
     optimistic: true
-    initial_value: 2
+    initial_value: ${default_auto_min_fan_level}
     restore_value: true
     set_action:
       then:
@@ -130,7 +130,7 @@ number:
     step: 1
     mode: slider
     optimistic: true
-    initial_value: 7
+    initial_value: ${default_auto_max_fan_level}
     restore_value: true
     set_action:
       then:

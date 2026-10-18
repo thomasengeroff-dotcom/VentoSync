@@ -1,0 +1,20 @@
+{
+  "_comment": "Single source of the firmware variants for CI (build matrix, YAML lint, generated files). name = OTA manifest name (manifest-<name>.json) and must equal the variant's firmware_variant substitution. pr = also compiled on pull requests. generate = file is created by `ci_config.py generate` (not in the repository). See .github/scripts/ci_config.py.",
+  "variants": [
+    {"name": "ventosync-full", "yaml": "ventosync.yaml", "pr": true},
+    {"name": "ventosync-nosensor", "yaml": "ventosync_nosensor.yaml"},
+    {"name": "ventosync-radar-only", "yaml": "ventosync_radar_only.yaml"},
+    {"name": "ventosync-bme680-only", "yaml": "ventosync_bme680_only.yaml"},
+    {"name": "ventosync-scd43-only", "yaml": "ventosync_scd43_only.yaml"},
+    {"name": "ventosync-ntconly", "yaml": "ventosync_NTConly.yaml"},
+    {"name": "ventosync-sgp41", "yaml": "ventosync_sgp41.yaml"},
+    {"name": "ventosync-nosensor-mqtt", "yaml": "ventosync_nosensor_mqtt.yaml",
+     "generate": {"from": "ventosync_nosensor.yaml",
+                  "append": "  mqtt_integration: !include packages/integration/mqtt.yaml"}},
+    {"name": "ventosync-v2-nosensor", "yaml": "ventosync_v2_nosensor.yaml", "pr": true},
+    {"name": "ventosync-v2-bme680-only", "yaml": "ventosync_v2_bme680_only.yaml"},
+    {"name": "ventosync-v2-scd43-only", "yaml": "ventosync_v2_scd43_only.yaml"},
+    {"name": "ventosync-v2-sgp41", "yaml": "ventosync_v2_sgp41.yaml", "pr": true},
+    {"name": "ventosync-nosensor-btproxy", "yaml": "ventosync_nosensor_btproxy.yaml", "pr": true}
+  ]
+}

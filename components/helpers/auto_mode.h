@@ -702,7 +702,8 @@ inline bool override_emergency(uint32_t now, const ventosync::hvac::Decision &hv
   const float on_ppm = (hvac_emergency_co2_val != nullptr)
       ? static_cast<float>(hvac_emergency_co2_val->value()) : ventosync::hvac::DEFAULT_EMERGENCY_CO2_PPM;
   const float off_ppm = (auto_co2_threshold_val != nullptr)
-      ? static_cast<float>(auto_co2_threshold_val->value()) : 1000.0f;
+      ? static_cast<float>(auto_co2_threshold_val->value())
+                                        : static_cast<float>(ventosync::defaults::AUTO_CO2_THRESHOLD_PPM);
   const bool co2 = override_state::co2_guard.update(get_room_max_co2(now), on_ppm, off_ppm);
   return co2 || hvac.state == ventosync::hvac::State::EMERGENCY_CO2 ||
          hvac.state == ventosync::hvac::State::EMERGENCY_HUMIDITY;
@@ -890,7 +891,8 @@ inline void evaluate_auto_mode(bool force) {
   // the user's normal threshold (also repairs slider / peer-sync overwrites).
   {
     const float normal_setpoint = (auto_co2_threshold_val != nullptr)
-        ? static_cast<float>(auto_co2_threshold_val->value()) : 1000.0f;
+        ? static_cast<float>(auto_co2_threshold_val->value())
+                                        : static_cast<float>(ventosync::defaults::AUTO_CO2_THRESHOLD_PPM);
     auto_mode::apply_co2_setpoint(hvac.relaxed_co2_setpoint ? hvac.co2_setpoint : normal_setpoint);
   }
 

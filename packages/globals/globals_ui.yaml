@@ -36,7 +36,7 @@ globals:
   # Default 0.8 provides good visibility without being blinding at night.
   - id: max_led_brightness
     type: float
-    initial_value: "0.8"
+    initial_value: "${default_led_max_brightness} / 100.0f"
     restore_value: true
 
   # ---------------------------------------------------------
