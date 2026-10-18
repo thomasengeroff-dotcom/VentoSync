@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-16
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 
@@ -48,18 +48,16 @@ static constexpr uint32_t PEER_TIMEOUT_MS = 900000;
 /** @brief Hardware ACK failure limit before a peer is considered dead. */
 static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10;
 
-/** @brief Threshold for triggering an automatic status sync request. */
-static constexpr uint32_t STATUS_REQUEST_INTERVAL_MS = 60000;
-
-/** @brief Maximum number of allowed peers in the cache. */
-static constexpr uint8_t MAX_PEER_CACHE_SIZE = 8;
+/** @brief Maximum number of peers, shared by the LRU list
+ * VentilationController::peers and the ESP-NOW peer_cache (network_sync.h). */
+static constexpr size_t MAX_PEERS = 10;
 
 /** @brief Magic header for packet validation. */
 static constexpr uint8_t PACKET_MAGIC = 0x42;
 
-/** @brief Sensitivity for state broadcasts. Demand changes below this are
- * ignored to prevent network jitter. */
-static constexpr float PID_SYNC_THRESHOLD = 0.05f;
+/** @brief Device ID of the room's Master (drives timing, config and the
+ * Smart-Automatik level for the whole room). */
+static constexpr uint8_t MASTER_DEVICE_ID = 1;
 
 // Forward declaration of the global fan update function (defined in
 // automation_helpers.h)
@@ -87,8 +85,9 @@ namespace esphome {
 // Enum moved to ventilation_state_machine.h
 
 /// @brief ESP-NOW packet type identifiers.
+/// Value 1 (MSG_DISCOVERY) is retired: discovery uses the plaintext
+/// ROOM_DISC / ROOM_CONF payloads (network_sync.h).
 enum MessageType {
-  MSG_DISCOVERY = 1,      ///< Announce presence after boot.
   MSG_SYNC = 2,           ///< Periodic time-sync packet (cycle position).
   MSG_STATE = 3,          ///< Mode or fan-intensity change notification.
   MSG_STATUS_REQUEST = 4, ///< Request current full status from peers.
@@ -122,7 +121,7 @@ static constexpr uint8_t ROOM_FLAG_NOX_STRONG = 0x40;
 /// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
 /// and do a simultaneous OTA rollout on all nodes whenever this struct changes.
 struct __attribute__((packed)) VentilationPacket {
-  uint8_t magic_header; ///< Always 0x42 — used for basic validation.
+  uint8_t magic_header; ///< Always PACKET_MAGIC — used for basic validation.
   uint8_t
       protocol_version; ///< FIXED K2: Schema version — reject mismatched peers.
   uint8_t floor_id;     ///< Floor group (filters unrelated devices).
@@ -368,7 +367,7 @@ public:
   void set_hvac_emergency_co2_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_emergency_co2_global_ = g; }
   /** @brief Sets the global Smart Climate Control fan level cap reference. */
   void set_hvac_max_fan_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_max_fan_level_global_ = g; }
-  /** @brief Sets the persistent vacation state reference (0 = inactive, 2 = leading). */
+  /** @brief Sets the persistent vacation state reference (see ventosync::vacation::VACATION_*). */
   void set_vacation_state_global(esphome::globals::RestoringGlobalsComponent<int> *g) { vacation_state_global_ = g; }
   /** @brief Sets the pre-vacation mode index reference (shared while leading). */
   void set_pre_vacation_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_mode_index_global_ = g; }
@@ -511,7 +510,7 @@ public:
         // Log details about what caused the dirty flag if possible (handled in state machine)
         ESP_LOGD("vent", "State transition detected (flip/mode timer).");
         // FIX: Prevent simultaneous transmission collisions on predictable timer flips
-        if (device_id == 1) {
+        if (device_id == MASTER_DEVICE_ID) {
           ESP_LOGD("vent", "Triggering sync broadcast as Master.");
           trigger_sync();
         } else {
@@ -535,10 +534,14 @@ public:
       jitter = esphome::random_uint32() % 5000; // New jitter for next cycle
     }
 
-    // 4. Cleanup old peers (15 minutes timeout)
+    // 4. Cleanup old peers (15 minutes timeout). last_seen_ms can be a few ms
+    //    newer than `now` (stamped by on_packet_received() via
+    //    process_queued_packets() above), so compare the signed difference —
+    //    wrap-safe, unlike a `now >= last_seen_ms` guard, which kept a stale
+    //    peer for ~49 days after the millis() overflow.
     auto it = peers.begin();
     while (it != peers.end()) {
-      if (now >= it->last_seen_ms && now - it->last_seen_ms > PEER_TIMEOUT_MS) {
+      if (static_cast<int32_t>(now - it->last_seen_ms) > static_cast<int32_t>(PEER_TIMEOUT_MS)) {
         ESP_LOGD("vent", "Removing stale peer %d due to timeout",
                  it->device_id);
         it = peers.erase(it);
@@ -649,8 +652,6 @@ public:
   bool on_packet_received(const VentilationPacket &pkt_val, const uint8_t *src_mac) {
     // FIXED CR-1: Single consistent timestamp for entire method (mirrors loop() pattern)
     const uint32_t now = millis();
-    ESP_LOGI("vent", "on_packet_received() called");
-
     const VentilationPacket *pkt = &pkt_val;
 
     if (pkt->floor_id != floor_id || pkt->room_id != room_id) {
@@ -661,11 +662,8 @@ public:
       return false;
     }
 
-    ESP_LOGI("vent_sync", "Valid packet received from device %d! (Type: %d)",
+    ESP_LOGD("vent_sync", "Valid packet received from device %d (Type: %d)",
              pkt->device_id, pkt->msg_type);
-
-    // FIXED H-5: Limit peer list to prevent unbounded growth
-    constexpr size_t MAX_PEERS = 10;
 
     // FIXED CR-1: Helper lambda to populate peer state from packet (DRY)
     auto populate_peer = [&](PeerState &peer) {
@@ -724,8 +722,8 @@ public:
     if (pkt->msg_type == MSG_STATE) {
       should_sync = true; // Always adopt explicit group interactions from any device
     } else if (pkt->msg_type == MSG_SYNC && device_id != pkt->device_id) {
-      // Only the Master (device_id == 1) drives cycle timing and config sync
-      if (pkt->device_id == 1) {
+      // Only the Master drives cycle timing and config sync
+      if (pkt->device_id == MASTER_DEVICE_ID) {
         should_sync = true;
       } else {
         ESP_LOGD("vent_sync",
@@ -740,19 +738,19 @@ public:
 
     if (should_sync) {
       // 1. Time sync (aligns direction cycle phase) — Master only for MSG_SYNC
-      if (pkt->msg_type == MSG_SYNC && pkt->device_id == 1) {
+      if (pkt->msg_type == MSG_SYNC && pkt->device_id == MASTER_DEVICE_ID) {
         state_machine.sync_time(now, pkt->cycle_pos_ms);
       }
-      int32_t time_diff =
-          (int32_t)pkt->remaining_duration_ms -
-          (int32_t)state_machine.get_remaining_duration(now);
+      const int32_t time_diff =
+          static_cast<int32_t>(pkt->remaining_duration_ms) -
+          static_cast<int32_t>(state_machine.get_remaining_duration(now));
       // Stoßlüftung: align the burst schedule with the Master only (a rebooted
       // slave must not restart the room's cycle). Circular distance in the
       // super-cycle, since the remaining time wraps around.
       bool stoss_misaligned = false;
       if (pkt->current_mode == MODE_STOSSLUEFTUNG &&
           state_machine.current_mode == MODE_STOSSLUEFTUNG &&
-          pkt->device_id == 1 && pkt->remaining_duration_ms > 0 &&
+          pkt->device_id == MASTER_DEVICE_ID && pkt->remaining_duration_ms > 0 &&
           pkt->remaining_duration_ms <= VentilationStateMachine::STOSS_SUPER_CYCLE_MS) {
         constexpr uint32_t super = VentilationStateMachine::STOSS_SUPER_CYCLE_MS;
         const uint32_t d = (pkt->remaining_duration_ms + super -
@@ -769,7 +767,8 @@ public:
                  pkt->device_id, pkt->msg_type, pkt->current_mode, pkt->current_mode_index);
 
         // Set logical state without triggering an echo broadcast
-        state_machine.set_mode((VentilationMode)pkt->current_mode, now,
+        // current_mode is range-checked in validate_and_parse_packet()
+        state_machine.set_mode(static_cast<VentilationMode>(pkt->current_mode), now,
                                pkt->remaining_duration_ms);
         update_hardware();
         changed = true;
@@ -897,11 +896,11 @@ public:
   std::vector<uint8_t> build_packet(MessageType type) {
     // FIXED CR-4: Single consistent timestamp for entire packet build
     const uint32_t now = millis();
-    ESP_LOGI("vent_sync",
+    ESP_LOGD("vent_sync",
              "Building packet type %d from device %d. Clearing pending_broadcast.", type, device_id);
     VentilationPacket pkt;
     memset(&pkt, 0, sizeof(pkt));
-    pkt.magic_header = 0x42;
+    pkt.magic_header = PACKET_MAGIC;
     pkt.protocol_version =
         PROTOCOL_VERSION; // FIXED K2: stamp version for peer validation
     pkt.floor_id = floor_id;
@@ -937,18 +936,24 @@ public:
     if (nox_local_strong) pkt.room_flags |= ROOM_FLAG_NOX_STRONG;       // own SGP41 only
 
     // Vacation snapshot: only the device LEADING a vacation shares its
-    // pre-vacation state (vacation_state == 2). Followers send the sentinel,
+    // pre-vacation state (VACATION_STATE_LEADING). Followers send the sentinel,
     // so an adopted snapshot is never re-broadcast (no latching between
     // devices) and exactly one source exists per room.
     pkt.vacation_pre_mode_index = ventosync::room::VACATION_SNAPSHOT_NONE;
     pkt.vacation_pre_intensity = 0;
-    if (vacation_state_global_ != nullptr && vacation_state_global_->value() == 2 &&
+    if (vacation_state_global_ != nullptr &&
+        vacation_state_global_->value() == ventosync::room::VACATION_STATE_LEADING &&
         pre_vacation_mode_index_global_ != nullptr && pre_vacation_intensity_global_ != nullptr) {
       const int idx = pre_vacation_mode_index_global_->value();
       const int lvl = pre_vacation_intensity_global_->value();
-      if (idx >= 0 && idx <= 4 && lvl >= 1 && lvl <= 10) {
-        pkt.vacation_pre_mode_index = static_cast<uint8_t>(idx);
-        pkt.vacation_pre_intensity = static_cast<uint8_t>(lvl);
+      // Out-of-range NVS values map to invalid sentinels (never wrap into range)
+      ventosync::room::VacationSnapshot snap;
+      snap.mode_index = (idx >= 0 && idx <= 255) ? static_cast<uint8_t>(idx)
+                                                 : ventosync::room::VACATION_SNAPSHOT_NONE;
+      snap.intensity = (lvl >= 0 && lvl <= 255) ? static_cast<uint8_t>(lvl) : 0;
+      if (snap.valid()) {
+        pkt.vacation_pre_mode_index = snap.mode_index;
+        pkt.vacation_pre_intensity = snap.intensity;
       }
     }
 

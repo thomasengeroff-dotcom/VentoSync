@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.41] - 2026-10-18
+
+### Fixed
+
+- **Stale peers after the `millis()` overflow** — the peer list cleanup in `VentilationController::loop()` guarded
+  with `now >= last_seen_ms`. After ~49.7 days of uptime a peer that went offline right before the overflow stayed
+  in the list (web dashboard, one of the 10 slots) for up to another 49 days. The timeout now compares the signed
+  difference (wrap-safe). The room-wide fusion was not affected (its freshness checks were already wrap-safe).
+- **ESP-NOW packet validation** — `current_mode` (0–3) is now range-checked like `current_mode_index`; a packet
+  with an unknown mode is rejected instead of being cast into `VentilationMode`.
+
+### Changed
+
+- **Less log noise** — the per-packet ESP-NOW messages ("on_packet_received() called", "Valid packet received",
+  "Building packet") moved from INFO to DEBUG.
+- Code cleanup (no behaviour change): named constants instead of magic numbers (`PACKET_MAGIC`,
+  `MASTER_DEVICE_ID`, `MAX_PEERS`, `MODE_INDEX_*`, `VACATION_STATE_LEADING`), the mode-name lookup in the
+  ESP-NOW state sync uses `MODE_NAMES[]`, C-style casts replaced by `static_cast`, unused constants removed
+  (`MAX_PEER_CACHE_SIZE`, `STATUS_REQUEST_INTERVAL_MS`, `PID_SYNC_THRESHOLD`, `MSG_DISCOVERY`,
+  `SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS`, `is_single_device_group()`), an ineffective fan `make_call()`
+  without `perform()` removed from the "Aus" transition (`update_hardware()` already publishes the fan as off),
+  outdated comments in `globals.h` corrected, two compiler warnings in the unit tests and a `-Wformat` warning in
+  `auto_mode.h` fixed.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.40] - 2026-10-18
 
 ### Changed

@@ -12,7 +12,7 @@ Das VentoSync-Projekt zeichnet sich durch eine hochgradig modulare, professionel
 
 ### ✅ Modulare Konfiguration (`packages`)
 **Status: Exzellent**  
-Das Projekt nutzt das `packages:`-Feature von ESPHome vorbildlich (z.B. ruft `ventosync.yaml` die Datei `packages/base/ventosync_base.yaml` auf, welche wiederum dedizierte Pakete wie `packages/io/hardware_fan.yaml`, `packages/sensors/sensor_SCD43.yaml` etc. einbindet).
+Das Projekt nutzt das `packages:`-Feature von ESPHome vorbildlich (z.B. ruft `ventosync.yaml` die Datei `packages/base/ventosync_base.yaml` auf, welche wiederum dedizierte Pakete wie `packages/io/hardware_fan.yaml`, `packages/sensors/sensor_SCD41.yaml` etc. einbindet).
 
 ### ✅ Maßgeschneiderte C++ Integration (`external_components` & `includes`)
 **Status: Exzellent**  

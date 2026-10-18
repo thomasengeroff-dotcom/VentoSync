@@ -21,7 +21,7 @@
 // Description: Pure room-wide sensor/demand fusion helpers (ESP-NOW peers).
 // Author:      Thomas Engeroff
 // Created:     2026-09-23
-// Modified:    2026-09-25
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 
@@ -244,6 +244,11 @@ struct PresenceHold {
 
 /// Sentinel for "this device is not leading a vacation, no snapshot to share".
 constexpr uint8_t VACATION_SNAPSHOT_NONE = 0xFFu;
+
+/// Value of the persistent `vacation_state` global while this device leads the
+/// room's vacation (only then it broadcasts its snapshot). Single source for
+/// ventosync::vacation::VACATION_LEADING (vacation_helpers.h).
+constexpr int VACATION_STATE_LEADING = 2;
 
 /**
  * @brief   Pre-vacation room state shared by the device leading the vacation.

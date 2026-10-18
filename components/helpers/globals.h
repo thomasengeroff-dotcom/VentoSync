@@ -21,14 +21,13 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-16
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 
-/// @file automation_helpers.h
-/// @brief Inline helper functions called from ESPHome YAML lambdas.
-/// Bridges the gap between YAML automations and the C++ VentilationController /
-/// VentilationLogic classes.
+/// @file globals.h
+/// @brief Central extern registry of the ESPHome entities, shared runtime state
+/// and forward declarations for the helper headers included by the YAML lambdas.
 ///
 /// NOTE (Bug #8 FIXED): All component pointers below use `extern` so this
 /// header can be compiled standalone. The actual definitions live in the
@@ -75,7 +74,6 @@
 
 // --- Constants ---------------------------------------------------------
 static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR = 22.0f;
-static constexpr float SUMMER_COOLING_THRESHOLD_INDOOR_HYSTERESIS = 21.5f;
 static constexpr float SUMMER_COOLING_MIN_DELTA = 1.5f;
 static constexpr float SUMMER_COOLING_HYSTERESIS = 0.5f;
 /// After the summer bypass ended because a temperature was not measurable,
@@ -110,8 +108,15 @@ static constexpr const char *MODE_NAMES[] = {
 };
 static_assert(sizeof(MODE_NAMES) / sizeof(MODE_NAMES[0]) == 5,
               "MODE_NAMES array size must match number of operating modes");
+/// @brief Mode index of "Smart-Automatik".
+static constexpr int MODE_INDEX_AUTO = 0;
+/// @brief Mode index of "Wärmerückgewinnung" (fallback for invalid indices).
+static constexpr int MODE_INDEX_WRG = 1;
 /// @brief Mode index of "Aus" (fan stopped, room-wide like every other mode).
 static constexpr int MODE_INDEX_AUS = 4;
+/// @brief Number of operating modes (valid indices: 0 … MODE_INDEX_COUNT - 1).
+static constexpr int MODE_INDEX_COUNT = static_cast<int>(sizeof(MODE_NAMES) / sizeof(MODE_NAMES[0]));
+static_assert(MODE_INDEX_AUS == MODE_INDEX_COUNT - 1, "\"Aus\" must be the last mode index");
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.
@@ -184,7 +189,8 @@ extern esphome::globals::RestoringGlobalsComponent<bool> *const auto_mode_active
 extern esphome::globals::RestoringGlobalsComponent<int> *const auto_co2_threshold_val;
 extern esphome::globals::RestoringGlobalsComponent<int>
     *const auto_humidity_threshold_val;
-extern esphome::globals::RestoringGlobalsComponent<int> *const auto_presence_val;
+extern esphome::globals::RestoringGlobalsComponent<int>
+    *const auto_presence_val; ///< Presence offset (-5…+5, room-wide, manual modes only).
 extern esphome::globals::RestoringGlobalsComponent<int>
     *const summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C).
 extern esphome::globals::RestoringGlobalsComponent<int>
@@ -204,8 +210,7 @@ extern esphome::globals::RestoringGlobalsComponent<int> *const watchdog_restarts
 /// @name Template UI components
 /// @{
 extern esphome::template_::TemplateSelectWithSetAction<false, false, false, 0>
-    *const luefter_modus; ///< Mode selector (WRG/Stoß/Durchlüften/Aus).
-// auto_presence_behavior removed
+    *const luefter_modus; ///< Mode selector (MODE_NAMES).
 extern esphome::template_::TemplateNumber
     *const vent_timer; ///< Ventilation timer (minutes).
 extern esphome::template_::TemplateNumber
@@ -245,8 +250,6 @@ extern esphome::template_::TemplateSwitch
     *const peer_check_switch; ///< HA switch for peer check.
 extern esphome::template_::TemplateSwitch
     *const fan_direction; ///< Hardware fan direction switch.
-extern esphome::globals::RestoringGlobalsComponent<int>
-    *const auto_presence_val; ///< Presence bitmask.
 extern esphome::globals::GlobalsComponent<bool>
     *const ui_active; ///< Flag if UI should be active / bright.
 extern esphome::globals::RestoringGlobalsComponent<float>
@@ -465,15 +468,17 @@ parse_mac_local(const std::string &str) {
 }
 
 extern esphome::globals::RestoringGlobalStringComponent<std::string, 255>
-    *const espnow_peers; ///< ESP-NOW dynamic peer list (JSON-formatted MACs).
+    *const espnow_peers; ///< ESP-NOW dynamic peer list (comma-separated MACs, NVS).
 
 // NOTE: We use esphome::espnow::global_esp_now which is properly declared
 // as extern in espnow_component.h.
 
-/** @brief Helper to check if a MAC matches the local device. */
+/// @name Fan PWM / slew-rate state (automation_helpers.h)
+/// @{
 inline float last_fan_pwm_level = 0.5f; // Default: Stop
 inline float current_smoothed_speed = 0.0f; // Track active slew-rate mapped speed
 inline uint32_t last_slew_update_ms = 0;    // Timestamp of last slew step
+/// @}
 
 /// @name NTC Stabilization State
 /// @{
@@ -488,7 +493,6 @@ inline uint32_t last_direction_change_time = 0;
 inline uint32_t child_lock_combo_triggered_ms = 0;
 /// @}
 
-// --- FORWARD DECLARATIONS ---
 // --- FORWARD DECLARATIONS ---
 /** @brief Resets thermal stabilization timers after a direction flip. */
 inline void notify_fan_direction_changed();
@@ -530,7 +534,7 @@ inline void remove_stale_peer(const uint8_t *mac);
 inline void trigger_re_discovery();
 /** @brief Resets the failure counter for a specific peer. */
 inline void reset_peer_fail_count(const uint8_t *mac);
-/** @brief Rebuilds the JSON string for peer display. */
+/** @brief Rebuilds the peer display string (and the throttled NVS peer list). */
 inline void rebuild_peers_string();
 /** @brief Flushes a peer-list NVS write deferred by rebuild_peers_string(). */
 inline void flush_pending_peer_nvs_save();
@@ -594,7 +598,7 @@ inline void check_master_led_error();
  * @return  true  if this is the Master device.
  */
 inline bool is_master() {
-  return ventilation_ctrl != nullptr && ventilation_ctrl->device_id == 1;
+  return ventilation_ctrl != nullptr && ventilation_ctrl->device_id == MASTER_DEVICE_ID;
 }
 
 /**
@@ -602,10 +606,10 @@ inline bool is_master() {
  *
  * @param[in] pkt  Pointer to the received VentilationPacket.
  *
- * @return  true  if the packet's device_id is 1.
+ * @return  true  if the packet's device_id is MASTER_DEVICE_ID.
  */
 inline bool is_from_master(const esphome::VentilationPacket *pkt) {
-  return pkt->device_id == 1;
+  return pkt->device_id == MASTER_DEVICE_ID;
 }
 /** @brief Dispatches PWM and direction to hardware. */
 inline void set_fan_logic(float speed, int direction);
