@@ -97,7 +97,7 @@ class Sha256 {
     }
   }
 
-  void finish(uint8_t out[DIGEST_SIZE]) {
+  void finish(std::array<uint8_t, DIGEST_SIZE> &out) {
     const uint64_t bit_len = total_len_ * 8u;
     const uint8_t pad = 0x80;
     update(&pad, 1);
