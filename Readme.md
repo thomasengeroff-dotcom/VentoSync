@@ -483,6 +483,10 @@ The web interfaces (`http://<device-ip>/` and the VentoSync dashboard `/ui`) hav
 - **Enable a login** in your own build: uncomment the `auth:` block under `web_server:` in `packages/base/esp32c6_common.yaml` and add `webuser` / `webpw` to `secrets.yaml`. It protects the native page **and** the dashboard (`/ui`, `/state`, `/set`). The release binaries keep it off, because they are built without secrets.
 - **Flood protection** (since 0.10.42): the dashboard queues at most 16 pending changes; further `/set` requests get HTTP 503 until the queue is drained (every 100 ms), and values longer than 32 characters are rejected.
 
+#### 📡 ESP-NOW Security (unencrypted)
+
+The ESP-NOW traffic between the devices of a room is **neither encrypted nor authenticated**. Anyone within radio range can read it, and a nearby ESP32 can forge packets that switch the room's mode (e.g. `Aus`) or change its level and room-wide settings — the packet format is public. Wi-Fi, the Home Assistant API and OTA are not affected. Details and the reasons why ESP-NOW encryption is not used: [ESP-NOW Communication → Security](documentation/en/en_esp-now-communication.md).
+
 ### 🌡️ Calibration of NTC Sensors
 
 The configuration is optimized for the **[ENTC-10K9777-02](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474)** NTC thermistor (10kΩ, B-value 3435). If you use other sensors, you must adapt the `b_constant` and `reference_resistance` values in the YAML code accordingly.

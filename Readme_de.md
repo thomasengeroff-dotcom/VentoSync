@@ -480,6 +480,10 @@ Die Weboberflächen (`http://<geräte-ip>/` und das VentoSync-Dashboard `/ui`) h
 - **Login aktivieren** im eigenen Build: den `auth:`-Block unter `web_server:` in `packages/base/esp32c6_common.yaml` einkommentieren und `webuser` / `webpw` in `secrets.yaml` eintragen. Er schützt die native Seite **und** das Dashboard (`/ui`, `/state`, `/set`). Die Release-Binaries lassen ihn aus, weil sie ohne Secrets gebaut werden.
 - **Schutz gegen Überflutung** (seit 0.10.42): Das Dashboard hält höchstens 16 offene Änderungen vor; weitere `/set`-Anfragen bekommen HTTP 503, bis die Warteschlange abgearbeitet ist (alle 100 ms), und Werte mit mehr als 32 Zeichen werden abgelehnt.
 
+#### 📡 ESP-NOW-Sicherheit (unverschlüsselt)
+
+Der ESP-NOW-Verkehr zwischen den Geräten eines Raums ist **weder verschlüsselt noch authentifiziert**. Jeder in Funkreichweite kann ihn mitlesen, und ein ESP32 in der Nähe kann Pakete fälschen, die den Modus des Raums umschalten (z. B. `Aus`) oder Stufe und raumweite Einstellungen ändern — das Paketformat ist öffentlich. WLAN, die Home-Assistant-API und OTA sind nicht betroffen. Details und warum keine ESP-NOW-Verschlüsselung verwendet wird: [ESP-NOW-Kommunikation → Sicherheit](documentation/de/de_esp-now-communication.md).
+
 ### 🌡️ Kalibrierung der NTC-Sensoren
 
 Die Konfiguration ist optimiert für den NTC-Thermistor **[ENTC-10K9777-02](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474)** (10kΩ, B-Wert 3435). Falls du andere Sensoren verwendest, müssen die Werte für `b_constant` und `reference_resistance` im YAML-Code entsprechend angepasst werden.
