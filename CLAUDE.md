@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,011,970 / 2,031,616 B (~19 KB headroom, 0.10.43) — CI compiles it on every PR. Switching a device to it
+  logger INFO. Image 2,012,010 / 2,031,616 B (~19 KB headroom, 0.10.44) — CI compiles it on every PR. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -167,6 +167,7 @@ esphome upload ventosync.yaml --device <IP> --no-logs
 esphome run ventosync.yaml --device /dev/ttyACM0
 
 # Native C++ unit tests — run from the repository root (identical to CI in build.yaml)
+# (covers components/ventilation_logic/ and the pure headers in components/ventilation_group/)
 g++ -std=c++17 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer \
     -o simple_test tests/simple_test_runner.cpp \
     components/ventilation_logic/ventilation_logic.cpp \
@@ -200,7 +201,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v13` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 13` in `ventilation_group.h`;
+- **Protocol version:** `v13` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 13` in `ventilation_packet.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
@@ -209,7 +210,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
   Smart-Automatik level override and its duration setting; v13 added the authentication trailer, see below).
-- **Changing `VentilationPacket`:** bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof ≤ 250)`,
+- **Changing `VentilationPacket`** (`components/ventilation_group/ventilation_packet.h`, with `PeerState`, the room
+  flags and `update_peer_state()`): bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof + trailer ≤ 250)`,
+  extend the range checks in `ventosync::packet::parse()` and the unit tests T-8a/T-8b,
   update the version above (and in the `network_sync.h` entry below), and note in the CHANGELOG that **all devices of a
   room must be flashed** (mixed versions reject each other's packets).
 - **Frame authentication (v13, `espnow_auth.h`, `ventosync::espnow_auth`):** every frame (VentilationPacket and
@@ -220,8 +223,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   (CI: repository secret `ESPNOW_KEY`, required for release builds). `epoch` is persisted once per boot (ESPHome
   preference `ventosync_espnow_tx_epoch`); the `ReplayGuard` (RAM, 16 senders) forgets a sender after 15 min without
   an accepted frame. Not encrypted — payloads stay readable; the release key is extractable (documented like the API key).
-- **Safe deserialization:** only via `std::memcpy` into a stack-local struct in
-  `espnow_handler::validate_and_parse_packet()` — **never** cast `uint8_t*` to a struct pointer.
+- **Safe deserialization:** only via `std::memcpy` into a stack-local struct in `ventosync::packet::parse()`
+  (pure, unit-tested; `espnow_handler::validate_and_parse_packet()` only logs) — **never** cast `uint8_t*` to a
+  struct pointer.
 - **Discovery:** broadcast `ROOM_DISC` on boot → matching Floor + Room ID → unicast pairing.
 - **Peer cache:** LRU, capped at `MAX_PEERS` = 10 peers (`VentilationController::peers` and the ESP-NOW `peer_cache`).
 - **Master/Slave authority:** device ID 1 (`MASTER_DEVICE_ID`, check with `is_master()` / `is_from_master()`) is Master. Slaves mirror mode and — in Smart-Automatik — the
@@ -279,7 +283,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 Use `ventosync::` for project-wide constants, guards, and helper structs. Sub-namespaces in use:
 `ventosync::config`, `ventosync::espnow`, `ventosync::ha_fan`, `ventosync::health`, `ventosync::hrv`,
 `ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`,
-`ventosync::nox`, `ventosync::auto_status`, `ventosync::espnow_auth`.
+`ventosync::nox`, `ventosync::auto_status`, `ventosync::espnow_auth`, `ventosync::auto_level`, `ventosync::summer`,
+`ventosync::packet`.
 
 ### Modular C++ Headers (`components/helpers/`)
 
@@ -321,6 +326,12 @@ Complex YAML lambda logic is extracted into focused header files:
   - `nox_boost.h` (`ventosync::nox`): NOx boost `Detector` (trigger, hold, cap, outdoor-air test, lockout).
   - `auto_status.h` (`ventosync::auto_status`): Automatik-Status reason/text (`describe()`), keys, `ReasonTracker`.
   - `espnow_auth.h` (`ventosync::espnow_auth`): SHA-256 / HMAC-SHA256, frame trailer `seal()` / `verify()`, `ReplayGuard`.
+  - `auto_level.h` (`ventosync::auto_level`): Smart-Automatik soft ramp (`ramp_level()`, ±1 / ±2 after a mode
+    change) and `master_level()` (slaves follow a fresh Master).
+  - `summer_bypass.h` (`ventosync::summer`): summer bypass `decide()` (thresholds, hysteresis, AC lock) and
+    `RemeasureGuard`; owns the `SUMMER_*` constants.
+- **`ventilation_group/ventilation_packet.h`** (pure, unit-tested): wire format (`VentilationPacket`, `MessageType`,
+  `ROOM_FLAG_*`, `PROTOCOL_VERSION`), `PeerState`, `ventosync::packet::parse()` and `update_peer_state()`.
 - **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
 
 ### Type Safety & Best Practices
@@ -376,8 +387,9 @@ Complex YAML lambda logic is extracted into focused header files:
   Followers take the leader's snapshot from the packet (`vacation_adopt_leader_snapshot()`, protocol v11), so a
   device that joins or is promoted mid-vacation still restores the room's pre-vacation mode and level.
 - **`vent_timer` = 0 means continuous** (`ventilation_duration_ms = 0`); only values > 0 are clamped to 1–1440 min.
-- **`static` locals in `inline` header functions** (e.g. `evaluate_auto_mode()`) are shared state for the
-  whole firmware — they persist across mode switches and are not per-instance.
+- **`static` locals in `inline` header functions** are shared state for the whole firmware — they persist across
+  mode switches and are not per-instance. The Smart-Automatik state lives in `auto_mode_state` (`auto_mode.h`:
+  held readings, summer re-measure guard, ramp, hold-off); prefer such a named namespace over new hidden `static`s.
 - **`effective_co2` may be a VOC-based eCO2 estimate** (BME680 in the `bme680_only` variants, SGP41 VOC index in
   the `sgp41` variants); room-wide maxima include it as if it were an NDIR value. The SGP41 VOC index is relative to the
   last 24 h — a constant pollution level drifts back to index 100 (≈ 600 ppm).

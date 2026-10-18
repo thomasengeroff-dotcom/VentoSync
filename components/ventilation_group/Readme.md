@@ -6,7 +6,8 @@ This folder contains the core ESPHome custom component for managing decentralize
 
 | File | Description |
 | :--- | :--- |
-| **`ventilation_group.h`** | **Group Coordinator (`VentilationController`)**: Manages local device state, Master/Slave roles, ESP-NOW v11 mesh communication, LRU peer discovery, Window Guard contact evaluation, and hardware sensor routing (Fan PWM, RPM tacho, Board/NTC/SCD41 temperature). |
+| **`ventilation_packet.h`** | **ESP-NOW Wire Format (pure, unit-tested)**: `VentilationPacket` (protocol v13), `MessageType`, `ROOM_FLAG_*`, `PeerState`, the single deserialisation point `ventosync::packet::parse()` (header, version, size, `memcpy`, field ranges) and `update_peer_state()` (room flag decoding). Frame authentication: `ventilation_logic/espnow_auth.h`. |
+| **`ventilation_group.h`** | **Group Coordinator (`VentilationController`)**: Manages local device state, Master/Slave roles, ESP-NOW v13 mesh communication, LRU peer discovery, Window Guard contact evaluation, and hardware sensor routing (Fan PWM, RPM tacho, Board/NTC/SCD41 temperature). |
 | **`ventilation_state_machine.h` / `.cpp`** | **Deterministic Cycle Engine (`VentilationStateMachine`)**: Pure logic state machine governing direction cycles, half-cycle timing (default 70 s), smooth 5-second soft ramps (`RAMP_DURATION_MS`), and operating modes (`MODE_OFF`, `MODE_ECO_RECOVERY`, `MODE_VENTILATION`, `MODE_STOSSLUEFTUNG`). |
 | **`__init__.py`** | **ESPHome Python Generator**: Registers the `VentilationController` component and `GlobalsComponent` in ESPHome, exposing YAML configuration options (`room_id`, `device_id`, `floor_id`, `is_phase_a`, fan outputs, and sensor bindings). |
 

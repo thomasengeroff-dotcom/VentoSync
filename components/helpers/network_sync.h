@@ -802,92 +802,35 @@ namespace espnow_handler {
   /**
    * @brief   Validates and parses a raw ESP-NOW byte buffer into a VentilationPacket.
    *
-   * @details (N-2 Fix) Replaces the previous two-stage approach where validate_packet()
-   *          performed a reinterpret_cast for field checks, and the caller performed
-   *          a second independent reinterpret_cast for processing. Having two separate
-   *          cast sites creates a hidden coupling: a packet struct refactor could
-   *          update one cast but silently forget the other.
+   * @details Thin logging wrapper around ventosync::packet::parse()
+   *          (ventilation_packet.h) — the single, unit-tested deserialisation
+   *          point (header, version, exact size, memcpy, field ranges).
    *
-   *          This function is the single point of truth: all checks AND the parse
-   *          happen here. The memcpy is Strict-Aliasing-safe (unlike reinterpret_cast)
-   *          and zero-cost for trivially-copyable types at -O2.
-   *
-   * @param[in] data  Raw byte vector from ESP-NOW.
+   * @param[in] data  Authenticated payload (trailer already stripped).
    *
    * @return  std::optional<VentilationPacket>  Populated packet on success,
    *          std::nullopt if any validation check fails.
    */
   inline std::optional<esphome::VentilationPacket>
   validate_and_parse_packet(const std::vector<uint8_t> &data) {
-    // 1. Minimum size for header bytes
-    if (data.size() < 2) {
-      ESP_LOGW("vent_sync", "Packet too small for header: %zu bytes", data.size());
-      return std::nullopt;
+    // Pure + unit-tested (ventilation_packet.h); only the logging lives here.
+    ventosync::packet::ParseResult res;
+    auto pkt = ventosync::packet::parse(data.data(), data.size(), res);
+    if (!pkt) {
+      using ventosync::packet::ParseError;
+      if (res.error == ParseError::VERSION_MISMATCH) {
+        ESP_LOGW("vent_sync",
+                 "Protocol version mismatch! Got v%d, expected v%d. "
+                 "Devices on the network are running mismatched firmware.",
+                 res.value, esphome::PROTOCOL_VERSION);
+      } else if (res.error == ParseError::OUT_OF_RANGE) {
+        ESP_LOGW("vent_sync", "%s out of range: %d", res.field, res.value);
+      } else {
+        ESP_LOGW("vent_sync", "Packet rejected: %s (%d)", ventosync::packet::parse_error_label(res.error),
+                 res.value);
+      }
     }
-
-    // 2. Magic byte — fast reject for non-VentSync traffic
-    if (data[0] != PACKET_MAGIC) {
-      ESP_LOGW("vent_sync", "Invalid magic header: 0x%02X", data[0]);
-      return std::nullopt;
-    }
-
-    // 3. Protocol version — reject cross-version peers
-    if (data[1] != esphome::PROTOCOL_VERSION) {
-      ESP_LOGW("vent_sync",
-               "Protocol version mismatch! Got v%d, expected v%d. "
-               "Devices on the network are running mismatched firmware.",
-               data[1], esphome::PROTOCOL_VERSION);
-      return std::nullopt;
-    }
-
-    // 4. Exact size check BEFORE the copy — prevents reading garbage
-    if (data.size() != sizeof(esphome::VentilationPacket)) {
-      ESP_LOGW("vent_sync", "Invalid packet size: %zu (expected %zu)",
-               data.size(), sizeof(esphome::VentilationPacket));
-      return std::nullopt;
-    }
-
-    // 5. Single, Strict-Aliasing-safe deserialisation via memcpy
-    //    VentilationPacket is trivially-copyable (only POD members + __packed__),
-    //    so this copy is elided by the compiler at -O2.
-    esphome::VentilationPacket pkt;
-    std::memcpy(&pkt, data.data(), sizeof(pkt));
-
-    // 6. Semantic range checks on the parsed value (not on raw bytes)
-    if (pkt.fan_intensity > 10) {
-      ESP_LOGW("vent_sync", "fan_intensity out of range: %d", pkt.fan_intensity);
-      return std::nullopt;
-    }
-    if (pkt.automatik_min_fan_level < 1 || pkt.automatik_min_fan_level > 10) {
-      ESP_LOGW("vent_sync", "automatik_min_fan_level out of range: %d", pkt.automatik_min_fan_level);
-      return std::nullopt;
-    }
-    if (pkt.automatik_max_fan_level < 1 || pkt.automatik_max_fan_level > 10) {
-      ESP_LOGW("vent_sync", "automatik_max_fan_level out of range: %d", pkt.automatik_max_fan_level);
-      return std::nullopt;
-    }
-    if (pkt.hvac_max_fan_level < 1 || pkt.hvac_max_fan_level > 10) {
-      ESP_LOGW("vent_sync", "hvac_max_fan_level out of range: %d", pkt.hvac_max_fan_level);
-      return std::nullopt;
-    }
-    if (pkt.sync_interval_min < 1 || pkt.sync_interval_min > 1440) {
-      ESP_LOGW("vent_sync", "sync_interval_min out of range: %d", pkt.sync_interval_min);
-      return std::nullopt;
-    }
-    if (pkt.current_mode_index >= MODE_INDEX_COUNT) {
-      ESP_LOGW("vent_sync", "current_mode_index out of range: %d", pkt.current_mode_index);
-      return std::nullopt;
-    }
-    if (pkt.current_mode > esphome::MODE_STOSSLUEFTUNG) {
-      ESP_LOGW("vent_sync", "current_mode out of range: %d", pkt.current_mode);
-      return std::nullopt;
-    }
-    if (pkt.vent_timer_min > 1440) {
-      ESP_LOGW("vent_sync", "vent_timer_min out of range: %d", pkt.vent_timer_min);
-      return std::nullopt;
-    }
-
-    return pkt; // Value copy — trivially-copyable, zero-cost at -O2 (NRVO)
+    return pkt;
   }
 
   /**

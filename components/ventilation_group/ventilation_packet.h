@@ -1,0 +1,300 @@
+// ==========================================================================
+// VentoSync HRV – ESPHome Custom Component
+// https://github.com/thomasengeroff-dotcom/VentoSync
+//
+// Copyright (c) 2026 Thomas Engeroff
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+//
+// File:        ventilation_packet.h
+// Description: ESP-NOW wire format (VentilationPacket), peer state and the
+//              pure packet validation. No ESPHome dependencies — unit-tested.
+// Author:      Thomas Engeroff
+// Created:     2026-10-18
+// Modified:    2026-10-18
+// ==========================================================================
+#pragma once
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <optional>
+
+#include "ventilation_state_machine.h"
+#include "../ventilation_logic/espnow_auth.h"
+
+/** @brief Magic header for packet validation. */
+static constexpr uint8_t PACKET_MAGIC = 0x42;
+
+namespace esphome {
+
+/// @brief ESP-NOW packet type identifiers.
+/// Value 1 (MSG_DISCOVERY) is retired: discovery uses the plaintext
+/// ROOM_DISC / ROOM_CONF payloads (network_sync.h).
+enum MessageType {
+  MSG_SYNC = 2,           ///< Periodic time-sync packet (cycle position).
+  MSG_STATE = 3,          ///< Mode or fan-intensity change notification.
+  MSG_STATUS_REQUEST = 4, ///< Request current full status from peers.
+  MSG_STATUS_RESPONSE = 5 ///< Reply with full status (mode, intensity).
+};
+
+/// Ensure breaking packet schema changes are detected across nodes.
+/// Bump this whenever the VentilationPacket layout or semantics change.
+static constexpr uint8_t PROTOCOL_VERSION = 13; // Bumped: HMAC-authenticated frames (espnow_auth.h trailer)
+
+/// @name VentilationPacket::room_flags bits (protocol v10)
+/// @{
+static constexpr uint8_t ROOM_FLAG_HVAC_ENABLED = 0x01; ///< Room-wide "Klima-Koordination" switch (setting, synced like the sliders).
+static constexpr uint8_t ROOM_FLAG_AC_ACTIVE = 0x02;    ///< Sender's OWN Home Assistant AC state (fresh) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_WINDOW_OPEN = 0x04;  ///< Sender's OWN Home Assistant window state (fresh) — never a fused value.
+/// Sender's OWN radar presence (held 30 s) — never a fused value. Added in
+/// 0.10.23 without a protocol bump: same layout, older v10 firmware simply
+/// never sets it (its presence is then not shared).
+static constexpr uint8_t ROOM_FLAG_PRESENCE = 0x08;
+/// NOx boost (0.10.38, no protocol bump — same layout; older firmware never
+/// sets these bits and ignores them):
+/// Room-wide "NOx-Stoßlüftung" switch (setting, synced like the HVAC switch).
+static constexpr uint8_t ROOM_FLAG_NOX_BOOST_ENABLED = 0x10;
+/// Sender's OWN NOx boost (own SGP41 detector) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_NOX_ACTIVE = 0x20;
+/// Sender's OWN boost is a strong event (index >= 150) — never a fused value.
+static constexpr uint8_t ROOM_FLAG_NOX_STRONG = 0x40;
+/// @}
+/// @brief Binary packet exchanged between peer devices via ESP-NOW.
+/// Layout is packed and must be identical on all firmware builds.
+/// IMPORTANT: protocol_version is the second byte — increment PROTOCOL_VERSION
+/// and do a simultaneous OTA rollout on all nodes whenever this struct changes.
+struct __attribute__((packed)) VentilationPacket {
+  uint8_t magic_header; ///< Always PACKET_MAGIC — used for basic validation.
+  uint8_t
+      protocol_version; ///< FIXED K2: Schema version — reject mismatched peers.
+  uint8_t floor_id;     ///< Floor group (filters unrelated devices).
+  uint8_t room_id;      ///< Room group within the floor.
+  uint8_t device_id;    ///< Unique sender ID (used to ignore own packets).
+  uint8_t msg_type;     ///< MessageType enum value.
+  uint8_t current_mode; ///< VentilationMode enum value.
+  uint8_t current_mode_index; ///< exact UI mode index.
+
+  // Live Data Synced States
+  uint32_t timestamp_ms; ///< Sender's millis() at packet creation.
+  uint32_t cycle_pos_ms; ///< Sender's position in the direction cycle.
+  uint32_t
+      remaining_duration_ms; ///< MODE_VENTILATION: remaining timer (0 = infinite);
+                             ///< MODE_STOSSLUEFTUNG: remaining super-cycle time.
+  bool phase_state;          ///< Sender's current global phase (A or B).
+  float t_in;                ///< Sender's local indoor temperature (or NAN).
+  float t_out;               ///< Sender's local outdoor temperature (or NAN).
+  float pid_demand;          ///< Sender's LOCAL-sensor PID demand (0.0–1.0, NaN without sensors) — never a fused value.
+  float fan_rpm;             ///< Sender's current fan RPM.
+  float board_temp;          ///< Sender's board temperature (BMP390).
+  float room_temp;           ///< Sender's room temperature (SCD41/BME680).
+  float room_co2;            ///< Sender's effective CO2 in ppm (or NAN) — shared for Smart Climate Control.
+  float room_humidity;       ///< Sender's room relative humidity in % (or NAN) — shared for the dashboard.
+
+  // Control & Settings Synced States
+  uint8_t fan_intensity; ///< Current 1-10 level
+
+  // Automatik Config payload
+  uint8_t automatik_min_fan_level;     ///< 1-10 minimum level
+  uint8_t automatik_max_fan_level;     ///< 1-10 maximum level
+  uint16_t auto_co2_threshold_val;     ///< Setpoint, e.g. 1000 ppm (16-bit)
+  uint8_t auto_humidity_threshold_val; ///< Setpoint, e.g. 60 % (8-bit)
+  int8_t auto_presence_val;            ///< Presence compensation (-5 to +5)
+
+  // Smart Climate Control (HVAC Coordination) config payload — room-wide values
+  uint16_t hvac_co2_threshold;  ///< Relaxed CO2 setpoint while the AC is active (ppm)
+  uint16_t hvac_emergency_co2;  ///< CO2 emergency override threshold (ppm)
+  uint8_t hvac_max_fan_level;   ///< Fan level cap while the AC is active (1-10)
+
+  // Timer Settings payload
+  uint16_t sync_interval_min; ///< ESP-NOW Broadcast Interval
+  uint16_t vent_timer_min;    ///< Duration for Stoß/Durchlüften mode (minutes)
+
+  // UI Settings payload
+  float max_led_brightness; ///< Shared LED brightness limit (0.1–1.0)
+
+  // Room flags (v10) — see ROOM_FLAG_*
+  uint8_t room_flags;
+
+  // Vacation snapshot (v11) — the pre-vacation room state, sent ONLY by the
+  // device currently leading a vacation; every other device sends
+  // VACATION_SNAPSHOT_NONE. Followers adopt it but never re-broadcast it.
+  uint8_t vacation_pre_mode_index; ///< Mode index 0-4 before the vacation, or 0xFF.
+  uint8_t vacation_pre_intensity;  ///< Fan level 1-10 before the vacation, or 0.
+
+  // Smart-Automatik level override (v12) — room-wide state like the mode
+  // (see level_override.h). Adopted from MSG_STATE and the Master heartbeat.
+  uint8_t auto_override_level;        ///< Override level 1-10, 0 = none.
+  uint16_t auto_override_remaining_s; ///< Remaining override time in seconds (max 18000).
+  uint16_t auto_override_duration_min; ///< Room-wide override duration setting (30-300 min).
+};
+
+static_assert(sizeof(VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250,
+    "VentilationPacket + authentication trailer must fit into a single ESP-NOW payload (250 bytes)");
+
+/// @brief Represents the latest known state of a peer device in the same room.
+struct PeerState {
+  uint32_t last_seen_ms;
+  std::array<uint8_t, 6> mac;
+  uint8_t device_id;
+  uint8_t current_mode;
+  uint8_t fan_intensity;
+  bool phase_state;
+  float t_in;
+  float t_out;
+  float pid_demand;
+  float fan_rpm;
+  float board_temp;
+  float room_temp;
+  float room_co2;
+  float room_humidity;
+  bool hvac_ac_active; ///< Peer's own HA AC state (ROOM_FLAG_AC_ACTIVE).
+  bool window_open;    ///< Peer's own HA window state (ROOM_FLAG_WINDOW_OPEN).
+  bool presence;       ///< Peer's own radar presence (ROOM_FLAG_PRESENCE).
+  bool nox_active;     ///< Peer's own NOx boost (ROOM_FLAG_NOX_ACTIVE).
+  bool nox_strong;     ///< Peer's own strong NOx event (ROOM_FLAG_NOX_STRONG).
+  uint8_t vacation_pre_mode_index; ///< Leader's pre-vacation mode index, else 0xFF.
+  uint8_t vacation_pre_intensity;  ///< Leader's pre-vacation fan level, else 0.
+};
+
+}  // namespace esphome
+
+namespace ventosync {
+namespace packet {
+
+/// Number of UI operating mode indices on the wire (0 = Smart-Automatik …
+/// 4 = Aus). globals.h asserts that MODE_NAMES matches.
+constexpr uint8_t MODE_INDEX_COUNT = 5;
+
+/// Why parse() rejected a packet (for the caller's log message).
+enum class ParseError : uint8_t {
+  NONE,
+  TOO_SMALL,         ///< Fewer than 2 bytes (no header).
+  BAD_MAGIC,         ///< Not a VentoSync packet.
+  VERSION_MISMATCH,  ///< Other PROTOCOL_VERSION — devices run mismatched firmware.
+  BAD_SIZE,          ///< Size differs from sizeof(VentilationPacket).
+  OUT_OF_RANGE,      ///< A field is outside its valid range (see `field`).
+};
+
+/// Result details of parse().
+struct ParseResult {
+  ParseError error = ParseError::NONE;
+  const char *field = "";  ///< Offending field for OUT_OF_RANGE.
+  int value = 0;           ///< Offending value (field value, version or size).
+};
+
+/**
+ * @brief   Validates a raw (authenticated, trailer-stripped) payload and
+ *          deserialises it into a VentilationPacket.
+ *
+ * @details The single deserialisation point: header, protocol version and
+ *          exact size are checked BEFORE the strict-aliasing-safe memcpy
+ *          (never cast the buffer to a struct pointer), then the semantic
+ *          ranges of the parsed fields.
+ */
+inline std::optional<esphome::VentilationPacket> parse(const uint8_t *data, size_t size, ParseResult &res) {
+  res = ParseResult{};
+  if (data == nullptr || size < 2) {
+    res.error = ParseError::TOO_SMALL;
+    res.value = static_cast<int>(size);
+    return std::nullopt;
+  }
+  if (data[0] != PACKET_MAGIC) {
+    res.error = ParseError::BAD_MAGIC;
+    res.value = data[0];
+    return std::nullopt;
+  }
+  if (data[1] != esphome::PROTOCOL_VERSION) {
+    res.error = ParseError::VERSION_MISMATCH;
+    res.value = data[1];
+    return std::nullopt;
+  }
+  if (size != sizeof(esphome::VentilationPacket)) {
+    res.error = ParseError::BAD_SIZE;
+    res.value = static_cast<int>(size);
+    return std::nullopt;
+  }
+
+  esphome::VentilationPacket pkt;
+  std::memcpy(&pkt, data, sizeof(pkt));
+
+  auto out_of_range = [&res](const char *field, int value) {
+    res.error = ParseError::OUT_OF_RANGE;
+    res.field = field;
+    res.value = value;
+    return std::nullopt;
+  };
+  if (pkt.fan_intensity > 10) return out_of_range("fan_intensity", pkt.fan_intensity);
+  if (pkt.automatik_min_fan_level < 1 || pkt.automatik_min_fan_level > 10)
+    return out_of_range("automatik_min_fan_level", pkt.automatik_min_fan_level);
+  if (pkt.automatik_max_fan_level < 1 || pkt.automatik_max_fan_level > 10)
+    return out_of_range("automatik_max_fan_level", pkt.automatik_max_fan_level);
+  if (pkt.hvac_max_fan_level < 1 || pkt.hvac_max_fan_level > 10)
+    return out_of_range("hvac_max_fan_level", pkt.hvac_max_fan_level);
+  if (pkt.sync_interval_min < 1 || pkt.sync_interval_min > 1440)
+    return out_of_range("sync_interval_min", pkt.sync_interval_min);
+  if (pkt.current_mode_index >= MODE_INDEX_COUNT)
+    return out_of_range("current_mode_index", pkt.current_mode_index);
+  if (pkt.current_mode > esphome::MODE_STOSSLUEFTUNG) return out_of_range("current_mode", pkt.current_mode);
+  if (pkt.vent_timer_min > 1440) return out_of_range("vent_timer_min", pkt.vent_timer_min);
+  return pkt;
+}
+
+/// @brief Short English label of a ParseError (log output).
+inline const char *parse_error_label(ParseError e) {
+  switch (e) {
+    case ParseError::NONE: return "ok";
+    case ParseError::TOO_SMALL: return "too small";
+    case ParseError::BAD_MAGIC: return "invalid magic header";
+    case ParseError::VERSION_MISMATCH: return "protocol version mismatch";
+    case ParseError::BAD_SIZE: return "invalid size";
+    case ParseError::OUT_OF_RANGE: return "field out of range";
+  }
+  return "?";
+}
+
+/**
+ * @brief   Stores a received packet as the sender's PeerState (dashboard,
+ *          room-wide fusion). Decodes the room flags.
+ *
+ * @param[in] now_ms  millis() of the reception (PeerState::last_seen_ms).
+ */
+inline void update_peer_state(esphome::PeerState &peer, const esphome::VentilationPacket &pkt, const uint8_t *src_mac,
+                              uint32_t now_ms) {
+  std::memcpy(peer.mac.data(), src_mac, peer.mac.size());
+  peer.last_seen_ms = now_ms;
+  peer.device_id = pkt.device_id;
+  peer.current_mode = pkt.current_mode;
+  peer.fan_intensity = pkt.fan_intensity;
+  peer.phase_state = pkt.phase_state;
+  peer.t_in = pkt.t_in;
+  peer.t_out = pkt.t_out;
+  peer.pid_demand = pkt.pid_demand;
+  peer.fan_rpm = pkt.fan_rpm;
+  peer.board_temp = pkt.board_temp;
+  peer.room_temp = pkt.room_temp;
+  peer.room_co2 = pkt.room_co2;
+  peer.room_humidity = pkt.room_humidity;
+  peer.hvac_ac_active = (pkt.room_flags & esphome::ROOM_FLAG_AC_ACTIVE) != 0;
+  peer.window_open = (pkt.room_flags & esphome::ROOM_FLAG_WINDOW_OPEN) != 0;
+  peer.presence = (pkt.room_flags & esphome::ROOM_FLAG_PRESENCE) != 0;
+  peer.nox_active = (pkt.room_flags & esphome::ROOM_FLAG_NOX_ACTIVE) != 0;
+  peer.nox_strong = (pkt.room_flags & esphome::ROOM_FLAG_NOX_STRONG) != 0;
+  peer.vacation_pre_mode_index = pkt.vacation_pre_mode_index;
+  peer.vacation_pre_intensity = pkt.vacation_pre_intensity;
+}
+
+}  // namespace packet
+}  // namespace ventosync

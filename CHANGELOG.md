@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.44] - 2026-10-18
+
+### Changed
+
+- **More logic is unit-tested (no behaviour change)** — three pieces of firmware logic moved out of the ESPHome glue
+  (`components/helpers/`) into pure headers covered by the native tests:
+  - `components/ventilation_group/ventilation_packet.h`: the ESP-NOW wire format (`VentilationPacket`, room flags,
+    `PeerState`), the packet validation `ventosync::packet::parse()` (header, version, size, all field ranges) and
+    the packet → `PeerState` conversion. `network_sync.h` only logs the result. Tests T-8a, T-8b.
+  - `components/ventilation_logic/auto_level.h`: Smart-Automatik soft ramp (±1 level per cycle, ±2 after a mode
+    change) and "slaves follow the Master's level". Test T-8c.
+  - `components/ventilation_logic/summer_bypass.h`: summer bypass decision (thresholds, hysteresis, AC lock) and the
+    re-measure guard. Test T-8d.
+- The hidden function-local `static` state of `auto_mode.h` (held readings, summer guard, ramp, hold-off, log edges)
+  is now kept in one named namespace `auto_mode_state`.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.43] - 2026-10-18
 
 ### Security / Stability
