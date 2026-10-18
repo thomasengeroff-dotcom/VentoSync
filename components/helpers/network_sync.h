@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-16
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -40,11 +40,6 @@
 
 constexpr uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 constexpr size_t MAX_PAYLOAD_LEN = 100;
-
-/// Maximum number of peers in peer_cache. Matches the LRU cap in
-/// VentilationController (H-5). Enforced in register_peer_dynamic()
-/// so the discovery path cannot bypass the limit.
-constexpr size_t MAX_PEERS_LIMIT = 10;
 
 /// Maximum depth for the peer_event_queue. Prevents unbounded growth
 /// when a peer is offline and SEND_FAIL events accumulate.
@@ -88,14 +83,6 @@ inline bool is_local_mac(const uint8_t *mac) {
              local_mac[0], local_mac[1], local_mac[2], local_mac[3], local_mac[4], local_mac[5]);
   });
   return memcmp(mac, local_mac, 6) == 0;
-}
-
-/**
- * @brief   Checks if this is the only device in the room group.
- * @return  true if peer_cache is empty.
- */
-inline bool is_single_device_group() {
-  return peer_cache.empty();
 }
 
 // --- Peer Cache Helpers -------------------------------------------------
@@ -319,9 +306,9 @@ inline void register_peer_dynamic(const uint8_t *mac) {
   if (find_peer_in_cache(mac) == nullptr) {
     // Enforce peer-count cap to stay within NVS string limits (~254 chars)
     // and match the LRU cap in VentilationController (H-5).
-    if (peer_cache.size() >= MAX_PEERS_LIMIT) {
+    if (peer_cache.size() >= MAX_PEERS) {
       ESP_LOGW("espnow_disc", "Peer cache full (%zu/%zu), rejecting %s",
-               peer_cache.size(), MAX_PEERS_LIMIT, mac_str.c_str());
+               peer_cache.size(), MAX_PEERS, mac_str.c_str());
       return;
     }
 
@@ -716,7 +703,7 @@ namespace espnow_handler {
     }
 
     // 2. Magic byte — fast reject for non-VentSync traffic
-    if (data[0] != 0x42) {
+    if (data[0] != PACKET_MAGIC) {
       ESP_LOGW("vent_sync", "Invalid magic header: 0x%02X", data[0]);
       return std::nullopt;
     }
@@ -764,8 +751,12 @@ namespace espnow_handler {
       ESP_LOGW("vent_sync", "sync_interval_min out of range: %d", pkt.sync_interval_min);
       return std::nullopt;
     }
-    if (pkt.current_mode_index > 4) {
+    if (pkt.current_mode_index >= MODE_INDEX_COUNT) {
       ESP_LOGW("vent_sync", "current_mode_index out of range: %d", pkt.current_mode_index);
+      return std::nullopt;
+    }
+    if (pkt.current_mode > esphome::MODE_STOSSLUEFTUNG) {
+      ESP_LOGW("vent_sync", "current_mode out of range: %d", pkt.current_mode);
       return std::nullopt;
     }
     if (pkt.vent_timer_min > 1440) {
@@ -982,8 +973,8 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
     fan_intensity_display->publish_state(pkt->fan_intensity);
   }
 
-  int new_mode_idx = pkt->current_mode_index; // Trust the master's explicit UI index
-  std::string mode_str = "Wärmerückgewinnung";
+  // Trust the sender's explicit UI index (range-checked in validate_and_parse_packet())
+  const int new_mode_idx = pkt->current_mode_index;
 
   // 1. Sync global power switches based on the transmitted core state.
   //    NOTE: Reads v->state_machine.current_mode (local state) which was
@@ -997,22 +988,8 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
   // 2. Map the peer's UI mode index to a local text state and set auto_mode.
   //    Issue #3 FIX: auto_mode_active is derived solely from the mode index
   //    in this single location (consolidated from a previous double-write).
-  if (new_mode_idx == 0) {
-    mode_str = "Smart-Automatik";
-    if (auto_mode_active) auto_mode_active->value() = true;
-  } else if (new_mode_idx == 1) {
-    mode_str = "Wärmerückgewinnung";
-    if (auto_mode_active) auto_mode_active->value() = false;
-  } else if (new_mode_idx == 2) {
-    mode_str = "Durchlüften";
-    if (auto_mode_active) auto_mode_active->value() = false;
-  } else if (new_mode_idx == 3) {
-    mode_str = "Stoßlüftung";
-    if (auto_mode_active) auto_mode_active->value() = false;
-  } else if (new_mode_idx == 4) {
-    mode_str = "Aus";
-    if (auto_mode_active) auto_mode_active->value() = false;
-  }
+  const std::string mode_str = MODE_NAMES[new_mode_idx];
+  if (auto_mode_active) auto_mode_active->value() = (new_mode_idx == MODE_INDEX_AUTO);
 
   if (current_mode_index != nullptr && (new_mode_idx != current_mode_index->value() || force)) {
     current_mode_index->value() = new_mode_idx;
@@ -1111,7 +1088,9 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
   // Discovery packets are plaintext, not VentilationPacket structs.
   if (!data.empty()) {
     std::string payload(data.begin(), data.end());
-    if (payload.find("ROOM_DISC:") == 0 || payload.find("ROOM_CONF:") == 0) {
+    const std::string_view sv(payload);
+    if (sv.substr(0, DISC_PREFIX_DISC.size()) == DISC_PREFIX_DISC ||
+        sv.substr(0, DISC_PREFIX_CONF.size()) == DISC_PREFIX_CONF) {
       handle_discovery_payload(payload, src_mac);
       return; // Not a VentilationPacket — skip structured processing
     }
@@ -1127,7 +1106,7 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &data, const 
   auto maybe_pkt = espnow_handler::validate_and_parse_packet(data);
   if (!maybe_pkt) {
     // Only log for non-discovery packets that looked like VentSync traffic
-    if (!data.empty() && data[0] == 0x42) {
+    if (!data.empty() && data[0] == PACKET_MAGIC) {
       ESP_LOGW("vent_sync", "Packet validation failed for message from %s",
                format_mac(src_mac).c_str());
     }

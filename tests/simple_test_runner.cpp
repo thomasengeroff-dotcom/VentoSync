@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-16
+// Modified:    2026-10-18
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -1281,9 +1281,6 @@ bool test_stosslueftung_cycle() {
   TEST_ASSERT(state.fan_enabled == false);
 
   // 5. Advance 121 minutes (Total) -> New Cycle (Fan ON, Direction Flipped)
-  bool initial_direction = state.direction_in;
-  // Note: We need to capture direction from active phase to compare
-
   sm.update(start_time + 121 * 60 * 1000);
   state = sm.get_target_state(start_time + 121 * 60 * 1000);
   TEST_ASSERT(state.fan_enabled == true);
@@ -1646,6 +1643,7 @@ bool test_type_layout_verification() {
   hs.direction_in = false;
   hs.ramp_factor = 0.75f;
   // If this compiles, needs_update field is successfully removed
+  TEST_ASSERT(hs.fan_enabled && !hs.direction_in && hs.ramp_factor == 0.75f);
   // Verify struct is smaller than it was with the bool field
   TEST_ASSERT(sizeof(esphome::HardwareState) <= 8);
 

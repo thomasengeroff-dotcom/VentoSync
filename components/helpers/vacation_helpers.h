@@ -23,7 +23,7 @@
 //              operating parameters.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-09-25
+// Modified:    2026-10-18
 //
 // Dependencies: globals.h (MODE_NAMES, MODE_NAME_BOOST, MODE_NAME_AUTO)
 //               automation_helpers.h (set_operating_mode_select,
@@ -33,6 +33,7 @@
 #pragma once
 
 #include "esphome.h"
+#include "esphome/components/ventilation_logic/room_fusion.h"
 
 #include <cmath>
 
@@ -53,7 +54,7 @@ static constexpr float INTENSITY_FALLBACK = 1.0f;
 /// Values of the persistent `vacation_state` global.
 static constexpr int VACATION_INACTIVE  = 0;
 static constexpr int VACATION_FOLLOWING = 1;  ///< Active, the room leader applied it
-static constexpr int VACATION_LEADING   = 2;  ///< Active, this device applied it
+static constexpr int VACATION_LEADING   = ventosync::room::VACATION_STATE_LEADING;  ///< Active, this device applied it
 
 }  // namespace vacation
 }  // namespace ventosync
@@ -75,10 +76,10 @@ static constexpr int VACATION_LEADING   = 2;  ///< Active, this device applied i
  */
 inline bool vacation_is_room_leader() {
     auto *v = ventilation_ctrl;
-    if (v == nullptr || v->device_id == 1) return true;
+    if (v == nullptr || v->device_id == MASTER_DEVICE_ID) return true;
     const uint32_t now = millis();
     for (const auto &peer : v->peers) {
-        if (peer.device_id == 1 && now - peer.last_seen_ms < PEER_TIMEOUT_MS) {
+        if (peer.device_id == MASTER_DEVICE_ID && now - peer.last_seen_ms < PEER_TIMEOUT_MS) {
             return false;  // Master present — it leads the room
         }
     }
@@ -246,11 +247,11 @@ inline void deactivate_vacation_mode() {
     const int saved_intensity = static_cast<int>(id(pre_vacation_intensity));
 
     // ── Resolve mode index → mode name string ──
-    // MODE_NAMES is defined in globals.h with exactly 5 entries [0..4].
+    // MODE_NAMES is defined in globals.h with MODE_INDEX_COUNT entries.
     // Any index outside this range indicates data corruption or a version
     // mismatch → fall back to AUTO mode for safe unattended operation.
     std::string mode_str;
-    if (mode_idx >= 0 && mode_idx < 5) {
+    if (mode_idx >= 0 && mode_idx < MODE_INDEX_COUNT) {
         mode_str = MODE_NAMES[mode_idx];
     } else {
         ESP_LOGW("vacation",

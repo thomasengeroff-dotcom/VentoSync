@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-16
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -923,9 +923,8 @@ inline void evaluate_auto_mode(bool force) {
     current_mode = target_mode; // Update local snapshot for correct demand mapping
   }
 
-  // 4. Presence-based demand adjustment (if LD2450 data available)
-  
-  // 5. Air Quality Power Management
+  // 4. Air Quality Power Management
+  //    (Radar presence only offsets the manual modes, see room_presence_detected().)
   float demand = auto_mode::calculate_combined_demand(now, eff_in, eff_out, hvac.suppress_humidity);
 
   // Guard: After switching into Smart-Automatik the PID outputs are stale for
@@ -937,7 +936,7 @@ inline void evaluate_auto_mode(bool force) {
   if (force) {
     // evaluate_auto_mode(true) is called from system_lifecycle on mode switch
     mode_switch_holdoff.arm(now);
-    ESP_LOGD("auto_mode", "Mode-switch holdoff armed for %u ms", MODE_SWITCH_HOLDOFF_MS);
+    ESP_LOGD("auto_mode", "Mode-switch holdoff armed for %u ms", static_cast<unsigned>(MODE_SWITCH_HOLDOFF_MS));
   }
   if (mode_switch_holdoff.active(now, MODE_SWITCH_HOLDOFF_MS)) {
     demand = 0.0f;
@@ -948,7 +947,7 @@ inline void evaluate_auto_mode(bool force) {
     v->local_pid_demand = NAN;
   }
 
-  // 5b. NOx boost (gas hob, fireplace; room-wide switch, SGP41 devices):
+  // 4b. NOx boost (gas hob, fireplace; room-wide switch, SGP41 devices):
   //     full demand -> the automatic ramps to its maximum level. A strong
   //     event (index >= 150) also lifts the Smart Climate Control cap below.
   bool nox_strong = false, nox_from_peer = false;
@@ -993,7 +992,7 @@ inline void evaluate_auto_mode(bool force) {
      return;
   }
   
-  // 6. Calculate target level with hysteresis and ramping
+  // 5. Calculate target level with hysteresis and ramping
   int min_l = static_cast<int>(automatik_min_fan_level->value());
   int max_l = static_cast<int>(automatik_max_fan_level->value());
   if (hvac.restrict_levels && !lift_ac_cap) {
@@ -1011,14 +1010,14 @@ inline void evaluate_auto_mode(bool force) {
   // AUTHORITY RULE: In Auto Mode, Slaves should follow the Master's discrete intensity.
   // This prevents the "jumping" behavior where nodes fight over level boundaries.
   bool slave_following_master = false;
-  if (v->device_id != 1) { // I am a Slave
+  if (!is_master()) { // I am a Slave
     // Check if we have a recent state from the Master
     // NOTE: v->peers is updated in process_espnow_packet_local() when
     // a MSG_STATE or MSG_STATUS_RESPONSE is received. It mirrors the
     // fan_intensity and device_id from the last received packet.
     // Maximum staleness: PEER_TIMEOUT_MS (defined in globals.h).
     for (const auto &peer : v->peers) {
-      if (peer.device_id == 1 && (now - peer.last_seen_ms < PEER_TIMEOUT_MS)) {
+      if (peer.device_id == MASTER_DEVICE_ID && (now - peer.last_seen_ms < PEER_TIMEOUT_MS)) {
         target_level = peer.fan_intensity;
         slave_following_master = true;
         break;
@@ -1038,7 +1037,7 @@ inline void evaluate_auto_mode(bool force) {
     target_level = VentilationLogic::calculate_auto_target_level(demand, current_level, min_l, max_l);
   }
 
-  // 6b. Level override (Level button, room-wide, 30–300 min): the user's level
+  // 5b. Level override (Level button, room-wide, 30–300 min): the user's level
   //     replaces the automatic — also on slaves, so a press on a slave is not
   //     pulled back to the Master's stale level before its heartbeat. Safety
   //     wins: the Smart Climate Control cap clamps it, a health emergency
@@ -1078,7 +1077,7 @@ inline void evaluate_auto_mode(bool force) {
     target_level = std::max(target_level, current_level - max_ramp_step);
   }
 
-  // 7. Commit State Updates
+  // 6. Commit State Updates
   if (current_level != target_level) {
     if (slave_following_master) {
        ESP_LOGD("auto_mode", "Slave following Master level: %d (Local demand: %.2f)", target_level, demand);

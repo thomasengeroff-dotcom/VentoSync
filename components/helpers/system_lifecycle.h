@@ -21,7 +21,7 @@
 // Description: System-wide mode orchestration and lifecycle hooks.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-11
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 #include <esp_system.h>
@@ -85,9 +85,10 @@ inline void cycle_operating_mode(int mode_index) {
   if (v == nullptr) return;
 
   // Bounds check for mode_index
-  if (mode_index < 0 || mode_index > 4) {
-      ESP_LOGE("mode", "Invalid mode_index %d — defaulting to WRG (1). Possible NVS corruption.", mode_index);
-      mode_index = 1;
+  if (mode_index < 0 || mode_index >= MODE_INDEX_COUNT) {
+      ESP_LOGE("mode", "Invalid mode_index %d — defaulting to WRG (%d). Possible NVS corruption.",
+               mode_index, MODE_INDEX_WRG);
+      mode_index = MODE_INDEX_WRG;
   }
 
   if (auto_mode_active != nullptr) {
@@ -166,16 +167,11 @@ inline void cycle_operating_mode(int mode_index) {
     // ESP-NOW stay active (there is no separate sleep state).
     if (ventilation_enabled != nullptr) ventilation_enabled->value() = false;
     
+    // set_mode() -> update_hardware() also publishes the HA fan entity
+    // (lueftung_fan = main_fan) as off.
     v->set_mode(esphome::MODE_OFF);
-    
-    // UI: Visible fan status OFF, keeping ESPHome internal state clean
-    if (lueftung_fan != nullptr) {
-        auto call = lueftung_fan->make_call();
-        call.set_state(false);
-        lueftung_fan->publish_state();  // Synchronize state
-    }
+
     // Hardware: VarioPro motor controller requires 50% PWM as "stop" signal.
-    // Override after call just in case lueftung_fan sent 0.0f via PWM handler.
     if (fan_pwm_primary != nullptr) fan_pwm_primary->set_level(0.5f);
     break;
   }
@@ -186,15 +182,13 @@ inline void cycle_operating_mode(int mode_index) {
   }
   remember_active_mode(mode_index);
 
-  // Sync HA select dropdown
-  if (mode_index >= 0 && mode_index < 5) {
-    std::string mode_str = MODE_NAMES[mode_index];
-    if (luefter_modus != nullptr && std::string(luefter_modus->current_option()) != mode_str) {
-      luefter_modus->publish_state(mode_str);
-    }
+  // Sync HA select dropdown (mode_index is range-checked above)
+  const std::string mode_str = MODE_NAMES[mode_index];
+  if (luefter_modus != nullptr && std::string(luefter_modus->current_option()) != mode_str) {
+    luefter_modus->publish_state(mode_str);
   }
 
-  if (mode_index != 4) {
+  if (mode_index != MODE_INDEX_AUS) {
     if (fan_speed_update != nullptr) fan_speed_update->execute();
   }
 
