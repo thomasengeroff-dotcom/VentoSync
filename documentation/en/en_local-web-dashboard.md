@@ -65,6 +65,14 @@ The dashboard dynamically scans and lists all active ESP-NOW ventilation units i
 
 ---
 
+## 🔒 Access & Security
+
+* **No login by default** — like the native ESPHome page, `/ui`, `/state` and `/set` are open to every client in the network. Keep the devices in a trusted network (or a separate VLAN).
+* **Optional login** — enable `auth:` under `web_server:` in `packages/base/esp32c6_common.yaml` (credentials `webuser` / `webpw` in `secrets.yaml`) in your own build. The dashboard registers through `web_server_base::add_handler()`, so the same login protects all three endpoints.
+* **`/set` limits** — only the whitelisted keys are accepted, values are limited to 32 characters (`400 Value too long`), and at most 16 changes wait for the main loop (`503 Busy` when full; the device logs one summary warning per drain). The page logs a rejected change in the browser console.
+
+---
+
 ## 🌐 Hybrid-Offline Operation
 
 > [!IMPORTANT]

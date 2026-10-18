@@ -476,6 +476,13 @@ Since 0.10.31, direct uploads to the device (`esphome run` / `esphome upload`, `
 - **Update via Home Assistant / GitHub release** (`update.firmware_update`) is not affected: the device downloads the firmware itself over HTTPS.
 - **Migrating from ≤ 0.10.30:** older firmware only accepts the OTA password, which the ESPHome CLI no longer sends. Install 0.10.31 once **via the Home Assistant update entity** (or via USB); after that, `upload_all.sh` and `esphome run` work again with the key.
 
+#### 🌐 Web Dashboard Access (no login by default)
+
+The web interfaces (`http://<device-ip>/` and the VentoSync dashboard `/ui`) have **no login**: anyone in the same network can read the values and change the mode, fan level and room-wide settings. The LAN is the trust boundary, as for the API (see above).
+
+- **Enable a login** in your own build: uncomment the `auth:` block under `web_server:` in `packages/base/esp32c6_common.yaml` and add `webuser` / `webpw` to `secrets.yaml`. It protects the native page **and** the dashboard (`/ui`, `/state`, `/set`). The release binaries keep it off, because they are built without secrets.
+- **Flood protection** (since 0.10.42): the dashboard queues at most 16 pending changes; further `/set` requests get HTTP 503 until the queue is drained (every 100 ms), and values longer than 32 characters are rejected.
+
 ### 🌡️ Calibration of NTC Sensors
 
 The configuration is optimized for the **[ENTC-10K9777-02](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474)** NTC thermistor (10kΩ, B-value 3435). If you use other sensors, you must adapt the `b_constant` and `reference_resistance` values in the YAML code accordingly.

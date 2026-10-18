@@ -21,7 +21,7 @@
 // Description: HTML/CSS strings for the WRG web dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-15
+// Modified:    2026-10-18
 // ==========================================================================
 #pragma once
 
@@ -547,7 +547,8 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       if (id === 'fan_intensity_display') document.getElementById("label_fan_intensity").innerText = val;
 
       try {
-        await fetch(`/set?id=${encodeURIComponent(id)}&val=${encodeURIComponent(val)}`);
+        const res = await fetch(`/set?id=${encodeURIComponent(id)}&val=${encodeURIComponent(val)}`);
+        if (!res.ok) console.warn('Setting not applied (HTTP ' + res.status + '):', id);
       } catch (e) {
         console.error('Error setting value:', e);
       }

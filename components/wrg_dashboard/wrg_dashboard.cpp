@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-15
+// Modified:    2026-10-18
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -66,14 +66,21 @@ void WrgDashboard::loop() {
   last_check = now;
 
   std::vector<DashboardAction> todo;
+  uint32_t dropped = 0;
 
   {
     std::lock_guard<std::mutex> lock(this->action_mutex_);
-    if (this->action_queue_.empty()) {
-      return;
-    }
+    dropped = this->dropped_actions_;
+    this->dropped_actions_ = 0;
     // Efficiently move the vector out of the queue and clear the lock
     todo = std::move(this->action_queue_);
+    this->action_queue_.clear(); // moved-from: valid but unspecified
+  }
+
+  // One summary line per drain instead of one log line per rejected request
+  if (dropped > 0) {
+    ESP_LOGW(TAG, "Dashboard /set flood: %u request(s) rejected (queue full, max %u)",
+             static_cast<unsigned>(dropped), static_cast<unsigned>(MAX_PENDING_ACTIONS));
   }
 
   for (const auto &action : todo) {
@@ -322,6 +329,11 @@ void WrgDashboard::handle_set_(AsyncWebServerRequest *request) {
   std::string id(request->getParam("id")->value().c_str());
   std::string val(request->getParam("val")->value().c_str());
 
+  if (val.size() > MAX_VALUE_LEN) {
+    request->send(400, "text/plain", "Value too long");
+    return;
+  }
+
   if (ALLOWED_KEYS.find(id) == ALLOWED_KEYS.end()) {
     ESP_LOGW(TAG, "Blocked invalid parameter from dashboard: %s", id.c_str());
     request->send(400, "text/plain", "Invalid parameter");
@@ -340,6 +352,11 @@ void WrgDashboard::handle_set_(AsyncWebServerRequest *request) {
 
   {
     std::lock_guard<std::mutex> lock(this->action_mutex_);
+    if (this->action_queue_.size() >= MAX_PENDING_ACTIONS) {
+      this->dropped_actions_++;
+      request->send(503, "text/plain", "Busy");
+      return;
+    }
     this->action_queue_.push_back(std::move(a));
   }
   request->send(200, "text/plain", "OK");

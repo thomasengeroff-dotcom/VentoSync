@@ -21,7 +21,7 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-15
+// Modified:    2026-10-18
 // ==========================================================================
 
 #pragma once
@@ -54,6 +54,13 @@ struct DashboardAction {
 
 class WrgDashboard : public Component, public AsyncWebHandler {
 public:
+  /// Maximum number of /set actions waiting for loop(). The queue is drained
+  /// every 100 ms, so a human using the UI never gets near it; a client
+  /// flooding /set gets HTTP 503 instead of exhausting the heap.
+  static constexpr size_t MAX_PENDING_ACTIONS = 16;
+  /// Maximum length of a /set value (longest legit value: a mode name).
+  static constexpr size_t MAX_VALUE_LEN = 32;
+
   /**
    * @brief   Initializes the web server handler.
    */
@@ -173,7 +180,8 @@ protected:
   void dispatch_set_(const std::string &key, const std::string &sval,
                      float fval, bool is_string);
 
-  std::vector<DashboardAction> action_queue_;
+  std::vector<DashboardAction> action_queue_;  ///< Guarded by action_mutex_, max MAX_PENDING_ACTIONS.
+  uint32_t dropped_actions_{0};                ///< /set requests rejected (queue full), guarded by action_mutex_.
   std::mutex action_mutex_;
 
   web_server_base::WebServerBase *base_{nullptr};
@@ -217,10 +225,10 @@ protected:
   select::Select *luefter_modus_{nullptr};
   fan::Fan *lueftung_fan_{nullptr};
   esphome::VentilationController *ventilation_ctrl_{nullptr};
-#ifdef USE_SWITCH
-  switch_::Switch *bluetooth_proxy_switch_{nullptr};
   sensor::Sensor *voc_index_{nullptr};
   sensor::Sensor *nox_index_{nullptr};
+#ifdef USE_SWITCH
+  switch_::Switch *bluetooth_proxy_switch_{nullptr};
 #endif
 };
 
