@@ -30,6 +30,7 @@
 #include "../components/ventilation_logic/level_override.h"
 #include "../components/ventilation_logic/nox_boost.h"
 #include "../components/ventilation_logic/auto_status.h"
+#include "../components/ventilation_logic/espnow_auth.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -1771,6 +1772,159 @@ bool test_level_override() {
   return true;
 }
 
+// ============================================================
+// T-7z: ESP-NOW authentication (protocol v13)
+// ============================================================
+static std::string to_hex(const uint8_t *d, size_t n) {
+  static const char *hex = "0123456789abcdef";
+  std::string s;
+  for (size_t i = 0; i < n; i++) {
+    s += hex[d[i] >> 4];
+    s += hex[d[i] & 0xF];
+  }
+  return s;
+}
+
+bool test_espnow_auth() {
+  namespace ea = ventosync::espnow_auth;
+  uint8_t out[32];
+
+  // --- SHA-256 (FIPS 180-4 examples) ---
+  {
+    ea::Sha256 h;
+    h.update(reinterpret_cast<const uint8_t *>("abc"), 3);
+    h.finish(out);
+    TEST_ASSERT(to_hex(out, 32) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  }
+  {
+    ea::Sha256 h;
+    h.finish(out);
+    TEST_ASSERT(to_hex(out, 32) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  }
+  {
+    // 56 bytes: padding spills into a second block
+    const char *m = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    ea::Sha256 h;
+    h.update(reinterpret_cast<const uint8_t *>(m), 56);
+    h.finish(out);
+    TEST_ASSERT(to_hex(out, 32) == "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
+  }
+
+  // --- HMAC-SHA256 (RFC 4231 test cases 1, 2 and 6) ---
+  {
+    uint8_t key[20];
+    std::memset(key, 0x0b, sizeof(key));
+    ea::HmacSha256 m(key, sizeof(key));
+    m.update(reinterpret_cast<const uint8_t *>("Hi There"), 8);
+    m.finish(out);
+    TEST_ASSERT(to_hex(out, 32) == "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7");
+  }
+  {
+    ea::HmacSha256 m(reinterpret_cast<const uint8_t *>("Jefe"), 4);
+    const char *msg = "what do ya want for nothing?";
+    m.update(reinterpret_cast<const uint8_t *>(msg), std::strlen(msg));
+    m.finish(out);
+    TEST_ASSERT(to_hex(out, 32) == "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843");
+  }
+  {
+    uint8_t key[131];
+    std::memset(key, 0xaa, sizeof(key)); // key longer than the block size
+    ea::HmacSha256 m(key, sizeof(key));
+    const char *msg = "Test Using Larger Than Block-Size Key - Hash Key First";
+    m.update(reinterpret_cast<const uint8_t *>(msg), std::strlen(msg));
+    m.finish(out);
+    TEST_ASSERT(to_hex(out, 32) == "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54");
+  }
+
+  // --- seal / verify ---
+  ea::Key key{};
+  for (size_t i = 0; i < key.size(); i++) key[i] = static_cast<uint8_t>(i * 7 + 1);
+  const uint8_t mac_a[6] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60};
+  const uint8_t mac_b[6] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x61};
+  const std::string text = "ROOM_DISC:1:2";
+  std::vector<uint8_t> frame(text.begin(), text.end());
+  ea::Counter ctr;
+  ctr.epoch = 3;
+  ctr.seq = 41;
+  ea::seal(key, mac_a, frame, ctr);
+  TEST_ASSERT(frame.size() == text.size() + ea::TRAILER_SIZE);
+
+  size_t plen = 0;
+  ea::Counter got;
+  TEST_ASSERT(ea::verify(key, mac_a, frame.data(), frame.size(), plen, got) == ea::Verdict::OK);
+  TEST_ASSERT(plen == text.size());
+  TEST_ASSERT(got.epoch == 3 && got.seq == 41);
+  TEST_ASSERT(std::string(frame.begin(), frame.begin() + static_cast<long>(plen)) == text);
+
+  // Another sender address -> tag mismatch (no replay under a spoofed MAC)
+  TEST_ASSERT(ea::verify(key, mac_b, frame.data(), frame.size(), plen, got) == ea::Verdict::BAD_TAG);
+  // Another key -> tag mismatch
+  ea::Key other = key;
+  other[0] ^= 0x01;
+  TEST_ASSERT(ea::verify(other, mac_a, frame.data(), frame.size(), plen, got) == ea::Verdict::BAD_TAG);
+  // Every single flipped bit (payload, counter, tag) is detected
+  for (size_t i = 0; i < frame.size(); i++) {
+    std::vector<uint8_t> t = frame;
+    t[i] ^= 0x04;
+    TEST_ASSERT(ea::verify(key, mac_a, t.data(), t.size(), plen, got) == ea::Verdict::BAD_TAG);
+  }
+  // Too short for a trailer (e.g. a v12 discovery string) / unsigned v12 VentilationPacket
+  std::vector<uint8_t> raw(text.begin(), text.end());
+  TEST_ASSERT(ea::verify(key, mac_a, raw.data(), raw.size(), plen, got) == ea::Verdict::TOO_SHORT);
+  std::vector<uint8_t> v12(100, 0x42);
+  TEST_ASSERT(ea::verify(key, mac_a, v12.data(), v12.size(), plen, got) == ea::Verdict::BAD_TAG);
+
+  // --- Replay guard ---
+  ea::ReplayGuard guard; // 15 min idle expiry
+  ea::Counter c1{5, 10}, c2{5, 11}, old_boot{4, 999}, new_boot{6, 0};
+  uint32_t t = 1000;
+  TEST_ASSERT(guard.accept(mac_a, c1, t));        // first frame of a sender
+  TEST_ASSERT(!guard.accept(mac_a, c1, t += 10));  // exact replay
+  TEST_ASSERT(guard.accept(mac_a, c2, t += 10));  // next frame
+  TEST_ASSERT(!guard.accept(mac_a, c1, t += 10));  // older frame
+  TEST_ASSERT(!guard.accept(mac_a, old_boot, t += 10)); // frame of an earlier boot
+  TEST_ASSERT(guard.accept(mac_a, new_boot, t += 10)); // sender rebooted (epoch + 1, seq restarts)
+  const uint32_t last_a = t;                       // last ACCEPTED frame of mac_a
+  TEST_ASSERT(guard.accept(mac_b, c1, t += 10));  // other senders are independent
+
+  // Idle expiry: a sender whose NVS was erased (epoch restarts at 1) is
+  // rejected until it was silent for the expiry (rejected frames do not
+  // count as activity), then accepted again.
+  const ea::Counter erased{1, 0};
+  constexpr uint32_t EXP = ea::ReplayGuard::DEFAULT_IDLE_EXPIRY_MS;
+  TEST_ASSERT(!guard.accept(mac_a, erased, last_a + 60000u));
+  TEST_ASSERT(!guard.accept(mac_a, erased, last_a + EXP - 1u));
+  TEST_ASSERT(guard.accept(mac_a, erased, last_a + EXP));
+  TEST_ASSERT(!guard.accept(mac_a, erased, last_a + EXP + 1u)); // now a replay again
+
+  // Wrap-safe across the millis() overflow
+  ea::ReplayGuard wrap;
+  TEST_ASSERT(wrap.accept(mac_a, ea::Counter{2, 1}, 0xFFFFFF00u));
+  TEST_ASSERT(!wrap.accept(mac_a, ea::Counter{2, 1}, 0x00000100u)); // 512 ms later, not expired
+  TEST_ASSERT(wrap.accept(mac_a, ea::Counter{2, 2}, 0x00000200u));
+
+  // Capacity: the least recently accepted sender is evicted, others keep their state
+  ea::ReplayGuard small;
+  uint8_t m[6] = {0xAA, 0, 0, 0, 0, 0};
+  uint32_t ts = 0xFFFFF000u; // also crosses the overflow
+  for (size_t i = 0; i < ea::ReplayGuard::CAPACITY; i++) {
+    m[5] = static_cast<uint8_t>(i);
+    TEST_ASSERT(small.accept(m, ea::Counter{1, 1}, ts += 1000u));
+  }
+  m[5] = 0;
+  TEST_ASSERT(small.accept(m, ea::Counter{1, 2}, ts += 1000u)); // refresh sender 0 -> sender 1 is oldest
+  m[5] = 0xFE;
+  TEST_ASSERT(small.accept(m, ea::Counter{1, 1}, ts += 1000u)); // evicts sender 1
+  m[5] = 0;
+  TEST_ASSERT(!small.accept(m, ea::Counter{1, 2}, ts += 1000u)); // sender 0 still remembered
+  m[5] = 2;
+  TEST_ASSERT(!small.accept(m, ea::Counter{1, 1}, ts += 1000u)); // sender 2 still remembered
+  m[5] = 1;
+  TEST_ASSERT(small.accept(m, ea::Counter{1, 1}, ts += 1000u)); // sender 1 was evicted -> accepted again
+
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -1923,6 +2077,7 @@ int main() {
     {"T-7w: Smart-Automatik level override (countdown, adopt, safety)", test_level_override},
     {"T-7x: NOx boost (trigger, hold, outdoor-air test, caps)", test_nox_boost},
     {"T-7y: Automatik-Status text + reason debounce", test_auto_status},
+    {"T-7z: ESP-NOW authentication (HMAC trailer, replay guard)", test_espnow_auth},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

@@ -170,6 +170,9 @@ esphome:
 # ---------------------------------------------------------
 ventilation_group:
   id: ventilation_ctrl
+  # Room key for authenticated ESP-NOW frames (protocol v13) — identical on
+  # every device of a room. Release firmware: repository secret ESPNOW_KEY.
+  espnow_key: !secret espnow_key
   floor_id: ${floor_id}
   room_id: ${room_id}
   device_id: ${device_id}

@@ -1,7 +1,12 @@
+import hashlib
+import logging
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import fan, switch, sensor, binary_sensor
 from esphome.const import CONF_ID
+
+_LOGGER = logging.getLogger(__name__)
 
 # Namespace & Classes
 VentilationController = cg.esphome_ns.class_('VentilationController', cg.Component)
@@ -36,6 +41,19 @@ CONF_PRE_VAC_INTENSITY_GLOBAL = 'pre_vacation_intensity_global'
 CONF_HVAC_ENABLED_GLOBAL = 'hvac_enabled_global'
 CONF_NOX_BOOST_ENABLED_GLOBAL = 'nox_boost_enabled_global'
 CONF_OVERRIDE_DURATION_GLOBAL = 'auto_override_duration_global'
+CONF_ESPNOW_KEY = 'espnow_key'
+
+# Public example passphrase from secrets_example.yaml — warn when it is used.
+EXAMPLE_ESPNOW_KEY = 'CHANGE-ME-ventosync-room-key'
+
+
+def espnow_auth_key_hex(passphrase: str) -> str:
+    """32-byte HMAC key for the ESP-NOW frame authentication (protocol v13).
+
+    Derived at compile time, so the firmware never contains the passphrase
+    itself. Domain-separated from other uses of the same secret.
+    """
+    return hashlib.sha256(('VentoSync ESP-NOW auth v1:' + passphrase).encode('utf-8')).hexdigest()
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VentilationController),
@@ -68,6 +86,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_HVAC_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_NOX_BOOST_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_OVERRIDE_DURATION_GLOBAL): cv.use_id(GlobalsComponent),
+    # Room key for authenticated ESP-NOW frames — must be identical on all
+    # devices of a room (secrets.yaml: espnow_key).
+    cv.Required(CONF_ESPNOW_KEY): cv.All(cv.string_strict, cv.Length(min=16, max=128)),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -80,6 +101,13 @@ async def to_code(config):
     cg.add(var.set_room_id(config[CONF_ROOM_ID]))
     cg.add(var.set_device_id(config[CONF_DEVICE_ID]))
     cg.add(var.set_is_phase_a(config[CONF_IS_PHASE_A]))
+
+    if config[CONF_ESPNOW_KEY] == EXAMPLE_ESPNOW_KEY:
+        _LOGGER.warning(
+            "espnow_key is the public example value from secrets_example.yaml — "
+            "anyone can forge ESP-NOW frames for this device. Set your own key."
+        )
+    cg.add(var.set_espnow_auth_key_hex(espnow_auth_key_hex(config[CONF_ESPNOW_KEY])))
     
     fan_ = await cg.get_variable(config[CONF_MAIN_FAN])
     cg.add(var.set_main_fan(fan_))

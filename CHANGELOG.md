@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.43] - 2026-10-18
+
+### Security / Stability
+
+- **H-1: Authenticated ESP-NOW frames (protocol v13)** — until now any device within radio range could forge ESP-NOW
+  packets (the format is public) and switch a room to `Aus`, change its level or room-wide settings, or pause the fans
+  via the window flag. Every frame — state packets, heartbeats and the `ROOM_DISC` / `ROOM_CONF` discovery strings,
+  unicast and broadcast — now carries a 16-byte trailer: frame counter (`epoch` per boot, persisted; `seq` per frame)
+  and an 8-byte HMAC-SHA256 tag over sender MAC, payload and counter. Frames with a wrong tag or an outdated counter
+  (replay) are dropped before they are parsed; the log shows one summary warning per minute.
+  New pure, unit-tested module `components/ventilation_logic/espnow_auth.h` (SHA-256 / HMAC-SHA256 checked against
+  the FIPS 180-4 and RFC 4231 vectors, replay guard incl. `millis()` overflow and capacity).
+  - **New secret `espnow_key`** (16–128 characters, `secrets.yaml`, see `secrets_example.yaml`) — the same key on
+    every device of a room. It is hashed at compile time; the firmware does not contain the passphrase. Self-built
+    firmware fails to compile without it. Using the example value logs a compile warning.
+  - **CI / releases:** new repository secret **`ESPNOW_KEY`**; push / `workflow_dispatch` builds refuse to build
+    without it (like `API_ENCRYPTION_KEY`), PR builds use the public example key. ⚠️ In the public release binaries the
+    key is the same for everyone and extractable — the same limitation as the API key; build with your own key for
+    real protection.
+  - **Not encrypted:** the payload stays readable within radio range.
+  - **Replay window:** the replay memory is in RAM — after a reboot, or after a sender was silent for 15 min, the first
+    frame of each sender is accepted even if it is an old recording (superseded by the sender's next heartbeat). The
+    15-minute expiry lets a device whose flash was erased (USB flash) rejoin its room without rebooting the others.
+- ⚠️ **ESP-NOW protocol v13 — flash all devices of a room** and give them the same `espnow_key`. v12 and v13 devices
+  ignore each other (log: `unsigned` / `bad tag`).
+
+### Changed
+
+- Documentation: ESP-NOW guides (EN/DE) — new section *Security: Authenticated, Not Encrypted*; READMEs — *ESP-NOW
+  Security* and the `espnow_key` setup step; CLAUDE.md — send/receive rules for authenticated frames.
+
 ## [0.10.42] - 2026-10-18
 
 ### Security / Stability

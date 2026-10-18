@@ -63,8 +63,9 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protokoll-Architektur & Paketvalidierung (v12)
+## 🔒 Protokoll-Architektur & Paketvalidierung (v13)
 
+* **Frame-Authentifizierung (v13)**: Jeder Frame — Statuspakete, Heartbeats und die Discovery-Strings, Unicast wie Broadcast — trägt einen 16-Byte-Trailer mit Frame-Zähler und HMAC-SHA256-Tag (siehe *Sicherheit* unten). Frames ohne gültigen Tag oder mit veraltetem Zähler werden verworfen, bevor irgendetwas ausgewertet wird. Firmware ≥ 0.10.43 verwirft v12-Frames — **alle Geräte eines Raums flashen** und ihnen denselben `espnow_key` geben.
 * **Magic Header**: Jedes Datenpaket beginnt mit einem festen Prüfbyte (`0x42`), um fremde oder fehlerhafte 2,4-GHz-Pakete sofort zu verwerfen.
 * **Firmware-Versionsprüfung**: Strikte Validierung verhindert Fehlinterpretationen bei unterschiedlichen Firmware-Ständen.
 * **Schleifen-Schutz**: Übernommene Werte werden ohne neuen Broadcast angewendet (`notify = false`), und Geräte senden nur ihre **eigenen** Eingangswerte, nie einen aus Peers fusionierten Wert — gespiegelte Einstellungen und raumweite Maxima können daher nicht zwischen Geräten hin- und herspringen oder sich gegenseitig festhalten. (Sequenznummern gibt es im Paket nicht.)
@@ -72,16 +73,26 @@ sequenceDiagram
 
 ---
 
-## ⚠️ Sicherheit: keine Verschlüsselung, keine Authentifizierung
+## 🔐 Sicherheit: authentifiziert, nicht verschlüsselt
 
-Der ESP-NOW-Verkehr zwischen VentoSync-Geräten ist **weder verschlüsselt noch authentifiziert**. Die Prüfungen oben (Magic Byte, Protokollversion, Paketgröße, Wertebereiche, Etagen-/Raum-ID) verwerfen nur fremde oder fehlerhafte Pakete — gegen einen gezielten Angreifer schützen sie nicht:
+Seit 0.10.43 (Protokoll v13) ist jeder ESP-NOW-Frame mit einem Raum-Schlüssel **authentifiziert**, aber **nicht verschlüsselt**.
 
-* **Mitlesbar**: Jeder in Funkreichweite (typisch ein Gebäude, mit Richtantenne mehr) kann die Pakete empfangen und Modus, Lüfterstufe, CO2, Luftfeuchte und Temperaturen lesen.
-* **Fälschbar**: Das Paketformat ist öffentlich (dieses Repository). Ein ESP32 in der Nähe kann passende Pakete mit beliebiger Absender-MAC senden und den Modus des Raums umschalten (z. B. `Aus`), die Stufe oder die raumweiten Einstellungen ändern (Grenzen der Smart-Automatik, CO2-/Feuchte-Schwellen, Klima-Koordination). Etagen- und Raum-ID lassen sich aus den Paketen des Geräts selbst ablesen.
-* **Nicht betroffen**: WLAN, die Home-Assistant-API und OTA-Updates sind getrennte Kanäle (siehe *OTA-Sicherheit* in der README); über ESP-NOW lässt sich keine Firmware austauschen. Die Übertemperatur-Abschaltung läuft lokal auf jedem Gerät. Die Fenstersperre wertet auch das Fenster-Flag der Peers aus, ein gefälschtes Paket kann die Lüfter also ebenfalls anhalten.
-* **Warum keine ESP-NOW-Verschlüsselung?** ESPHome 2026.9.1 unterstützt sie nicht (Peers werden immer unverschlüsselt angelegt), und die eingebaute ESP-NOW-Verschlüsselung deckt nur Unicast ab (Discovery und Statusabfragen sind Broadcasts) und ist auf wenige verschlüsselte Peers begrenzt. Ein in die öffentlichen Release-Binaries kompilierter Schlüssel wäre zudem für jeden auslesbar. Eine Nachrichten-Authentifizierung mit einem Schlüssel pro Installation wird geprüft.
+**Funktionsweise** (`components/ventilation_logic/espnow_auth.h`, mit Unit-Tests):
 
-**Empfehlung:** ESP-NOW wie einen ungeschützten lokalen Bus behandeln. Für ein Einfamilienhaus ist das unkritisch; bei exponierten Installationen (Mehrparteienhaus mit Nachbarwohnungen in Funkreichweite, Büros) das Risiko abwägen — ein gefälschtes Paket kann die Lüftung ausschalten, bis jemand sie wieder einschaltet.
+* Trailer `epoch (4) | seq (4) | tag (8)` an jedem Frame. `tag` = die ersten 8 Bytes von HMAC-SHA256(Schlüssel, Absender-MAC ‖ Nutzdaten ‖ epoch ‖ seq).
+* Der Schlüssel wird beim Kompilieren (SHA-256) aus `espnow_key` in der `secrets.yaml` abgeleitet; die Passphrase selbst steht nicht in der Firmware. Release-Firmware verwendet das Repository-Secret `ESPNOW_KEY`.
+* `epoch` wird einmal pro Boot hochgezählt und in den Flash geschrieben, `seq` pro Frame. Jedes Gerät merkt sich pro Absender das neueste `(epoch, seq)` und verwirft alles Ältere (Replay-Schutz). Die Absender-MAC geht in den Tag ein, ein mitgeschnittener Frame lässt sich also nicht unter einer anderen Adresse wiederverwenden.
+* Verworfene Frames werden gezählt; das Log zeigt höchstens eine zusammenfassende Warnung pro Minute (`espnow_auth: Dropped N unauthenticated ESP-NOW frame(s); last from …: bad tag / unsigned / replayed`).
+
+**Wogegen es schützt:** Ein Gerät in der Nähe ohne Schlüssel kann den Modus des Raums nicht mehr umschalten, Stufe oder raumweite Einstellungen nicht ändern und die Lüfter nicht über das Fenster-Flag anhalten — weder mit gefälschten noch mit wieder eingespielten mitgeschnittenen Frames.
+
+**Verbleibende Einschränkungen:**
+
+* **Mitlesbar**: Die Nutzdaten sind nicht verschlüsselt — jeder in Funkreichweite kann Modus, Lüfterstufe, CO2, Luftfeuchte und Temperaturen weiterhin lesen.
+* **Schlüssel in der Release-Firmware**: Der Schlüssel ist in die Firmware kompiliert. Bei den öffentlichen GitHub-Releases ist er für alle Nutzer gleich und lässt sich mit etwas Aufwand aus dem Binary auslesen — dieselbe Einschränkung wie beim API-Schlüssel (README *OTA-Sicherheit*). Für echten Schutz die Firmware selbst mit eigenem `espnow_key` bauen (`esphome run` / `upload_all.sh`) und auf diesen Geräten keine GitHub-Releases installieren.
+* **Replay-Fenster nach Funkstille oder Neustart**: Das Replay-Gedächtnis liegt im RAM. Nach einem Neustart eines Geräts — oder wenn ein Absender 15 Minuten still war — wird der erste Frame jedes Absenders angenommen, auch wenn er ein alter Mitschnitt ist; der nächste echte Frame des Absenders (Heartbeat ≤ 1 min) löst ihn ab. Der 15-Minuten-Ablauf lässt ein Gerät, dessen Flash gelöscht wurde (USB-Flash, Zähler beginnt neu), wieder in seinen Raum, ohne die anderen neu zu starten; bis dahin werden seine Frames verworfen.
+* **Alle Geräte eines Raums brauchen denselben Schlüssel** — Geräte mit anderem Schlüssel ignorieren sich gegenseitig (Log: *bad tag*). Benachbarte VentoSync-Installationen mit eigenem Schlüssel sind damit nicht nur über Etagen-/Raum-ID getrennt.
+* **Warum nicht die eingebaute ESP-NOW-Verschlüsselung?** ESPHome 2026.9.1 legt Peers immer unverschlüsselt an, die eingebaute Verschlüsselung deckt nur Unicast ab (Discovery und Statusabfragen sind Broadcasts) und ist auf wenige verschlüsselte Peers begrenzt.
 
 ---
 

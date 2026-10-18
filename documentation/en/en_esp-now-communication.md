@@ -63,8 +63,9 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protocol Architecture & Packet Validation (v12)
+## 🔒 Protocol Architecture & Packet Validation (v13)
 
+* **Frame Authentication (v13)**: every frame — state packets, heartbeats and the discovery strings, unicast and broadcast — carries a 16-byte trailer with a frame counter and an HMAC-SHA256 tag (see *Security* below). Frames without a valid tag or with an outdated counter are dropped before anything is parsed. Firmware ≥ 0.10.43 rejects v12 frames — **flash all devices of a room** and give them the same `espnow_key`.
 * **Magic Header Validation**: Every packet begins with a fixed magic byte (`0x42`) to immediately discard foreign or malformed 2.4 GHz packets.
 * **Firmware Version Guard**: Strict version validation ensures that packets from incompatible firmware builds are rejected cleanly.
 * **Loop Prevention**: adopted values are applied without a new broadcast (`notify = false`), and devices only broadcast their **own** inputs, never a value fused from peers — so mirrored settings and room-wide maxima cannot ping-pong or latch between devices. (There are no sequence numbers in the packet.)
@@ -72,16 +73,26 @@ sequenceDiagram
 
 ---
 
-## ⚠️ Security: No Encryption, No Authentication
+## 🔐 Security: Authenticated, Not Encrypted
 
-ESP-NOW traffic between VentoSync devices is **neither encrypted nor authenticated**. The checks above (magic byte, protocol version, packet size, value ranges, Floor/Room ID) only reject foreign or malformed packets — they are no protection against a deliberate attacker:
+Since 0.10.43 (protocol v13) every ESP-NOW frame is **authenticated** with a room key, but **not encrypted**.
 
-* **Readable**: anyone within radio range (typically one building, more with a directional antenna) can receive the packets and read mode, fan level, CO2, humidity and temperatures.
-* **Forgeable**: the packet format is public (this repository). A nearby ESP32 can send matching packets with any sender MAC and switch the room's mode (e.g. `Aus`), change its level or the room-wide settings (Smart-Automatik limits, CO2/humidity thresholds, Smart Climate Control). Floor and Room ID can be read from the device's own packets.
-* **Not affected**: Wi-Fi, the Home Assistant API and OTA updates are separate channels (see *OTA Security* in the README); firmware cannot be replaced via ESP-NOW. The thermal cutoff runs locally on each device. Note that the window guard also listens to the peers' window flag, so a forged packet can pause the fans as well.
-* **Why not ESP-NOW encryption?** ESPHome 2026.9.1 does not support it (peers are always added unencrypted), and ESP-NOW's built-in encryption would only cover unicast (discovery and status requests are broadcasts) and is limited to a few encrypted peers. A key compiled into the public release binaries would also be extractable by anyone. Message authentication with a per-installation key is being evaluated.
+**How it works** (`components/ventilation_logic/espnow_auth.h`, unit-tested):
 
-**Recommendation:** treat ESP-NOW like an unprotected local bus. It is fine for a private house; for exposed installations (shared buildings, offices, multi-family houses with neighbouring flats in radio range) weigh the risk — a forged packet can switch the ventilation off until someone switches it on again.
+* Trailer `epoch (4) | seq (4) | tag (8)` on every frame. `tag` = first 8 bytes of HMAC-SHA256(key, sender MAC ‖ payload ‖ epoch ‖ seq).
+* The key is derived at compile time (SHA-256) from `espnow_key` in `secrets.yaml`; the firmware does not contain the passphrase itself. Release firmware uses the repository secret `ESPNOW_KEY`.
+* `epoch` is incremented and written to flash once per boot, `seq` per frame. Each device remembers the newest `(epoch, seq)` per sender and drops anything older (replay protection). The sender MAC is part of the tag, so a captured frame cannot be replayed under another address.
+* Rejected frames are counted; the log shows one summary warning per minute (`espnow_auth: Dropped N unauthenticated ESP-NOW frame(s); last from …: bad tag / unsigned / replayed`).
+
+**What it protects against:** a nearby device without the key can no longer switch the room's mode, change its level or room-wide settings, or pause the fans via the window flag — neither with forged frames nor by replaying recorded ones.
+
+**Remaining limitations:**
+
+* **Readable**: the payload is not encrypted — anyone within radio range can still read mode, fan level, CO2, humidity and temperatures.
+* **Key in release firmware**: the key is compiled into the firmware. For the public GitHub releases it is the same for every user and can be extracted from the binary with some effort — the same limitation as the API key (README *OTA Security*). For real protection build the firmware yourself with your own `espnow_key` (`esphome run` / `upload_all.sh`) and do not install GitHub releases on those devices.
+* **Replay window after silence or reboot**: the replay memory lives in RAM. After a device reboots — or after a sender was silent for 15 minutes — the first frame of each sender is accepted even if it is an old recording; the sender's next genuine frame (heartbeat ≤ 1 min) supersedes it. The 15-minute expiry lets a device whose flash was erased (USB flash, counter restarts) rejoin its room without rebooting the others; until then its frames are dropped.
+* **All devices of a room need the same key** — devices with another key ignore each other (log: *bad tag*). Neighbouring VentoSync installations with their own key are therefore separated by more than just the Floor/Room ID.
+* **Why not ESP-NOW's built-in encryption?** ESPHome 2026.9.1 always adds peers unencrypted, the built-in encryption only covers unicast (discovery and status requests are broadcasts) and is limited to a few encrypted peers.
 
 ---
 
