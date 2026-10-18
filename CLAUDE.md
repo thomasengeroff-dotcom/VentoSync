@@ -121,7 +121,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
   logger INFO. Image 2,012,046 / 2,031,616 B (~19 KB headroom, 0.10.45) — CI compiles it only after the merge (PRs build
-  `ventosync-full` only), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
+  `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
@@ -453,9 +453,10 @@ Triggered on push and pull request to `master`:
 - **`build.yaml`**
   - *Run Unit Tests*: native `g++` build of `tests/simple_test_runner.cpp` with ASan/UBSan (command above).
   - *Build* matrix from `.github/variants.json` (`ci_config.py matrix`, computed in the *Detect Changes* job):
-    **pull requests build only `ventosync-full`** (`"pr": true`, the required check `Build ventosync-full`); PCB v2.0,
-    the SGP41/SHT45 drivers and the size-critical Bluetooth proxy image are compiled only after the merge — compile
-    them locally when a change touches them. Push to `master` / `workflow_dispatch` build all
+    **pull requests build the `"pr": true` variants `ventosync-full`** (required check `Build ventosync-full`) **and
+    `ventosync-v2-sgp41`** (PCB v2.0 board package + the only variant with the SGP41/SHT45 drivers); the size-critical
+    Bluetooth proxy image is compiled only after the merge — compile it locally when a change adds code. Push to
+    `master` / `workflow_dispatch` build all
     variants (incl. the generated `nosensor-mqtt`), ESPHome pinned to `2026.9.1`, secret-free OTA configs. The release
     job needs all builds. Check names stay `Build <name>` — renaming a variant changes a required check.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag

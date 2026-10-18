@@ -57,8 +57,8 @@ jobs:
         run: pip install "esphome==${ESPHOME_VERSION}"
 
       # All variants (.github/variants.json) are validated here on every PR —
-      # the firmware build of a PR only compiles ventosync-full ("pr": true
-      # in variants.json), the others are compiled after the merge.
+      # the firmware build of a PR only compiles the "pr": true variants of
+      # variants.json (full, v2-sgp41), the others after the merge.
       - name: Verify Configuration (all variants)
         if: steps.changes.outputs.firmware == 'true'
         run: |

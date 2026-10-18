@@ -22,9 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.github/scripts/ci_config.py`; `check` also verifies that every `ventosync*.yaml` is listed, its `firmware_variant`
   matches the variant name and the CLAUDE.md variant table lists it. Check names (`Build <variant>`) are unchanged.
   `upload_all.sh` stays a manually maintained list of test devices.
-- **CI: pull requests build only `ventosync-full`** (was: also `ventosync-v2-nosensor`, `ventosync-nosensor-btproxy`,
-  `ventosync-v2-sgp41`) — faster PR feedback; the other variants are still validated by the YAML lint on every PR and
-  compiled after the merge. READMEs (EN/DE): the outdated *CI builds* paragraph (1 / 6 variants) now says 1 / 13.
+- **CI: pull requests build `ventosync-full` and `ventosync-v2-sgp41`** (PCB v2.0 + SGP41/SHT45 drivers; was: also
+  `ventosync-v2-nosensor` and `ventosync-nosensor-btproxy`) — faster PR feedback; the other variants are still
+  validated by the YAML lint on every PR and compiled after the merge. READMEs (EN/DE): the outdated *CI builds*
+  paragraph (1 / 6 variants) now says 2 / 13.
 
 No ESP-NOW protocol change — devices can be updated individually.
 

@@ -157,13 +157,14 @@ jobs:
   # JOB 2 – FIRMWARE BUILD (MATRIX)
   # The variants come from .github/variants.json (ci_config.py matrix) —
   # add / remove variants only there.
-  # Pull Requests ("pr": true): only "Build ventosync-full" (PCB v1.0,
-  #   required check) for fast PR feedback; the other variants share the
-  #   same C++ code, their YAML is validated by lint.yaml on every PR.
-  #   Not compiled on PRs (only after the merge): the PCB v2.0 board
-  #   package, the sgp4x/sht4x drivers (sgp41 variants) and the
-  #   size-critical Bluetooth proxy image (~19 KB headroom) — a failure
-  #   there blocks the release of the merge and needs a follow-up PR.
+  # Pull Requests ("pr": true): "Build ventosync-full" (PCB v1.0,
+  #   required check) and "Build ventosync-v2-sgp41" (PCB v2.0 board
+  #   package + the only variant with the sgp4x/sht4x drivers / Sensirion
+  #   gas index library); the other variants share the same C++ code,
+  #   their YAML is validated by lint.yaml on every PR.
+  #   Not compiled on PRs (only after the merge): the size-critical
+  #   Bluetooth proxy image (~19 KB headroom) — a failure there blocks the
+  #   release of the merge and needs a follow-up PR.
   # Push to master / workflow_dispatch: all variants — the release job
   #   needs all of them, so a variant that breaks after the merge blocks
   #   the release instead of publishing incomplete assets.
