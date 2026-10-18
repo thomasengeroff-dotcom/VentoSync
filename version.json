@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.40",
+    "project_version": "0.10.41",
     "project_date": "2026-10-18",
-    "project_description": "Update to ESPHome 2026.9.1 (encrypted OTA uploads in safe mode, crash report of the previous boot)."
+    "project_description": "Tech-debt cleanup: wrap-safe peer timeout, stricter ESP-NOW packet validation, named constants, less log noise."
 }
