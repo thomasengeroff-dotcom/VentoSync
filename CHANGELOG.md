@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.47] - 2026-10-19
+
+### Fixed
+
+- **Child lock: all LEDs stayed off after the flash**
+  ([#57](https://github.com/thomasengeroff-dotcom/VentoSync/issues/57)) — with the child lock active, a button press
+  flashes the panel 3× (2× when the lock is toggled with the Mode button). The flash switches the LEDs directly, past
+  the state cache of `update_leds_logic()`; the following redraw was not forced, so while the panel was already awake
+  (a second press within 30 s, or a mode change shortly before) it saw "nothing changed" and left every LED off —
+  including the dimmed power LED — until the next mode or level change. `restore_leds_after_flash()` now forces the redraw.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.46] - 2026-10-18
 
 Fixes from the code review of 0.10.41 – 0.10.45.

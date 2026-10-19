@@ -21,7 +21,7 @@
 // Description: Processing of physical button and slider interactions.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-11
+// Modified:    2026-10-19
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -498,14 +498,17 @@ inline void flash_all_leds_on() {
 /**
  * @brief Restores the normal LED display state after a flash sequence.
  *
- * Briefly activates the UI (so mode/level LEDs show current state),
- * triggers an LED update via the update_leds script, and starts the
- * UI timeout timer to auto-dim after 30s of inactivity.
+ * Activates the UI (so mode/level LEDs show the current state), redraws
+ * all LEDs and starts the UI timeout timer to auto-dim after 30s.
+ *
+ * The redraw must be forced: the flash switched the LEDs directly, past
+ * the state cache of update_leds_logic(). If the UI was already active
+ * and mode/level are unchanged, a normal update_leds run sees "nothing
+ * changed" and leaves every LED off — including the power LED.
  *
  * @note Uses extern pointer access with null-checks because these
  *       are declared as:
  *       - ui_active:          GlobalsComponent<bool>* const
- *       - update_leds:        RestartScript<>* const
  *       - ui_timeout_script:  RestartScript<>* const
  *       Null-checks guard against boot-time race conditions where
  *       the component may not yet be initialized.
@@ -514,9 +517,7 @@ inline void restore_leds_after_flash() {
     if (ui_active != nullptr) {
         ui_active->value() = true;
     }
-    if (update_leds != nullptr) {
-        update_leds->execute();
-    }
+    update_leds_logic(true);
     if (ui_timeout_script != nullptr) {
         ui_timeout_script->execute();
     }
