@@ -29,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     received from a peer was shown but not saved. After a restart the number showed its old value while the device
     regulated with the room's value, so the setting looked ignored. The numbers are now re-published from the
     (persisted) room-wide values at boot.
+- **Smart-Automatik reacted to CO2 / humidity only after hours**
+  ([#4](https://github.com/thomasengeroff-dotcom/VentoSync/issues/4)) — integral windup on the unused side: both PIDs
+  run in COOL mode, but their integral was clamped to ESPHome's default [-1, +1]. Below the setpoint (the normal case)
+  the integral wound up to +1 ("heat") within 1–2 h; after a rise above the setpoint it first had to unwind before any
+  ventilation demand appeared — in a simulation of the ESPHome PID after 3 h at 600 ppm a rise to 1200 ppm (setpoint
+  1000) produced demand only after ~137 min, humidity 45 → 70 % (setpoint 60) after ~93 min. `max_integral: 0` now
+  limits the integral to the ventilation side; the reaction starts within the first PID cycles.
 - **Child lock: all LEDs stayed off after the flash**
   ([#57](https://github.com/thomasengeroff-dotcom/VentoSync/issues/57)) — with the child lock active, a button press
   flashes the panel 3× (2× when the lock is toggled with the Mode button). The flash switches the LEDs directly, past

@@ -77,6 +77,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 2. **Bounds Enforcement:** The speed never drops below `automatik_min_luefterstufe` (Level 2) and never exceeds `automatik_max_luefterstufe` (Level 7 by default).
 3. **Signal Arbitration:** The system takes the **maximum** of CO2 demand and Humidity demand, ensuring neither parameter is neglected.
 4. **Smooth Mode Entry:** Switching *into* Smart Automatic resets PID integrals to zero so the fan always starts at the minimum level and ramps up only if needed.
+   **Anti-windup:** The integral only accumulates while CO2 / humidity are *above* the setpoint (`max_integral: 0`). Long periods of good air therefore never delay the reaction to a later rise.
 5. **Absolute Humidity Guard:** Dehumidification only increases fan speeds if outdoor absolute humidity is actually lower than indoor air (using the Magnus formula). If outdoor air is more humid (e.g. raining), humidity ventilation demand is set to 0.
 6. **Room-wide Demand Fusion:** Every device broadcasts the demand of its **own** CO2 and humidity PIDs via ESP-NOW (no sensors → no value). Each device regulates on the **maximum** of its local demand and the freshest (≤ 5 min) demand of every peer. A device without its own sensors (the `nosensor`, `radar_only` and `NTConly` variants — e.g. a Master without SCD41) therefore follows the sensor device with its full PID behaviour, for CO2 **and** humidity. Adopted values are never re-broadcast, so a high demand cannot latch between devices.
 

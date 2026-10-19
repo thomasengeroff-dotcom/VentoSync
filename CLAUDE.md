@@ -425,6 +425,8 @@ substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA
 
 - **CO2 PID:** `kp = 0.001`, `ki = 0.0000005` (slow integral — smooth level transitions every 20–30 min)
 - **Humidity PID:** `kp = 0.05`, `ki = 0.00001`
+- **Anti-windup:** both PIDs run in COOL mode with `min_integral: -1`, `max_integral: 0` — never raise `max_integral`:
+  hours below the setpoint would wind the integral up to "heat" and delay the demand by hours (issue #4).
 - **Conflict resolution (hysteresis):** CO2 grabs exclusive priority at `co2_demand >= 0.01`, releases at
   `< 0.005`; while CO2 controls, the higher of both demands is used.
 - **Room fusion:** effective demand = max(local sensor demand, freshest peer demands) — see ESP-NOW section.

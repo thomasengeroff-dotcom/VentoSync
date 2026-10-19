@@ -1,5 +1,5 @@
 {
     "project_version": "0.10.47",
     "project_date": "2026-10-19",
-    "project_description": "Fixes: received Durchlüften fell back to heat recovery, Smart-Automatik minimum level after a restart, child lock LEDs."
+    "project_description": "Fixes: PID integral windup delayed Smart-Automatik by hours, received Durchlüften fell back to heat recovery, min level after a restart, child lock LEDs."
 }
