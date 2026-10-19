@@ -1,5 +1,5 @@
 {
     "project_version": "0.10.47",
     "project_date": "2026-10-19",
-    "project_description": "Durchlüften no longer falls back to heat recovery when received from a peer; child lock LEDs restored after the flash."
+    "project_description": "Fixes: received Durchlüften fell back to heat recovery, Smart-Automatik minimum level after a restart, child lock LEDs."
 }

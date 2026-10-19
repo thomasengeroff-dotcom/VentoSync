@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its timestamp after the drain, and the state machine counts a start time in the future as "just started"
   (`VentilationStateMachine::elapsed_ms()`, unit test T-8e). The same wrap could shift the **Stoßlüftung** schedule anchor of
   a device that adopted the mode from a peer by about an hour; fixed by the same change.
+- **Smart-Automatik minimum level ignored after a restart**
+  ([#55](https://github.com/thomasengeroff-dotcom/VentoSync/issues/55)) — two boot defects:
+  - The `VentilationController` started with its default level 5 and only learned the real level on the next change.
+    Every packet carried level 5 until then, so after a **Master** restart the slaves followed level 5 in
+    Smart-Automatik instead of the automatic (at low demand: the minimum level) — indefinitely while the Master's own
+    level stayed constant. The controller now takes the restored level at boot.
+  - The HA numbers of the room-wide settings (min / max level, CO2 / humidity thresholds, presence offset, Smart
+    Climate Control values, override duration, LED brightness) only persist values set on the device itself; a value
+    received from a peer was shown but not saved. After a restart the number showed its old value while the device
+    regulated with the room's value, so the setting looked ignored. The numbers are now re-published from the
+    (persisted) room-wide values at boot.
 - **Child lock: all LEDs stayed off after the flash**
   ([#57](https://github.com/thomasengeroff-dotcom/VentoSync/issues/57)) — with the child lock active, a button press
   flashes the panel 3× (2× when the lock is toggled with the Mode button). The flash switches the LEDs directly, past
@@ -25,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (a second press within 30 s, or a mode change shortly before) it saw "nothing changed" and left every LED off —
   including the dimmed power LED — until the next mode or level change. `restore_leds_after_flash()` now forces the redraw.
 
-No ESP-NOW protocol change. The Durchlüften fix acts on the receiving device — update all devices of a room.
+No ESP-NOW protocol change. The Durchlüften and boot-level fixes act on the receiving / restarting device — update all
+devices of a room.
 
 ## [0.10.46] - 2026-10-18
 
