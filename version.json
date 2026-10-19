@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.46",
-    "project_date": "2026-10-18",
-    "project_description": "Code-review fixes: replay expiry follows the ESP-NOW sync interval, exact-duplicate RX guard, HMAC via mbedtls on the device."
+    "project_version": "0.10.47",
+    "project_date": "2026-10-19",
+    "project_description": "Fixes: PID integral windup delayed Smart-Automatik by hours, received Durchlüften fell back to heat recovery, min level after a restart, child lock LEDs."
 }

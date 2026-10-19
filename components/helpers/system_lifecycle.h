@@ -21,7 +21,7 @@
 // Description: System-wide mode orchestration and lifecycle hooks.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-18
+// Modified:    2026-10-19
 // ==========================================================================
 #pragma once
 #include <esp_system.h>
@@ -272,6 +272,37 @@ inline void sync_config_to_controller() {
 }
 
 /**
+ * @brief   Shows the active room-wide settings in HA after a reboot.
+ *
+ * @details The restoring globals are the source of truth for the room-wide
+ *          Smart-Automatik settings (synced via ESP-NOW). Their HA numbers
+ *          only persist values set on this device: handle_config_sync()
+ *          mirrors a peer's change with publish_state(), which a template
+ *          number does not save. After a reboot such a number showed its old
+ *          own value while the device regulated with the room's value — the
+ *          setting looked ignored (GitHub issue #55).
+ */
+inline void publish_room_settings_from_globals() {
+  auto show = [](esphome::number::Number *n, float value) {
+    if (n == nullptr) return;
+    if (std::isnan(n->state) || std::abs(n->state - value) > 0.01f) {
+      ESP_LOGI("boot", "%s: %.0f -> %.0f (room setting)", n->get_name().c_str(), n->state, value);
+      n->publish_state(value);
+    }
+  };
+  if (automatik_min_fan_level != nullptr) show(automatik_min_luefterstufe, automatik_min_fan_level->value());
+  if (automatik_max_fan_level != nullptr) show(automatik_max_luefterstufe, automatik_max_fan_level->value());
+  if (auto_co2_threshold_val != nullptr) show(auto_co2_threshold, auto_co2_threshold_val->value());
+  if (auto_humidity_threshold_val != nullptr) show(auto_humidity_threshold, auto_humidity_threshold_val->value());
+  if (auto_presence_val != nullptr) show(auto_presence_slider, auto_presence_val->value());
+  if (hvac_co2_threshold_val != nullptr) show(hvac_co2_threshold, hvac_co2_threshold_val->value());
+  if (hvac_emergency_co2_val != nullptr) show(hvac_emergency_co2, hvac_emergency_co2_val->value());
+  if (hvac_max_fan_level_val != nullptr) show(hvac_max_fan_level, hvac_max_fan_level_val->value());
+  if (auto_override_duration_val != nullptr) show(auto_override_duration, auto_override_duration_val->value());
+  if (max_led_brightness != nullptr) show(led_max_brightness_config, max_led_brightness->value() * 100.0f);
+}
+
+/**
  * @brief   Main system initialization after NVS and WiFi are ready.
  * 
  * @details Detects watchdog resets for stability tracking, initializes
@@ -310,6 +341,15 @@ inline void run_system_boot_initialization() {
 
   // 2. Controller & Mode Init
   sync_config_to_controller();
+  publish_room_settings_from_globals();
+  // The controller starts with its default level (5) and only learns the
+  // level on a change — until then every packet carried 5, so after a Master
+  // reboot the slaves followed level 5 in Smart-Automatik instead of the
+  // automatic / its minimum (GitHub issue #55).
+  if (fan_intensity_level != nullptr && ventilation_ctrl != nullptr) {
+    ventilation_ctrl->set_fan_intensity(
+        static_cast<uint8_t>(std::clamp(static_cast<int>(fan_intensity_level->value()), 1, 10)), false);
+  }
   if (current_mode_index != nullptr) {
     int saved_mode = current_mode_index->value();
     if (saved_mode < 0 || saved_mode > 4) {

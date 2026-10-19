@@ -21,7 +21,7 @@
 // Description: State machine for ventilation modes and timing.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-09-24
+// Modified:    2026-10-19
 // ==========================================================================
 #pragma once
 
@@ -136,6 +136,21 @@ public:
   static constexpr uint32_t STOSS_SUPER_CYCLE_MS = 2u * STOSS_CYCLE_MS;
   static_assert(STOSS_SUPER_CYCLE_MS == 14400000u,
       "STOSS_SUPER_CYCLE_MS unexpected value — check for multiplication overflow");
+
+  /**
+   * @brief   Milliseconds elapsed since @p since (wrap-safe).
+   * @details A @p since slightly in the future counts as 0 instead of wrapping
+   *          to ~49 days: timers started from a packet handler take a later
+   *          millis() than the loop's @p now (GitHub issue #54 — a received
+   *          "Durchlüften" expired immediately and fell back to heat recovery).
+   * @param[in] now    Current system time in milliseconds.
+   * @param[in] since  Start timestamp in milliseconds.
+   * @return  now - since, or 0 if @p since lies after @p now.
+   */
+  static constexpr uint32_t elapsed_ms(uint32_t now, uint32_t since) {
+    const uint32_t d = now - since;
+    return d > static_cast<uint32_t>(INT32_MAX) ? 0u : d;
+  }
 
   /**
    * @brief   One-time initialization (reserved for future use).

@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.47] - 2026-10-19
+
+### Fixed
+
+- **"Durchlüften" jumped straight back to "Wärmerückgewinnung"**
+  ([#54](https://github.com/thomasengeroff-dotcom/VentoSync/issues/54)) — the device that received the mode change via
+  ESP-NOW started the Durchlüften timer with its own `millis()`, which was later than the timestamp the
+  `VentilationController` loop had taken *before* draining the packet queue. `now - start` wrapped to ~49 days, so with
+  a timer configured (`vent_timer` > 0, default 30 min) the timer expired in the same loop: the device fell back to heat
+  recovery and — as Master — sent "Wärmerückgewinnung" back to the whole room within about a second. The loop now takes
+  its timestamp after the drain, and the state machine counts a start time in the future as "just started"
+  (`VentilationStateMachine::elapsed_ms()`, unit test T-8e). The same wrap could shift the **Stoßlüftung** schedule anchor of
+  a device that adopted the mode from a peer by about an hour; fixed by the same change.
+- **Smart-Automatik minimum level ignored after a restart**
+  ([#55](https://github.com/thomasengeroff-dotcom/VentoSync/issues/55)) — two boot defects:
+  - The `VentilationController` started with its default level 5 and only learned the real level on the next change.
+    Every packet carried level 5 until then, so after a **Master** restart the slaves followed level 5 in
+    Smart-Automatik instead of the automatic (at low demand: the minimum level) — indefinitely while the Master's own
+    level stayed constant. The controller now takes the restored level at boot.
+  - The HA numbers of the room-wide settings (min / max level, CO2 / humidity thresholds, presence offset, Smart
+    Climate Control values, override duration, LED brightness) only persist values set on the device itself; a value
+    received from a peer was shown but not saved. After a restart the number showed its old value while the device
+    regulated with the room's value, so the setting looked ignored. The numbers are now re-published from the
+    (persisted) room-wide values at boot.
+- **Smart-Automatik reacted to CO2 / humidity only after hours**
+  ([#4](https://github.com/thomasengeroff-dotcom/VentoSync/issues/4)) — integral windup on the unused side: both PIDs
+  run in COOL mode, but their integral was clamped to ESPHome's default [-1, +1]. Below the setpoint (the normal case)
+  the integral wound up to +1 ("heat") within 1–2 h; after a rise above the setpoint it first had to unwind before any
+  ventilation demand appeared — in a simulation of the ESPHome PID after 3 h at 600 ppm a rise to 1200 ppm (setpoint
+  1000) produced demand only after ~137 min, humidity 45 → 70 % (setpoint 60) after ~93 min. `max_integral: 0` now
+  limits the integral to the ventilation side; the reaction starts within the first PID cycles.
+- **Child lock: all LEDs stayed off after the flash**
+  ([#57](https://github.com/thomasengeroff-dotcom/VentoSync/issues/57)) — with the child lock active, a button press
+  flashes the panel 3× (2× when the lock is toggled with the Mode button). The flash switches the LEDs directly, past
+  the state cache of `update_leds_logic()`; the following redraw was not forced, so while the panel was already awake
+  (a second press within 30 s, or a mode change shortly before) it saw "nothing changed" and left every LED off —
+  including the dimmed power LED — until the next mode or level change. `restore_leds_after_flash()` now forces the redraw.
+
+No ESP-NOW protocol change. The Durchlüften and boot-level fixes act on the receiving / restarting device — update all
+devices of a room.
+
 ## [0.10.46] - 2026-10-18
 
 Fixes from the code review of 0.10.41 – 0.10.45.

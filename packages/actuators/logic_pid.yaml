@@ -21,7 +21,7 @@
 # Description: Configuration for internal PID climate controllers (CO2 & Humidity).
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-04-21
+# Modified:    2026-10-19
 # ==========================================================================
 
 # ---------------------------------------------------------
@@ -41,6 +41,11 @@ climate:
       # I-part: Extremely low to prevent aggressive integral windup over time
       ki: 0.0000005
       kd: 0.0
+      # Anti-windup: only the cooling (= ventilation) side may accumulate.
+      # With the default +1, hours below the setpoint wound the integral up
+      # to "heat" and delayed the CO2 demand by ~2 h (GitHub issue #4).
+      min_integral: -1.0
+      max_integral: 0.0
       output_averaging_samples: 5
     deadband_parameters:
       # Narrow deadband for smooth ramp-down to 0%
@@ -60,6 +65,9 @@ climate:
       # I-part: Significantly reduced to prevent mold-clearing overshoot noise
       ki: 0.00001
       kd: 0.0
+      # Anti-windup: see the CO2 PID above
+      min_integral: -1.0
+      max_integral: 0.0
       output_averaging_samples: 5
     deadband_parameters:
       threshold_high: 1.0

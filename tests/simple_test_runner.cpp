@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-18
+// Modified:    2026-10-19
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -2151,6 +2151,48 @@ bool test_summer_bypass() {
   return true;
 }
 
+// ============================================================
+// T-8e: Timer started after the loop timestamp (GitHub issue #54)
+// A packet handler starts MODE_VENTILATION / the Stoß schedule with a later
+// millis() than the loop's `now`; `now - start` must not wrap.
+// ============================================================
+bool test_timer_start_after_now() {
+  using SM = esphome::VentilationStateMachine;
+  TEST_ASSERT(SM::elapsed_ms(1000, 400) == 600);
+  TEST_ASSERT(SM::elapsed_ms(1000, 1000) == 0);
+  TEST_ASSERT(SM::elapsed_ms(1000, 1005) == 0);             // start in the future
+  TEST_ASSERT(SM::elapsed_ms(0x00000100u, 0xFFFFFF00u) == 0x200u); // millis() wrap
+
+  // Durchlüften adopted from a peer at t=10'005, loop timestamp t=10'000
+  const uint32_t loop_now = 10000;
+  const uint32_t duration = 30u * 60u * 1000u;
+  SM sm;
+  sm.setup();
+  sm.set_mode(esphome::MODE_OFF, 0);
+  sm.set_mode(esphome::MODE_VENTILATION, loop_now + 5, duration);
+  sm.update(loop_now);
+  TEST_ASSERT(sm.current_mode == esphome::MODE_VENTILATION);
+  TEST_ASSERT(!sm.ventilation_timer_expired);
+  TEST_ASSERT(sm.get_remaining_duration(loop_now) == duration);
+  sm.update(loop_now + 5 + duration / 2);
+  TEST_ASSERT(sm.current_mode == esphome::MODE_VENTILATION);
+  sm.update(loop_now + 5 + duration + 1);
+  TEST_ASSERT(sm.current_mode == esphome::MODE_ECO_RECOVERY);
+  TEST_ASSERT(sm.ventilation_timer_expired);
+
+  // Stoßlüftung anchor in the future: schedule starts with the burst, the
+  // anchor is not shifted by a wrapped super-cycle count
+  SM st;
+  st.setup();
+  st.set_mode(esphome::MODE_STOSSLUEFTUNG, loop_now + 5);
+  st.update(loop_now);
+  TEST_ASSERT(st.stoss_cycle_start == loop_now + 5);
+  TEST_ASSERT(st.stoss_active_phase);
+  TEST_ASSERT(!st.stoss_direction_flip);
+  TEST_ASSERT(st.get_remaining_duration(loop_now) == SM::STOSS_SUPER_CYCLE_MS);
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -2308,6 +2350,7 @@ int main() {
     {"T-8b: Packet -> PeerState (room flags decoding)", test_peer_state_from_packet},
     {"T-8c: Smart-Automatik level ramp + Master following", test_auto_level},
     {"T-8d: Summer bypass decision + re-measure guard", test_summer_bypass},
+    {"T-8e: Timer started after the loop timestamp (#54)", test_timer_start_after_now},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

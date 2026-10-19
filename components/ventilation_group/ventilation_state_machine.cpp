@@ -21,7 +21,7 @@
 // Description: Implementation of the ventilation state machine.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-09-24
+// Modified:    2026-10-19
 // ==========================================================================
 #include "ventilation_state_machine.h"
 #include <climits>
@@ -48,7 +48,7 @@ bool VentilationStateMachine::update(uint32_t now) {
 
     // 1. Handle Ventilation Timer
     if (current_mode == MODE_VENTILATION && ventilation_duration_ms > 0) {
-        if (now - ventilation_start_time > ventilation_duration_ms) {
+        if (elapsed_ms(now, ventilation_start_time) > ventilation_duration_ms) {
             set_mode(MODE_ECO_RECOVERY, now);
             ventilation_timer_expired = true; // consumed by the UI glue
             dirty = true;
@@ -59,7 +59,7 @@ bool VentilationStateMachine::update(uint32_t now) {
     //    inverted every second burst — derived from the super-cycle position)
     if (current_mode == MODE_STOSSLUEFTUNG) {
         // Keep the anchor close to now so (now - anchor) never wraps.
-        const uint32_t elapsed = now - stoss_cycle_start;
+        const uint32_t elapsed = elapsed_ms(now, stoss_cycle_start);
         if (elapsed >= STOSS_SUPER_CYCLE_MS) {
             stoss_cycle_start += (elapsed / STOSS_SUPER_CYCLE_MS) * STOSS_SUPER_CYCLE_MS;
         }
@@ -226,7 +226,7 @@ void VentilationStateMachine::sync_stoss(uint32_t now, uint32_t remaining_ms) {
  * @return  Position in ms within [0, STOSS_SUPER_CYCLE_MS).
  */
 uint32_t VentilationStateMachine::get_stoss_pos(uint32_t now) const {
-    return (now - stoss_cycle_start) % STOSS_SUPER_CYCLE_MS;
+    return elapsed_ms(now, stoss_cycle_start) % STOSS_SUPER_CYCLE_MS;
 }
 
 /**
@@ -241,7 +241,7 @@ uint32_t VentilationStateMachine::get_remaining_duration(uint32_t now) const {
         return STOSS_SUPER_CYCLE_MS - get_stoss_pos(now);
     }
     if (ventilation_duration_ms == 0) return 0;
-    uint32_t elapsed = now - ventilation_start_time;
+    const uint32_t elapsed = elapsed_ms(now, ventilation_start_time);
     if (elapsed >= ventilation_duration_ms) return 0;
     return ventilation_duration_ms - elapsed;
 }
