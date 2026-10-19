@@ -1,5 +1,5 @@
 {
     "project_version": "0.10.47",
     "project_date": "2026-10-19",
-    "project_description": "Child lock: the panel LEDs come back after the reject/acknowledge flash."
+    "project_description": "Durchlüften no longer falls back to heat recovery when received from a peer; child lock LEDs restored after the flash."
 }

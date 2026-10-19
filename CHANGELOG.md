@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **"Durchlüften" jumped straight back to "Wärmerückgewinnung"**
+  ([#54](https://github.com/thomasengeroff-dotcom/VentoSync/issues/54)) — the device that received the mode change via
+  ESP-NOW started the Durchlüften timer with its own `millis()`, which was later than the timestamp the
+  `VentilationController` loop had taken *before* draining the packet queue. `now - start` wrapped to ~49 days, so with
+  a timer configured (`vent_timer` > 0, default 30 min) the timer expired in the same loop: the device fell back to heat
+  recovery and — as Master — sent "Wärmerückgewinnung" back to the whole room within about a second. The loop now takes
+  its timestamp after the drain, and the state machine counts a start time in the future as "just started"
+  (`VentilationStateMachine::elapsed_ms()`, unit test T-8e). The same wrap could shift the **Stoßlüftung** schedule anchor of
+  a device that adopted the mode from a peer by about an hour; fixed by the same change.
 - **Child lock: all LEDs stayed off after the flash**
   ([#57](https://github.com/thomasengeroff-dotcom/VentoSync/issues/57)) — with the child lock active, a button press
   flashes the panel 3× (2× when the lock is toggled with the Mode button). The flash switches the LEDs directly, past
@@ -16,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (a second press within 30 s, or a mode change shortly before) it saw "nothing changed" and left every LED off —
   including the dimmed power LED — until the next mode or level change. `restore_leds_after_flash()` now forces the redraw.
 
-No ESP-NOW protocol change — devices can be updated individually.
+No ESP-NOW protocol change. The Durchlüften fix acts on the receiving device — update all devices of a room.
 
 ## [0.10.46] - 2026-10-18
 

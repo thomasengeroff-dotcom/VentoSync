@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-18
+// Modified:    2026-10-19
 // ==========================================================================
 #pragma once
 
@@ -340,13 +340,16 @@ public:
   /// @brief Main loop — ticks the state machine, refreshes hardware, and
   /// schedules periodic sync broadcasts.
   void loop() override {
-    // FIXED H-3: Single consistent timestamp for entire loop iteration
-    const uint32_t now = millis();
-
     // 0. Drain ESP-NOW receive queue (thread-safe, main-loop processing)
     // This must run FIRST so that incoming state/discovery packets are
     // available before we make any state machine decisions this iteration.
     process_queued_packets();
+
+    // FIXED H-3: Single consistent timestamp for the rest of the iteration.
+    // Taken AFTER the drain: packet handlers start timers with their own,
+    // later millis(); an older `now` made `now - start` wrap and a received
+    // "Durchlüften" expired at once (GitHub issue #54).
+    const uint32_t now = millis();
 
     // 1. Update State Machine (returns true on discrete state flip)
     bool dirty = state_machine.update(now);
