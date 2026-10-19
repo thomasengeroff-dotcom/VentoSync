@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.46",
-    "project_date": "2026-10-18",
-    "project_description": "Code-review fixes: replay expiry follows the ESP-NOW sync interval, exact-duplicate RX guard, HMAC via mbedtls on the device."
+    "project_version": "0.10.47",
+    "project_date": "2026-10-19",
+    "project_description": "Child lock: the panel LEDs come back after the reject/acknowledge flash."
 }
