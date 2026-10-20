@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,011,136 / 2,031,616 B (~20 KB headroom, 0.10.46) — CI compiles it only after the merge (PRs build
+  logger INFO. Image 2,020,640 / 2,031,616 B (~11 KB headroom, 0.10.48) — CI compiles it only after the merge (PRs build
   `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
@@ -342,7 +342,10 @@ Complex YAML lambda logic is extracted into focused header files:
   - `defaults.h` (`ventosync::defaults`): factory defaults of the Smart-Automatik settings (see *Factory defaults*).
 - **`ventilation_group/ventilation_packet.h`** (pure, unit-tested): wire format (`VentilationPacket`, `MessageType`,
   `ROOM_FLAG_*`, `PROTOCOL_VERSION`), `PeerState`, `ventosync::packet::parse()` and `update_peer_state()`.
-- **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/set`).
+- **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/meta`, `POST /set`).
+  The server runs in its own task: read entities / `peers` only in `loop()` (it serializes `/state` and `/meta`),
+  never in the request handler. Entities are registered by JSON key (tables in `__init__.py`); `/set` accepts only
+  those keys, via POST with the `X-VentoSync` header and same origin (CSRF).
 
 ### Type Safety & Best Practices
 

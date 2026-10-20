@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-19
+// Modified:    2026-10-20
 // ==========================================================================
 #pragma once
 
@@ -255,6 +255,11 @@ public:
   void set_nox_boost_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { nox_boost_enabled_global_ = g; }
   /** @brief Sets the level override duration reference (room-wide setting, minutes). */
   void set_auto_override_duration_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_override_duration_global_ = g; }
+
+  /** @return true while vacation mode is active (vacation_state != 0, leading or following). */
+  bool is_vacation_active() const {
+    return vacation_state_global_ != nullptr && vacation_state_global_->value() != 0;
+  }
 
   /** @return true if the window guard safety lock is active. */
   bool is_window_guard_active() const { return window_guard_active_; }

@@ -22,7 +22,7 @@
 //              pure packet validation. No ESPHome dependencies — unit-tested.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-18
+// Modified:    2026-10-20
 // ==========================================================================
 #pragma once
 
@@ -150,6 +150,7 @@ struct PeerState {
   std::array<uint8_t, 6> mac;
   uint8_t device_id;
   uint8_t current_mode;
+  uint8_t current_mode_index; ///< Sender's UI mode index (0 = Smart-Automatik … 4 = Aus, validated by parse()).
   uint8_t fan_intensity;
   bool phase_state;
   float t_in;
@@ -277,6 +278,7 @@ inline void update_peer_state(esphome::PeerState &peer, const esphome::Ventilati
   peer.last_seen_ms = now_ms;
   peer.device_id = pkt.device_id;
   peer.current_mode = pkt.current_mode;
+  peer.current_mode_index = pkt.current_mode_index;
   peer.fan_intensity = pkt.fan_intensity;
   peer.phase_state = pkt.phase_state;
   peer.t_in = pkt.t_in;

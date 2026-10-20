@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.48] - 2026-10-20
+
+### Added
+
+- **Web dashboard: Automatik-Status banner and room chips** — the top card shows the `Automatik-Status` text (what the
+  ventilation does and why) with a coloured edge per `automatik_grund`, plus chips for the active room inputs: vacation
+  mode, window open (paused / guard ignored), NOx boost, level override with remaining time, presence anywhere in the
+  room, Smart Climate Control state, child lock, filter change due.
+- **Web dashboard: all settings** — besides mode, level and the Smart-Automatik thresholds the dashboard now also sets
+  the Durchlüften duration, override duration, summer cooling threshold, Smart Climate Control (switch, CO2 threshold,
+  max level, CO2 emergency limit), NOx boost (room-wide switch; threshold on the SGP41 variants), vacation mode
+  (operating mode, level), ESP-NOW sync interval and the child lock. Room-wide settings carry a **RAUMWEIT** tag. Number
+  fields take their limits from the device (new endpoint `/meta`, built from the entity definitions), so values outside
+  the HA slider range are no longer sent and silently rejected; every change briefly outlines the control teal (applied)
+  or red (rejected).
+- **Web dashboard: filter reset** — button "Filterwechsel bestätigen" (with confirmation) in the *Wartung* card, same
+  action as the HA button `Filterwechsel (Reset)`.
+- **Web dashboard: system info** — firmware version (also in the header instead of the fixed "v2.0") and variant,
+  uptime, cause of the last restart, Wi-Fi signal, free RAM and its minimum since boot; **MASTER** badge on device 1.
+- **Web dashboard: peer cards** — age of the last packet, status dot amber when the peer's data is too old for the room
+  fusion, **MASTER** badge, and the peer's own room inputs (Präsenz, Fenster offen, Klima an, NOx).
+
+### Fixed
+
+- **Peers in Smart-Automatik shown as "WRG" or "Durchlüften"** — the dashboard derived the peer's mode from the
+  running state-machine mode; `PeerState` now keeps the packet's UI mode index (`current_mode_index`, already on the
+  wire — no protocol change, unit test T-8b), so the card says "Automatik".
+- **Peer direction shown as "OUT" in mode Aus** — the badge now shows `--` while the peer is off.
+- **Dashboard documentation** listed features that did not exist (on-device setup of the IDs, daily min / max / average
+  values, absolute humidity in the chart); the guides now describe the actual dashboard. IDs and phase stay on the
+  native ESPHome page (`/`), linked from the dashboard.
+
+### Security / Stability
+
+- **M-1: Cross-site requests could change settings** — `/set` was a plain `GET`, so any web page opened in the same
+  network could switch the ventilation via a hidden image or link. `/set` now only accepts `POST` with the header
+  `X-VentoSync` (`405` / `403` otherwise), and `/state`, `/meta` and `/set` reject a foreign `Origin` with `403` (same
+  rule as ESPHome's own web server). Scripts: `curl -X POST -H 'X-VentoSync: 1' -d 'id=…&val=…' http://<ip>/set`.
+- **M-2: Web server read the peer list while ESP-NOW changed it** — `/state` iterated `VentilationController::peers`
+  in the web server task while the main loop could erase entries (LRU eviction at 10 peers, timeout cleanup), a possible
+  crash. `/state` is now serialized in the component's `loop()` (once per second while a page polls) and the handler
+  only copies the string; the first request after a pause answers `503` for ~100 ms and the page retries.
+
 ## [0.10.47] - 2026-10-19
 
 ### Fixed

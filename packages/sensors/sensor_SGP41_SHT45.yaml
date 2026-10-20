@@ -33,7 +33,7 @@
 #              the self-heating near the Traco power supply.
 # Author:      Thomas Engeroff
 # Created:     2026-10-15
-# Modified:    2026-10-16
+# Modified:    2026-10-20
 # ==========================================================================
 
 globals:
@@ -164,7 +164,9 @@ sensor:
       return VentilationLogic::voc_index_to_co2eq(
           sensor_value_or_nan(id(sgp41_sensor), id(sgp41_voc_index).state, last_ok_ms));
 
-# Web dashboard: VOC / NOx index rows, CO2 value labelled "CO2-Äquivalent (VOC)"
+# Web dashboard: VOC / NOx index rows, CO2 value labelled "CO2-Äquivalent (VOC)",
+# NOx boost threshold setting
 wrg_dashboard:
   voc_index_id: sgp41_voc_index
   nox_index_id: sgp41_nox_index
+  nox_boost_threshold_id: nox_boost_threshold

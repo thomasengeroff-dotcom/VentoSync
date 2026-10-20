@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-19
+// Modified:    2026-10-20
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -2045,6 +2045,7 @@ bool test_peer_state_from_packet() {
   auto pkt = valid_packet();
   pkt.device_id = 3;
   pkt.fan_intensity = 6;
+  pkt.current_mode_index = 0; // Smart-Automatik (shown by the dashboard peer cards)
   pkt.room_co2 = 850.0f;
   pkt.room_flags = esphome::ROOM_FLAG_HVAC_ENABLED | esphome::ROOM_FLAG_WINDOW_OPEN | esphome::ROOM_FLAG_NOX_ACTIVE;
   pkt.vacation_pre_mode_index = 0xFF;
@@ -2053,6 +2054,7 @@ bool test_peer_state_from_packet() {
   ventosync::packet::update_peer_state(peer, pkt, mac, 12345u);
   TEST_ASSERT(peer.mac[0] == 1 && peer.mac[5] == 6);
   TEST_ASSERT(peer.last_seen_ms == 12345u && peer.device_id == 3 && peer.fan_intensity == 6);
+  TEST_ASSERT(peer.current_mode_index == 0);
   TEST_ASSERT(peer.room_co2 == 850.0f);
   TEST_ASSERT(peer.window_open && peer.nox_active);
   TEST_ASSERT(!peer.hvac_ac_active && !peer.presence && !peer.nox_strong);

@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.47",
-    "project_date": "2026-10-19",
-    "project_description": "Fixes: PID integral windup delayed Smart-Automatik by hours, received Durchlüften fell back to heat recovery, min level after a restart, child lock LEDs."
+    "project_version": "0.10.48",
+    "project_date": "2026-10-20",
+    "project_description": "Web dashboard: Automatik-Status banner, room chips, all settings, filter reset, system info; CSRF protection for /set; thread-safe /state."
 }
