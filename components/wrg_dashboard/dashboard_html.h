@@ -21,7 +21,7 @@
 // Description: HTML/CSS strings for the WRG web dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-18
+// Modified:    2026-10-20
 // ==========================================================================
 #pragma once
 
@@ -45,6 +45,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             accent: '#03dac6',
             accentHover: '#01b4a0',
             danger: '#cf6679',
+            warn: '#f2b84b',
           }
         }
       }
@@ -72,23 +73,38 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
 </head>
 <body class="bg-bg text-gray-200 min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col items-center">
   <div class="w-full max-w-5xl space-y-6">
-    
+
     <header class="text-center space-y-2">
-      <h1 class="text-3xl font-bold tracking-tight text-white mb-8">
-        WRG Lüftung Dashboard 
-        <span class="text-sm font-normal text-gray-500 ml-2">(v2.0)</span>
+      <h1 class="text-3xl font-bold tracking-tight text-white mb-6">
+        WRG Lüftung Dashboard
+        <span id="hdr_version" class="text-sm font-normal text-gray-500 ml-2"></span>
       </h1>
     </header>
-    
+
+    <!-- Automatik-Status: what the ventilation does and why, plus the active room inputs -->
+    <div id="status_card" class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 border-l-4">
+      <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">Automatik-Status</div>
+      <div id="val_auto_status" class="text-xl font-semibold text-white">--</div>
+      <div id="status_chips" class="flex flex-wrap gap-2 mt-3 empty:hidden"></div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      
-      <!-- General Settings / Device Info -->
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Grundeinstellungen</h2>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-ID:</span> <span class="font-medium text-lg" id="val_device_id">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Aktuelle Floor ID:</span> <span class="font-medium text-lg" id="val_floor_id">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Raum (Room ID):</span> <span class="font-medium text-lg" id="val_room_id">--</span></div>
+
+      <!-- Device & system info -->
+      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-3">
+        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Gerät &amp; System</h2>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-ID:</span> <span class="font-medium text-lg"><span id="val_device_id">--</span> <span id="master_badge" class="hidden text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">MASTER</span></span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Floor / Raum:</span> <span class="font-medium text-lg"><span id="val_floor_id">--</span> / <span id="val_room_id">--</span></span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-Phase (A/B):</span> <span class="font-medium text-lg" id="val_phase">--</span></div>
+        <div class="text-xs text-gray-500">IDs und Phase ändern: <a href="/" class="text-accent hover:underline">ESPHome-Seite</a></div>
+        <div class="border-t border-gray-700 pt-3 space-y-1 text-sm">
+          <div class="flex justify-between"><span class="text-gray-400">Firmware:</span> <span id="sys_version">--</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">Variante:</span> <span id="sys_variant">--</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">Laufzeit:</span> <span id="sys_uptime">--</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">Letzter Neustart:</span> <span id="sys_reset">--</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">WLAN-Signal:</span> <span id="sys_rssi">--</span></div>
+          <div class="flex justify-between"><span class="text-gray-400">Freier RAM (min.):</span> <span id="sys_heap">--</span></div>
+        </div>
       </div>
 
       <!-- Status & Sensors -->
@@ -124,81 +140,40 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filter Betriebstage:</span> <span class="font-medium text-lg" id="val_filter_operating_days">--</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filterwechsel Alarm:</span> <span class="font-medium text-lg" id="val_filter_change_alarm">--</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Radar Präsenz:</span> <span class="font-medium text-lg" id="val_radar_presence">--</span></div>
+          <button id="btn_filter_reset" onclick="filterReset()" class="hidden w-full text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg p-2 transition-colors">Filterwechsel bestätigen (Zähler zurücksetzen)</button>
         </div>
       </div>
 
-      <!-- Controls -->
+      <!-- Controls: rows are rendered from SETTINGS (below) and shown only when /state has the key -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 md:col-span-2 lg:col-span-3">
         <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Einstellungen</h2>
-        
+        <p class="text-xs text-gray-500 -mt-2"><span class="text-accent/80 font-semibold">RAUMWEIT</span> = gilt für alle Geräte des Raums und wird per ESP-NOW verteilt.</p>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
-          <!-- Left group: Main controls -->
-          <div>
-            <span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Steuerung</span>
-            <div class="space-y-4">
-              <div class="flex flex-col space-y-2">
-                <span class="text-sm text-gray-400 font-medium">Lüfter Modus</span>
-                <select id="luefter_modus" onchange="sendSet('luefter_modus', this.value)" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5 transition-colors cursor-pointer">
-                  <option value="Smart-Automatik">Smart-Automatik</option>
-                  <option value="Wärmerückgewinnung">Wärmerückgewinnung</option>
-                  <option value="Durchlüften">Durchlüften</option>
-                  <option value="Stoßlüftung">Stoßlüftung</option>
-                  <option value="Aus">Aus</option>
-                </select>
-              </div>
-
-              <div class="flex flex-col space-y-2">
-                <div class="flex justify-between"><span class="text-sm text-gray-400 font-medium">Lüfter Intensität</span><span id="label_fan_intensity" class="font-bold text-accent">--</span></div>
-                <input type="range" id="fan_intensity_display" min="1" max="10" step="1" onchange="sendSet('fan_intensity_display', this.value)" oninput="document.getElementById('label_fan_intensity').innerText = this.value" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer mt-2">
-                <span id="override_hint" class="text-xs text-gray-500"></span>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                  <span class="text-sm text-gray-300">Autom. Min Stufe</span>
-                  <input type="number" id="automatik_min_luefterstufe" onchange="sendSet('automatik_min_luefterstufe', this.value)" class="bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block w-20 p-1.5 text-center">
+          <div class="space-y-6">
+            <div>
+              <span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Steuerung</span>
+              <div class="space-y-4">
+                <div class="flex flex-col space-y-2">
+                  <span class="text-sm text-gray-400 font-medium">Lüfter Modus <span class="text-[10px] font-semibold text-accent/80">RAUMWEIT</span></span>
+                  <select id="luefter_modus" data-sel="luefter_modus" onchange="sendSet('luefter_modus', this.value, this)" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5 transition-colors cursor-pointer"></select>
                 </div>
-                <div class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                  <span class="text-sm text-gray-300">Autom. Max Stufe</span>
-                  <input type="number" id="automatik_max_luefterstufe" onchange="sendSet('automatik_max_luefterstufe', this.value)" class="bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block w-20 p-1.5 text-center">
-                </div>
-              </div>
 
-              <!-- Bluetooth proxy: only shown when /state reports bt_proxy (bluetooth_proxy.yaml) -->
-              <div id="bt_proxy_row" class="hidden">
-                <label for="bt_proxy" class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50 cursor-pointer">
-                  <span class="text-sm text-gray-300">Bluetooth Proxy <span class="text-xs text-gray-500">(experimentell)</span></span>
-                  <input type="checkbox" id="bt_proxy" onchange="sendSet('bt_proxy', this.checked ? 1 : 0)" class="w-5 h-5 accent-accent cursor-pointer">
-                </label>
+                <div class="flex flex-col space-y-2">
+                  <div class="flex justify-between"><span class="text-sm text-gray-400 font-medium">Lüfter Intensität</span><span id="label_fan_intensity" class="font-bold text-accent">--</span></div>
+                  <input type="range" id="fan_intensity_display" min="1" max="10" step="1" onchange="sendSet('fan_intensity_display', this.value, this)" oninput="document.getElementById('label_fan_intensity').innerText = this.value" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer mt-2">
+                  <span id="override_hint" class="text-xs text-gray-500"></span>
+                </div>
+                <div id="grp_control" class="space-y-3"></div>
               </div>
             </div>
+            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Klima-Koordination</span><div id="grp_hvac" class="space-y-3"></div></div>
+            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Urlaubsmodus</span><div id="grp_vac" class="space-y-3"></div></div>
           </div>
-
-          <!-- Right group: Thresholds -->
-          <div>
-            <span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Schwellwerte & Automatik</span>
-            <div class="space-y-4">
-              <div class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                <span class="text-sm text-gray-300">CO2 Schwellwert</span>
-                <div class="flex items-center gap-2">
-                  <input type="number" id="auto_co2_threshold" onchange="sendSet('auto_co2_threshold', this.value)" class="bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block w-20 p-1.5 text-center">
-                  <span class="text-xs text-gray-500">ppm</span>
-                </div>
-              </div>
-              
-              <div class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                <span class="text-sm text-gray-300">Feuchte Schwellwert</span>
-                <div class="flex items-center gap-2">
-                  <input type="number" id="auto_humidity_threshold" onchange="sendSet('auto_humidity_threshold', this.value)" class="bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block w-20 p-1.5 text-center">
-                  <span class="text-xs text-gray-500">%</span>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                <span class="text-sm text-gray-300">Anwesenheit Anpassung</span>
-                <input type="number" id="auto_presence_slider" onchange="sendSet('auto_presence_slider', this.value)" class="bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block w-20 p-1.5 text-center">
-              </div>
-            </div>
+          <div class="space-y-6">
+            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Smart-Automatik</span><div id="grp_auto" class="space-y-3"></div></div>
+            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">NOx-Stoßlüftung</span><div id="grp_nox" class="space-y-3"></div></div>
+            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Netzwerk</span><div id="grp_net" class="space-y-3"></div></div>
           </div>
         </div>
       </div>
@@ -216,7 +191,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
           <canvas id="historyChart"></canvas>
         </div>
       </div>
-      
+
     </div>
   </div>
 
@@ -235,6 +210,16 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
     function fmtTxt(v) {
         return (v !== undefined && v !== null && v !== "") ? sanitizeHTML(String(v)) : "--";
     }
+    function fmtUptime(s) {
+        if (s === undefined || s === null) return "--";
+        const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+        return (d > 0 ? d + " d " : "") + h + " h " + m + " min";
+    }
+    function chip(text, tone) {
+        const cls = {accent: 'text-accent bg-accent/10 border-accent/30', warn: 'text-warn bg-warn/10 border-warn/30',
+                     danger: 'text-danger bg-danger/10 border-danger/30', gray: 'text-gray-300 bg-gray-700/40 border-gray-600'}[tone];
+        return `<span class="text-xs font-medium px-2.5 py-1 rounded-full border ${cls}">${sanitizeHTML(text)}</span>`;
+    }
     // Air quality block shown on every device card. Values come from the local
     // sensors or, for peers, from the ESP-NOW packet (SCD43 or BME680 eCO2).
     function airQualityBlock(co2, rating, temp, hum) {
@@ -245,6 +230,73 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
                 <div class="flex justify-between"><span>Temperatur:</span> <strong class="text-gray-400">${fmtNum(temp, 1, " °C")}</strong></div>
                 <div class="flex justify-between"><span>Feuchte:</span> <strong class="text-gray-400">${fmtNum(hum, 1, " %")}</strong></div>
             </div>`;
+    }
+
+    // Settings rows: [type (n = number, t = toggle, s = select), /state key, label, unit, room-wide].
+    // Limits and select options come from /meta (the YAML entity definitions).
+    const SETTINGS = {
+      grp_control: [['n', 'vent_timer', 'Durchlüften-Dauer', 'min (0 = unbegrenzt)', 1],
+                    ['t', 'child_lock', 'Kindersicherung (Tasten sperren)', '', 0],
+                    ['t', 'bt_proxy', 'Bluetooth Proxy (experimentell)', '', 0]],
+      grp_auto: [['n', 'automatik_min_luefterstufe', 'Min. Stufe', '', 1],
+                 ['n', 'automatik_max_luefterstufe', 'Max. Stufe', '', 1],
+                 ['n', 'auto_co2_threshold', 'CO2-Grenzwert', 'ppm', 1],
+                 ['n', 'auto_humidity_threshold', 'Feuchte-Grenzwert', '%', 1],
+                 ['n', 'auto_presence_slider', 'Anwesenheit-Anpassung (manuelle Modi)', 'Stufen', 1],
+                 ['n', 'auto_override_duration', 'Übersteuerung Dauer', 'min', 1],
+                 ['n', 'auto_summer_cooling_threshold', 'Sommerkühlung Schwelle', '°C', 0]],
+      grp_hvac: [['t', 'hvac_enabled', 'Klima-Koordination aktiv', '', 1],
+                 ['n', 'hvac_co2_threshold', 'CO2-Grenzwert (Klima an)', 'ppm', 1],
+                 ['n', 'hvac_max_fan_level', 'Max. Stufe (Klima an)', '', 1],
+                 ['n', 'hvac_emergency_co2', 'CO2-Notfallgrenze', 'ppm', 1]],
+      grp_nox: [['t', 'nox_boost', 'NOx-Stoßlüftung aktiv', '', 1],
+                ['n', 'nox_boost_threshold', 'Schwelle (dieses Gerät)', 'Index', 0]],
+      grp_vac: [['s', 'vacation_mode', 'Betriebsmodus', '', 0],
+                ['n', 'vacation_intensity', 'Intensität', '', 0]],
+      grp_net: [['n', 'sync_interval_config', 'ESP-NOW Sync-Intervall', 'min', 1]],
+    };
+    const INPUT_CLS = 'bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block p-1.5';
+    function renderSettings() {
+      for (const [grp, rows] of Object.entries(SETTINGS)) {
+        document.getElementById(grp).innerHTML = rows.map(([t, k, label, unit, rw]) => {
+          const badge = rw ? ' <span class="text-[10px] font-semibold text-accent/80">RAUMWEIT</span>' : '';
+          let ctl;
+          if (t === 'n') {
+            ctl = `<span class="flex items-center gap-2 shrink-0"><input type="number" id="${k}" data-num="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-20 text-center"><span class="text-xs text-gray-500">${unit}</span></span>`;
+          } else if (t === 't') {
+            ctl = `<input type="checkbox" id="${k}" data-sw="${k}" onchange="sendSet('${k}', this.checked ? 1 : 0, this)" class="w-5 h-5 accent-accent cursor-pointer shrink-0">`;
+          } else {
+            ctl = `<select id="${k}" data-sel="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-44 cursor-pointer"></select>`;
+          }
+          return `<label data-row="${k}" class="hidden flex justify-between items-center gap-3 bg-gray-800/50 p-3 rounded-lg border border-gray-700/50"><span class="text-sm text-gray-300">${label}${badge}</span>${ctl}</label>`;
+        }).join('');
+      }
+    }
+    renderSettings();
+
+    // Limits of the writable settings (/meta, built once by the device)
+    let META = null;
+    async function loadMeta() {
+      try {
+        const res = await fetch('/meta');
+        if (!res.ok) { setTimeout(loadMeta, 1000); return; }
+        META = await res.json();
+        for (const [k, [min, max, step]] of Object.entries(META.numbers || {})) {
+          const el = document.getElementById(k);
+          if (el) { el.min = min; el.max = max; el.step = step; }
+        }
+        for (const [k, opts] of Object.entries(META.selects || {})) {
+          const el = document.getElementById(k);
+          if (el) el.innerHTML = opts.map(o => `<option value="${sanitizeHTML(o)}">${sanitizeHTML(o)}</option>`).join('');
+        }
+        if ((META.buttons || []).includes('filter_reset')) {
+          document.getElementById('btn_filter_reset').classList.remove('hidden');
+        }
+        updateData();
+      } catch (e) {
+        console.error('Error fetching meta:', e);
+        setTimeout(loadMeta, 2000);
+      }
     }
 
     // Chart Setup
@@ -305,7 +357,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         animation: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { 
+          legend: {
             labels: { color: '#e5e7eb', usePointStyle: true, boxWidth: 8 },
             position: 'top'
           },
@@ -319,7 +371,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
           }
         },
         scales: {
-          x: { 
+          x: {
             ticks: { color: '#9ca3af', maxRotation: 0, autoSkipPadding: 15 },
             grid: { color: '#374151', drawBorder: false }
           },
@@ -351,32 +403,141 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       }
     });
 
+    // Border colour of the status card per automatik_grund key (auto_status.h)
+    const REASON_TONE = {co2_notfall: 'danger', schimmelschutz: 'danger', nox: 'danger',
+                         fenster: 'warn', urlaub: 'warn', uebersteuerung: 'warn', keine_daten: 'warn',
+                         co2: 'accent', feuchte: 'accent'};
+    const TONE_BORDER = {danger: '#cf6679', warn: '#f2b84b', accent: '#03dac6'};
+    const MODE_SHORT = ["Automatik", "WRG", "Durchlüften", "Stoßlüftung", "Aus"]; // UI mode index 0-4
+
+    function renderStatus(data) {
+      document.getElementById('val_auto_status').textContent = data.auto_status || '--';
+      document.getElementById('status_card').style.borderLeftColor = TONE_BORDER[REASON_TONE[data.auto_reason]] || '#4b5563';
+
+      const chips = [];
+      if (data.vacation_active) chips.push(chip('Urlaubsmodus', 'warn'));
+      if (data.window_guard) chips.push(chip(data.window_paused ? 'Fenster offen – pausiert' : 'Fenster offen (Sperre ignoriert)', 'warn'));
+      if (data.auto_reason === 'nox') chips.push(chip('NOx-Stoßlüftung', 'danger'));
+      if (data.luefter_modus === 'Smart-Automatik' && Number(data.auto_override_min) > 0)
+        chips.push(chip(`Übersteuert – noch ${data.auto_override_min} min`, 'warn'));
+      if (data.room_presence) chips.push(chip('Anwesenheit im Raum', 'accent'));
+      if (data.hvac_enabled && data.hvac_status) chips.push(chip('Klima: ' + data.hvac_status, 'accent'));
+      if (data.child_lock) chips.push(chip('Kindersicherung aktiv', 'gray'));
+      if (data.filter_change_alarm) chips.push(chip('Filterwechsel fällig', 'danger'));
+      document.getElementById('status_chips').innerHTML = chips.join('');
+    }
+
+    function renderSystem(data) {
+      const sys = data.sys || {};
+      document.getElementById('hdr_version').textContent = sys.version ? 'v' + sys.version : '';
+      document.getElementById('sys_version').textContent = sys.version || '--';
+      document.getElementById('sys_variant').textContent = sys.variant || '--';
+      document.getElementById('sys_uptime').textContent = fmtUptime(sys.uptime_s);
+      document.getElementById('sys_reset').textContent = sys.reset_reason || '--';
+      document.getElementById('sys_rssi').textContent = (sys.rssi !== undefined) ? sys.rssi + ' dBm' : '--';
+      document.getElementById('sys_heap').textContent = (sys.heap_free !== undefined)
+        ? `${Math.round(sys.heap_free / 1024)} KB (${Math.round(sys.heap_min / 1024)} KB)` : '--';
+      document.getElementById('master_badge').classList.toggle('hidden', !data.is_master);
+    }
+
+    // Shows each settings row whose key /state reports and syncs its value
+    // (not while the user edits it); hides groups without visible rows.
+    function renderSettingValues(data) {
+      document.querySelectorAll('[data-row]').forEach(row => {
+        const k = row.dataset.row;
+        row.classList.toggle('hidden', data[k] === undefined);
+        const el = document.getElementById(k);
+        if (data[k] === undefined || document.activeElement === el) return;
+        if (el.type === 'checkbox') el.checked = !!data[k];
+        else if (data[k] !== null) el.value = data[k];
+      });
+      document.querySelectorAll('[data-group]').forEach(g => {
+        g.classList.toggle('hidden', g.querySelector('[data-row]:not(.hidden)') === null);
+      });
+    }
+
+    function peerCard(title, local, modeLabel, speed, phaseBadge, rpm, boardT, pid, flags, dotCls, dotTitle, air) {
+      return `<div class="${local ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-800/80 border-gray-700 hover:border-gray-600 transition-colors'} rounded-lg p-4 border">
+            <div class="font-bold ${local ? 'text-gray-300' : 'text-white'} mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
+              <span>${title}</span>
+              <span class="w-2 h-2 rounded-full ${dotCls}" title="${dotTitle}"></span>
+            </div>
+            <div class="flex justify-between text-sm mb-2">
+                <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(modeLabel)}</strong></span>
+                <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(speed))}</strong> ${phaseBadge}</span>
+            </div>
+            ${flags ? `<div class="flex flex-wrap gap-1 mb-1">${flags}</div>` : ''}
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
+                <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${rpm}</strong></div>
+                <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${boardT}</strong></div>
+                <div class="flex justify-between"><span>PID:</span> <strong class="text-accent/80">${pid}</strong></div>
+            </div>
+            ${air}
+        </div>`;
+    }
+    const BADGE_IN = "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>";
+    const BADGE_OUT = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
+    const BADGE_NONE = "<span class='text-gray-400 font-bold px-2 py-0.5 bg-gray-700/50 rounded-full text-xs'>--</span>";
+    const MASTER_TAG = " <span class='text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full'>MASTER</span>";
+    const miniFlag = t => `<span class="text-[10px] uppercase tracking-wide text-gray-300 bg-gray-700/60 px-1.5 py-0.5 rounded">${t}</span>`;
+    const pct = v => (v !== undefined && v !== null && !isNaN(v)) ? Math.round(v * 100) + "%" : "--";
+
+    function renderPeers(data) {
+      document.getElementById('peers_card').classList.remove('hidden');
+      const dir = data.direction_display || "";
+      const localBadge = dir.includes("Zuluft") ? BADGE_IN : (dir.includes("Abluft") ? BADGE_OUT : BADGE_NONE);
+      const localMode = data.luefter_modus === 'Wärmerückgewinnung' ? 'WRG' : (data.luefter_modus || '--');
+      const localFlags = [data.radar_presence ? miniFlag('Präsenz') : ''].join('');
+
+      let html = peerCard(`Gerät ${sanitizeHTML(String(data.device_id || "--"))}${data.is_master ? MASTER_TAG : ''} (lokal)`, true,
+          localMode, data.fan_intensity_display || "--", localBadge, fmtNum(data.fan_rpm, 0, ""),
+          fmtNum(data.temperature, 1, " °C"), pct(data.pid_demand), localFlags, 'bg-gray-400', 'Dieses Gerät',
+          airQualityBlock(data.room_co2, data.room_co2_bewertung, data.room_temperature, data.room_humidity));
+
+      (data.peers || []).forEach(peer => {
+        const mode = MODE_SHORT[peer.mode_index] || "Unbekannt";
+        // Direction only means something while the fan runs
+        const badge = peer.mode_index === 4 ? BADGE_NONE : (peer.phase ? BADGE_IN : BADGE_OUT);
+        const flags = [peer.presence ? miniFlag('Präsenz') : '', peer.window ? miniFlag('Fenster offen') : '',
+                       peer.ac ? miniFlag('Klima an') : '', peer.nox ? miniFlag('NOx') : ''].join('');
+        const seen = `zuletzt vor ${peer.age_s} s`;
+        html += peerCard(`Gerät ${sanitizeHTML(String(peer.device_id))}${peer.master ? MASTER_TAG : ''} <span class="text-xs font-normal text-gray-500">${seen}</span>`, false,
+            mode, peer.speed, badge, fmtNum(peer.rpm, 0, ""), fmtNum(peer.board_t, 1, " °C"), pct(peer.pid_demand), flags,
+            peer.fresh ? 'bg-accent' : 'bg-warn', peer.fresh ? 'Aktuell' : 'Veraltet: ' + seen,
+            airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity));
+      });
+      document.getElementById('peers_container').innerHTML = html;
+    }
+
+    let retryPending = false;
     async function updateData() {
       try {
         const res = await fetch('/state');
+        if (res.status === 503 && !retryPending) {
+          // The device builds /state only while a client polls — ready within ~100 ms
+          retryPending = true;
+          setTimeout(() => { retryPending = false; updateData(); }, 300);
+          return;
+        }
         if (!res.ok) return;
         const data = await res.json();
-        
+
         // Update direct text elements
-        const ids = ["device_id", "floor_id", "room_id", "phase", 
-                     "temperature", "pressure", "outdoor_humidity", "temp_zuluft", "temp_abluft", 
-                     "heat_recovery_efficiency", "fan_rpm", "room_co2", 
+        const ids = ["device_id", "floor_id", "room_id", "phase",
+                     "temperature", "pressure", "outdoor_humidity", "temp_zuluft", "temp_abluft",
+                     "heat_recovery_efficiency", "fan_rpm", "room_co2",
                      "room_temperature", "room_humidity", "filter_operating_days"];
-        
+
         ids.forEach(id => {
           const el = document.getElementById("val_" + id);
-          if (el && data[id] !== null) {
+          if (el && data[id] !== null && data[id] !== undefined) {
             let num = parseFloat(data[id]);
             let strVal = typeof data[id] === 'string' ? data[id] : String(data[id]);
-            el.textContent = isNaN(num) ? sanitizeHTML(strVal) : (Number.isInteger(num) ? num : num.toFixed(1));
+            el.textContent = isNaN(num) ? strVal : (Number.isInteger(num) ? num : num.toFixed(1));
           }
         });
 
-        // Direction display
-        const dirEl = document.getElementById("val_direction_display");
-        if (dirEl && data.direction_display !== null) {
-          dirEl.textContent = sanitizeHTML(String(data.direction_display));
-        }
+        document.getElementById("val_direction_display").textContent = data.direction_display || "--";
 
         // SGP41 board: label the VOC-based CO2 equivalent, show VOC / NOx index
         if (data.voc_index !== undefined) {
@@ -391,38 +552,23 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
             (data.nox_index === null) ? "--" : Math.round(data.nox_index);
         }
 
-        // CO2 Bewertung
-        const co2BewEl = document.getElementById("val_room_co2_bewertung");
-        if (co2BewEl && data.room_co2_bewertung !== null) {
-          co2BewEl.textContent = sanitizeHTML(String(data.room_co2_bewertung));
-        }
+        document.getElementById("val_room_co2_bewertung").textContent = data.room_co2_bewertung || "--";
 
         // Binary sensors
         const alarmEl = document.getElementById("val_filter_change_alarm");
-        if (alarmEl) {
-          alarmEl.innerText = data.filter_change_alarm ? "ALARM" : "OK";
-          alarmEl.className = data.filter_change_alarm ? "font-bold text-danger text-lg" : "font-medium text-accent text-lg";
-        }
-        
+        alarmEl.innerText = data.filter_change_alarm ? "ALARM" : "OK";
+        alarmEl.className = data.filter_change_alarm ? "font-bold text-danger text-lg" : "font-medium text-accent text-lg";
+
         const radarEl = document.getElementById("val_radar_presence");
-        if (radarEl) {
-          radarEl.innerText = data.radar_presence ? "Ja" : "Nein";
-          radarEl.className = data.radar_presence ? "font-medium text-accent text-lg" : "font-medium text-gray-400 text-lg";
-        }
+        radarEl.innerText = data.radar_presence ? "Ja" : "Nein";
+        radarEl.className = data.radar_presence ? "font-medium text-accent text-lg" : "font-medium text-gray-400 text-lg";
 
-        // Inputs / Selects (only update if not currently focused)
-        if (document.activeElement.id !== "luefter_modus" && data.luefter_modus) {
-          document.getElementById("luefter_modus").value = data.luefter_modus;
-        }
-        
-        const uiControls = ['fan_intensity_display', 'automatik_min_luefterstufe', 'automatik_max_luefterstufe', 'auto_co2_threshold', 'auto_humidity_threshold', 'auto_presence_slider'];
-        uiControls.forEach(ctrl => {
-           if (document.activeElement.id !== ctrl && data[ctrl] !== null) {
-              document.getElementById(ctrl).value = data[ctrl];
-           }
-        });
-
-        document.getElementById("label_fan_intensity").innerText = document.getElementById("fan_intensity_display").value;
+        // Mode select and intensity slider (not while the user edits them)
+        const modeEl = document.getElementById("luefter_modus");
+        if (document.activeElement !== modeEl && data.luefter_modus) modeEl.value = data.luefter_modus;
+        const fanEl = document.getElementById("fan_intensity_display");
+        if (document.activeElement !== fanEl && data.fan_intensity_display !== null) fanEl.value = data.fan_intensity_display;
+        document.getElementById("label_fan_intensity").innerText = fanEl.value;
 
         // Smart-Automatik level override (room-wide, started by the slider or the Level button)
         const overrideHint = document.getElementById("override_hint");
@@ -436,81 +582,15 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
           overrideHint.innerText = '';
         }
 
-        // Bluetooth proxy toggle (key only exists in the Bluetooth proxy variant)
-        if (typeof data.bt_proxy === 'boolean') {
-          document.getElementById('bt_proxy_row').classList.remove('hidden');
-          if (document.activeElement.id !== 'bt_proxy') {
-            document.getElementById('bt_proxy').checked = data.bt_proxy;
-          }
-        }
-        
-        // Render ESP-NOW Peers
-        document.getElementById('peers_card').classList.remove('hidden');
-        const container = document.getElementById('peers_container');
-        
-        let localPhaseBadge = "<span class='text-gray-400 font-bold px-2 py-0.5 bg-gray-700/50 rounded-full text-xs'>--</span>";
-        if (data.direction_display && data.direction_display.includes("Zuluft")) {
-            localPhaseBadge = "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>";
-        } else if (data.direction_display && data.direction_display.includes("Abluft")) {
-            localPhaseBadge = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
-        }
-        
-        const localRPM = (data.fan_rpm !== null && data.fan_rpm !== undefined && !isNaN(data.fan_rpm)) ? Number(data.fan_rpm).toFixed(0) : "--";
-        const localBoardT = (data.temperature !== null && data.temperature !== undefined && !isNaN(data.temperature)) ? Number(data.temperature).toFixed(1) + " °C" : "--";
-        const localPID = (data.pid_demand !== null && data.pid_demand !== undefined && !isNaN(data.pid_demand)) ? (Math.round(data.pid_demand * 100) + "%") : "--";
-        const localMode = data.luefter_modus === 'Wärmerückgewinnung' ? 'WRG' : (data.luefter_modus || '--');
+        renderStatus(data);
+        renderSystem(data);
+        renderSettingValues(data);
+        renderPeers(data);
 
-        let html = `<div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-            <div class="font-bold text-gray-300 mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
-              <span>Gerät ${sanitizeHTML(String(data.device_id || "--"))} (lokales Gerät)</span>
-              <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-            </div>
-            <div class="flex justify-between text-sm mb-2">
-                <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(localMode)}</strong></span>
-                <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(data.fan_intensity_display || "--"))}</strong> ${localPhaseBadge}</span>
-            </div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
-                <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${localRPM}</strong></div>
-                <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${localBoardT}</strong></div>
-                <div class="flex justify-between"><span>PID:</span> <strong class="text-gray-400">${localPID}</strong></div>
-            </div>
-            ${airQualityBlock(data.room_co2, data.room_co2_bewertung, data.room_temperature, data.room_humidity)}
-        </div>`;
-
-        if (data.peers && data.peers.length > 0) {
-          data.peers.forEach(peer => {
-            const modeNames = ["Aus", "WRG", "Durchlüften", "Stoßlüftung"];
-            const mode = peer.mode >= 0 && peer.mode <= 3 ? modeNames[peer.mode] : "Unbekannt";
-            const phase = peer.phase ? "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>" : "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
-            
-            const rpm = (peer.rpm !== undefined && peer.rpm !== null && !isNaN(peer.rpm)) ? Number(peer.rpm).toFixed(0) : "--";
-            const boardT = (peer.board_t !== undefined && peer.board_t !== null && !isNaN(peer.board_t)) ? Number(peer.board_t).toFixed(1) + " °C" : "--";
-            const pid = (peer.pid_demand !== undefined && peer.pid_demand !== null && !isNaN(peer.pid_demand)) ? (Math.round(peer.pid_demand * 100) + "%") : "--";
-            
-            html += `<div class="bg-gray-800/80 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
-                <div class="font-bold text-white mb-3 pb-2 border-b border-gray-700 flex justify-between items-center">
-                  <span>Gerät ${sanitizeHTML(String(peer.device_id))}</span>
-                  <span class="w-2 h-2 rounded-full bg-accent"></span>
-                </div>
-                <div class="flex justify-between text-sm mb-2">
-                    <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(mode)}</strong></span>
-                    <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(peer.speed))}</strong> ${phase}</span>
-                </div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
-                    <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${rpm}</strong></div>
-                    <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${boardT}</strong></div>
-                    <div class="flex justify-between"><span>PID:</span> <strong class="text-accent/80">${pid}</strong></div>
-                </div>
-                ${airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity)}
-            </div>`;
-          });
-        }
-        container.innerHTML = html;
-        
         // Update Chart
         const now = new Date();
-        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
-                        now.getMinutes().toString().padStart(2, '0') + ':' + 
+        const timeStr = now.getHours().toString().padStart(2, '0') + ':' +
+                        now.getMinutes().toString().padStart(2, '0') + ':' +
                         now.getSeconds().toString().padStart(2, '0');
 
         chartData.labels.push(timeStr);
@@ -530,33 +610,43 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       }
     }
 
-    async function sendSet(id, val) {
-      const allowedKeys = ['luefter_modus', 'fan_intensity_display', 'automatik_min_luefterstufe', 
-                          'automatik_max_luefterstufe', 'auto_co2_threshold', 'auto_humidity_threshold',
-                          'auto_presence_slider', 'vent_timer', 'sync_interval_config', 'bt_proxy'];
+    // Briefly outlines the control: accent = applied, danger = rejected
+    function flash(el, ok) {
+      if (!el) return;
+      el.style.outline = '2px solid ' + (ok ? '#03dac6' : '#cf6679');
+      setTimeout(() => { el.style.outline = ''; }, ok ? 800 : 2500);
+    }
 
-      if (!allowedKeys.includes(id)) {
-          console.error('Client validation failed: Invalid parameter =', id);
-          return;
+    // POST + X-VentoSync header: the device rejects /set without it (CSRF protection)
+    async function sendSet(id, val, el) {
+      const lim = META && META.numbers && META.numbers[id];
+      if (lim && (isNaN(parseFloat(val)) || val < lim[0] || val > lim[1])) {
+        console.warn(`Not sent: ${id} = ${val} outside ${lim[0]}–${lim[1]}`);
+        flash(el, false);
+        return;
       }
-      if (id === 'fan_intensity_display' && (val < 1 || val > 10)) {
-          console.error('Client validation failed: Invalid fan intensity =', val);
-          return;
-      }
-
       if (id === 'fan_intensity_display') document.getElementById("label_fan_intensity").innerText = val;
 
       try {
-        const res = await fetch(`/set?id=${encodeURIComponent(id)}&val=${encodeURIComponent(val)}`);
+        const res = await fetch('/set', {method: 'POST', headers: {'X-VentoSync': '1'},
+                                         body: new URLSearchParams({id: id, val: String(val)})});
         if (!res.ok) console.warn('Setting not applied (HTTP ' + res.status + '):', id);
+        flash(el, res.ok);
       } catch (e) {
         console.error('Error setting value:', e);
+        flash(el, false);
       }
       setTimeout(updateData, 500); // refresh after delay
     }
 
+    function filterReset() {
+      if (confirm('Filter gewechselt? Der Betriebsstunden-Zähler wird auf 0 gesetzt.')) {
+        sendSet('filter_reset', 1, document.getElementById('btn_filter_reset'));
+      }
+    }
+
     setInterval(updateData, 2000);
-    updateData(); // initial call
+    loadMeta(); // fills limits / options, then the first updateData()
   </script>
 </body>
 </html>

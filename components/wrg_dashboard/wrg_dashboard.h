@@ -21,23 +21,26 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-18
+// Modified:    2026-10-20
 // ==========================================================================
 
 #pragma once
 
 #include "esphome/components/binary_sensor/binary_sensor.h"
-#include "esphome/components/fan/fan.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/select/select.h"
 #ifdef USE_SWITCH
 #include "esphome/components/switch/switch.h"
+#endif
+#ifdef USE_BUTTON
+#include "esphome/components/button/button.h"
 #endif
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/web_server_base/web_server_base.h"
 #include "esphome/components/ventilation_group/ventilation_group.h"
 #include "esphome/core/component.h"
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -49,7 +52,13 @@ struct DashboardAction {
   std::string key;
   std::string s_value;
   float f_value;
-  bool is_string;
+};
+
+/// An entity exposed under a fixed JSON key in /state (and /set if writable).
+/// The key is a string literal from the code generator (__init__.py).
+template<typename T> struct KeyedEntity {
+  const char *key;
+  T *entity;
 };
 
 class WrgDashboard : public Component, public AsyncWebHandler {
@@ -60,13 +69,19 @@ public:
   static constexpr size_t MAX_PENDING_ACTIONS = 16;
   /// Maximum length of a /set value (longest legit value: a mode name).
   static constexpr size_t MAX_VALUE_LEN = 32;
+  /// /state is rebuilt this often while a client polls.
+  static constexpr uint32_t STATE_REBUILD_MS = 1000;
+  /// Stop rebuilding /state this long after the last request (no client).
+  static constexpr uint32_t STATE_IDLE_MS = 15000;
+  /// A cached /state older than this is not served (503, the UI retries).
+  static constexpr uint32_t STATE_MAX_AGE_MS = 5000;
 
   /**
    * @brief   Initializes the web server handler.
    */
   void setup() override;
   /**
-   * @brief   Processes the action queue in the main loop context.
+   * @brief   Processes the action queue and rebuilds the cached JSON documents.
    */
   void loop() override;
   /**
@@ -80,86 +95,41 @@ public:
   // Web server
   void set_web_server_base(web_server_base::WebServerBase *b) { base_ = b; }
 
-  // Dependencies
-  void set_temperature(sensor::Sensor *s) { temperature_ = s; }
-  void set_pressure(sensor::Sensor *s) { pressure_ = s; }
-  void set_outdoor_humidity(sensor::Sensor *s) { outdoor_humidity_ = s; }
+  // Sensors with a fallback chain (room climate: SCD41 → BME680)
   void set_scd41_co2(sensor::Sensor *s) { scd41_co2_ = s; }
   void set_effective_co2(sensor::Sensor *s) { effective_co2_ = s; }
   void set_scd41_temperature(sensor::Sensor *s) { scd41_temperature_ = s; }
   void set_scd41_humidity(sensor::Sensor *s) { scd41_humidity_ = s; }
   void set_bme680_temperature(sensor::Sensor *s) { bme680_temperature_ = s; }
   void set_bme680_humidity(sensor::Sensor *s) { bme680_humidity_ = s; }
-  void set_temp_zuluft(sensor::Sensor *s) { temp_zuluft_ = s; }
-  void set_temp_abluft(sensor::Sensor *s) { temp_abluft_ = s; }
-  void set_heat_recovery_efficiency(sensor::Sensor *s) {
-    heat_recovery_efficiency_ = s;
-  }
-  void set_fan_rpm(sensor::Sensor *s) { fan_rpm_ = s; }
-  void set_filter_operating_days(sensor::Sensor *s) {
-    filter_operating_days_ = s;
-  }
-  /// Remaining Smart-Automatik level override (min, 0 = automatic regulates).
-  void set_auto_override_remaining(sensor::Sensor *s) {
-    auto_override_remaining_ = s;
-  }
 
-  /// SGP41 VOC / NOx index (only sgp41 variants). When set, /state reports
-  /// voc_index / nox_index and the UI labels the CO2 value as VOC equivalent.
-  void set_voc_index(sensor::Sensor *s) { voc_index_ = s; }
-  void set_nox_index(sensor::Sensor *s) { nox_index_ = s; }
-
-  void set_filter_change_alarm(binary_sensor::BinarySensor *b) {
-    filter_change_alarm_ = b;
-  }
-  void set_radar_presence(binary_sensor::BinarySensor *b) {
-    radar_presence_ = b;
-  }
-
-  void set_scd41_co2_bewertung(text_sensor::TextSensor *t) {
-    scd41_co2_bewertung_ = t;
-  }
-  void set_device_id(text_sensor::TextSensor *t) { device_id_ = t; }
-  void set_floor_id(text_sensor::TextSensor *t) { floor_id_ = t; }
-  void set_room_id(text_sensor::TextSensor *t) { room_id_ = t; }
-  void set_phase(text_sensor::TextSensor *t) { phase_ = t; }
-  void set_direction_display(text_sensor::TextSensor *t) {
-    direction_display_ = t;
-  }
-
-  void set_vent_timer(number::Number *n) { vent_timer_ = n; }
-  void set_sync_interval_config(number::Number *n) {
-    sync_interval_config_ = n;
-  }
-  void set_fan_intensity_display(number::Number *n) {
-    fan_intensity_display_ = n;
-  }
-  void set_automatik_min_luefterstufe(number::Number *n) {
-    automatik_min_luefterstufe_ = n;
-  }
-  void set_automatik_max_luefterstufe(number::Number *n) {
-    automatik_max_luefterstufe_ = n;
-  }
-  void set_auto_co2_threshold(number::Number *n) { auto_co2_threshold_ = n; }
-  void set_auto_humidity_threshold(number::Number *n) {
-    auto_humidity_threshold_ = n;
-  }
-  void set_auto_presence_slider(number::Number *n) {
-    auto_presence_slider_ = n;
-  }
-
-  void set_luefter_modus(select::Select *s) { luefter_modus_ = s; }
-  void set_lueftung_fan(fan::Fan *f) { lueftung_fan_ = f; }
   void set_ventilation_ctrl(esphome::VentilationController *c) { ventilation_ctrl_ = c; }
+  void set_firmware_info(const char *version, const char *variant) {
+    project_version_ = version;
+    firmware_variant_ = variant;
+  }
+
+  // Pass-through entities: published in /state under `key`. A key is only
+  // present when its entity is configured (e.g. voc_index on the sgp41
+  // variants, bt_proxy in the Bluetooth proxy variant); the UI hides the
+  // matching rows otherwise.
+  void add_sensor(const char *key, sensor::Sensor *s) { sensors_.push_back({key, s}); }
+  void add_binary_sensor(const char *key, binary_sensor::BinarySensor *b) { binary_sensors_.push_back({key, b}); }
+  void add_text_sensor(const char *key, text_sensor::TextSensor *t) { text_sensors_.push_back({key, t}); }
+  // Writable entities: also accepted by /set under `key` (the whitelist).
+  void add_number(const char *key, number::Number *n) { numbers_.push_back({key, n}); }
+  void add_select(const char *key, select::Select *s) { selects_.push_back({key, s}); }
 #ifdef USE_SWITCH
-  // Optional: only wired by the Bluetooth proxy package
-  void set_bluetooth_proxy_switch(switch_::Switch *s) { bluetooth_proxy_switch_ = s; }
+  void add_switch(const char *key, switch_::Switch *s) { switches_.push_back({key, s}); }
+#endif
+#ifdef USE_BUTTON
+  void add_button(const char *key, button::Button *b) { buttons_.push_back({key, b}); }
 #endif
 
   /**
    * @brief   Checks if the request can be handled by this component.
    * @param[in] request  The incoming AsyncWebServerRequest.
-   * @return  true if the URL is /ui, /state, or /set.
+   * @return  true for GET /ui, /state, /meta and POST /set.
    */
   bool canHandle(AsyncWebServerRequest *request) const override;
   /**
@@ -175,60 +145,50 @@ public:
 
 protected:
   void handle_root_(AsyncWebServerRequest *request);
-  void handle_state_(AsyncWebServerRequest *request);
+  void handle_cached_json_(AsyncWebServerRequest *request, bool meta);
   void handle_set_(AsyncWebServerRequest *request);
-  void dispatch_set_(const std::string &key, const std::string &sval,
-                     float fval, bool is_string);
+  bool is_writable_key_(const std::string &key) const;
+  void dispatch_set_(const DashboardAction &action);
+  std::string build_state_json_();
+  std::string build_meta_json_();
 
-  std::vector<DashboardAction> action_queue_;  ///< Guarded by action_mutex_, max MAX_PENDING_ACTIONS.
-  uint32_t dropped_actions_{0};                ///< /set requests rejected (queue full), guarded by action_mutex_.
-  std::mutex action_mutex_;
+  // The web server runs in its own task. Entities and the peer list are only
+  // read in loop() (main task), which serializes /state and /meta into these
+  // strings; the request handler just copies them under the mutex.
+  std::mutex mutex_;
+  std::vector<DashboardAction> action_queue_;  ///< Guarded by mutex_, max MAX_PENDING_ACTIONS.
+  uint32_t dropped_actions_{0};                ///< /set requests rejected (queue full), guarded by mutex_.
+  std::string state_json_;                     ///< Guarded by mutex_.
+  uint32_t state_built_ms_{0};                 ///< Guarded by mutex_.
+  std::string meta_json_;                      ///< Guarded by mutex_, built once.
+  std::atomic<uint32_t> last_request_ms_{0};
+  std::atomic<bool> client_waiting_{false};    ///< A request found no fresh /state.
+  uint32_t last_queue_check_ms_{0};
 
   web_server_base::WebServerBase *base_{nullptr};
 
-  // Internal references
-  sensor::Sensor *temperature_{nullptr};
-  sensor::Sensor *pressure_{nullptr};
-  sensor::Sensor *outdoor_humidity_{nullptr};
   sensor::Sensor *scd41_co2_{nullptr};
   sensor::Sensor *effective_co2_{nullptr};
   sensor::Sensor *scd41_temperature_{nullptr};
   sensor::Sensor *scd41_humidity_{nullptr};
   sensor::Sensor *bme680_temperature_{nullptr};
   sensor::Sensor *bme680_humidity_{nullptr};
-  sensor::Sensor *temp_zuluft_{nullptr};
-  sensor::Sensor *temp_abluft_{nullptr};
-  sensor::Sensor *heat_recovery_efficiency_{nullptr};
-  sensor::Sensor *fan_rpm_{nullptr};
-  sensor::Sensor *filter_operating_days_{nullptr};
-  sensor::Sensor *auto_override_remaining_{nullptr};
-
-  binary_sensor::BinarySensor *filter_change_alarm_{nullptr};
-  binary_sensor::BinarySensor *radar_presence_{nullptr};
-
-  text_sensor::TextSensor *scd41_co2_bewertung_{nullptr};
-  text_sensor::TextSensor *device_id_{nullptr};
-  text_sensor::TextSensor *floor_id_{nullptr};
-  text_sensor::TextSensor *room_id_{nullptr};
-  text_sensor::TextSensor *phase_{nullptr};
-  text_sensor::TextSensor *direction_display_{nullptr};
-
-  number::Number *vent_timer_{nullptr};
-  number::Number *sync_interval_config_{nullptr};
-  number::Number *fan_intensity_display_{nullptr};
-  number::Number *automatik_min_luefterstufe_{nullptr};
-  number::Number *automatik_max_luefterstufe_{nullptr};
-  number::Number *auto_co2_threshold_{nullptr};
-  number::Number *auto_humidity_threshold_{nullptr};
-  number::Number *auto_presence_slider_{nullptr};
-
-  select::Select *luefter_modus_{nullptr};
-  fan::Fan *lueftung_fan_{nullptr};
   esphome::VentilationController *ventilation_ctrl_{nullptr};
-  sensor::Sensor *voc_index_{nullptr};
-  sensor::Sensor *nox_index_{nullptr};
+  const char *project_version_{""};
+  const char *firmware_variant_{""};
+  const char *reset_reason_{""};
+
+  // Filled by the code generator before setup(); read-only afterwards.
+  std::vector<KeyedEntity<sensor::Sensor>> sensors_;
+  std::vector<KeyedEntity<binary_sensor::BinarySensor>> binary_sensors_;
+  std::vector<KeyedEntity<text_sensor::TextSensor>> text_sensors_;
+  std::vector<KeyedEntity<number::Number>> numbers_;
+  std::vector<KeyedEntity<select::Select>> selects_;
 #ifdef USE_SWITCH
-  switch_::Switch *bluetooth_proxy_switch_{nullptr};
+  std::vector<KeyedEntity<switch_::Switch>> switches_;
+#endif
+#ifdef USE_BUTTON
+  std::vector<KeyedEntity<button::Button>> buttons_;
 #endif
 };
 

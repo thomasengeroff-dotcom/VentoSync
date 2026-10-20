@@ -26,7 +26,7 @@
 #                ventosync_base_v2.yaml  → PCB v2.0 (ESP32-C6-MINI-1U-H4, native GPIO)
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-10-18
+# Modified:    2026-10-20
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -253,6 +253,21 @@ wrg_dashboard:
   auto_co2_threshold_id: auto_co2_threshold
   auto_humidity_threshold_id: auto_humidity_threshold
   auto_presence_slider_id: auto_presence_slider
+  auto_override_duration_id: auto_override_duration
+  auto_summer_cooling_threshold_id: auto_summer_cooling_threshold
+  hvac_co2_threshold_id: hvac_co2_threshold
+  hvac_max_fan_level_id: hvac_max_fan_level
+  hvac_emergency_co2_id: hvac_emergency_co2
+  vacation_intensity_id: vacation_intensity_number
   luefter_modus_id: luefter_modus
-  lueftung_fan_id: lueftung_fan
+  vacation_mode_id: vacation_mode_select
+  hvac_switch_id: smart_climate_control
+  nox_boost_switch_id: nox_boost_switch
+  child_lock_switch_id: child_lock_switch
+  filter_reset_button_id: filter_reset_btn
+  auto_status_id: automatik_status
+  auto_reason_id: automatik_grund
+  hvac_status_id: hvac_status
   ventilation_ctrl_id: ventilation_ctrl
+  project_version: "${project_version}"
+  firmware_variant: "${firmware_variant}"

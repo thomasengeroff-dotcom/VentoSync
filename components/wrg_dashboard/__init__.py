@@ -7,65 +7,113 @@ DEPENDENCIES = ["web_server_base", "network"]
 AUTO_LOAD = ["web_server_base"]
 
 CONF_WEB_SERVER_BASE_ID = "web_server_base_id"
+CONF_PROJECT_VERSION = "project_version"
+CONF_FIRMWARE_VARIANT = "firmware_variant"
 
-from esphome.components import sensor, binary_sensor, text_sensor, number, select, fan, switch
+from esphome.components import sensor, binary_sensor, text_sensor, number, select, switch, button
 
 wrg_dashboard_ns = cg.esphome_ns.namespace("wrg_dashboard")
 WrgDashboard = wrg_dashboard_ns.class_("WrgDashboard", cg.Component)
 
-CONFIG_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.declare_id(WrgDashboard),
-        cv.GenerateID(CONF_WEB_SERVER_BASE_ID): cv.use_id(web_server_base.WebServerBase),
+# Entities with dedicated setters (fallback chains, controller).
+DIRECT = {
+    "scd41_co2_id": sensor.Sensor,
+    "effective_co2_id": sensor.Sensor,
+    "scd41_temperature_id": sensor.Sensor,
+    "scd41_humidity_id": sensor.Sensor,
+    "bme680_temperature_id": sensor.Sensor,
+    "bme680_humidity_id": sensor.Sensor,
+}
 
-        cv.Optional("temperature_id"):              cv.use_id(sensor.Sensor),
-        cv.Optional("pressure_id"):                 cv.use_id(sensor.Sensor),
-        cv.Optional("outdoor_humidity_id"):         cv.use_id(sensor.Sensor),
-        cv.Optional("scd41_co2_id"):                cv.use_id(sensor.Sensor),
-        cv.Optional("effective_co2_id"):            cv.use_id(sensor.Sensor),
-        cv.Optional("scd41_temperature_id"):        cv.use_id(sensor.Sensor),
-        cv.Optional("scd41_humidity_id"):           cv.use_id(sensor.Sensor),
-        cv.Optional("bme680_temperature_id"):        cv.use_id(sensor.Sensor),
-        cv.Optional("bme680_humidity_id"):           cv.use_id(sensor.Sensor),
-        cv.Optional("temp_zuluft_id"):              cv.use_id(sensor.Sensor),
-        cv.Optional("temp_abluft_id"):              cv.use_id(sensor.Sensor),
-        cv.Optional("heat_recovery_efficiency_id"): cv.use_id(sensor.Sensor),
-        cv.Optional("fan_rpm_id"):                  cv.use_id(sensor.Sensor),
-        cv.Optional("filter_operating_days_id"):    cv.use_id(sensor.Sensor),
-        cv.Optional("auto_override_remaining_id"):  cv.use_id(sensor.Sensor),
-        # Only set by packages/sensors/sensor_SGP41_SHT45.yaml
-        cv.Optional("voc_index_id"):                cv.use_id(sensor.Sensor),
-        cv.Optional("nox_index_id"):                cv.use_id(sensor.Sensor),
+# Pass-through entities: config option -> JSON key in /state (and /set for
+# writable ones). A key is only present when the option is configured.
+SENSORS = {
+    "temperature_id": "temperature",
+    "pressure_id": "pressure",
+    "outdoor_humidity_id": "outdoor_humidity",
+    "temp_zuluft_id": "temp_zuluft",
+    "temp_abluft_id": "temp_abluft",
+    "heat_recovery_efficiency_id": "heat_recovery_efficiency",
+    "fan_rpm_id": "fan_rpm",
+    "filter_operating_days_id": "filter_operating_days",
+    "auto_override_remaining_id": "auto_override_min",
+    # Only set by packages/sensors/sensor_SGP41_SHT45.yaml
+    "voc_index_id": "voc_index",
+    "nox_index_id": "nox_index",
+}
+BINARY_SENSORS = {
+    "filter_change_alarm_id": "filter_change_alarm",
+    "radar_presence_id": "radar_presence",
+}
+TEXT_SENSORS = {
+    "scd41_co2_bewertung_id": "room_co2_bewertung",
+    "device_id_id": "device_id",
+    "floor_id_id": "floor_id",
+    "room_id_id": "room_id",
+    "phase_id": "phase",
+    "direction_display_id": "direction_display",
+    "auto_status_id": "auto_status",
+    "auto_reason_id": "auto_reason",
+    "hvac_status_id": "hvac_status",
+}
+NUMBERS = {
+    "vent_timer_id": "vent_timer",
+    "sync_interval_config_id": "sync_interval_config",
+    "fan_intensity_display_id": "fan_intensity_display",
+    "automatik_min_luefterstufe_id": "automatik_min_luefterstufe",
+    "automatik_max_luefterstufe_id": "automatik_max_luefterstufe",
+    "auto_co2_threshold_id": "auto_co2_threshold",
+    "auto_humidity_threshold_id": "auto_humidity_threshold",
+    "auto_presence_slider_id": "auto_presence_slider",
+    "auto_override_duration_id": "auto_override_duration",
+    "auto_summer_cooling_threshold_id": "auto_summer_cooling_threshold",
+    "hvac_co2_threshold_id": "hvac_co2_threshold",
+    "hvac_max_fan_level_id": "hvac_max_fan_level",
+    "hvac_emergency_co2_id": "hvac_emergency_co2",
+    "vacation_intensity_id": "vacation_intensity",
+    # Only set by packages/sensors/sensor_SGP41_SHT45.yaml
+    "nox_boost_threshold_id": "nox_boost_threshold",
+}
+SELECTS = {
+    "luefter_modus_id": "luefter_modus",
+    "vacation_mode_id": "vacation_mode",
+}
+SWITCHES = {
+    "hvac_switch_id": "hvac_enabled",
+    "nox_boost_switch_id": "nox_boost",
+    "child_lock_switch_id": "child_lock",
+    # Only set by packages/integration/bluetooth_proxy.yaml
+    "bluetooth_proxy_switch_id": "bt_proxy",
+}
+BUTTONS = {
+    "filter_reset_button_id": "filter_reset",
+}
 
-        cv.Optional("filter_change_alarm_id"):      cv.use_id(binary_sensor.BinarySensor),
-        cv.Optional("radar_presence_id"):           cv.use_id(binary_sensor.BinarySensor),
+TABLES = (
+    (SENSORS, sensor.Sensor, "add_sensor"),
+    (BINARY_SENSORS, binary_sensor.BinarySensor, "add_binary_sensor"),
+    (TEXT_SENSORS, text_sensor.TextSensor, "add_text_sensor"),
+    (NUMBERS, number.Number, "add_number"),
+    (SELECTS, select.Select, "add_select"),
+    (SWITCHES, switch.Switch, "add_switch"),
+    (BUTTONS, button.Button, "add_button"),
+)
 
-        cv.Optional("scd41_co2_bewertung_id"):      cv.use_id(text_sensor.TextSensor),
-        cv.Optional("device_id_id"):                cv.use_id(text_sensor.TextSensor),
-        cv.Optional("floor_id_id"):                 cv.use_id(text_sensor.TextSensor),
-        cv.Optional("room_id_id"):                  cv.use_id(text_sensor.TextSensor),
-        cv.Optional("phase_id"):                    cv.use_id(text_sensor.TextSensor),
-        cv.Optional("direction_display_id"):        cv.use_id(text_sensor.TextSensor),
+_schema = {
+    cv.GenerateID(): cv.declare_id(WrgDashboard),
+    cv.GenerateID(CONF_WEB_SERVER_BASE_ID): cv.use_id(web_server_base.WebServerBase),
+    cv.Optional("ventilation_ctrl_id"): cv.use_id(cg.Component),
+    cv.Optional(CONF_PROJECT_VERSION, default=""): cv.string,
+    cv.Optional(CONF_FIRMWARE_VARIANT, default=""): cv.string,
+}
+for option, cls in DIRECT.items():
+    _schema[cv.Optional(option)] = cv.use_id(cls)
+for table, cls, _ in TABLES:
+    for option in table:
+        _schema[cv.Optional(option)] = cv.use_id(cls)
 
-        cv.Optional("vent_timer_id"):               cv.use_id(number.Number),
-        cv.Optional("sync_interval_config_id"):     cv.use_id(number.Number),
-        cv.Optional("fan_intensity_display_id"):    cv.use_id(number.Number),
-        cv.Optional("automatik_min_luefterstufe_id"): cv.use_id(number.Number),
-        cv.Optional("automatik_max_luefterstufe_id"): cv.use_id(number.Number),
-        cv.Optional("auto_co2_threshold_id"):       cv.use_id(number.Number),
-        cv.Optional("auto_humidity_threshold_id"):  cv.use_id(number.Number),
-        cv.Optional("auto_presence_slider_id"):     cv.use_id(number.Number),
+CONFIG_SCHEMA = cv.Schema(_schema).extend(cv.COMPONENT_SCHEMA)
 
-        cv.Optional("luefter_modus_id"):            cv.use_id(select.Select),
-
-        cv.Optional("lueftung_fan_id"):             cv.use_id(fan.Fan),
-
-        # Only set by packages/integration/bluetooth_proxy.yaml
-        cv.Optional("bluetooth_proxy_switch_id"):   cv.use_id(switch.Switch),
-
-        cv.Optional("ventilation_ctrl_id"):         cv.use_id(cg.Component),
-    }
-).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
     cg.add_global(cg.RawStatement('#include "esphome/components/wrg_dashboard/wrg_dashboard.h"'))
@@ -74,9 +122,17 @@ async def to_code(config):
 
     web_server_base_var = await cg.get_variable(config[CONF_WEB_SERVER_BASE_ID])
     cg.add(var.set_web_server_base(web_server_base_var))
+    cg.add(var.set_firmware_info(config[CONF_PROJECT_VERSION], config[CONF_FIRMWARE_VARIANT]))
 
-    for key in config.keys():
-        if key.endswith("_id") and key not in [CONF_ID, CONF_WEB_SERVER_BASE_ID]:
-            sens = await cg.get_variable(config[key])
-            func_name = f"set_{key[:-3]}"
-            cg.add(getattr(var, func_name)(sens))
+    if "ventilation_ctrl_id" in config:
+        ctrl = await cg.get_variable(config["ventilation_ctrl_id"])
+        cg.add(var.set_ventilation_ctrl(ctrl))
+    for option in DIRECT:
+        if option in config:
+            ent = await cg.get_variable(config[option])
+            cg.add(getattr(var, f"set_{option[:-3]}")(ent))
+    for table, _, adder in TABLES:
+        for option, key in table.items():
+            if option in config:
+                ent = await cg.get_variable(config[option])
+                cg.add(getattr(var, adder)(key, ent))
