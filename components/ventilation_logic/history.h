@@ -62,6 +62,7 @@ enum Channel : uint8_t {
   EFFICIENCY,  ///< Heat recovery efficiency in %.
   T_OUT,       ///< Outdoor air (NTC Zuluft) in °C.
   T_IN,        ///< Extract air (NTC Abluft) in °C.
+  T_SUPPLY,    ///< Supply air after the exchanger (indoor NTC, intake phase mean) in °C.
   CHANNEL_COUNT
 };
 
@@ -80,6 +81,7 @@ constexpr std::array<ChannelInfo, CHANNEL_COUNT> CHANNELS = {{
     {"eff", 10},
     {"t_out", 10},
     {"t_in", 10},
+    {"t_sup", 10},
 }};
 
 using Values = std::array<float, CHANNEL_COUNT>;  ///< One sample, NaN = no value.

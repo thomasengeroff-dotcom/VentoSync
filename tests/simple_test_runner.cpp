@@ -2236,6 +2236,8 @@ bool test_dashboard_history() {
   TEST_ASSERT(json.find("\"scale\":{\"co2\":1,\"t\":10,") != std::string::npos);
   TEST_ASSERT(json.find("\"t\":[210]") != std::string::npos);
   TEST_ASSERT(json.find("\"eff\":[null]") != std::string::npos);
+  TEST_ASSERT(json.find("\"t_sup\":10}") != std::string::npos);
+  TEST_ASSERT(json.find("\"t_sup\":[null]}") != std::string::npos);
   TEST_ASSERT(json.back() == '}');
 
   // Stalled caller: missed buckets are appended empty, grid kept

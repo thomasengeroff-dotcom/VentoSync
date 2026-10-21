@@ -97,6 +97,25 @@ If the efficiency was calculated as a simple average of instantaneous point-in-t
 **Recovered Thermal Energy (Wh):**
 In addition to the percentage efficiency, the system calculates the actual recovered thermal energy in **Watt-hours (Wh)**. This is achieved by a non-linear mapping of the 10 fan levels to the real volumetric flow rates of the Ventomaxx v-wrg-1 (ranging from approx. 17 m³/h at level 1 up to 43 m³/h at level 10) and integrating the actual temperature difference ($T_{supply} - T_{outside}$) over time. This allows you to track exactly how much heating energy (or cooling energy in summer) the system has "saved" during each cycle.
 
+#### Supply Air Temperature after Heat Recovery
+
+During the supply air phase the indoor NTC sits in the air that has just passed the ceramic and is blown into the room
+— the phase-lock discards these readings for the extract air value, but the efficiency integration uses them as
+$T_{Supply}$. Since 0.10.51 their **mean over each supply air phase** is published as `sensor.temp_zuluft_nach_wrg`
+("Temp. Zuluft (nach WRG)") and shown in the web dashboard (card, *Wärmerückgewinnung* chart, statistics, plus the gain
+over the outdoor air in K). The three temperatures make the heat recovery tangible, e.g. in winter:
+
+| Outdoor air | Supply air after heat recovery | Extract air (room) | Efficiency |
+|---|---|---|---|
+| 2.0 °C | 18.4 °C | 21.0 °C | ≈ 86 % |
+
+The mean covers the whole phase — at its start the ceramic is still warm, towards the end the supply air gets cooler —
+so it matches the energy-based efficiency ($\eta \approx (T_{Supply} - T_{Outside}) / (T_{Room} - T_{Outside})$).
+It is only published in heat recovery mode (incl. Smart-Automatik); in *Durchlüften*, *Stoßlüftung* and *Aus* there is
+no recovery and the sensor is *unknown*. A phase longer than one half-cycle (e.g. left over from a mode change) is
+discarded. The value needs all three NTC readings (supply, extract and outdoor air) — without NTCs (`nosensor`) the
+entity stays hidden.
+
 **Interpretation:**
 
 - **> 70%:** Excellent heat recovery

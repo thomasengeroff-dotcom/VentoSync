@@ -1,6 +1,7 @@
 # ==========================================================================
 # VentoSync HRV – Heat Recovery Efficiency Sensor
 # File: sensor_hrv_efficiency.yaml
+# Modified: 2026-10-21
 # ==========================================================================
 
 
@@ -50,6 +51,23 @@ sensor:
     state_class: measurement
     update_interval: never
 
+  # ---------------------------------------------------------
+  # Zuluft nach WRG: mean temperature of the air blown into the
+  # room (indoor NTC during the intake phase), averaged over each
+  # intake phase. Published at the end of every intake phase in
+  # heat recovery mode, NaN outside heat recovery.
+  # ---------------------------------------------------------
+  - platform: template
+    name: "Temp. Zuluft (nach WRG)"
+    id: temp_zuluft_wrg
+    internal: ${hide_ntc_sensors}
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    icon: "mdi:home-import-outline"
+    update_interval: never
+
 interval:
   # ---------------------------------------------------------
   # Sample-Collector: Speist NTC-Daten in den Integrator
@@ -88,7 +106,18 @@ interval:
               }
             }
             auto result = ventosync::hrv::get_calculator().finalize_cycle(flow_m3h);
-            
+
+            // Supply air after the exchanger: only a heat recovery half-cycle
+            // counts — samples left over from Off / Durchlüften / Stoßlüftung
+            // (continuous intake) make the phase longer than one half-cycle.
+            const auto &sm = id(ventilation_ctrl)->state_machine;
+            const bool wrg_phase = sm.current_mode == MODE_ECO_RECOVERY &&
+                result.cycle_duration_s * 1000.0f <= static_cast<float>(sm.cycle_duration_ms + 10000);
+            const float t_supply_avg = wrg_phase ? result.avg_supply_temp : NAN;
+            if (!(std::isnan(t_supply_avg) && std::isnan(id(temp_zuluft_wrg).state))) {
+              id(temp_zuluft_wrg).publish_state(t_supply_avg);
+            }
+
             if (result.valid) {
               id(hrv_efficiency_cycle).publish_state(result.efficiency_pct);
               id(hrv_energy_cycle).publish_state(result.energy_recovered_wh);
@@ -105,6 +134,12 @@ interval:
             ventosync::hrv::get_calculator().reset();
           }
           last_was_supply = is_supply;
+
+          // Outside heat recovery there is no supply air after the exchanger
+          if (id(ventilation_ctrl)->state_machine.current_mode != MODE_ECO_RECOVERY &&
+              !std::isnan(id(temp_zuluft_wrg).state)) {
+            id(temp_zuluft_wrg).publish_state(NAN);
+          }
           
           // Nur während der Zuluft-Phase (Luft wird von außen reingeblasen) integrieren
           if (!is_supply) return;

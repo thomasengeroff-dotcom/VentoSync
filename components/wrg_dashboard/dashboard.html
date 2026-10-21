@@ -104,8 +104,9 @@
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Board-Temperatur:</span> <span class="font-medium text-lg"><span id="val_temperature">--</span> °C</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftdruck:</span> <span class="font-medium text-lg"><span id="val_pressure">--</span> hPa</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Feuchtigkeit (Außen):</span> <span class="font-medium text-lg"><span id="val_outdoor_humidity">--</span> %</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Zuluft:</span> <span class="font-medium text-lg"><span id="val_temp_zuluft">--</span> °C</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Abluft:</span> <span class="font-medium text-lg"><span id="val_temp_abluft">--</span> °C</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Außenluft:</span> <span class="font-medium text-lg"><span id="val_temp_zuluft">--</span> °C</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" title="Mittelwert des Innen-NTC über jede Zuluft-Phase im WRG-Betrieb; in Klammern die Erwärmung gegenüber der Außenluft">Temperatur Zuluft (nach WRG):</span> <span class="font-medium text-lg"><span id="val_temp_zuluft_wrg">--</span> °C<span id="val_wrg_gain" class="text-sm text-accent ml-1"></span></span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Abluft (innen):</span> <span class="font-medium text-lg"><span id="val_temp_abluft">--</span> °C</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Effizienz WRG:</span> <span class="font-medium text-accent text-lg"><span id="val_heat_recovery_efficiency">--</span> %</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Lüfter RPM:</span> <span class="font-medium text-lg" id="val_fan_rpm">--</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftrichtung:</span> <span class="font-medium text-accent text-lg" id="val_direction_display">--</span></div>
@@ -328,7 +329,7 @@
     }
 
     // ---------- Charts & statistics ----------
-    // Sample fields as in GET /history: co2, t, rh, level, demand (0–1), eff, t_out, t_in; ts = time (ms)
+    // Sample fields as in GET /history: co2, t, rh, level, demand (0–1), eff, t_out, t_in, t_sup; ts = time (ms)
     const LIVE_MS = 10 * 60 * 1000;  // live view: last 10 min, kept in the browser
     const LIVE = [];
     let HIST = [];                   // 5-min means from the device, oldest first
@@ -348,7 +349,7 @@
       return {ts: Date.now(), co2: num(data.room_co2), t: num(data.room_temperature), rh: num(data.room_humidity),
               level: data.luefter_modus === 'Aus' ? 0 : num(data.fan_intensity_display),
               demand: num(data.pid_demand), eff: num(data.heat_recovery_efficiency),
-              t_out: num(data.temp_zuluft), t_in: num(data.temp_abluft)};
+              t_out: num(data.temp_zuluft), t_in: num(data.temp_abluft), t_sup: num(data.temp_zuluft_wrg)};
     }
     // /history: fixed-point series, the newest bucket ended age_s ago
     function parseHistory(h) {
@@ -367,7 +368,7 @@
       return out;
     }
 
-    const COL = {co2: '#bb86fc', level: '#03dac6', demand: '#f2b84b', t: '#cf6679', rh: '#03a9f4', ah: '#81d4fa', eff: '#03dac6'};
+    const COL = {co2: '#bb86fc', level: '#03dac6', demand: '#f2b84b', t: '#cf6679', rh: '#03a9f4', ah: '#81d4fa', eff: '#03dac6', sup: '#f2b84b'};
     const GRID = '#374151', TICK = '#9ca3af';
     function ds(label, color, yAxisID, extra) {
       return Object.assign({label: label, borderColor: color, backgroundColor: color, data: [], yAxisID: yAxisID,
@@ -415,10 +416,11 @@
        values: [s => r1(s.t), s => r1(absHumidity(s.t, s.rh)), s => r1(s.rh)]},
       {chart: makeChart('chart_hrv', [
          ds('Außenluft °C', COL.rh, 'y'),
+         ds('Zuluft (nach WRG) °C', COL.sup, 'y'),
          ds('Abluft (innen) °C', COL.t, 'y'),
          ds('WRG-Wirkungsgrad %', COL.eff, 'y1')],
          {y: axis('left', '°C', COL.t), y1: axis('right', 'Wirkungsgrad %', COL.eff, {suggestedMin: 0, suggestedMax: 100})}),
-       values: [s => r1(s.t_out), s => r1(s.t_in), s => r1(s.eff)]},
+       values: [s => r1(s.t_out), s => r1(s.t_sup), s => r1(s.t_in), s => r1(s.eff)]},
     ];
 
     function fmtSpan(ms) {
@@ -472,7 +474,7 @@
                    ['Rel. Feuchte', s => s.rh, ' %', 1], ['Abs. Feuchte', s => absHumidity(s.t, s.rh), ' g/m³', 1],
                    ['Lüfterstufe', s => s.level, '', 1], ['Bedarf (PID)', s => s.demand === null ? null : s.demand * 100, ' %', 0],
                    ['WRG-Wirkungsgrad', s => s.eff, ' %', 0], ['Außenluft', s => s.t_out, ' °C', 1],
-                   ['Abluft (innen)', s => s.t_in, ' °C', 1]];
+                   ['Zuluft (nach WRG)', s => s.t_sup, ' °C', 1], ['Abluft (innen)', s => s.t_in, ' °C', 1]];
     function renderStats() {
       const rows = [];
       for (const [label, f, unit, digits] of STATS) {
@@ -714,6 +716,13 @@
         });
 
         document.getElementById("val_direction_display").textContent = data.direction_display || "--";
+
+        // Supply air after the exchanger: NaN (null) outside heat recovery, gain vs. outdoor air
+        const tSup = num(data.temp_zuluft_wrg), tOut = num(data.temp_zuluft);
+        document.getElementById("val_temp_zuluft_wrg").textContent = tSup === null ? "--" : tSup.toFixed(1);
+        const gain = tSup === null || tOut === null ? null : tSup - tOut;
+        document.getElementById("val_wrg_gain").textContent =
+          gain === null ? "" : "(" + (gain >= 0 ? "+" : "−") + Math.abs(gain).toFixed(1) + " K)";
 
         // SGP41 board: label the VOC-based CO2 equivalent, show VOC / NOx index
         if (data.voc_index !== undefined) {
