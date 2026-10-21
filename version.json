@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.49",
+    "project_version": "0.10.50",
     "project_date": "2026-10-21",
-    "project_description": "Web dashboard: 24 h device history with charts and statistics, Server-Sent Events, connection indicator, change feedback, links to peer dashboards; gzipped page."
+    "project_description": "ESPHome 2026.10.0: compressed OTA uploads, ESP-IDF 5.5.6, smaller firmware image."
 }
