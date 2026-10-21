@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.48",
-    "project_date": "2026-10-20",
-    "project_description": "Web dashboard: Automatik-Status banner, room chips, all settings, filter reset, system info; CSRF protection for /set; thread-safe /state."
+    "project_version": "0.10.49",
+    "project_date": "2026-10-21",
+    "project_description": "Web dashboard: 24 h device history with charts and statistics, Server-Sent Events, connection indicator, change feedback, links to peer dashboards; gzipped page."
 }
