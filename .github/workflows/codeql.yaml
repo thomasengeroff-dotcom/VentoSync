@@ -42,6 +42,15 @@ jobs:
           build-mode: none
           # Extra Sicherheitsscans aktivieren
           queries: security-extended,security-and-quality
+          # build-mode none has no ESPHome headers: unknown types make CodeQL
+          # misparse functions and locals as unused / short global variables.
+          # Only these two quality rules are affected; security queries stay on.
+          config: |
+            query-filters:
+              - exclude:
+                  id: cpp/unused-static-variable
+              - exclude:
+                  id: cpp/short-global-name
 
       - name: Perform CodeQL Analysis
         if: steps.changes.outputs.firmware == 'true'

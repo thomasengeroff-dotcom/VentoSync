@@ -475,7 +475,9 @@ Triggered on push and pull request to `master`:
   `default_*` substitutions ↔ C++ defaults; runs on every change) and `esphome config` validation of **all** variants
   of `variants.json` incl. the generated MQTT one (dummy secrets) — catches YAML errors of the variants that PRs no
   longer compile.
-- **`codeql.yaml`**: CodeQL analysis of the C/C++ code.
+- **`codeql.yaml`**: CodeQL analysis of the C/C++ code (`build-mode: none`, `security-extended` +
+  `security-and-quality`). Without the ESPHome headers CodeQL misparses functions / locals, so the quality rules
+  `cpp/unused-static-variable` and `cpp/short-global-name` are excluded via `query-filters` (false positives only).
 - **`security.yaml`**: TruffleHog secret scanner.
 - **`version-guard.yaml`** (PRs only): runs `.github/scripts/check_version.py` — `version.json` must be
   greater than on `master`, match the top `CHANGELOG.md` entry, and its tag must not exist yet.
