@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-20
+// Modified:    2026-10-21
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -33,6 +33,7 @@
 #include "../components/ventilation_logic/espnow_auth.h"
 #include "../components/ventilation_logic/auto_level.h"
 #include "../components/ventilation_logic/summer_bypass.h"
+#include "../components/ventilation_logic/history.h"
 #include "../components/ventilation_group/ventilation_packet.h"
 #include <cassert>
 #include <cmath>
@@ -2195,6 +2196,69 @@ bool test_timer_start_after_now() {
   return true;
 }
 
+// ============================================================
+// T-8f: Dashboard history ring buffer (history.h)
+// ============================================================
+bool test_dashboard_history() {
+  namespace h = ventosync::history;
+  const float NaN = std::nanf("");
+
+  // Fixed point: rounding, NaN, clamping
+  TEST_ASSERT(h::encode(21.46f, 10) == 215);
+  TEST_ASSERT(h::encode(-3.04f, 10) == -30);
+  TEST_ASSERT(h::encode(NaN, 10) == h::NO_DATA);
+  TEST_ASSERT(h::encode(1e9f, 1) == 32767);
+  TEST_ASSERT(h::encode(-1e9f, 1) == -32767);  // never NO_DATA
+
+  // One bucket: mean of the valid samples, NaN samples skipped
+  h::Recorder r;
+  h::Values v;
+  v.fill(NaN);
+  uint32_t t = 1000;
+  for (uint32_t i = 0; i < h::BUCKET_MS / h::SAMPLE_MS; i++, t += h::SAMPLE_MS) {
+    v[h::CO2] = (i % 2 == 0) ? 600.0f : 700.0f;
+    v[h::ROOM_T] = (i == 3) ? NaN : 21.0f;
+    TEST_ASSERT(!r.add(v, t));
+  }
+  TEST_ASSERT(r.size() == 0);
+  TEST_ASSERT(r.add(v, t));  // 300 s after the first sample: bucket closed
+  TEST_ASSERT(r.size() == 1);
+  TEST_ASSERT(r.at(0)[h::CO2] == 652);  // 31 samples: 15 × 600 + 16 × 700
+  TEST_ASSERT(r.at(0)[h::ROOM_T] == 210);
+  TEST_ASSERT(r.at(0)[h::EFFICIENCY] == h::NO_DATA);  // never sampled
+  TEST_ASSERT(r.age_ms(t) == 0);
+  TEST_ASSERT(r.age_ms(t + 42000) == 42000);
+
+  // JSON: oldest first, null for missing values
+  std::string json;
+  r.append_json(json, t + 42000);
+  TEST_ASSERT(json.find("\"interval_s\":300,\"age_s\":42,") != std::string::npos);
+  TEST_ASSERT(json.find("\"scale\":{\"co2\":1,\"t\":10,") != std::string::npos);
+  TEST_ASSERT(json.find("\"t\":[210]") != std::string::npos);
+  TEST_ASSERT(json.find("\"eff\":[null]") != std::string::npos);
+  TEST_ASSERT(json.back() == '}');
+
+  // Stalled caller: missed buckets are appended empty, grid kept
+  v.fill(5.0f);
+  TEST_ASSERT(r.add(v, t + 3 * h::BUCKET_MS + 1000));
+  TEST_ASSERT(r.size() == 4);
+  TEST_ASSERT(r.at(1)[h::LEVEL] == 50);  // the running bucket got the sample
+  TEST_ASSERT(r.at(2)[h::LEVEL] == h::NO_DATA && r.at(3)[h::LEVEL] == h::NO_DATA);
+  TEST_ASSERT(r.age_ms(t + 3 * h::BUCKET_MS + 1000) == 1000);
+
+  // Ring: capped at 24 h, oldest dropped
+  h::Recorder ring;
+  uint32_t w = 0xFFFF0000u;  // across the millis() wrap
+  for (size_t i = 0; i <= h::CAPACITY + 5; i++, w += h::BUCKET_MS) {
+    v.fill(static_cast<float>(i));
+    ring.add(v, w);
+  }
+  TEST_ASSERT(ring.size() == h::CAPACITY);
+  TEST_ASSERT(ring.at(h::CAPACITY - 1)[h::CO2] == static_cast<int16_t>(h::CAPACITY + 5));
+  TEST_ASSERT(ring.at(0)[h::CO2] == 6);
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -2353,6 +2417,7 @@ int main() {
     {"T-8c: Smart-Automatik level ramp + Master following", test_auto_level},
     {"T-8d: Summer bypass decision + re-measure guard", test_summer_bypass},
     {"T-8e: Timer started after the loop timestamp (#54)", test_timer_start_after_now},
+    {"T-8f: Dashboard history ring buffer (24 h, 5 min)", test_dashboard_history},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {

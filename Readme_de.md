@@ -222,7 +222,7 @@ Das originale Bedienpanel des VentoMaxx V-WRG-1 (9 LEDs, 3 Taster) bleibt vollst
 
 ### 📊 VentoSync Dashboard - Lokales Web-Dashboard
 
-Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderlich: Jedes Lüftungsgerät stellt eine eigene, direkt im Webbrowser (auf Smartphone, Tablet oder PC) aufrufbare Benutzeroberfläche bereit — so kannst du Raumluftwerte live überwachen, Betriebsmodi steuern und Einstellungen vornehmen, ganz ohne App- oder Software-Installation.
+Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderlich: Jedes Lüftungsgerät stellt eine eigene, direkt im Webbrowser (auf Smartphone, Tablet oder PC) aufrufbare Benutzeroberfläche bereit — so kannst du Raumluftwerte live überwachen, Betriebsmodi steuern und Einstellungen vornehmen, ganz ohne App- oder Software-Installation. Seit 0.10.49 speichert das Gerät einen **24-h-Verlauf** (5-Minuten-Mittel von CO2, Raumklima, Lüfterstufe, Bedarf und Wärmerückgewinnung, mit Min / Mittel / Max), schickt Live-Werte per Server-Sent Events, zeigt einen Verbindungsabbruch an, bestätigt jede Änderung und verlinkt die Dashboards der anderen Geräte im Raum.
 
 <p align="center">
   <img src="documentation/screenshots/wrg-dashboard1.png" alt="WRG Dashboard Einstellungen" width="48%" />
@@ -477,7 +477,7 @@ Seit 0.10.31 sind direkte Uploads auf das Gerät (`esphome run` / `esphome uploa
 
 Die Weboberflächen (`http://<geräte-ip>/` und das VentoSync-Dashboard `/ui`) haben **keinen Login**: Jeder im selben Netzwerk kann die Werte lesen und Modus, Lüfterstufe und raumweite Einstellungen ändern. Das LAN ist die Vertrauensgrenze, wie bei der API (siehe oben).
 
-- **Login aktivieren** im eigenen Build: den `auth:`-Block unter `web_server:` in `packages/base/esp32c6_common.yaml` einkommentieren und `webuser` / `webpw` in `secrets.yaml` eintragen. Er schützt die native Seite **und** das Dashboard (`/ui`, `/state`, `/meta`, `/set`). Die Release-Binaries lassen ihn aus, weil sie ohne Secrets gebaut werden.
+- **Login aktivieren** im eigenen Build: den `auth:`-Block unter `web_server:` in `packages/base/esp32c6_common.yaml` einkommentieren und `webuser` / `webpw` in `secrets.yaml` eintragen. Er schützt die native Seite **und** das Dashboard (`/ui`, `/state`, `/stream`, `/history`, `/meta`, `/set`). Die Release-Binaries lassen ihn aus, weil sie ohne Secrets gebaut werden.
 - **Schutz gegen Überflutung** (seit 0.10.42): Das Dashboard hält höchstens 16 offene Änderungen vor; weitere `/set`-Anfragen bekommen HTTP 503, bis die Warteschlange abgearbeitet ist (alle 100 ms), und Werte mit mehr als 32 Zeichen werden abgelehnt.
 - **Keine Änderungen von fremden Seiten** (seit 0.10.48): `/set` nimmt nur `POST` mit dem Header `X-VentoSync` von der Seite des Geräts selbst an; Anfragen mit fremdem `Origin` bekommen HTTP 403. Eine andere Webseite im selben Netz kann die Lüftung also nicht mehr über einen versteckten Link oder ein Formular umschalten.
 

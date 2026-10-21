@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.49] - 2026-10-21
+
+### Added
+
+- **Web dashboard: 24 h history on the device** — the device records 5-minute averages of CO2, room temperature and
+  humidity, fan level, PID demand, heat recovery efficiency, outdoor and extract air in a RAM ring buffer (288 points,
+  ~4.6 KB; `ventosync::history`, `components/ventilation_logic/history.h`, unit test T-8f) and serves them at the new
+  endpoint `GET /history`. The charts switch between **Live** (last 10 min in the browser), **6 h** and **24 h**, so a
+  page reload no longer loses the history. The history starts over after a reboot (RAM only, no flash wear).
+- **Web dashboard: new charts** — *Luftqualität & Regelung* (CO2, fan level, PID demand: shows hysteresis and level
+  steps), *Raumklima* (temperature, relative and **absolute humidity**), *Wärmerückgewinnung* (outdoor air, extract
+  air, efficiency). Below them a **statistics table** with min / mean / max over the stored history (up to 24 h) — the
+  daily values and the absolute humidity the documentation had promised before 0.10.48.
+- **Web dashboard: Server-Sent Events** — new endpoint `GET /stream`: the device pushes the `/state` JSON every 2 s and
+  right after a change instead of being polled (same mechanism as ESPHome's `/events`, max 3 streams, a stuck client is
+  disconnected after 20 s). If the stream is unavailable, the page falls back to polling `/state` every 2 s.
+- **Web dashboard: connection indicator** — "Live-Verbindung (Stream)" / "Verbunden (Abfrage alle 2 s)" / "Keine
+  Verbindung" below the title; after 6 s without data a banner shows the age of the displayed values and the cards are
+  dimmed. All requests have a timeout (a Wi-Fi drop no longer leaves a hanging request).
+- **Web dashboard: feedback for changes** — "Gespeichert" only once the device reports the new value, "Nicht
+  übernommen" (with the current value) if it did not take it within 5 s, and a visible reason for rejected requests
+  (invalid value, security check, device busy, no connection) instead of a console message.
+- **Web dashboard: links between devices** — each peer card links to that device's dashboard via its mDNS name
+  (`ventosync-<MAC suffix>.local`, derived from the MAC of its ESP-NOW packets — no protocol change); the own host name
+  is shown in the system info.
+
+### Changed
+
+- **Dashboard page gzipped** — the page moved from `dashboard_html.h` to `components/wrg_dashboard/dashboard.html` and
+  is gzip-compressed at build time (~50 KB → ~14 KB in flash, 24 KB less than the uncompressed 0.10.48 page), served
+  with `Content-Encoding: gzip`. Keeps the Bluetooth proxy image within its partition.
+- Without internet (no Chart.js from the CDN) the dashboard stays usable and shows a note instead of the charts.
+
 ## [0.10.48] - 2026-10-20
 
 ### Added

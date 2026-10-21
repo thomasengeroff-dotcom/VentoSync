@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,020,640 / 2,031,616 B (~11 KB headroom, 0.10.48) — CI compiles it only after the merge (PRs build
+  logger INFO. Image 2,003,762 / 2,031,616 B (~27 KB headroom, 0.10.49 — dashboard page gzipped) — CI compiles it only after the merge (PRs build
   `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
@@ -293,7 +293,7 @@ Use `ventosync::` for project-wide constants, guards, and helper structs. Sub-na
 `ventosync::config`, `ventosync::espnow`, `ventosync::ha_fan`, `ventosync::health`, `ventosync::hrv`,
 `ventosync::hvac`, `ventosync::hw`, `ventosync::room`, `ventosync::vacation`, `ventosync::auto_override`,
 `ventosync::nox`, `ventosync::auto_status`, `ventosync::espnow_auth`, `ventosync::auto_level`, `ventosync::summer`,
-`ventosync::packet`, `ventosync::defaults`.
+`ventosync::packet`, `ventosync::defaults`, `ventosync::history`.
 
 ### Modular C++ Headers (`components/helpers/`)
 
@@ -339,13 +339,18 @@ Complex YAML lambda logic is extracted into focused header files:
     change) and `master_level()` (slaves follow a fresh Master).
   - `summer_bypass.h` (`ventosync::summer`): summer bypass `decide()` (thresholds, hysteresis, AC lock) and
     `RemeasureGuard`; owns the `SUMMER_*` constants.
+  - `history.h` (`ventosync::history`): dashboard 24 h history `Recorder` (5-min averages, RAM ring buffer, `GET /history`).
   - `defaults.h` (`ventosync::defaults`): factory defaults of the Smart-Automatik settings (see *Factory defaults*).
 - **`ventilation_group/ventilation_packet.h`** (pure, unit-tested): wire format (`VentilationPacket`, `MessageType`,
   `ROOM_FLAG_*`, `PROTOCOL_VERSION`), `PeerState`, `ventosync::packet::parse()` and `update_peer_state()`.
-- **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/meta`, `POST /set`).
+- **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/stream`, `/history`,
+  `/meta`, `POST /set`). The page is `dashboard.html` — gzipped into flash by `__init__.py` at build time, edit it directly.
   The server runs in its own task: read entities / `peers` only in `loop()` (it serializes `/state` and `/meta`),
-  never in the request handler. Entities are registered by JSON key (tables in `__init__.py`); `/set` accepts only
-  those keys, via POST with the `X-VentoSync` header and same origin (CSRF).
+  never in the request handler; the history ring buffer (`history.h`) is shared under the same mutex. `/stream`
+  (Server-Sent Events) follows ESPHome's `/events` pattern: a `StreamSession` is tied to the socket, sent to only from
+  `loop()` (non-blocking) and deleted only after httpd's `free_ctx` (`destroy()`) marked it dead. Entities are
+  registered by JSON key (tables in `__init__.py`); `/set` accepts only those keys, via POST with the `X-VentoSync`
+  header and same origin (CSRF).
 
 ### Type Safety & Best Practices
 
@@ -382,7 +387,7 @@ substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA
 ## Known Pitfalls
 
 - **`"Smart-Automatik"`** must match exactly in the YAML select/preset options and all C++ code
-  (`globals.h`, `network_sync.h`, `user_input.h`, `dashboard_html.h`). A mismatch silently breaks mode
+  (`globals.h`, `network_sync.h`, `user_input.h`, `dashboard.html`). A mismatch silently breaks mode
   switching (CHANGELOG 0.8.169).
 - **PID output without sensor is `0.0`, not NaN.** The ESPHome PID writes 0 when its input is NaN, and
   `co2_pid_result` starts at `0.0`. To detect "no local sensor", check the sensor value

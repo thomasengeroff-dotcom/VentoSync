@@ -1,32 +1,16 @@
-// ==========================================================================
-// VentoSync HRV – ESPHome Custom Component
-// https://github.com/thomasengeroff-dotcom/VentoSync
-//
-// Copyright (c) 2026 Thomas Engeroff
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-//
-// File:        dashboard_html.h
-// Description: HTML/CSS strings for the WRG web dashboard.
-// Author:      Thomas Engeroff
-// Created:     2026-03-09
-// Modified:    2026-10-20
-// ==========================================================================
-#pragma once
-
-const char DASHBOARD_HTML[] PROGMEM = R"=====(
 <!DOCTYPE html>
+<!--
+  VentoSync HRV – ESPHome Custom Component
+  https://github.com/thomasengeroff-dotcom/VentoSync
+  Copyright (c) 2026 Thomas Engeroff — GPL v3 (see LICENSE)
+
+  File:        dashboard.html
+  Description: Single-page web dashboard (GET /ui). Gzipped into the firmware
+               at build time by __init__.py — edit this file directly.
+  Author:      Thomas Engeroff
+  Created:     2026-03-09
+  Modified:    2026-10-21
+-->
 <html lang="de" class="dark">
 <head>
   <meta charset="utf-8">
@@ -75,11 +59,17 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
   <div class="w-full max-w-5xl space-y-6">
 
     <header class="text-center space-y-2">
-      <h1 class="text-3xl font-bold tracking-tight text-white mb-6">
+      <h1 class="text-3xl font-bold tracking-tight text-white">
         WRG Lüftung Dashboard
         <span id="hdr_version" class="text-sm font-normal text-gray-500 ml-2"></span>
       </h1>
+      <div class="text-xs text-gray-500 mb-4"><span id="conn_dot" class="inline-block w-2 h-2 rounded-full bg-gray-500 mr-1.5"></span><span id="conn_label">Verbinde …</span></div>
     </header>
+
+    <!-- Shown when no data arrived for CONN_STALE_MS: the values below are outdated -->
+    <div id="conn_banner" class="hidden bg-danger/15 border border-danger/40 text-danger rounded-xl px-4 py-3 text-sm font-medium">
+      Verbindung zum Gerät verloren – letzte Daten vor <span id="conn_age">--</span>. Die Werte unten sind nicht aktuell.
+    </div>
 
     <!-- Automatik-Status: what the ventilation does and why, plus the active room inputs -->
     <div id="status_card" class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 border-l-4">
@@ -88,7 +78,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       <div id="status_chips" class="flex flex-wrap gap-2 mt-3 empty:hidden"></div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div id="main_grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity">
 
       <!-- Device & system info -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-3">
@@ -100,6 +90,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         <div class="border-t border-gray-700 pt-3 space-y-1 text-sm">
           <div class="flex justify-between"><span class="text-gray-400">Firmware:</span> <span id="sys_version">--</span></div>
           <div class="flex justify-between"><span class="text-gray-400">Variante:</span> <span id="sys_variant">--</span></div>
+          <div class="flex justify-between gap-2"><span class="text-gray-400">Hostname:</span> <span id="sys_host" class="truncate">--</span></div>
           <div class="flex justify-between"><span class="text-gray-400">Laufzeit:</span> <span id="sys_uptime">--</span></div>
           <div class="flex justify-between"><span class="text-gray-400">Letzter Neustart:</span> <span id="sys_reset">--</span></div>
           <div class="flex justify-between"><span class="text-gray-400">WLAN-Signal:</span> <span id="sys_rssi">--</span></div>
@@ -184,16 +175,39 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         <div id="peers_container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2"></div>
       </div>
 
-      <!-- Chart -->
+      <!-- Charts: Live (browser, last 10 min) or the device's 24 h history (GET /history, 5-min means) -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col md:col-span-2 lg:col-span-3">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-4">Graphen & Verlauf</h2>
-        <div class="relative w-full h-[400px]">
-          <canvas id="historyChart"></canvas>
+        <div class="flex flex-wrap justify-between items-center gap-3 border-b border-gray-700 pb-2 mb-3">
+          <h2 class="text-xl font-semibold text-white">Graphen &amp; Verlauf</h2>
+          <div class="flex gap-1 text-sm">
+            <button data-range="live" onclick="setRange('live')" class="px-3 py-1 rounded-lg border transition-colors">Live</button>
+            <button data-range="6" onclick="setRange(6)" class="px-3 py-1 rounded-lg border transition-colors">6 h</button>
+            <button data-range="24" onclick="setRange(24)" class="px-3 py-1 rounded-lg border transition-colors">24 h</button>
+          </div>
+        </div>
+        <p id="hist_note" class="text-xs text-gray-500 mb-4"></p>
+        <div class="space-y-6">
+          <div><div class="text-sm text-gray-400 font-medium mb-1">Luftqualität &amp; Regelung</div><div class="relative w-full h-[260px]"><canvas id="chart_control"></canvas></div></div>
+          <div><div class="text-sm text-gray-400 font-medium mb-1">Raumklima</div><div class="relative w-full h-[260px]"><canvas id="chart_climate"></canvas></div></div>
+          <div><div class="text-sm text-gray-400 font-medium mb-1">Wärmerückgewinnung</div><div class="relative w-full h-[260px]"><canvas id="chart_hrv"></canvas></div></div>
+        </div>
+
+        <div class="mt-6 border-t border-gray-700 pt-4">
+          <div class="text-sm text-gray-400 font-medium mb-2">Statistik <span id="stats_span" class="text-xs text-gray-500"></span></div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-xs uppercase tracking-wider text-gray-500"><th class="text-left font-medium py-1 pr-4"></th><th class="text-right font-medium px-2">Min</th><th class="text-right font-medium px-2">Mittel</th><th class="text-right font-medium px-2">Max</th></tr></thead>
+              <tbody id="stats_body"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
     </div>
   </div>
+
+  <!-- Feedback for changes (saved / rejected / not applied) -->
+  <div id="toasts" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-end gap-2 pointer-events-none"></div>
 
   <script>
     function sanitizeHTML(str) {
@@ -256,8 +270,11 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       grp_net: [['n', 'sync_interval_config', 'ESP-NOW Sync-Intervall', 'min', 1]],
     };
     const INPUT_CLS = 'bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block p-1.5';
+    // Names of the writable keys for the feedback messages
+    const LABELS = {luefter_modus: 'Lüfter Modus', fan_intensity_display: 'Lüfter Intensität', filter_reset: 'Filterwechsel'};
     function renderSettings() {
       for (const [grp, rows] of Object.entries(SETTINGS)) {
+        rows.forEach(([, k, label]) => { LABELS[k] = label; });
         document.getElementById(grp).innerHTML = rows.map(([t, k, label, unit, rw]) => {
           const badge = rw ? ' <span class="text-[10px] font-semibold text-accent/80">RAUMWEIT</span>' : '';
           let ctl;
@@ -274,11 +291,22 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
     }
     renderSettings();
 
+    // fetch() without a timeout hangs for minutes on a Wi-Fi drop
+    async function fetchT(url, opts, ms) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), ms || 4000);
+      try {
+        return await fetch(url, Object.assign({}, opts || {}, {signal: ctl.signal}));
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     // Limits of the writable settings (/meta, built once by the device)
     let META = null;
     async function loadMeta() {
       try {
-        const res = await fetch('/meta');
+        const res = await fetchT('/meta');
         if (!res.ok) { setTimeout(loadMeta, 1000); return; }
         META = await res.json();
         for (const [k, [min, max, step]] of Object.entries(META.numbers || {})) {
@@ -292,116 +320,196 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         if ((META.buttons || []).includes('filter_reset')) {
           document.getElementById('btn_filter_reset').classList.remove('hidden');
         }
-        updateData();
+        pollState();
       } catch (e) {
         console.error('Error fetching meta:', e);
         setTimeout(loadMeta, 2000);
       }
     }
 
-    // Chart Setup
-    const maxHistoryPoints = 150; // approx 5 minutes at 2s interval
-    const chartData = {
-      labels: ["", "", "", "", ""],
-      datasets: [
-        {
-          label: 'Lüfter RPM',
-          borderColor: '#03dac6',
-          backgroundColor: '#03dac6',
-          data: [null, null, null, null, null],
-          yAxisID: 'y',
-          tension: 0.3,
-          borderWidth: 2,
-          pointRadius: 0
-        },
-        {
-          label: 'Raumtemp °C',
-          borderColor: '#cf6679',
-          backgroundColor: '#cf6679',
-          data: [null, null, null, null, null],
-          yAxisID: 'y1',
-          tension: 0.3,
-          borderWidth: 2,
-          pointRadius: 0
-        },
-        {
-          label: 'CO2 ppm',
-          borderColor: '#bb86fc',
-          backgroundColor: '#bb86fc',
-          data: [null, null, null, null, null],
-          yAxisID: 'y2',
-          tension: 0.3,
-          borderWidth: 2,
-          pointRadius: 0
-        },
-        {
-          label: 'Luftfeuchte %',
-          borderColor: '#03a9f4',
-          backgroundColor: '#03a9f4',
-          data: [null, null, null, null, null],
-          yAxisID: 'y1',
-          tension: 0.3,
-          borderWidth: 2,
-          pointRadius: 0
-        }
-      ]
-    };
+    // ---------- Charts & statistics ----------
+    // Sample fields as in GET /history: co2, t, rh, level, demand (0–1), eff, t_out, t_in; ts = time (ms)
+    const LIVE_MS = 10 * 60 * 1000;  // live view: last 10 min, kept in the browser
+    const LIVE = [];
+    let HIST = [];                   // 5-min means from the device, oldest first
+    let HIST_INTERVAL_S = 300;
+    let HIST_LOADED = false;
+    let RANGE = 'live';
+    try { const r = localStorage.getItem('vs_range'); if (r) RANGE = r === 'live' ? r : Number(r); } catch (e) {}
 
-    const ctx = document.getElementById('historyChart').getContext('2d');
-    const historyChart = new Chart(ctx, {
-      type: 'line',
-      data: chartData,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: {
-            labels: { color: '#e5e7eb', usePointStyle: true, boxWidth: 8 },
-            position: 'top'
-          },
-          tooltip: {
-            backgroundColor: 'rgba(30, 30, 30, 0.9)',
-            titleColor: '#fff',
-            bodyColor: '#e5e7eb',
-            borderColor: '#374151',
-            borderWidth: 1,
-            padding: 10
-          }
-        },
-        scales: {
-          x: {
-            ticks: { color: '#9ca3af', maxRotation: 0, autoSkipPadding: 15 },
-            grid: { color: '#374151', drawBorder: false }
-          },
-          y: {
-            type: 'linear',
-            display: true,
-            position: 'left',
-            title: { display: true, text: 'RPM', color: '#03dac6', font: {size: 11} },
-            ticks: { color: '#9ca3af' },
-            grid: { color: '#374151', drawBorder: false }
-          },
-          y1: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-            title: { display: true, text: '°C / %', color: '#cf6679', font: {size: 11} },
-            ticks: { color: '#9ca3af' },
-            grid: { drawOnChartArea: false }
-          },
-          y2: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-            title: { display: true, text: 'CO2 ppm', color: '#bb86fc', font: {size: 11} },
-            ticks: { color: '#9ca3af' },
-            grid: { drawOnChartArea: false }
-          }
+    const num = v => (v === undefined || v === null || isNaN(v)) ? null : Number(v);
+    const r1 = v => v === null ? null : Math.round(v * 10) / 10;
+    // Absolute humidity in g/m³ (Magnus formula, as the enthalpy guard in auto_mode.h)
+    function absHumidity(t, rh) {
+      if (t === null || rh === null) return null;
+      return 216.7 * (rh / 100 * 6.112 * Math.exp(17.67 * t / (t + 243.5))) / (273.15 + t);
+    }
+    function liveSample(data) {
+      return {ts: Date.now(), co2: num(data.room_co2), t: num(data.room_temperature), rh: num(data.room_humidity),
+              level: data.luefter_modus === 'Aus' ? 0 : num(data.fan_intensity_display),
+              demand: num(data.pid_demand), eff: num(data.heat_recovery_efficiency),
+              t_out: num(data.temp_zuluft), t_in: num(data.temp_abluft)};
+    }
+    // /history: fixed-point series, the newest bucket ended age_s ago
+    function parseHistory(h) {
+      const keys = Object.keys(h.series);
+      const n = keys.length ? h.series[keys[0]].length : 0;
+      const end = Date.now() - h.age_s * 1000;
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const sample = {ts: end - (n - 1 - i) * h.interval_s * 1000};
+        for (const k of keys) {
+          const v = h.series[k][i];
+          sample[k] = v === null ? null : v / h.scale[k];
         }
+        out.push(sample);
       }
-    });
+      return out;
+    }
+
+    const COL = {co2: '#bb86fc', level: '#03dac6', demand: '#f2b84b', t: '#cf6679', rh: '#03a9f4', ah: '#81d4fa', eff: '#03dac6'};
+    const GRID = '#374151', TICK = '#9ca3af';
+    function ds(label, color, yAxisID, extra) {
+      return Object.assign({label: label, borderColor: color, backgroundColor: color, data: [], yAxisID: yAxisID,
+                            tension: 0.3, borderWidth: 2, pointRadius: 0}, extra || {});
+    }
+    function axis(position, title, color, extra) {
+      return Object.assign({type: 'linear', position: position,
+                            title: {display: !!title, text: title, color: color, font: {size: 11}},
+                            ticks: {color: TICK},
+                            grid: position === 'left' ? {color: GRID} : {drawOnChartArea: false}}, extra || {});
+    }
+    // Without internet the Chart.js CDN is missing: no charts, the rest of the page works
+    function makeChart(id, datasets, scales) {
+      if (typeof Chart === 'undefined') return null;
+      return new Chart(document.getElementById(id).getContext('2d'), {
+        type: 'line',
+        data: {labels: [], datasets: datasets},
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          interaction: {mode: 'index', intersect: false},
+          plugins: {
+            legend: {labels: {color: '#e5e7eb', usePointStyle: true, boxWidth: 8}, position: 'top'},
+            tooltip: {backgroundColor: 'rgba(30, 30, 30, 0.9)', titleColor: '#fff', bodyColor: '#e5e7eb',
+                      borderColor: GRID, borderWidth: 1, padding: 10}
+          },
+          scales: Object.assign({x: {ticks: {color: TICK, maxRotation: 0, autoSkipPadding: 15}, grid: {color: GRID}}}, scales)
+        }
+      });
+    }
+    // One entry per chart: the Chart.js instance and one value function per dataset
+    const CHARTS = [
+      {chart: makeChart('chart_control', [
+         ds('CO2 ppm', COL.co2, 'y'),
+         ds('Lüfterstufe', COL.level, 'yL', {stepped: true, tension: 0}),
+         ds('Bedarf % (PID)', COL.demand, 'yD', {borderDash: [4, 3]})],
+         {y: axis('left', 'CO2 ppm', COL.co2),
+          yL: axis('right', 'Stufe 0–10 / Bedarf 0–100 %', COL.level, {min: 0, max: 10}),
+          yD: axis('right', '', COL.demand, {min: 0, max: 100, display: false})}),
+       values: [s => r1(s.co2), s => r1(s.level), s => s.demand === null ? null : Math.round(s.demand * 100)]},
+      {chart: makeChart('chart_climate', [
+         ds('Temperatur °C', COL.t, 'y'),
+         ds('Abs. Feuchte g/m³', COL.ah, 'y', {borderDash: [4, 3]}),
+         ds('Rel. Feuchte %', COL.rh, 'y1')],
+         {y: axis('left', '°C / g/m³', COL.t), y1: axis('right', '% rF', COL.rh)}),
+       values: [s => r1(s.t), s => r1(absHumidity(s.t, s.rh)), s => r1(s.rh)]},
+      {chart: makeChart('chart_hrv', [
+         ds('Außenluft °C', COL.rh, 'y'),
+         ds('Abluft (innen) °C', COL.t, 'y'),
+         ds('WRG-Wirkungsgrad %', COL.eff, 'y1')],
+         {y: axis('left', '°C', COL.t), y1: axis('right', 'Wirkungsgrad %', COL.eff, {suggestedMin: 0, suggestedMax: 100})}),
+       values: [s => r1(s.t_out), s => r1(s.t_in), s => r1(s.eff)]},
+    ];
+
+    function fmtSpan(ms) {
+      const m = Math.round(ms / 60000);
+      return (m >= 60 ? Math.floor(m / 60) + ' h ' : '') + (m % 60) + ' min';
+    }
+    function timeLabel(ts, seconds) {
+      const d = new Date(ts), p = n => String(n).padStart(2, '0');
+      return p(d.getHours()) + ':' + p(d.getMinutes()) + (seconds ? ':' + p(d.getSeconds()) : '');
+    }
+    function renderCharts() {
+      const live = RANGE === 'live';
+      const from = Date.now() - (live ? LIVE_MS : RANGE * 3600000);
+      const samples = live ? LIVE : HIST.filter(s => s.ts >= from);
+      const labels = samples.map(s => timeLabel(s.ts, live));
+      for (const c of CHARTS) {
+        if (!c.chart) continue;
+        c.chart.data.labels = labels;
+        c.chart.data.datasets.forEach((d, i) => { d.data = samples.map(c.values[i]); });
+        c.chart.update();
+      }
+      let note;
+      if (typeof Chart === 'undefined') {
+        note = 'Diagramme nicht verfügbar: Chart.js konnte nicht geladen werden (keine Internetverbindung?).';
+      } else if (live) {
+        note = 'Live: aktuelle Werte der letzten 10 Minuten (nur in diesem Browser).';
+      } else if (!HIST_LOADED) {
+        note = 'Verlauf wird geladen …';
+      } else if (!HIST.length) {
+        note = 'Noch keine Verlaufsdaten – der erste 5-Minuten-Mittelwert liegt 5 Minuten nach dem Gerätestart vor.';
+      } else {
+        const span = HIST.length * HIST_INTERVAL_S * 1000;
+        note = '5-Minuten-Mittelwerte aus dem Gerät' + (span < RANGE * 3600000 ? ', vorhanden seit ' + fmtSpan(span) : '') +
+               '. Der Verlauf liegt im RAM und beginnt nach einem Neustart neu.';
+      }
+      document.getElementById('hist_note').textContent = note;
+    }
+    function setRange(r) {
+      RANGE = r;
+      try { localStorage.setItem('vs_range', String(r)); } catch (e) {}
+      document.querySelectorAll('[data-range]').forEach(b => {
+        const on = b.dataset.range === String(r);
+        b.className = 'px-3 py-1 rounded-lg border transition-colors ' +
+          (on ? 'bg-accent/20 text-accent border-accent/40' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700');
+      });
+      renderCharts();
+    }
+
+    // Min / mean / max over the device history (5-min means, up to 24 h)
+    const STATS = [['CO2', s => s.co2, ' ppm', 0], ['Raumtemperatur', s => s.t, ' °C', 1],
+                   ['Rel. Feuchte', s => s.rh, ' %', 1], ['Abs. Feuchte', s => absHumidity(s.t, s.rh), ' g/m³', 1],
+                   ['Lüfterstufe', s => s.level, '', 1], ['Bedarf (PID)', s => s.demand === null ? null : s.demand * 100, ' %', 0],
+                   ['WRG-Wirkungsgrad', s => s.eff, ' %', 0], ['Außenluft', s => s.t_out, ' °C', 1],
+                   ['Abluft (innen)', s => s.t_in, ' °C', 1]];
+    function renderStats() {
+      const rows = [];
+      for (const [label, f, unit, digits] of STATS) {
+        const vals = HIST.map(f).filter(v => v !== null && !isNaN(v));
+        if (!vals.length) continue;
+        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        rows.push(`<tr class="border-t border-gray-700/60"><td class="py-1.5 pr-4 text-gray-400">${label}</td>` +
+          [Math.min(...vals), avg, Math.max(...vals)].map(v => `<td class="py-1.5 px-2 text-right tabular-nums">${v.toFixed(digits)}${unit}</td>`).join('') +
+          '</tr>');
+      }
+      document.getElementById('stats_body').innerHTML = rows.join('') ||
+        '<tr><td colspan="4" class="py-2 text-gray-500">Noch keine Verlaufsdaten</td></tr>';
+      const span = HIST.length * HIST_INTERVAL_S * 1000;
+      document.getElementById('stats_span').textContent = !HIST.length ? ''
+        : (span >= 24 * 3600000 ? '(letzte 24 h, aus 5-Minuten-Mitteln)' : `(seit ${fmtSpan(span)}, aus 5-Minuten-Mitteln)`);
+    }
+
+    let histTimer = null;
+    async function loadHistory() {
+      clearTimeout(histTimer);
+      let next_s = 60;
+      try {
+        const res = await fetchT('/history', null, 8000);
+        if (res.ok) {
+          const h = await res.json();
+          HIST = parseHistory(h);
+          HIST_INTERVAL_S = h.interval_s;
+          HIST_LOADED = true;
+          next_s = Math.max(10, h.interval_s - h.age_s + 5);  // just after the next bucket closes
+          renderStats();
+          if (RANGE !== 'live') renderCharts();
+        }
+      } catch (e) {
+        console.warn('History not loaded:', e);
+      }
+      histTimer = setTimeout(loadHistory, next_s * 1000);
+    }
 
     // Border colour of the status card per automatik_grund key (auto_status.h)
     const REASON_TONE = {co2_notfall: 'danger', schimmelschutz: 'danger', nox: 'danger',
@@ -432,6 +540,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       document.getElementById('hdr_version').textContent = sys.version ? 'v' + sys.version : '';
       document.getElementById('sys_version').textContent = sys.version || '--';
       document.getElementById('sys_variant').textContent = sys.variant || '--';
+      document.getElementById('sys_host').textContent = sys.host || '--';
       document.getElementById('sys_uptime').textContent = fmtUptime(sys.uptime_s);
       document.getElementById('sys_reset').textContent = sys.reset_reason || '--';
       document.getElementById('sys_rssi').textContent = (sys.rssi !== undefined) ? sys.rssi + ' dBm' : '--';
@@ -456,7 +565,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       });
     }
 
-    function peerCard(title, local, modeLabel, speed, phaseBadge, rpm, boardT, pid, flags, dotCls, dotTitle, air) {
+    function peerCard(title, local, modeLabel, speed, phaseBadge, rpm, boardT, pid, flags, dotCls, dotTitle, air, link) {
       return `<div class="${local ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-800/80 border-gray-700 hover:border-gray-600 transition-colors'} rounded-lg p-4 border">
             <div class="font-bold ${local ? 'text-gray-300' : 'text-white'} mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
               <span>${title}</span>
@@ -473,7 +582,14 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
                 <div class="flex justify-between"><span>PID:</span> <strong class="text-accent/80">${pid}</strong></div>
             </div>
             ${air}
+            ${link || ''}
         </div>`;
+    }
+    // Link to a peer's own dashboard via its mDNS name (needs a client that resolves .local)
+    function peerLink(host) {
+      if (!host) return '';
+      const h = sanitizeHTML(host);
+      return `<a href="http://${h}/ui" class="block text-xs text-accent hover:underline mt-3" title="Öffnet ${h} – erfordert mDNS (.local) im Netzwerk">Dashboard dieses Geräts öffnen ↗</a>`;
     }
     const BADGE_IN = "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>";
     const BADGE_OUT = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
@@ -504,23 +620,83 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         html += peerCard(`Gerät ${sanitizeHTML(String(peer.device_id))}${peer.master ? MASTER_TAG : ''} <span class="text-xs font-normal text-gray-500">${seen}</span>`, false,
             mode, peer.speed, badge, fmtNum(peer.rpm, 0, ""), fmtNum(peer.board_t, 1, " °C"), pct(peer.pid_demand), flags,
             peer.fresh ? 'bg-accent' : 'bg-warn', peer.fresh ? 'Aktuell' : 'Veraltet: ' + seen,
-            airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity));
+            airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity), peerLink(peer.host));
       });
       document.getElementById('peers_container').innerHTML = html;
     }
 
-    let retryPending = false;
-    async function updateData() {
+    // ---------- Transport: /stream (Server-Sent Events), /state polling as fallback ----------
+    const CONN_STALE_MS = 6000;   // no data for this long: connection lost
+    const STREAM_QUIET_MS = 5000; // stream silent for this long: poll /state instead
+    let lastDataMs = 0, lastStreamMs = 0, lastPollMs = 0;
+    let stream = null, streamRetryAt = 0;
+    let pollBusy = false, retryPending = false;
+
+    function startStream() {
+      if (!window.EventSource) return;
+      stream = new EventSource('/stream');
+      stream.addEventListener('state', ev => {
+        lastStreamMs = Date.now();
+        try {
+          renderState(JSON.parse(ev.data));
+        } catch (e) {
+          console.error('Bad stream event:', e);
+        }
+      });
+      stream.onerror = () => {
+        // CLOSED: refused (e.g. 503, too many clients) — the browser does not retry by itself
+        if (stream && stream.readyState === EventSource.CLOSED) {
+          stream = null;
+          streamRetryAt = Date.now() + 30000;
+        }
+      };
+    }
+
+    async function pollState() {
+      if (pollBusy) return;
+      pollBusy = true;
+      lastPollMs = Date.now();
       try {
-        const res = await fetch('/state');
+        const res = await fetchT('/state');
         if (res.status === 503 && !retryPending) {
           // The device builds /state only while a client polls — ready within ~100 ms
           retryPending = true;
-          setTimeout(() => { retryPending = false; updateData(); }, 300);
+          setTimeout(() => { retryPending = false; pollState(); }, 300);
           return;
         }
-        if (!res.ok) return;
-        const data = await res.json();
+        if (res.ok) renderState(await res.json());
+      } catch (e) {
+        console.warn('Error fetching state:', e);
+      } finally {
+        pollBusy = false;
+      }
+    }
+
+    // Every second: keep the stream open, poll while it is silent, show the connection state
+    function tick() {
+      const now = Date.now();
+      if (!stream && now >= streamRetryAt) startStream();
+      const streaming = now - lastStreamMs < STREAM_QUIET_MS;
+      if (!streaming && now - lastPollMs >= 2000) pollState();
+
+      const age = lastDataMs ? now - lastDataMs : Infinity;
+      const stale = age > CONN_STALE_MS;
+      document.getElementById('conn_banner').classList.toggle('hidden', !stale || !lastDataMs);
+      document.getElementById('conn_age').textContent = lastDataMs ? fmtAge(age) : '--';
+      document.getElementById('main_grid').classList.toggle('opacity-50', stale && !!lastDataMs);
+      document.getElementById('conn_dot').className = 'inline-block w-2 h-2 rounded-full mr-1.5 ' +
+        (stale ? 'bg-danger' : (streaming ? 'bg-accent' : 'bg-warn'));
+      document.getElementById('conn_label').textContent = stale
+        ? (lastDataMs ? 'Keine Verbindung' : 'Verbinde …')
+        : (streaming ? 'Live-Verbindung (Stream)' : 'Verbunden (Abfrage alle 2 s)');
+    }
+    function fmtAge(ms) {
+      const s = Math.round(ms / 1000);
+      return s < 120 ? s + ' s' : fmtSpan(ms);
+    }
+
+    function renderState(data) {
+        lastDataMs = Date.now();
 
         // Update direct text elements
         const ids = ["device_id", "floor_id", "room_id", "phase",
@@ -586,57 +762,84 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
         renderSystem(data);
         renderSettingValues(data);
         renderPeers(data);
+        verifyPending(data);
 
-        // Update Chart
-        const now = new Date();
-        const timeStr = now.getHours().toString().padStart(2, '0') + ':' +
-                        now.getMinutes().toString().padStart(2, '0') + ':' +
-                        now.getSeconds().toString().padStart(2, '0');
-
-        chartData.labels.push(timeStr);
-        chartData.datasets[0].data.push(data.fan_rpm === null ? null : parseFloat(data.fan_rpm));
-        chartData.datasets[1].data.push(data.room_temperature === null ? null : parseFloat(data.room_temperature));
-        chartData.datasets[2].data.push(data.room_co2 === null ? null : parseFloat(data.room_co2));
-        chartData.datasets[3].data.push(data.room_humidity === null ? null : parseFloat(data.room_humidity));
-
-        if (chartData.labels.length > maxHistoryPoints) {
-            chartData.labels.shift();
-            chartData.datasets.forEach(dataset => dataset.data.shift());
-        }
-        historyChart.update();
-
-      } catch (e) {
-        console.error('Error fetching state:', e);
-      }
+        LIVE.push(liveSample(data));
+        while (LIVE.length && LIVE[0].ts < lastDataMs - LIVE_MS) LIVE.shift();
+        if (RANGE === 'live') renderCharts();
     }
 
+    // ---------- Feedback for changes ----------
+    function toast(msg, tone) {
+      const cls = {ok: 'border-accent/50 text-accent', warn: 'border-warn/50 text-warn', err: 'border-danger/50 text-danger'}[tone];
+      const el = document.createElement('div');
+      el.className = `pointer-events-auto bg-card/95 border ${cls} rounded-lg px-4 py-2 text-sm shadow-lg max-w-sm`;
+      el.textContent = msg;
+      document.getElementById('toasts').appendChild(el);
+      setTimeout(() => el.remove(), tone === 'ok' ? 2000 : 5000);
+    }
     // Briefly outlines the control: accent = applied, danger = rejected
     function flash(el, ok) {
       if (!el) return;
       el.style.outline = '2px solid ' + (ok ? '#03dac6' : '#cf6679');
       setTimeout(() => { el.style.outline = ''; }, ok ? 800 : 2500);
     }
+    const SET_ERRORS = {400: 'ungültiger Wert', 403: 'abgelehnt (Sicherheitsprüfung)', 405: 'abgelehnt (Sicherheitsprüfung)',
+                        503: 'Gerät ausgelastet – bitte erneut versuchen'};
+
+    // Accepted changes wait for the next /state that shows the new value:
+    // only then "Gespeichert"; a value the device did not take is reported.
+    const VERIFY_MS = 5000;
+    const PENDING = {};
+    function verifyPending(data) {
+      const now = Date.now();
+      for (const [k, p] of Object.entries(PENDING)) {
+        const cur = data[k];
+        const step = (META && META.numbers && META.numbers[k]) ? META.numbers[k][2] : 0.5;
+        const ok = (typeof cur === 'string') ? cur === String(p.val)
+                 : (cur !== null && cur !== undefined && Math.abs(Number(cur) - Number(p.val)) < step / 2 + 1e-6);
+        if (ok) {
+          flash(p.el, true);
+          toast('Gespeichert: ' + p.label, 'ok');
+        } else if (now > p.until) {
+          flash(p.el, false);
+          toast(`Nicht übernommen: ${p.label} (aktuell ${cur === true ? 'an' : cur === false ? 'aus' : (cur === null || cur === undefined ? '--' : String(cur))})`, 'warn');
+        } else {
+          continue;
+        }
+        delete PENDING[k];
+      }
+    }
 
     // POST + X-VentoSync header: the device rejects /set without it (CSRF protection)
     async function sendSet(id, val, el) {
+      const label = LABELS[id] || id;
       const lim = META && META.numbers && META.numbers[id];
       if (lim && (isNaN(parseFloat(val)) || val < lim[0] || val > lim[1])) {
-        console.warn(`Not sent: ${id} = ${val} outside ${lim[0]}–${lim[1]}`);
         flash(el, false);
+        toast(`${label}: Wert außerhalb ${lim[0]}–${lim[1]}`, 'err');
         return;
       }
       if (id === 'fan_intensity_display') document.getElementById("label_fan_intensity").innerText = val;
 
       try {
-        const res = await fetch('/set', {method: 'POST', headers: {'X-VentoSync': '1'},
-                                         body: new URLSearchParams({id: id, val: String(val)})});
-        if (!res.ok) console.warn('Setting not applied (HTTP ' + res.status + '):', id);
-        flash(el, res.ok);
+        const res = await fetchT('/set', {method: 'POST', headers: {'X-VentoSync': '1'},
+                                          body: new URLSearchParams({id: id, val: String(val)})});
+        if (!res.ok) {
+          flash(el, false);
+          toast(`${label}: ${SET_ERRORS[res.status] || 'Fehler (HTTP ' + res.status + ')'}`, 'err');
+        } else if ((META && META.buttons || []).includes(id)) {
+          flash(el, true);
+          toast('Ausgeführt: ' + label, 'ok');
+        } else {
+          PENDING[id] = {val: val, el: el, label: label, until: Date.now() + VERIFY_MS};
+        }
       } catch (e) {
-        console.error('Error setting value:', e);
         flash(el, false);
+        toast(`${label}: keine Verbindung zum Gerät`, 'err');
       }
-      setTimeout(updateData, 500); // refresh after delay
+      // The stream pushes the change at once; without it, re-read /state
+      if (Date.now() - lastStreamMs >= STREAM_QUIET_MS) setTimeout(pollState, 500);
     }
 
     function filterReset() {
@@ -645,9 +848,11 @@ const char DASHBOARD_HTML[] PROGMEM = R"=====(
       }
     }
 
-    setInterval(updateData, 2000);
-    loadMeta(); // fills limits / options, then the first updateData()
+    setRange(RANGE === 'live' || RANGE === 6 || RANGE === 24 ? RANGE : 'live');
+    loadMeta();     // fills limits / options, then the first pollState()
+    loadHistory();
+    startStream();
+    setInterval(tick, 1000);
   </script>
 </body>
 </html>
-)=====";
