@@ -61,6 +61,7 @@ Alle Entitäten, die die VentoSync-Firmware in Home Assistant anlegt. Die IDs si
 | WRG Effizienz | `sensor.…_wrg_effizienz` | sensor | – | NTC | [Sensoren](sensoren.md#wärmerückgewinnung) |
 | WRG Effizienz (Zyklus) | `sensor.…_wrg_effizienz_zyklus` | sensor | – | NTC | [Sensoren](sensoren.md#wärmerückgewinnung) |
 | WRG Energie (Zyklus) | `sensor.…_wrg_energie_zyklus` | sensor | – | NTC | [Sensoren](sensoren.md#wärmerückgewinnung) |
+| Temp. Zuluft (nach WRG) | `sensor.…_temp_zuluft_nach_wrg` | sensor | – | NTC | [Sensoren](sensoren.md#wärmerückgewinnung) |
 | WRG Referenz-Messpunkt | `sensor.…_wrg_referenz_messpunkt` | sensor (Text) | – | NTC | [Sensoren](sensoren.md#wärmerückgewinnung) |
 | Temp. Abluft (Innen) | `sensor.…_temp_abluft_innen` | sensor | – | NTC | [Sensoren](sensoren.md#ntc-temperaturfühler) |
 | Temp. Zuluft (Außen) | `sensor.…_temp_zuluft_aussen` | sensor | – | NTC | [Sensoren](sensoren.md#ntc-temperaturfühler) |

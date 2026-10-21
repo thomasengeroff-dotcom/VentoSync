@@ -161,6 +161,7 @@ void WrgDashboard::setup() {
   this->efficiency_sensor_ = this->find_sensor_("heat_recovery_efficiency");
   this->t_out_sensor_ = this->find_sensor_("temp_zuluft");
   this->t_in_sensor_ = this->find_sensor_("temp_abluft");
+  this->t_supply_sensor_ = this->find_sensor_("temp_zuluft_wrg");
 
   // mDNS names: with name_add_mac_suffix every device is "<name>-<MAC[3..5]>",
   // so a peer's host follows from the MAC of its ESP-NOW packets.
@@ -265,6 +266,7 @@ void WrgDashboard::sample_history_(uint32_t now) {
   v[h::EFFICIENCY] = sensor_value(this->efficiency_sensor_);
   v[h::T_OUT] = sensor_value(this->t_out_sensor_);
   v[h::T_IN] = sensor_value(this->t_in_sensor_);
+  v[h::T_SUPPLY] = sensor_value(this->t_supply_sensor_);
   std::lock_guard<std::mutex> lock(this->mutex_);
   this->history_.add(v, now);
 }

@@ -217,6 +217,7 @@ protected:
   sensor::Sensor *efficiency_sensor_{nullptr};  ///< Resolved from sensors_ in setup().
   sensor::Sensor *t_out_sensor_{nullptr};
   sensor::Sensor *t_in_sensor_{nullptr};
+  sensor::Sensor *t_supply_sensor_{nullptr};
 
 #ifdef USE_ESP32
   // Server-Sent Events (GET /stream)

@@ -48,6 +48,7 @@ Berechnet aus den NTC-Fühlern (nach DIN EN 13141-8). In `nosensor`-Varianten au
 | WRG Effizienz | `sensor.…_wrg_effizienz` | % | Laufende Schätzung des Wärmebereitstellungsgrads (alle 10 s, nur während des Pendelbetriebs). |
 | WRG Effizienz (Zyklus) | `sensor.…_wrg_effizienz_zyklus` | % | Energiebasierter Wirkungsgrad des letzten abgeschlossenen Zu-/Abluft-Zyklus. |
 | WRG Energie (Zyklus) | `sensor.…_wrg_energie_zyklus` | Wh | Im letzten Zyklus zurückgewonnene Energie. |
+| Temp. Zuluft (nach WRG) | `sensor.…_temp_zuluft_nach_wrg` | °C | Temperatur der Luft, die nach dem Keramikspeicher in den Raum strömt: Mittelwert des Innen-NTC über die letzte Zuluft-Phase (am Ende jeder Zuluft-Phase, nur im WRG-Betrieb, sonst *unbekannt*). |
 | WRG Referenz-Messpunkt | `sensor.…_wrg_referenz_messpunkt` | Text | Quelle der Referenztemperaturen. |
 
 Details zur Berechnung: [Wärmerückgewinnung & Effizienz](https://github.com/thomasengeroff-dotcom/VentoSync/blob/master/documentation/de/de_heat-recovery-and-efficiency.md).

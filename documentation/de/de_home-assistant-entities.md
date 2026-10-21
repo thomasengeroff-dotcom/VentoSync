@@ -107,6 +107,7 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 * **`text_sensor.co2_bewertung`** („CO2 Bewertung“, YAML-ID `effective_co2_bewertung`) — qualitative Einstufung des CO2-Werts.
 * **`sensor.wrg_effizienz`** („WRG Effizienz“, YAML-ID `heat_recovery_efficiency`) — gemessener WRG-Wirkungsgrad (%), siehe [Wärmerückgewinnung & Effizienz](de_heat-recovery-and-efficiency.md).
 * **`sensor.wrg_effizienz_zyklus`** („WRG Effizienz (Zyklus)“) / **`sensor.wrg_energie_zyklus`** („WRG Energie (Zyklus)“) — Wirkungsgrad und rückgewonnene Energie (Wh) des letzten Push-Pull-Zyklus.
+* **`sensor.temp_zuluft_nach_wrg`** („Temp. Zuluft (nach WRG)“, YAML-ID `temp_zuluft_wrg`, seit 0.10.51) — Temperatur der Luft, die nach dem Keramikspeicher in den Raum strömt: Mittelwert des Innen-NTC über die letzte Zuluft-Phase, aktualisiert am Ende jeder Zuluft-Phase im WRG-Betrieb (auch Smart-Automatik), in den übrigen Modi *unbekannt*. Zusammen mit Außen- und Abluft zeigt sie, was die Wärmerückgewinnung bringt, siehe [Wärmerückgewinnung & Effizienz](de_heat-recovery-and-efficiency.md#zulufttemperatur-nach-wrg).
 * **`text_sensor.wrg_referenz_messpunkt`** („WRG Referenz-Messpunkt“, YAML-ID `wrg_reference_sensor`) — welcher Sensor aktuell die Raumtemperatur-Referenz liefert.
 
 ### Automatik-Status & Ereignis (seit 0.10.38)

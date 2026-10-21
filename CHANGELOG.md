@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.51] - 2026-10-21
+
+### Added
+
+- **Supply air temperature after heat recovery** — new sensor `sensor.temp_zuluft_nach_wrg` ("Temp. Zuluft (nach
+  WRG)", YAML ID `temp_zuluft_wrg`): during the supply phase the indoor NTC measures the air that has just passed the
+  ceramic and is blown into the room. Its mean over each supply phase (the value the energy-based efficiency already
+  integrated, `CycleResult::avg_supply_temp`) is published at the end of every supply phase in heat recovery mode
+  (incl. Smart-Automatik); in *Durchlüften*, *Stoßlüftung* and *Aus* it is *unknown*, and a phase longer than one
+  half-cycle (left over from a mode change) is discarded. Hidden in `nosensor` like the other NTC sensors.
+- **Web dashboard: supply air after heat recovery** — the sensor card shows *Außenluft*, *Zuluft (nach WRG)* with the
+  gain over the outdoor air in K, and *Abluft (innen)*; the *Wärmerückgewinnung* chart and the statistics table got a
+  supply air row, the device history a ninth channel `t_sup` (`GET /history`, RAM ring buffer ~4.6 → ~5.2 KB).
+
+### Changed
+
+- Web dashboard: the outdoor NTC is labelled "Temperatur Außenluft" instead of "Temperatur Zuluft" (the HA entity
+  names are unchanged).
+
 ## [0.10.50] - 2026-10-21
 
 ### Changed

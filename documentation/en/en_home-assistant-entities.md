@@ -107,6 +107,7 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 * **`text_sensor.co2_bewertung`** ("CO2 Bewertung", YAML ID `effective_co2_bewertung`) — qualitative rating of the CO2 value.
 * **`sensor.wrg_effizienz`** ("WRG Effizienz", YAML ID `heat_recovery_efficiency`) — measured heat recovery efficiency (%), see [Heat Recovery & Efficiency](en_heat-recovery-and-efficiency.md).
 * **`sensor.wrg_effizienz_zyklus`** ("WRG Effizienz (Zyklus)") / **`sensor.wrg_energie_zyklus`** ("WRG Energie (Zyklus)") — efficiency and recovered energy (Wh) of the last push-pull cycle.
+* **`sensor.temp_zuluft_nach_wrg`** ("Temp. Zuluft (nach WRG)", YAML ID `temp_zuluft_wrg`, since 0.10.51) — temperature of the air blown into the room after the ceramic exchanger: mean of the indoor NTC over the last intake phase, updated at the end of every intake phase in heat recovery mode (incl. Smart-Automatik), *unknown* in the other modes. Together with the outdoor and extract air it shows what the heat recovery gains, see [Heat Recovery & Efficiency](en_heat-recovery-and-efficiency.md#supply-air-temperature-after-heat-recovery).
 * **`text_sensor.wrg_referenz_messpunkt`** ("WRG Referenz-Messpunkt", YAML ID `wrg_reference_sensor`) — which sensor currently provides the room temperature reference.
 
 ### Automatik-Status & Event (since 0.10.38)

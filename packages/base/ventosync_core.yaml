@@ -26,7 +26,7 @@
 #                ventosync_base_v2.yaml  → PCB v2.0 (ESP32-C6-MINI-1U-H4, native GPIO)
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-10-20
+# Modified:    2026-10-21
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -233,6 +233,7 @@ wrg_dashboard:
   bme680_humidity_id: bme680_humidity
   temp_zuluft_id: temp_zuluft
   temp_abluft_id: temp_abluft
+  temp_zuluft_wrg_id: temp_zuluft_wrg
   heat_recovery_efficiency_id: heat_recovery_efficiency
   fan_rpm_id: fan_rpm
   filter_operating_days_id: filter_operating_days_sensor

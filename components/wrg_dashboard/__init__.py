@@ -42,6 +42,7 @@ SENSORS = {
     "outdoor_humidity_id": "outdoor_humidity",
     "temp_zuluft_id": "temp_zuluft",
     "temp_abluft_id": "temp_abluft",
+    "temp_zuluft_wrg_id": "temp_zuluft_wrg",
     "heat_recovery_efficiency_id": "heat_recovery_efficiency",
     "fan_rpm_id": "fan_rpm",
     "filter_operating_days_id": "filter_operating_days",

@@ -97,6 +97,26 @@ Würde man die Effizienz als simplen Durchschnitt der momentanen Effizienzwerte 
 **Zurückgewonnene thermische Energie (Wh):**
 Zusätzlich zur prozentualen Effizienz berechnet das System die tatsächlich zurückgewonnene thermische Energie in **Wattstunden (Wh)**. Dies erfolgt durch ein nicht-lineares Mapping der 10 Lüfterstufen auf die realen Volumenströme des Ventomaxx v-wrg-1 (von ca. 17 m³/h auf Stufe 1 bis zu 43 m³/h auf Stufe 10) und der Integration der tatsächlichen Temperaturdifferenz ($T_{Zuluft} - T_{Außen}$) über die Zeit. So lässt sich genau nachvollziehen, wie viel Heizenergie (oder Kühlenergie im Sommer) das System pro Zyklus "eingespart" hat.
 
+#### Zulufttemperatur nach WRG
+
+In der Zuluft-Phase sitzt der Innen-NTC in der Luft, die gerade den Keramikspeicher durchströmt hat und in den Raum
+geblasen wird — der Phase-Lock verwirft diese Messwerte für die Ablufttemperatur, die Effizienzberechnung nutzt sie aber
+als $T_{Zuluft}$. Seit 0.10.51 wird ihr **Mittelwert über jede Zuluft-Phase** als `sensor.temp_zuluft_nach_wrg`
+(„Temp. Zuluft (nach WRG)“) veröffentlicht und im Web-Dashboard angezeigt (Karte, Diagramm *Wärmerückgewinnung*,
+Statistik, dazu der Gewinn gegenüber der Außenluft in K). Die drei Temperaturen machen die Wärmerückgewinnung greifbar,
+z. B. im Winter:
+
+| Außenluft | Zuluft nach WRG | Abluft (Raum) | Wirkungsgrad |
+|---|---|---|---|
+| 2,0 °C | 18,4 °C | 21,0 °C | ≈ 86 % |
+
+Der Mittelwert umfasst die ganze Phase — zu Beginn ist die Keramik noch warm, gegen Ende wird die Zuluft kühler — und
+passt damit zum energiebasierten Wirkungsgrad ($\eta \approx (T_{Zuluft} - T_{Außen}) / (T_{Raum} - T_{Außen})$).
+Er wird nur im WRG-Betrieb (auch Smart-Automatik) veröffentlicht; in *Durchlüften*, *Stoßlüftung* und *Aus* gibt es keine
+Rückgewinnung, der Sensor ist dann *unbekannt*. Eine Phase, die länger als ein Halbzyklus ist (z. B. Rest eines
+Moduswechsels), wird verworfen. Der Wert braucht alle drei NTC-Messwerte (Zuluft, Abluft, Außenluft) — ohne NTCs
+(`nosensor`) bleibt die Entität ausgeblendet.
+
 **Interpretation:**
 
 - **> 70%:** Ausgezeichnete Wärmerückgewinnung
