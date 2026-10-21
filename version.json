@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.50",
+    "project_version": "0.10.51",
     "project_date": "2026-10-21",
-    "project_description": "ESPHome 2026.10.0: compressed OTA uploads, ESP-IDF 5.5.6, smaller firmware image."
+    "project_description": "Supply air temperature after heat recovery (indoor NTC during the intake phase) in Home Assistant and the web dashboard."
 }
