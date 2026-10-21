@@ -351,14 +351,14 @@ Schließe das Lüfterkabel an die dedizierte **FAN**-Buchse auf dem PCB an. Das 
 Für eine stabile Entwicklungsumgebung wird dringend empfohlen, ESPHome in einer **virtuellen Python-Umgebung** (`venv`) zu installieren. Dies vermeidet Konflikte mit systemweiten Paketen und ist die einzige offiziell unterstützte manuelle Installationsmethode unter Linux.
 
 ```bash
-# 1. Virtuelle Umgebung erstellen (ESPHome 2026.9 benötigt Python 3.12–3.14)
+# 1. Virtuelle Umgebung erstellen (ESPHome 2026.10 benötigt Python 3.12–3.14)
 python3 -m venv venv
 
 # 2. Umgebung aktivieren
 source venv/bin/activate
 
 # 3. ESPHome installieren (dieselbe Version wie die CI-/Release-Builds)
-pip install esphome==2026.9.1
+pip install esphome==2026.10.0
 ```
 
 *(Hinweis: Denke immer daran, `source venv/bin/activate` auszuführen, bevor du den Befehl `esphome` in einer neuen Terminal-Sitzung verwendest.)*
@@ -373,7 +373,7 @@ Um deine Entwicklungsumgebung auf dem neuesten Stand zu halten, verwende die fol
 # Sicherstellen, dass venv aktiv ist
 source venv/bin/activate
 # Auf die von der CI gepinnte Version aktualisieren (ESPHOME_VERSION in .github/workflows/build.yaml)
-pip install esphome==2026.9.1
+pip install esphome==2026.10.0
 ```
 
 `upload_all.sh` bricht ab, wenn die installierte ESPHome-Version davon abweicht (Übersteuern: `ALLOW_ESPHOME_MISMATCH=1`).
@@ -470,6 +470,7 @@ Seit 0.10.31 sind direkte Uploads auf das Gerät (`esphome run` / `esphome uploa
 
 - **Ein Schlüssel für alle Geräte:** Die CI baut eine Firmware pro Variante für alle, daher müssen alle Geräte denselben `api_encryption_key` verwenden, und das GitHub-Repository-Secret `API_ENCRYPTION_KEY` muss genau diesen Schlüssel enthalten. Release-Builds brechen ab, wenn das Secret fehlt. Weicht der Schlüssel ab, verliert Home Assistant nach dem Update die API-Verbindung.
 - **⚠️ Einschränkung – in der Release-Firmware ist der Schlüssel nicht geheim:** Die kompilierte Firmware enthält den API-Schlüssel, und die Release-Binaries auf GitHub sind öffentlich. Wer ein Release herunterlädt, kann den Schlüssel mit etwas Aufwand auslesen und damit Geräte mit Release-Firmware im LAN flashen und über die API steuern. Die OTA-Verschlüsselung schützt daher nur gegen Angreifer, die diesen Schritt nicht gehen; das LAN bleibt die Vertrauensgrenze. Für echten Schutz die Firmware selbst mit eigenem Schlüssel bauen (`esphome run` / `upload_all.sh`) und auf diesen Geräten keine GitHub-Releases installieren, denn ein Release würde deinen Schlüssel durch den Repository-Schlüssel ersetzen.
+- **Komprimierte Uploads** (seit 0.10.50, ESPHome 2026.10): Direkte Uploads werden automatisch komprimiert (etwa ein Drittel kleiner, schneller bei schwachem WLAN), wenn beide Seiten es unterstützen – das Gerät muss bereits ≥ 0.10.50 laufen und der hochladende PC ESPHome ≥ 2026.10 verwenden. Das erste Update auf 0.10.50 wird noch unkomprimiert übertragen.
 - **Update über Home Assistant / GitHub-Release** (`update.firmware_update`) ist nicht betroffen: Das Gerät lädt die Firmware selbst per HTTPS herunter.
 - **Umstieg von ≤ 0.10.30:** Ältere Firmware akzeptiert nur das OTA-Passwort, das die ESPHome-CLI nicht mehr sendet. Installiere 0.10.31 einmalig **über die Update-Entität in Home Assistant** (oder per USB); danach funktionieren `upload_all.sh` und `esphome run` wieder mit dem Schlüssel.
 

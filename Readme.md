@@ -354,14 +354,14 @@ Connect the fan cable to the dedicated **FAN** header on the PCB. The PCB suppor
 For a stable development environment, it is strongly recommended to install ESPHome within a **Python virtual environment** (`venv`). This avoids conflicts with system-wide packages and is the only officially supported manual installation method on Linux.
 
 ```bash
-# 1. Create a virtual environment (ESPHome 2026.9 requires Python 3.12–3.14)
+# 1. Create a virtual environment (ESPHome 2026.10 requires Python 3.12–3.14)
 python3 -m venv venv
 
 # 2. Activate the environment
 source venv/bin/activate
 
 # 3. Install ESPHome (same version as the CI / release builds)
-pip install esphome==2026.9.1
+pip install esphome==2026.10.0
 ```
 
 *(Note: Always remember to run `source venv/bin/activate` before using the `esphome` command in a new terminal session.)*
@@ -376,7 +376,7 @@ To keep your development environment up to date, use the following commands:
 # Ensure venv is active
 source venv/bin/activate
 # Update to the version pinned by CI (ESPHOME_VERSION in .github/workflows/build.yaml)
-pip install esphome==2026.9.1
+pip install esphome==2026.10.0
 ```
 
 `upload_all.sh` aborts if the installed ESPHome differs from that version (override: `ALLOW_ESPHOME_MISMATCH=1`).
@@ -473,6 +473,7 @@ Since 0.10.31, direct uploads to the device (`esphome run` / `esphome upload`, `
 
 - **One key for all devices:** the CI builds one binary per variant for everyone, so every device must use the same `api_encryption_key`, and the GitHub repository secret `API_ENCRYPTION_KEY` must contain exactly that key. Release builds fail if the secret is missing. If the key differs, Home Assistant loses the API connection after the update.
 - **⚠️ Limitation — the key is not secret in release firmware:** the compiled firmware contains the API key, and the release binaries on GitHub are public. Anyone who downloads a release can extract the key with some effort and then flash devices running release firmware over the LAN and control them via the API. The OTA encryption therefore only protects against attackers who do not take that step; the LAN remains the trust boundary. For real protection, build the firmware yourself with your own key (`esphome run` / `upload_all.sh`) and do not install GitHub releases on those devices, since the release would replace your key with the repository key.
+- **Compressed uploads** (since 0.10.50, ESPHome 2026.10): direct uploads are compressed automatically (about a third smaller, faster over a weak Wi-Fi link) when both sides support it — the device must already run ≥ 0.10.50 and the uploading PC ESPHome ≥ 2026.10. The first update to 0.10.50 is transferred uncompressed.
 - **Update via Home Assistant / GitHub release** (`update.firmware_update`) is not affected: the device downloads the firmware itself over HTTPS.
 - **Migrating from ≤ 0.10.30:** older firmware only accepts the OTA password, which the ESPHome CLI no longer sends. Install 0.10.31 once **via the Home Assistant update entity** (or via USB); after that, `upload_all.sh` and `esphome run` work again with the key.
 

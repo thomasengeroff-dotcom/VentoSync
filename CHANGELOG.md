@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.50] - 2026-10-21
+
+### Changed
+
+- **ESPHome 2026.10.0** — CI, YAML lint, `upload_all.sh` and the READMEs pin ESPHome `2026.10.0` (was `2026.9.1`). No
+  YAML or C++ change needed: all 12 variants validate without deprecation warnings, `ventosync-full`,
+  `ventosync-v2-sgp41` and the Bluetooth proxy compile, unit tests pass. Python requirement unchanged (3.12–3.14).
+  Relevant for VentoSync:
+  - **Compressed OTA uploads** (esphome#19037): direct uploads (`esphome run`, `upload_all.sh`) are about a third
+    smaller, negotiated automatically. Effective from the second update: the device must already run 0.10.50.
+  - **ESP-IDF 5.5.6** (was 5.5.5, esphome#20987); ESP-IDF builds now run `cmake`/`ninja` directly (faster builds,
+    the first build after the update is a clean build).
+  - **Smaller image:** mbedTLS TLS is only compiled when a component needs it (esphome#18877; the GitHub updater
+    `http_request` keeps it), plus API / web server flash optimisations. The Bluetooth proxy image shrinks from
+    2,003,762 B to 1,989,418 B (headroom ~27 KB → ~41 KB); full variant 1,489,730 B. The ESP-NOW HMAC-SHA256 is not
+    affected (hashes and HMAC stay available).
+  - **Web server (`web_server_idf`)**, which also serves the VentoSync dashboard: HTTP server task stack raised to
+    4512 bytes (esphome#21038), stalled EventSource sessions are closed (esphome#17800), active SSE sessions are no
+    longer purged by the LRU (esphome#17383).
+  - Breaking changes of 2026.10 (lights `restore_mode`, ESP8266 toolchain, speaker, remote receiver, …) do not affect
+    VentoSync: the panel LEDs use neither `restore_mode` nor `initial_state`.
+- `upload_all.sh` uploads with `--skip-bootloader` (new in 2026.10): OTA-only builds skip the bootloader and factory
+  image.
+- Local builds: `upload_all.sh` aborts with ESPHome 2026.9.x — update with `pip install esphome==2026.10.0`.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [0.10.49] - 2026-10-21
 
 ### Added

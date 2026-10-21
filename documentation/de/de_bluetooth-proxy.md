@@ -117,7 +117,7 @@ Filterstunden) problemlos. Zusätzlich setzt das Paket drei verlustfreie Größe
 - `assertion_level: SILENT` – Assertions brechen weiterhin ab, aber ohne Datei-/Zeilen-Strings.
 - `logger: level: INFO` – DEBUG-Logstrings werden nicht einkompiliert.
 
-Ergebnis (komplette Variante inkl. Schalter und Dashboard-Toggle): **2.003.762 B von 2.031.616 B → ca. 27 KB Reserve (98,6 %, 0.10.49; die Dashboard-Seite ist seitdem gzip-komprimiert).**
+Ergebnis (komplette Variante inkl. Schalter und Dashboard-Toggle): **1.989.418 B von 2.031.616 B → ca. 41 KB Reserve (97,9 %, 0.10.50 mit ESPHome 2026.10.0; 0.10.49 mit 2026.9.1: 2.003.762 B).**
 
 ### Konsequenzen
 
@@ -223,7 +223,7 @@ per USB neu zu flashen. Mit einem 8-MB-Modul wäre es möglich – siehe
 
 **Gibt es eine Variante für PCB v2.0 oder mit Sensoren?**
 Noch nicht. Das Paket ist platinenunabhängig (`bluetooth_proxy: !include
-packages/integration/bluetooth_proxy.yaml`), aber jedes Sensorpaket verkleinert die ~27 KB Reserve. Vor dem Einsatz
+packages/integration/bluetooth_proxy.yaml`), aber jedes Sensorpaket verkleinert die ~41 KB Reserve. Vor dem Einsatz
 einen Build testen.
 
 **Wie viel RAM braucht er?**

@@ -54,7 +54,7 @@ permissions:
 # lint.yaml und ESPHOME_VERSION in upload_all.sh übereinstimmen.
 # ------------------------------------------------------------------
 env:
-  ESPHOME_VERSION: "2026.9.1"
+  ESPHOME_VERSION: "2026.10.0"
 
 # ==================================================================
 # JOB 1 – UNIT TESTS
