@@ -7,7 +7,7 @@ set -e
 # ESPHome version pinned by CI (.github/workflows/build.yaml, lint.yaml).
 # Local builds must use the same version, otherwise the flashed firmware
 # differs from the release binaries. Override: ALLOW_ESPHOME_MISMATCH=1
-ESPHOME_VERSION="2026.9.1"
+ESPHOME_VERSION="2026.10.0"
 installed_esphome=$(esphome version 2>/dev/null | awk '{print $2}')
 if [ "$installed_esphome" != "$ESPHOME_VERSION" ]; then
     echo "❌ Installed ESPHome: ${installed_esphome:-none}, CI uses ${ESPHOME_VERSION}."
@@ -51,32 +51,35 @@ echo "=================================================="
 # esphome compile ventosync_nosensor.yaml
 # esphome compile ventosync_radar_only.yaml
 
+# All uploads below go over OTA: --skip-bootloader (ESPHome 2026.10+) skips the
+# bootloader and factory image, which only a USB flash needs.
+
 echo "=================================================="
 echo "🚀 Starte Compile & Upload auf Gerät WRG 12V Test (192.168.178.225)..."
 echo "device has BME680 and no SCD41 and no LD2450"
 echo "=================================================="
-esphome run ventosync_bme680_only.yaml --device 192.168.178.225 --no-logs
+esphome run ventosync_bme680_only.yaml --device 192.168.178.225 --no-logs --skip-bootloader
 
 echo ""
 echo "=================================================="
 echo "🚀 Starte Compile & Upload auf Gerät WRG Büro (192.168.178.206)..."
 echo "device has no sensors"
 echo "=================================================="
-esphome run ventosync_nosensor.yaml --device 192.168.178.206 --no-logs
+esphome run ventosync_nosensor.yaml --device 192.168.178.206 --no-logs --skip-bootloader
 
 echo ""
 echo "=================================================="
 echo "🚀 Starte Compile & Upload auf Gerät WRG DG Flur (192.168.178.220)..."
 echo "device has no sensors"
 echo "=================================================="
-esphome run ventosync_nosensor.yaml --device 192.168.178.220 --no-logs
+esphome run ventosync_nosensor.yaml --device 192.168.178.220 --no-logs --skip-bootloader
 
 echo ""
 echo "=================================================="
 echo "🚀 Starte Compile & Upload auf Gerät WRG DG Wohnraum (192.168.178.244)..."
 echo "device has LD2450 and no SCD41 and no BME680"
 echo "=================================================="
-esphome run ventosync_radar_only.yaml --device 192.168.178.244 --no-logs
+esphome run ventosync_radar_only.yaml --device 192.168.178.244 --no-logs --skip-bootloader
 
 # Clean up lock file after successful build session
 rm -f .version_bump_lock

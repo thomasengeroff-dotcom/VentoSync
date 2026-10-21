@@ -9,7 +9,7 @@ on:
 
 # Keep in sync with ESPHOME_VERSION in build.yaml and upload_all.sh.
 env:
-  ESPHOME_VERSION: "2026.9.1"
+  ESPHOME_VERSION: "2026.10.0"
 
 jobs:
   lint:

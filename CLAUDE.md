@@ -8,7 +8,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 **Key facts:**
 
-- Platform: ESP32-C6 (RISC-V), ESPHome `2026.9.1`
+- Platform: ESP32-C6 (RISC-V), ESPHome `2026.10.0`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
 - Sensors: Sensirion **SCD43** (CO2 / temperature / humidity) or **SGP41 + SHT45** board (VOC / NOx / temperature / humidity), BME680 (IAQ fallback), BMP390 (pressure),
   2× NTC thermistors, HLK-LD2450 (mmWave radar).
@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 2,003,762 / 2,031,616 B (~27 KB headroom, 0.10.49 — dashboard page gzipped) — CI compiles it only after the merge (PRs build
+  logger INFO. Image 1,989,418 / 2,031,616 B (~41 KB headroom, 0.10.50 / ESPHome 2026.10.0) — CI compiles it only after the merge (PRs build
   `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
@@ -180,7 +180,7 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-f
     -Icomponents && ./simple_test && rm -f simple_test
 ```
 
-Always validate before uploading. CI pins ESPHome to `2026.9.1` (needs Python 3.12–3.14) — use the same version
+Always validate before uploading. CI pins ESPHome to `2026.10.0` (needs Python 3.12–3.14) — use the same version
 locally; `upload_all.sh` aborts on a mismatch (override `ALLOW_ESPHOME_MISMATCH=1`).
 **ESPHome upgrade:** change `ESPHOME_VERSION` in `.github/workflows/build.yaml`, `.github/workflows/lint.yaml` and
 `upload_all.sh`, plus the version in this file and both READMEs; validate all variants (see `lint.yaml`).
@@ -471,7 +471,7 @@ Triggered on push and pull request to `master`:
     `ventosync-v2-sgp41`** (PCB v2.0 board package + the only variant with the SGP41/SHT45 drivers); the size-critical
     Bluetooth proxy image is compiled only after the merge — compile it locally when a change adds code. Push to
     `master` / `workflow_dispatch` build all
-    variants (incl. the generated `nosensor-mqtt`), ESPHome pinned to `2026.9.1`, secret-free OTA configs. The release
+    variants (incl. the generated `nosensor-mqtt`), ESPHome pinned to `2026.10.0`, secret-free OTA configs. The release
     job needs all builds. Check names stay `Build <name>` — renaming a variant changes a required check.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
