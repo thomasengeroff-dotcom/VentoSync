@@ -21,14 +21,14 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-20
+// Modified:    2026-10-21
 // ==========================================================================
 
 #include "wrg_dashboard.h"
-#include "dashboard_html.h"
 #include "esphome/components/ventilation_group/ventilation_group.h"
 #include "esphome/components/ventilation_logic/room_fusion.h"
 #include "esphome/components/ventilation_logic/ventilation_logic.h"
+#include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #ifdef USE_WIFI
@@ -37,10 +37,14 @@
 #ifdef USE_ESP32
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#include <sys/socket.h>
+#include <cerrno>
 #endif
 #include <ArduinoJson.h>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 namespace esphome {
 namespace wrg_dashboard {
@@ -51,6 +55,9 @@ static const char *const TAG = "wrg_dashboard";
 /// it without a CORS preflight, which this server never grants — so a
 /// forged form or <img> request from another site is rejected.
 static const char *const CSRF_HEADER = "X-VentoSync";
+
+/// Current value of a sensor, NaN without one.
+static float sensor_value(sensor::Sensor *s) { return (s != nullptr && s->has_state()) ? s->state : NAN; }
 
 #ifdef USE_ESP32
 /// Short German label of the last reset cause (Systeminfo row).
@@ -68,6 +75,45 @@ static const char *reset_reason_label() {
     case ESP_RST_USB:       return "USB";
     default:                return "Unbekannt";
   }
+}
+#endif
+
+#ifdef USE_ESP32
+/**
+ * @brief   Send function of a /stream session (httpd send override): never
+ *          blocks the main loop, a full TCP buffer is retried next loop.
+ * @return  Bytes sent, HTTPD_SOCK_ERR_TIMEOUT (buffer full) or
+ *          HTTPD_SOCK_ERR_FAIL.
+ */
+static int stream_send(httpd_handle_t /*hd*/, int sockfd, const char *buf, size_t buf_len, int flags) {
+  if (buf == nullptr) return HTTPD_SOCK_ERR_INVALID;
+  const int ret = send(sockfd, buf, buf_len, flags | MSG_DONTWAIT);
+  if (ret < 0) {
+    return (errno == EAGAIN || errno == EWOULDBLOCK) ? HTTPD_SOCK_ERR_TIMEOUT : HTTPD_SOCK_ERR_FAIL;
+  }
+  return ret;
+}
+
+/// One SSE event as an HTTP chunk: "<hex len>\r\nevent: …\ndata: …\n\n\r\n".
+/// `data` must not contain newlines (serialized JSON never does).
+static std::string sse_chunk(const char *event, const std::string &data) {
+  const size_t body_len = 7 + std::strlen(event) + 7 + data.size() + 2;  // "event: " … "\ndata: " … "\n\n"
+  char head[12];
+  std::snprintf(head, sizeof(head), "%X\r\n", static_cast<unsigned>(body_len));
+  std::string out;
+  out.reserve(std::strlen(head) + body_len + 2);
+  out += head;
+  out += "event: ";
+  out += event;
+  out += "\ndata: ";
+  out += data;
+  out += "\n\n\r\n";
+  return out;
+}
+
+void StreamSession::destroy(void *ctx) {
+  // httpd task: only mark the session dead; loop() deletes it
+  static_cast<StreamSession *>(ctx)->fd.store(0);
 }
 #endif
 
@@ -93,13 +139,37 @@ bool WrgDashboard::canHandle(AsyncWebServerRequest *request) const {
   if (url == "/set") {
     return true;  // any method: handle_set_() answers 405 for non-POST
   }
-  return request->method() == HTTP_GET && (url == "/ui" || url == "/state" || url == "/meta");
+  return request->method() == HTTP_GET &&
+         (url == "/ui" || url == "/state" || url == "/meta" || url == "/history"
+#ifdef USE_ESP32
+          || url == "/stream"
+#endif
+         );
+}
+
+sensor::Sensor *WrgDashboard::find_sensor_(const char *key) const {
+  for (const auto &e : this->sensors_) {
+    if (std::strcmp(e.key, key) == 0) return e.entity;
+  }
+  return nullptr;
 }
 
 void WrgDashboard::setup() {
 #ifdef USE_ESP32
   this->reset_reason_ = reset_reason_label();
 #endif
+  this->efficiency_sensor_ = this->find_sensor_("heat_recovery_efficiency");
+  this->t_out_sensor_ = this->find_sensor_("temp_zuluft");
+  this->t_in_sensor_ = this->find_sensor_("temp_abluft");
+
+  // mDNS names: with name_add_mac_suffix every device is "<name>-<MAC[3..5]>",
+  // so a peer's host follows from the MAC of its ESP-NOW packets.
+  const std::string name = App.get_name().str();
+  this->host_ = name + ".local";
+  if (App.is_name_add_mac_suffix_enabled() && name.size() > 6) {
+    this->host_prefix_ = name.substr(0, name.size() - 6);
+  }
+
   if (this->base_ != nullptr) {
     this->base_->add_handler(this);
     ESP_LOGI(TAG, "Webserver Dashboard Handler registered");
@@ -145,18 +215,134 @@ void WrgDashboard::loop() {
     this->meta_json_ = std::move(meta);
   }
 
-  // Serialize /state only while a client polls; a change from /set is
-  // reflected at once (the UI re-reads 500 ms after a change).
-  const bool polled = now - this->last_request_ms_.load() < STATE_IDLE_MS;
+  if (now - this->last_sample_ms_ >= ventosync::history::SAMPLE_MS) {
+    this->last_sample_ms_ = now;
+    this->sample_history_(now);
+  }
+
+  // Serialize /state only while a client polls or streams; a change from
+  // /set is reflected at once (pushed, or re-read by the UI after 500 ms).
+  bool streaming = false;
+#ifdef USE_ESP32
+  streaming = this->stream_count_.load() > 0;
+#endif
+  const bool polled = streaming || now - this->last_request_ms_.load() < STATE_IDLE_MS;
   const bool due = now - built_ms >= STATE_REBUILD_MS || !todo.empty() || this->client_waiting_.load();
-  if (polled && due) {
-    std::string json = this->build_state_json_();
+  std::string json;
+  const bool built = polled && due;
+  if (built) {
+    json = this->build_state_json_();
     this->client_waiting_.store(false);
+  }
+#ifdef USE_ESP32
+  if (streaming) {
+    const bool push = built && (now - this->last_push_ms_ >= STREAM_PUSH_MS || !todo.empty() ||
+                                this->stream_push_now_.exchange(false));
+    this->service_streams_(now, push ? &json : nullptr);
+  }
+#endif
+  if (built) {
     std::lock_guard<std::mutex> lock(this->mutex_);
     this->state_json_ = std::move(json);
     this->state_built_ms_ = now;
   }
 }
+
+/**
+ * @brief   Adds one sample of every history channel (runs in loop()).
+ */
+void WrgDashboard::sample_history_(uint32_t now) {
+  namespace h = ventosync::history;
+  h::Values v;
+  v.fill(NAN);
+  v[h::CO2] = this->room_co2_();
+  v[h::ROOM_T] = this->room_temperature_();
+  v[h::ROOM_RH] = this->room_humidity_();
+  if (const auto *c = this->ventilation_ctrl_) {
+    v[h::LEVEL] = c->state_machine.current_mode == MODE_OFF ? 0.0f : static_cast<float>(c->current_fan_intensity);
+    v[h::DEMAND] = c->local_pid_demand;  // NaN outside Smart-Automatik / without own sensor
+  }
+  v[h::EFFICIENCY] = sensor_value(this->efficiency_sensor_);
+  v[h::T_OUT] = sensor_value(this->t_out_sensor_);
+  v[h::T_IN] = sensor_value(this->t_in_sensor_);
+  std::lock_guard<std::mutex> lock(this->mutex_);
+  this->history_.add(v, now);
+}
+
+#ifdef USE_ESP32
+/**
+ * @brief   Adopts new /stream sessions, removes closed ones and sends
+ *          `state_json` (if given) as an SSE "state" event to every client.
+ * @details A client still busy with the previous event skips this one — the
+ *          next event carries the complete state anyway.
+ */
+void WrgDashboard::service_streams_(uint32_t now, const std::string *state_json) {
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    this->streams_.insert(this->streams_.end(), this->pending_streams_.begin(), this->pending_streams_.end());
+    this->pending_streams_.clear();
+  }
+  std::shared_ptr<const std::string> frame;
+  if (state_json != nullptr) {
+    frame = std::make_shared<const std::string>(sse_chunk("state", *state_json));
+    this->last_push_ms_ = now;
+  }
+  for (size_t i = 0; i < this->streams_.size();) {
+    StreamSession *s = this->streams_[i];
+    if (s->fd.load() == 0) {  // socket closed: destroy() ran, httpd holds no reference any more
+      delete s;  // NOLINT(cppcoreguidelines-owning-memory)
+      this->streams_[i] = this->streams_.back();
+      this->streams_.pop_back();
+      this->stream_count_--;
+      continue;
+    }
+    if (!s->closing) {
+      if (frame && !s->frame) {
+        s->frame = frame;
+        s->sent = 0;
+      }
+      flush_stream_(s, now);
+    }
+    i++;
+  }
+}
+
+/**
+ * @brief   Sends the rest of a session's pending event (non-blocking).
+ * @details A dead or stuck client (no progress for STREAM_STALL_MS) is
+ *          closed via httpd; the session is deleted once destroy() ran.
+ */
+void WrgDashboard::flush_stream_(StreamSession *s, uint32_t now) {
+  if (!s->frame) return;
+  const int fd = s->fd.load();
+  if (fd == 0) return;
+  const std::string &f = *s->frame;
+  const int n = httpd_socket_send(s->hd, fd, f.data() + s->sent, f.size() - s->sent, 0);
+  if (n > 0) {
+    s->stalled = false;
+    s->sent += static_cast<size_t>(n);
+    if (s->sent >= f.size()) {
+      s->frame.reset();
+      s->sent = 0;
+    }
+    return;
+  }
+  if (n == HTTPD_SOCK_ERR_TIMEOUT || n == 0) {  // TCP send buffer full
+    if (!s->stalled) {
+      s->stalled = true;
+      s->stalled_since_ms = now;
+      return;
+    }
+    if (now - s->stalled_since_ms < STREAM_STALL_MS) return;
+    ESP_LOGW(TAG, "Closing stuck /stream client (fd %d)", fd);
+  } else {
+    ESP_LOGD(TAG, "/stream send failed (fd %d), closing", fd);
+  }
+  s->closing = true;
+  s->frame.reset();
+  httpd_sess_trigger_close(s->hd, fd);
+}
+#endif
 
 bool WrgDashboard::is_writable_key_(const std::string &key) const {
   for (const auto &e : this->numbers_) if (key == e.key) return true;
@@ -230,18 +416,79 @@ void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
     this->handle_cached_json_(request, false);
   } else if (url == "/meta") {
     this->handle_cached_json_(request, true);
+  } else if (url == "/history") {
+    this->handle_history_(request);
+#ifdef USE_ESP32
+  } else if (url == "/stream") {
+    this->handle_stream_(request);
+#endif
   } else if (url == "/set") {
     this->handle_set_(request);
   }
 }
 
 /**
- * @brief   Serves the main dashboard HTML page.
+ * @brief   Serves the 24 h history (GET /history, see history.h).
+ * @details The ring buffer is only written by loop() under the mutex, so it
+ *          is serialized (~13 KB) right here.
+ */
+void WrgDashboard::handle_history_(AsyncWebServerRequest *request) {
+  std::string body;
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    this->history_.append_json(body, millis());
+  }
+  request->send(200, "application/json", body.c_str());
+}
+
+#ifdef USE_ESP32
+/**
+ * @brief   Opens a Server-Sent Events stream (GET /stream, httpd task).
+ * @details Same mechanism as ESPHome's /events: the response headers and a
+ *          first chunk go out here, the socket stays open and loop() sends
+ *          one "state" event (the /state JSON) every STREAM_PUSH_MS. The
+ *          session is tied to the socket (sess_ctx / free_ctx), so httpd
+ *          reports its closing via StreamSession::destroy().
+ */
+void WrgDashboard::handle_stream_(AsyncWebServerRequest *request) {
+  if (this->stream_count_.load() >= MAX_STREAMS) {
+    request->send(503, "text/plain", "Too many streams");  // the UI polls /state instead
+    return;
+  }
+  httpd_req_t *req = *request;
+  httpd_resp_set_status(req, HTTPD_200);
+  httpd_resp_set_type(req, "text/event-stream");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Connection", "keep-alive");
+  // "retry": reconnect delay of the browser's EventSource after a drop
+  static const char HELLO[] = "retry: 3000\n\n";
+  if (httpd_resp_send_chunk(req, HELLO, sizeof(HELLO) - 1) != ESP_OK) {
+    return;
+  }
+  auto *s = new StreamSession();  // NOLINT(cppcoreguidelines-owning-memory) owned by loop()
+  req->sess_ctx = s;
+  req->free_ctx = StreamSession::destroy;
+  s->hd = req->handle;
+  s->fd.store(httpd_req_to_sockfd(req));
+  httpd_sess_set_send_override(s->hd, s->fd.load(), stream_send);
+  this->stream_count_++;
+  {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    this->pending_streams_.push_back(s);
+  }
+  this->client_waiting_.store(true);   // build /state now …
+  this->stream_push_now_.store(true);  // … and push it without waiting for the interval
+}
+#endif
+
+/**
+ * @brief   Serves the dashboard page (dashboard.html, gzipped at build time).
  * @param[in] request  The incoming AsyncWebServerRequest.
  */
 void WrgDashboard::handle_root_(AsyncWebServerRequest *request) {
   AsyncWebServerResponse *response =
-      request->beginResponse(200, "text/html", DASHBOARD_HTML);
+      request->beginResponse(200, "text/html", this->html_gz_, this->html_gz_size_);
+  response->addHeader("Content-Encoding", "gzip");
   response->addHeader("Cache-Control",
                       "no-store, no-cache, must-revalidate, max-age=0");
   response->addHeader("Pragma", "no-cache");
@@ -285,22 +532,14 @@ void WrgDashboard::handle_cached_json_(AsyncWebServerRequest *request, bool meta
  */
 std::string WrgDashboard::build_state_json_() {
   JsonDocument doc;
-  auto get_f = [](sensor::Sensor *s) -> float {
-    return (s && s->has_state()) ? s->state : NAN;
-  };
   const uint32_t now = millis();
   auto *v = this->ventilation_ctrl_;
 
-  // Room climate: effective CO2 (may be a VOC/eCO2 estimate) and SCD41 → BME680 fallback
-  doc["room_co2"] = get_f(this->effective_co2_ ? this->effective_co2_ : this->scd41_co2_);
-  float room_t = get_f(this->scd41_temperature_);
-  if (std::isnan(room_t)) room_t = get_f(this->bme680_temperature_);
-  doc["room_temperature"] = room_t;
-  float room_rh = get_f(this->scd41_humidity_);
-  if (std::isnan(room_rh)) room_rh = get_f(this->bme680_humidity_);
-  doc["room_humidity"] = room_rh;
+  doc["room_co2"] = this->room_co2_();
+  doc["room_temperature"] = this->room_temperature_();
+  doc["room_humidity"] = this->room_humidity_();
 
-  for (const auto &e : this->sensors_) doc[e.key] = get_f(e.entity);
+  for (const auto &e : this->sensors_) doc[e.key] = sensor_value(e.entity);
   for (const auto &e : this->binary_sensors_) doc[e.key] = e.entity->has_state() && e.entity->state;
   for (const auto &e : this->text_sensors_) doc[e.key] = e.entity->has_state() ? e.entity->state.c_str() : "";
   for (const auto &e : this->numbers_) doc[e.key] = e.entity->has_state() ? e.entity->state : NAN;
@@ -350,6 +589,12 @@ std::string WrgDashboard::build_state_json_() {
       p["window"] = peer.window_open;
       p["ac"] = peer.hvac_ac_active;
       p["nox"] = peer.nox_active;
+      // Link to the peer's dashboard (mDNS, see setup())
+      if (!this->host_prefix_.empty()) {
+        char host[16];
+        std::snprintf(host, sizeof(host), "%02x%02x%02x.local", peer.mac[3], peer.mac[4], peer.mac[5]);
+        p["host"] = this->host_prefix_ + host;
+      }
     }
   }
 
@@ -358,6 +603,7 @@ std::string WrgDashboard::build_state_json_() {
   sys["variant"] = this->firmware_variant_;
   sys["uptime_s"] = static_cast<uint32_t>(millis_64() / 1000ULL);
   sys["reset_reason"] = this->reset_reason_;
+  sys["host"] = this->host_;
 #ifdef USE_WIFI
   if (wifi::global_wifi_component != nullptr && wifi::global_wifi_component->is_connected()) {
     sys["rssi"] = wifi::global_wifi_component->wifi_rssi();
@@ -371,6 +617,19 @@ std::string WrgDashboard::build_state_json_() {
   std::string out;
   serializeJson(doc, out);
   return out;
+}
+
+// Room climate: effective CO2 (may be a VOC/eCO2 estimate), SCD41 → BME680 fallback
+float WrgDashboard::room_co2_() const {
+  return sensor_value(this->effective_co2_ != nullptr ? this->effective_co2_ : this->scd41_co2_);
+}
+float WrgDashboard::room_temperature_() const {
+  const float t = sensor_value(this->scd41_temperature_);
+  return std::isnan(t) ? sensor_value(this->bme680_temperature_) : t;
+}
+float WrgDashboard::room_humidity_() const {
+  const float rh = sensor_value(this->scd41_humidity_);
+  return std::isnan(rh) ? sensor_value(this->bme680_humidity_) : rh;
 }
 
 /**

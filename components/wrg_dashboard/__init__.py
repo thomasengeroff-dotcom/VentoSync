@@ -1,7 +1,11 @@
+import gzip
+from pathlib import Path
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import web_server_base
 from esphome.const import CONF_ID
+from esphome.core import HexInt
 
 DEPENDENCIES = ["web_server_base", "network"]
 AUTO_LOAD = ["web_server_base"]
@@ -9,6 +13,11 @@ AUTO_LOAD = ["web_server_base"]
 CONF_WEB_SERVER_BASE_ID = "web_server_base_id"
 CONF_PROJECT_VERSION = "project_version"
 CONF_FIRMWARE_VARIANT = "firmware_variant"
+CONF_HTML_DATA_ID = "html_data_id"
+
+# The dashboard page, gzipped into flash at build time (~50 KB -> ~14 KB) and
+# served with Content-Encoding: gzip.
+HTML_FILE = Path(__file__).parent / "dashboard.html"
 
 from esphome.components import sensor, binary_sensor, text_sensor, number, select, switch, button
 
@@ -102,6 +111,7 @@ TABLES = (
 _schema = {
     cv.GenerateID(): cv.declare_id(WrgDashboard),
     cv.GenerateID(CONF_WEB_SERVER_BASE_ID): cv.use_id(web_server_base.WebServerBase),
+    cv.GenerateID(CONF_HTML_DATA_ID): cv.declare_id(cg.uint8),
     cv.Optional("ventilation_ctrl_id"): cv.use_id(cg.Component),
     cv.Optional(CONF_PROJECT_VERSION, default=""): cv.string,
     cv.Optional(CONF_FIRMWARE_VARIANT, default=""): cv.string,
@@ -123,6 +133,11 @@ async def to_code(config):
     web_server_base_var = await cg.get_variable(config[CONF_WEB_SERVER_BASE_ID])
     cg.add(var.set_web_server_base(web_server_base_var))
     cg.add(var.set_firmware_info(config[CONF_PROJECT_VERSION], config[CONF_FIRMWARE_VARIANT]))
+
+    # mtime=0: reproducible firmware images
+    html_gz = gzip.compress(HTML_FILE.read_bytes(), compresslevel=9, mtime=0)
+    html_data = cg.progmem_array(config[CONF_HTML_DATA_ID], [HexInt(b) for b in html_gz])
+    cg.add(var.set_html(html_data, len(html_gz)))
 
     if "ventilation_ctrl_id" in config:
         ctrl = await cg.get_variable(config["ventilation_ctrl_id"])

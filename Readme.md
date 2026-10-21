@@ -225,7 +225,7 @@ The original 9-LED / 3-button control panel of the VentoMaxx V-WRG-1 is fully pr
 
 ### 📊 VentoSync Dashboard - Local Web Dashboard
 
-You do not need a smart home server to use VentoSync: Each ventilation unit hosts its own built-in web page that you can open directly in any web browser on your smartphone, tablet, or PC — allowing you to monitor air quality live, change ventilation modes, and adjust settings without installing any apps or extra software.
+You do not need a smart home server to use VentoSync: Each ventilation unit hosts its own built-in web page that you can open directly in any web browser on your smartphone, tablet, or PC — allowing you to monitor air quality live, change ventilation modes, and adjust settings without installing any apps or extra software. Since 0.10.49 the device keeps a **24 h history** (5-minute averages of CO2, climate, fan level, demand and heat recovery, with min / mean / max), pushes live values via Server-Sent Events, shows when the connection is lost, confirms every change and links to the dashboards of the other devices in the room.
 
 <p align="center">
   <img src="documentation/screenshots/wrg-dashboard1.png" alt="WRG Dashboard Settings" width="48%" />
@@ -480,7 +480,7 @@ Since 0.10.31, direct uploads to the device (`esphome run` / `esphome upload`, `
 
 The web interfaces (`http://<device-ip>/` and the VentoSync dashboard `/ui`) have **no login**: anyone in the same network can read the values and change the mode, fan level and room-wide settings. The LAN is the trust boundary, as for the API (see above).
 
-- **Enable a login** in your own build: uncomment the `auth:` block under `web_server:` in `packages/base/esp32c6_common.yaml` and add `webuser` / `webpw` to `secrets.yaml`. It protects the native page **and** the dashboard (`/ui`, `/state`, `/meta`, `/set`). The release binaries keep it off, because they are built without secrets.
+- **Enable a login** in your own build: uncomment the `auth:` block under `web_server:` in `packages/base/esp32c6_common.yaml` and add `webuser` / `webpw` to `secrets.yaml`. It protects the native page **and** the dashboard (`/ui`, `/state`, `/stream`, `/history`, `/meta`, `/set`). The release binaries keep it off, because they are built without secrets.
 - **Flood protection** (since 0.10.42): the dashboard queues at most 16 pending changes; further `/set` requests get HTTP 503 until the queue is drained (every 100 ms), and values longer than 32 characters are rejected.
 - **No cross-site changes** (since 0.10.48): `/set` only accepts `POST` with the header `X-VentoSync` from the device's own page; requests with a foreign `Origin` get HTTP 403. Another web page opened in the same network can no longer switch the ventilation through a hidden link or form.
 

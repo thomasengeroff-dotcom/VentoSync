@@ -117,7 +117,7 @@ hours). In addition the package applies three loss-free size optimisations:
 - `assertion_level: SILENT` — assertions still abort, but without file/line strings.
 - `logger: level: INFO` — DEBUG log strings are not compiled in.
 
-Result (complete variant incl. switch and dashboard toggle): **2,020,640 B of 2,031,616 B → ~11 KB headroom (99.5 %, 0.10.48).**
+Result (complete variant incl. switch and dashboard toggle): **2,003,762 B of 2,031,616 B → ~27 KB headroom (98.6 %, 0.10.49; the dashboard page is gzipped since then).**
 
 ### Consequences
 
@@ -222,7 +222,7 @@ a USB flash of all units. With an 8 MB module it would be possible — see the
 
 **Is there a variant for PCB v2.0 or with sensors?**
 Not yet. The package is board-independent (`bluetooth_proxy: !include
-packages/integration/bluetooth_proxy.yaml`), but every sensor package reduces the ~11 KB headroom. Test a build
+packages/integration/bluetooth_proxy.yaml`), but every sensor package reduces the ~27 KB headroom. Test a build
 before relying on it.
 
 **How much RAM does it use?**
