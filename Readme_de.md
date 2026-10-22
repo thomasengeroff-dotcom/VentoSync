@@ -116,6 +116,8 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 | Lüfterregelung | 5 feste Stufen | **10 Stufen (diskrete PID-Regelung)** |
 | Transparenz | ❌ | ✅ `Automatik-Status` in HA (was die Lüftung macht und warum) + HA-Ereignisse |
 | Smart Home | ❌ | ✅ Home Assistant (nativ) |
+| Web-Dashboard | ❌ | ✅ Eigenes Dashboard auf jedem Gerät (Browser, ohne App, Home Assistant oder Internet): Live-Werte, 24-h-Verlauf, alle Einstellungen, Geräte im Raum |
+| Einrichtung | DIP-Schalter auf der Platine (Gruppenzuordnung und Richtung) | ✅ **Einrichtungs-Assistent** im Web-Dashboard: Raum, Geräte-ID mit Prüfung auf Doppelvergabe, Phase mit Vorschlag anhand der Geräte im Raum, Grundeinstellungen – alles erklärt |
 | Wartungsalarm | Timer-LED | ✅ Prädiktiv + Push |
 | Synchronisation | Stromleitung | ✅ Kabellos (**ESP-NOW Protocol**) & Echtzeit-Sync |
 | Updates | nur per Servicetechniker (muss eingeschickt werden) | ✅ Over-the-Air (OTA) |
@@ -225,9 +227,9 @@ Das originale Bedienpanel des VentoMaxx V-WRG-1 (9 LEDs, 3 Taster) bleibt vollst
 Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderlich: Jedes Lüftungsgerät stellt eine eigene, direkt im Webbrowser (auf Smartphone, Tablet oder PC) aufrufbare Benutzeroberfläche bereit — so kannst du Raumluftwerte live überwachen, Betriebsmodi steuern und Einstellungen vornehmen, ganz ohne App- oder Software-Installation. Seit 0.10.49 speichert das Gerät einen **24-h-Verlauf** (5-Minuten-Mittel von CO2, Raumklima, Lüfterstufe, Bedarf und Wärmerückgewinnung, mit Min / Mittel / Max), schickt Live-Werte per Server-Sent Events, zeigt einen Verbindungsabbruch an, bestätigt jede Änderung und verlinkt die Dashboards der anderen Geräte im Raum.
 
 <p align="center">
-  <img src="documentation/screenshots/wrg-dashboard1.png" alt="WRG Dashboard Einstellungen" width="48%" />
+  <img src="documentation/screenshots/wrg-dashboard1.png" alt="WRG Dashboard: Status, Sensoren und Einstellungen" width="48%" />
   &nbsp;
-  <img src="documentation/screenshots/wrg-dashboard2.png" alt="WRG Dashboard Verbundene Geräte & Echtzeitdaten" width="48%" />
+  <img src="documentation/screenshots/wrg-dashboard2.png" alt="WRG Dashboard: Geräte im Raum, 24-h-Verlauf und Statistik" width="48%" />
 </p>
 
 > 👉 *Das Dashboard ist die Webseite des Geräts unter `http://<geräte-ip>/` (seit 0.10.55 anstelle der nativen ESPHome-Seite; der „Besuchen“-Link in Home Assistant öffnet es). Die Seite ist auch ohne Internetzugang vollständig gestaltet, z. B. im Fallback-Hotspot (seit 0.10.57); nur die Diagramme brauchen Internet (Chart.js). Vollständige Funktionsübersicht und ESP-NOW Live-Visualisierung siehe [📄 Lokales Web-Dashboard Guide](documentation/de/de_local-web-dashboard.md).*

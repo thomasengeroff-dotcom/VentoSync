@@ -84,8 +84,8 @@ Gesendet werden nur Werte, die vom aktuellen Stand des Geräts abweichen — üb
   <img src="../screenshots/wrg-dashboard2.png" alt="WRG Dashboard Verbundene Geräte & Live-Sensordaten" width="48%" />
 </p>
 
-*Links: Hauptsteuerung, Lüfterstufen-Slider, Betriebsmodi und Konfigurationsparameter.*  
-*Rechts: Verbundene ESP-NOW-Geräte und Echtzeit-Sensorkacheln.*
+*Links: Automatik-Status mit Raum-Hinweisen, Gerät & System, Sensordaten, Luftqualität, Wartung und alle Einstellungen (RAUMWEIT gekennzeichnet, Gerätekonfiguration zugeklappt).*  
+*Rechts: Geräte im Raum (ESP-NOW, mit Link auf ihr Dashboard), 24-h-Verlauf und Statistik.*
 
 ---
 
