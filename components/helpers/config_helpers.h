@@ -24,7 +24,7 @@
 //              peer cache invalidation, and ESP-NOW rediscovery triggers.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-05-16
+// Modified:    2026-10-22
 //
 // Dependencies: globals.h (peer_cache, espnow_peers)
 //               VentilationController (ventilation_ctrl)
@@ -68,6 +68,13 @@ enum class ConfigField : uint8_t {
  * Peers are grouped by floor+room, so any change in these values means
  * the current peer list is stale and must be rebuilt.
  *
+ * Also drops the controller's peer states of the old room (they would stay
+ * in the room fusion and the dashboard until PEER_TIMEOUT_MS) and asks the
+ * new room for its status at once instead of waiting for the next heartbeat:
+ * the dashboard's setup wizard checks the device ID against these peers, and
+ * the device adopts the new room's mode and level from the first response
+ * (is_state_synced = false, as after a boot).
+ *
  * @note Device ID changes do NOT invalidate peers – all devices in the
  *       same floor+room remain valid peers regardless of their device ID.
  *       The device ID is only used for ordering/priority within the room.
@@ -75,9 +82,13 @@ enum class ConfigField : uint8_t {
 inline void invalidate_peer_cache_and_rediscover() {
     id(espnow_peers) = "";
     peer_cache.clear();
+    auto *v = get_controller();
+    v->peers.clear();
+    v->is_state_synced = false;
 
     ESP_LOGI("config", "Peer cache cleared — triggering ESP-NOW rediscovery");
     send_discovery_broadcast();
+    request_peer_status();  // peer cache empty: broadcast, answered by the new room
 }
 
 // ---------------------------------------------------------
@@ -217,9 +228,10 @@ inline std::string get_phase_short() {
 /**
  * @brief Logs detailed ESP-NOW diagnostic state and triggers manual discovery.
  *
- * Intended for the "Force ESPNOW Discovery" debug button. Logs the state
- * of all critical subsystems before sending the discovery broadcast,
- * making it easy to diagnose connectivity issues from the log output.
+ * Intended for the "Force ESPNOW Discovery" debug button (also pressed by
+ * the dashboard's setup wizard). Logs the state of all critical subsystems
+ * before sending the discovery broadcast and a status request, making it
+ * easy to diagnose connectivity issues from the log output.
  *
  * Checks:
  *   - global_esp_now component initialization
@@ -260,10 +272,13 @@ inline void force_discovery_with_diagnostics() {
 
     ESP_LOGW("espnow_diag", "╚══════════════════════════════════════╝");
 
-    // Execute discovery
+    // Execute discovery; the status request lets the room's devices answer
+    // at once (dashboard peer list, setup wizard) instead of with their
+    // next heartbeat
     send_discovery_broadcast();
+    request_peer_status();
 
-    ESP_LOGI("espnow_diag", "Discovery broadcast sent");
+    ESP_LOGI("espnow_diag", "Discovery broadcast and status request sent");
 }
 
 // ---------------------------------------------------------

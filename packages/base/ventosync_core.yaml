@@ -60,6 +60,8 @@ substitutions:
   default_vacation_mode_index: "3"       # vacation preset mode: 3 = Stoßlüftung (MODE_NAMES in globals.h)
   default_vacation_level: "1"            # 1-10, vacation preset fan level
   default_summer_cooling_threshold: "22" # °C (18-30), indoor threshold of the summer bypass
+  default_auto_override_duration: "60"   # min (30-300), level override of the Level button
+  default_auto_presence_offset: "0"      # levels (-5..+5), presence offset in the manual modes (0 = off)
 
   # SMART CLIMATE CONTROL (HVAC COORDINATION) CONFIG
   # The AC state is pushed by Home Assistant via the API action
@@ -273,6 +275,7 @@ wrg_dashboard:
   child_lock_switch_id: child_lock_switch
   ignore_window_guard_switch_id: ignore_window_guard_switch
   peer_check_switch_id: peer_check_switch
+  setup_done_switch_id: setup_done_switch
   filter_reset_button_id: filter_reset_btn
   restart_button_id: force_restart_button
   discovery_button_id: force_discovery_button
@@ -286,3 +289,14 @@ wrg_dashboard:
   ventilation_ctrl_id: ventilation_ctrl
   project_version: "${project_version}"
   firmware_variant: "${firmware_variant}"
+  # Factory defaults shown by the setup wizard (same substitutions as the entities)
+  defaults:
+    config_floor_id: ${default_floor_id}
+    config_room_id: ${default_room_id}
+    config_device_id: ${default_device_id}
+    automatik_min_luefterstufe: ${default_auto_min_fan_level}
+    automatik_max_luefterstufe: ${default_auto_max_fan_level}
+    auto_co2_threshold: ${default_auto_co2_threshold}
+    auto_humidity_threshold: ${default_auto_humidity_threshold}
+    auto_summer_cooling_threshold: ${default_summer_cooling_threshold}
+    auto_override_duration: ${default_auto_override_duration}

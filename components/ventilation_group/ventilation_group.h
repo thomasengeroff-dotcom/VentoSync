@@ -821,6 +821,7 @@ public:
       pkt.room_flags |= ROOM_FLAG_NOX_BOOST_ENABLED;
     if (nox_local_active) pkt.room_flags |= ROOM_FLAG_NOX_ACTIVE;       // own SGP41 only
     if (nox_local_strong) pkt.room_flags |= ROOM_FLAG_NOX_STRONG;       // own SGP41 only
+    if (!state_machine.is_phase_a) pkt.room_flags |= ROOM_FLAG_PHASE_B;   // own configuration (setup wizard)
 
     // Vacation snapshot: only the device LEADING a vacation shares its
     // pre-vacation state (VACATION_STATE_LEADING). Followers send the sentinel,

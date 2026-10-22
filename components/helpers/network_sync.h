@@ -1265,6 +1265,8 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &frame, const
         fan_intensity_level->value() = pkt->fan_intensity;
 
       auto_override_adopt(pkt); // Rejoin a running level override
+      // Room-wide settings from the Master at once, like its heartbeat
+      if (is_from_master(pkt) && !is_master()) espnow_handler::handle_config_sync(pkt);
 
       v->is_state_synced = true;
       v->pending_broadcast = false; // Mute echo to prevent spamming old state on boot
@@ -1276,10 +1278,15 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &frame, const
     espnow_handler::handle_state_sync(pkt, pkt->msg_type == esphome::MSG_STATE);
   }
 
+  // The Master's status response carries the same settings as its heartbeat:
+  // a device that just joined the room (setup wizard, discovery button) has
+  // them at once instead of after up to one sync interval, so a change made
+  // in the meantime cannot push its factory values to the room.
   bool should_sync_config = false;
   if (pkt->msg_type == esphome::MSG_STATE) {
     should_sync_config = true;
-  } else if (pkt->msg_type == esphome::MSG_SYNC && is_from_master(pkt) && !is_master()) {
+  } else if ((pkt->msg_type == esphome::MSG_SYNC || pkt->msg_type == esphome::MSG_STATUS_RESPONSE) &&
+             is_from_master(pkt) && !is_master()) {
     should_sync_config = true;
   }
 

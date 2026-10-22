@@ -20,7 +20,8 @@ Alle Werte gelten **pro Gerät** und werden gespeichert. Die Standardwerte komme
 - **Stockwerk + Raum** bestimmen die Raumgruppe. Geräte mit gleichen Werten finden sich automatisch per ESP-NOW.
 - **Gerät 1** ist der Master des Raums. Jede Geräte-ID darf pro Raum nur einmal vorkommen.
 - **Phase:** Bei einem Paar bekommt ein Gerät Phase A, das andere Phase B — so bläst immer eines herein, während das andere absaugt.
-- **Auf Standardwerte zurücksetzen** setzt Stockwerk, Raum, Gerät und Phase auf die Standardwerte zurück.
+- **Auf Standardwerte zurücksetzen** setzt Stockwerk, Raum, Gerät und Phase auf die Standardwerte zurück; das Web-Dashboard bietet danach wieder seinen Einrichtungs-Assistenten an (seit 0.10.56).
+- Ohne Home Assistant richtet der **Einrichtungs-Assistent** im Web-Dashboard (`http://<geräte-ip>/`) Raum, Geräte-ID (mit Prüfung auf doppelte IDs im Raum), Phase und die raumweiten Grundeinstellungen ein.
 
 Typische Belegung für zwei Räume mit je einem Paar:
 

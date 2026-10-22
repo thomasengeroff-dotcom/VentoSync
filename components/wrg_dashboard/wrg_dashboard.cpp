@@ -591,6 +591,7 @@ std::string WrgDashboard::build_state_json_() {
       p["window"] = peer.window_open;
       p["ac"] = peer.hvac_ac_active;
       p["nox"] = peer.nox_active;
+      p["phase_cfg"] = peer.phase_b ? "B" : "A";  // configured phase (firmware < 0.10.56: always "A")
       // Link to the peer's dashboard (mDNS, see setup())
       if (!this->host_prefix_.empty()) {
         char host[16];
@@ -637,8 +638,9 @@ float WrgDashboard::room_humidity_() const {
 /**
  * @brief   Serializes the static limits of the writable settings (runs once).
  * @details numbers: [min, max, step] from the entity traits, selects: their
- *          options, buttons: their keys — so the UI never duplicates the
- *          YAML ranges.
+ *          options, buttons: their keys, defaults: the factory values of the
+ *          `defaults:` option (setup wizard) — so the UI never duplicates the
+ *          YAML ranges and defaults.
  */
 std::string WrgDashboard::build_meta_json_() {
   JsonDocument doc;
@@ -658,6 +660,8 @@ std::string WrgDashboard::build_meta_json_() {
 #ifdef USE_BUTTON
   for (const auto &e : this->buttons_) buttons.add(e.key);
 #endif
+  JsonObject defaults = doc["defaults"].to<JsonObject>();
+  for (const auto &d : this->defaults_) defaults[d.first] = d.second;
   std::string out;
   serializeJson(doc, out);
   return out;

@@ -72,6 +72,10 @@ static constexpr uint8_t ROOM_FLAG_NOX_BOOST_ENABLED = 0x10;
 static constexpr uint8_t ROOM_FLAG_NOX_ACTIVE = 0x20;
 /// Sender's OWN boost is a strong event (index >= 150) — never a fused value.
 static constexpr uint8_t ROOM_FLAG_NOX_STRONG = 0x40;
+/// Sender's configured phase is B (0.10.56, no protocol bump — same layout;
+/// older firmware never sets it, so its devices read as phase A). Only shown
+/// by the dashboard's setup wizard; the cycle logic does not use it.
+static constexpr uint8_t ROOM_FLAG_PHASE_B = 0x80;
 /// @}
 /// @brief Binary packet exchanged between peer devices via ESP-NOW.
 /// Layout is packed and must be identical on all firmware builds.
@@ -177,6 +181,7 @@ struct PeerState {
   bool presence;       ///< Peer's own radar presence (ROOM_FLAG_PRESENCE).
   bool nox_active;     ///< Peer's own NOx boost (ROOM_FLAG_NOX_ACTIVE).
   bool nox_strong;     ///< Peer's own strong NOx event (ROOM_FLAG_NOX_STRONG).
+  bool phase_b;        ///< Peer's configured phase is B (ROOM_FLAG_PHASE_B).
   uint8_t vacation_pre_mode_index; ///< Leader's pre-vacation mode index, else 0xFF.
   uint8_t vacation_pre_intensity;  ///< Leader's pre-vacation fan level, else 0.
 };
@@ -312,6 +317,7 @@ inline void update_peer_state(esphome::PeerState &peer, const esphome::Ventilati
   peer.presence = (pkt.room_flags & esphome::ROOM_FLAG_PRESENCE) != 0;
   peer.nox_active = (pkt.room_flags & esphome::ROOM_FLAG_NOX_ACTIVE) != 0;
   peer.nox_strong = (pkt.room_flags & esphome::ROOM_FLAG_NOX_STRONG) != 0;
+  peer.phase_b = (pkt.room_flags & esphome::ROOM_FLAG_PHASE_B) != 0;
   peer.vacation_pre_mode_index = pkt.vacation_pre_mode_index;
   peer.vacation_pre_intensity = pkt.vacation_pre_intensity;
 }

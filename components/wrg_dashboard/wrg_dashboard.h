@@ -48,6 +48,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace esphome {
@@ -161,6 +162,8 @@ public:
 #ifdef USE_BUTTON
   void add_button(const char *key, button::Button *b) { buttons_.push_back({key, b}); }
 #endif
+  /// Factory default of a number key (setup wizard, listed in /meta).
+  void add_default(const char *key, float value) { defaults_.push_back({key, value}); }
 
   /**
    * @brief   Checks if the request can be handled by this component.
@@ -259,6 +262,7 @@ protected:
 #ifdef USE_BUTTON
   std::vector<KeyedEntity<button::Button>> buttons_;
 #endif
+  std::vector<std::pair<const char *, float>> defaults_;
 };
 
 } // namespace wrg_dashboard

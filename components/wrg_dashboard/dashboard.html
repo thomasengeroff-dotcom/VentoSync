@@ -212,6 +212,28 @@
     </div>
   </div>
 
+  <!-- Setup wizard: opens by itself on a device that was never set up, or via Gerätekonfiguration -->
+  <div id="wiz" class="hidden fixed inset-0 z-40 bg-black/70 overflow-y-auto">
+    <div class="min-h-full flex items-center justify-center p-4">
+      <div class="bg-card border border-gray-700 rounded-xl shadow-2xl w-full max-w-xl p-5 sm:p-6">
+        <div class="flex justify-between items-center mb-1">
+          <div id="wiz_progress" class="text-xs uppercase tracking-wider text-gray-500"></div>
+          <button onclick="wizClose()" class="text-gray-500 hover:text-gray-300 text-2xl leading-none px-1" title="Schließen (später fortsetzen)">&times;</button>
+        </div>
+        <h2 id="wiz_title" class="text-xl font-semibold text-white mb-4"></h2>
+        <div id="wiz_body" class="space-y-4 text-sm text-gray-300"></div>
+        <div id="wiz_err" class="hidden mt-4 text-sm text-danger"></div>
+        <div class="flex flex-wrap justify-between items-center gap-2 mt-6">
+          <button id="wiz_back" onclick="wizGo(WIZ.step - 1)" class="text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 transition-colors">Zurück</button>
+          <div class="flex flex-wrap gap-2 ml-auto">
+            <button id="wiz_alt" onclick="wizSkip()" class="text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 transition-colors">Bereits eingerichtet</button>
+            <button id="wiz_next" onclick="wizNext()" class="text-sm font-semibold bg-accent hover:bg-accentHover text-black rounded-lg px-4 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Feedback for changes (saved / rejected / not applied) -->
   <div id="toasts" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-end gap-2 pointer-events-none"></div>
 
@@ -286,7 +308,8 @@
                      ['restart', 'Gerät neu starten', 'Gerät jetzt neu starten? Die Lüftung stoppt für einige Sekunden.']];
     const INPUT_CLS = 'bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block p-1.5';
     // Names of the writable keys for the feedback messages
-    const LABELS = {luefter_modus: 'Lüfter Modus', fan_intensity_display: 'Lüfter Intensität', filter_reset: 'Filterwechsel'};
+    const LABELS = {luefter_modus: 'Lüfter Modus', fan_intensity_display: 'Lüfter Intensität', filter_reset: 'Filterwechsel',
+                    setup_done: 'Einrichtung'};
     function renderSettings() {
       for (const [grp, rows] of Object.entries(SETTINGS)) {
         rows.forEach(([, k, label]) => { LABELS[k] = label; });
@@ -692,6 +715,7 @@
     // Every second: keep the stream open, poll while it is silent, show the connection state
     function tick() {
       const now = Date.now();
+      if (WIZ.open) wizUpdate();  // scan countdown
       if (!stream && now >= streamRetryAt) startStream();
       const streaming = now - lastStreamMs < STREAM_QUIET_MS;
       if (!streaming && now - lastPollMs >= 2000) pollState();
@@ -787,6 +811,9 @@
         renderSettingValues(data);
         renderPeers(data);
         verifyPending(data);
+        STATE = data;
+        wizMaybeOpen(data);
+        if (WIZ.open) wizUpdate();
 
         LIVE.push(liveSample(data));
         while (LIVE.length && LIVE[0].ts < lastDataMs - LIVE_MS) LIVE.shift();
@@ -835,23 +862,28 @@
       }
     }
 
-    // POST + X-VentoSync header: the device rejects /set without it (CSRF protection)
-    async function sendSet(id, val, el) {
+    // POST + X-VentoSync header: the device rejects /set without it (CSRF protection).
+    // Returns true when the device accepted the request; `quiet` skips the success message.
+    async function sendSet(id, val, el, quiet) {
       const label = LABELS[id] || id;
       const lim = META && META.numbers && META.numbers[id];
       if (lim && (isNaN(parseFloat(val)) || val < lim[0] || val > lim[1])) {
         flash(el, false);
         toast(`${label}: Wert außerhalb ${lim[0]}–${lim[1]}`, 'err');
-        return;
+        return false;
       }
       if (id === 'fan_intensity_display') document.getElementById("label_fan_intensity").innerText = val;
 
+      let accepted = false;
       try {
         const res = await fetchT('/set', {method: 'POST', headers: {'X-VentoSync': '1'},
                                           body: new URLSearchParams({id: id, val: String(val)})});
+        accepted = res.ok;
         if (!res.ok) {
           flash(el, false);
           toast(`${label}: ${SET_ERRORS[res.status] || 'Fehler (HTTP ' + res.status + ')'}`, 'err');
+        } else if (quiet) {
+          // caller reports the outcome itself
         } else if ((META && META.buttons || []).includes(id)) {
           flash(el, true);
           toast('Ausgeführt: ' + label, 'ok');
@@ -864,14 +896,18 @@
       }
       // The stream pushes the change at once; without it, re-read /state
       if (Date.now() - lastStreamMs >= STREAM_QUIET_MS) setTimeout(pollState, 500);
+      return accepted;
     }
 
     function renderActions() {
       const keys = (META && META.buttons) || [];
-      document.getElementById('device_actions').innerHTML = ACTIONS.filter(([k]) => keys.includes(k)).map(([k, label]) => {
-        LABELS[k] = label;
-        return `<button id="btn_${k}" onclick="pressAction('${k}')" class="text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 transition-colors">${label}</button>`;
-      }).join('');
+      const btn = 'text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 transition-colors';
+      document.getElementById('device_actions').innerHTML = (wizAvailable()
+        ? `<button onclick="wizOpen()" class="${btn} text-accent border-accent/40">Einrichtungs-Assistent</button>` : '') +
+        ACTIONS.filter(([k]) => keys.includes(k)).map(([k, label]) => {
+          LABELS[k] = label;
+          return `<button id="btn_${k}" onclick="pressAction('${k}')" class="${btn}">${label}</button>`;
+        }).join('');
     }
     function pressAction(k) {
       const [, , question] = ACTIONS.find(a => a[0] === k);
@@ -881,6 +917,330 @@
     function filterReset() {
       if (confirm('Filter gewechselt? Der Betriebsstunden-Zähler wird auf 0 gesetzt.')) {
         sendSet('filter_reset', 1, document.getElementById('btn_filter_reset'));
+      }
+    }
+
+    // ---------- Setup wizard ----------
+    // Steps: 0 welcome, 1 floor / room, 2 device ID + phase (checked against the
+    // room's peers), 3 room-wide basic settings, 4 summary. Writes through /set
+    // like the settings rows and only sends values that differ from /state.
+    // Opens by itself while setup_done is off and the IDs still have their
+    // factory values (/meta defaults); "×" postpones it until the next visit.
+    let STATE = null;                  // latest /state
+    const WIZ = {open: false, step: 0, checked: false, busy: false, scanUntil: 0, suggested: false, touched: {}, target: null};
+    const WIZ_SCAN_MS = 8000;          // peers answer the status request within ~1 s
+    const WIZ_TITLES = ['Willkommen bei VentoSync', 'Raum zuordnen', 'Gerät im Raum', 'Grundeinstellungen', 'Einrichtung abgeschlossen'];
+    const WIZ_NEXT = ['Einrichtung starten', 'Weiter', 'Weiter', 'Speichern & weiter', 'Fertig'];
+    const WIZ_ID_KEYS = ['config_floor_id', 'config_room_id', 'config_device_id'];
+    // Room-wide basic settings of step 3: [key, label, unit, explanation]
+    const WIZ_SETTINGS = [
+      ['automatik_min_luefterstufe', 'Min. Stufe (Smart-Automatik)', '',
+       'Schwächer lüftet die Automatik nie. Stufe 1–2 hält den Mindestluftwechsel zum Feuchteschutz (DIN 1946-6) auch in leeren Räumen.'],
+      ['automatik_max_luefterstufe', 'Max. Stufe (Smart-Automatik)', '',
+       'Stärker lüftet die Automatik nie – begrenzt das Geräusch, z. B. 5 im Schlafzimmer.'],
+      ['auto_co2_threshold', 'CO2-Grenzwert', 'ppm',
+       'Sollwert der CO2-Regelung: darüber erhöht die Automatik die Stufe. 1000 ppm entspricht der Pettenkofer-Zahl (gute Raumluft); niedriger = frischere Luft, aber häufiger höhere Stufen.'],
+      ['auto_humidity_threshold', 'Feuchte-Grenzwert', '%',
+       'Sollwert der Feuchte-Regelung (relative Luftfeuchte): darüber lüftet die Automatik stärker. 60 % beugt Schimmel vor. Ist die Außenluft feuchter als die Raumluft (Außenfeuchte aus Home Assistant), wird dafür nicht gelüftet.'],
+      ['auto_summer_cooling_threshold', 'Sommerkühlung ab', '°C',
+       'Ist es innen wärmer als dieser Wert und draußen kühler, lüftet die Automatik ohne Wärmerückgewinnung (Durchlüften) und kühlt mit Außenluft.'],
+      ['auto_override_duration', 'Übersteuerung Dauer', 'min',
+       'So lange gilt eine von Hand gewählte Stufe (Level-Taste oder Regler) in der Smart-Automatik; danach regelt die Automatik wieder.'],
+    ];
+    const wizEl = id => document.getElementById(id);
+    const phaseOf = opt => String(opt || '').includes('Phase B') ? 'B' : 'A';
+    const wizPeers = () => (STATE && STATE.peers) || [];
+
+    function wizAvailable() {
+      return !!(META && META.numbers && WIZ_ID_KEYS.every(k => META.numbers[k]));
+    }
+    function wizMaybeOpen(d) {
+      if (WIZ.checked || !wizAvailable()) return;
+      WIZ.checked = true;  // decided once per page load
+      const df = META.defaults || {};
+      const factory = WIZ_ID_KEYS.every(k => df[k] !== undefined && Number(d[k]) === df[k]);
+      if (d.setup_done === false && factory) wizOpen();
+    }
+    function wizOpen() {
+      if (!STATE || !wizAvailable()) return;
+      WIZ.open = true;
+      WIZ.checked = true;
+      wizEl('wiz').classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      wizGo(0);
+    }
+    function wizClose() {
+      WIZ.open = false;
+      wizEl('wiz').classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && WIZ.open) wizClose(); });
+    function wizError(msg) {
+      wizEl('wiz_err').textContent = msg || '';
+      wizEl('wiz_err').classList.toggle('hidden', !msg);
+    }
+
+    // Markup helpers
+    function wizRow(label, ctl, help) {
+      return `<div class="bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
+          <div class="flex justify-between items-center gap-3"><span class="text-gray-200">${label}</span>${ctl}</div>
+          ${help ? `<p class="text-xs text-gray-500 mt-2">${help}</p>` : ''}</div>`;
+    }
+    function wizLimits(key, minFloor) {
+      const [min, max, step] = (META.numbers || {})[key] || [0, 9999, 1];
+      return [Math.max(min, minFloor === undefined ? min : minFloor), max, step];
+    }
+    function wizInput(id, key, value, unit, minFloor) {
+      const [min, max, step] = wizLimits(key, minFloor);
+      const v = (value === null || value === undefined) ? '' : Number(value);
+      return `<span class="flex items-center gap-2 shrink-0"><input type="number" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"
+          oninput="WIZ.touched[this.id] = 1; wizUpdate()" class="${INPUT_CLS} w-24 text-center">${unit ? `<span class="text-xs text-gray-500 w-8">${unit}</span>` : ''}</span>`;
+    }
+    function wizSelect(id, options, value) {
+      return `<select id="${id}" onchange="WIZ.touched[this.id] = 1; wizUpdate()" class="${INPUT_CLS} w-56 cursor-pointer">` +
+        options.map(o => `<option value="${sanitizeHTML(o)}"${o === value ? ' selected' : ''}>${sanitizeHTML(o)}</option>`).join('') + '</select>';
+    }
+    const wizHint = (html, tone) => `<div class="text-xs rounded-lg px-3 py-2 border ${{
+        accent: 'text-accent bg-accent/10 border-accent/30', warn: 'text-warn bg-warn/10 border-warn/30',
+        danger: 'text-danger bg-danger/10 border-danger/30', gray: 'text-gray-400 bg-black/20 border-gray-700'}[tone || 'gray']}">${html}</div>`;
+    // Reads a number input; null (with a message) when empty or out of range
+    function wizNum(id, key, minFloor) {
+      const el = wizEl(id), v = Number(el.value);
+      const [min, max] = wizLimits(key, minFloor);
+      if (el.value === '' || !Number.isFinite(v) || v < min || v > max) {
+        flash(el, false);
+        wizError(`${LABELS[key] || key}: bitte einen Wert von ${min} bis ${max} eingeben.`);
+        return null;
+      }
+      return v;
+    }
+    const same = (a, b) => Math.abs(Number(a) - Number(b)) < 1e-6;
+
+    // Device step: free IDs, suggestions
+    function wizUsedIds() { return new Set(wizPeers().map(p => p.device_id)); }
+    function wizFreeIds(n) {
+      const used = wizUsedIds(), [min, max] = wizLimits('config_device_id'), out = [];
+      for (let i = min; i <= max && out.length < n; i++) if (!used.has(i)) out.push(i);
+      return out;
+    }
+    function wizSuggestId() {
+      const own = Number(STATE.config_device_id);
+      return wizUsedIds().has(own) ? (wizFreeIds(1)[0] || own) : own;
+    }
+    // Balance the room: the phase fewer devices have (tie: keep the own one)
+    function wizSuggestPhase() {
+      const peers = wizPeers(), b = peers.filter(p => p.phase_cfg === 'B').length, a = peers.length - b;
+      return a === b ? phaseOf(STATE.config_phase) : (a < b ? 'A' : 'B');
+    }
+    const wizPhaseOption = letter => ((META.selects || {}).config_phase || []).find(o => phaseOf(o) === letter);
+
+    function wizBody(step) {
+      const d = STATE;
+      if (step === 0) {
+        const factory = WIZ_ID_KEYS.every(k => same(d[k], (META.defaults || {})[k]));
+        return `<p>Dieser Assistent richtet das Gerät in drei Schritten ein:</p>
+          <ol class="list-decimal ml-5 space-y-1">
+            <li><b class="text-gray-100">Raum</b> – zu welchem Raum das Gerät gehört (Stockwerk und Raum).</li>
+            <li><b class="text-gray-100">Gerät</b> – Geräte-ID und Phase; dabei wird geprüft, ob die ID im Raum schon vergeben ist.</li>
+            <li><b class="text-gray-100">Grundeinstellungen</b> – Grenzwerte der Smart-Automatik und Betriebsmodus, jeweils mit Erklärung.</li>
+          </ol>
+          ${wizHint(`Aktuell: Stockwerk ${fmtTxt(String(Number(d.config_floor_id)))}, Raum ${fmtTxt(String(Number(d.config_room_id)))},
+            Gerät ${fmtTxt(String(Number(d.config_device_id)))}, Phase ${fmtTxt(d.phase)}${factory ? ' (Werkseinstellung)' : ''}.`)}
+          <p class="text-xs text-gray-500">Alle Werte lassen sich später unter <i>Einstellungen</i> ändern; den Assistenten erreichst du jederzeit
+            über <i>Gerätekonfiguration → Einrichtungs-Assistent</i>. „Bereits eingerichtet“ blendet ihn auf diesem Gerät aus.</p>`;
+      }
+      if (step === 1) {
+        return `<p>Geräte mit <b class="text-gray-100">gleicher Stockwerk- und Raum-ID</b> bilden einen Raum: Sie laufen im selben Modus und Takt
+            und teilen ihre Sensorwerte per ESP-NOW – direkt von Gerät zu Gerät, ohne WLAN-Router. Geräte anderer Räume beeinflussen sich nicht.</p>
+          ${wizRow('Stockwerk-ID', wizInput('wiz_floor', 'config_floor_id', d.config_floor_id, '', 1))}
+          ${wizRow('Raum-ID', wizInput('wiz_room', 'config_room_id', d.config_room_id, '', 1))}
+          <p class="text-xs text-gray-500">Die Nummern sind frei wählbar, müssen aber auf allen Geräten eines Raums gleich sein und sich von
+            anderen Räumen unterscheiden – z. B. Stockwerk 1 = Erdgeschoss, Raum 2 = Wohnzimmer. 0 ist hier nicht möglich: Mit Stockwerk
+            oder Raum 0 sendet das Gerät keine Discovery-Rufe. Nach „Weiter“ sucht das Gerät die übrigen Geräte dieses Raums.</p>`;
+      }
+      if (step === 2) {
+        const phases = (META.selects || {}).config_phase || [];
+        return `<div class="flex justify-between items-center gap-3"><span id="wiz_scan" class="text-gray-400"></span>
+            <button id="wiz_rescan" onclick="wizScan()" class="text-xs font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 transition-colors shrink-0">Erneut suchen</button></div>
+          <div id="wiz_peers"></div>
+          ${wizRow('Geräte-ID', wizInput('wiz_dev', 'config_device_id', d.config_device_id),
+              'Jedes Gerät im Raum braucht eine eigene ID. <b class="text-gray-300">Gerät 1 ist der Master</b>: Es gibt Takt, Betriebsmodus und die raumweiten Einstellungen vor – jeder Raum braucht genau einen.')}
+          <div id="wiz_dev_msg" class="space-y-2"></div>
+          ${wizRow('Phase', wizSelect('wiz_phase', phases, d.config_phase),
+              'Bei der Wärmerückgewinnung wechselt jedes Gerät etwa jede Minute die Richtung: Phase A beginnt mit Zuluft (hinein), Phase B mit Abluft (hinaus); beim Durchlüften bläst A dauerhaft hinein und B hinaus. Damit gleich viel Luft hinein- wie hinausströmt, sollten im Raum gleich viele Geräte Phase A und Phase B haben – bei einem Paar also eines A und eines B.')}
+          <div id="wiz_phase_msg"></div>`;
+      }
+      if (step === 3) {
+        const df = META.defaults || {};
+        const rows = WIZ_SETTINGS.filter(([k]) => d[k] !== undefined && (META.numbers || {})[k]).map(([k, label, unit, help]) =>
+          wizRow(label, wizInput('wiz_' + k, k, d[k], unit),
+                 help + (df[k] !== undefined ? ` <span class="text-gray-400">Standard: ${df[k]}${unit ? ' ' + unit : ''}.</span>` : ''))).join('');
+        const modes = (META.selects || {}).luefter_modus || [];
+        return `<div id="wiz_role"></div>
+          ${rows}
+          ${modes.length ? wizRow('Betriebsmodus', wizSelect('wiz_mode', modes, d.luefter_modus),
+              '<b class="text-gray-300">Smart-Automatik</b> (empfohlen) regelt die Stufe nach CO2 und Feuchte – mit dem eigenen Sensor oder dem eines anderen Geräts im Raum. Ohne Klimasensor im Raum: <b class="text-gray-300">Wärmerückgewinnung</b> auf fester Stufe. Gilt wie alle Modi für den ganzen Raum.') : ''}
+          <button onclick="wizDefaults()" class="text-xs font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 transition-colors">Standardwerte eintragen</button>`;
+      }
+      return `<div id="wiz_summary"></div>
+        <p class="text-xs text-gray-500">Alle Werte lassen sich unter <i>Einstellungen</i> ändern, der Assistent ist unter
+          <i>Gerätekonfiguration</i> erneut erreichbar. Weitere Geräte dieses Raums richtest du über ihr eigenes Dashboard ein.</p>`;
+    }
+
+    function wizGo(step) {
+      if (step < 0) return;
+      WIZ.step = step;
+      WIZ.touched = {};
+      wizError('');
+      wizEl('wiz_progress').textContent = step === 0 ? 'Einrichtungs-Assistent' : (step <= 3 ? `Schritt ${step} von 3` : 'Fertig');
+      wizEl('wiz_title').textContent = WIZ_TITLES[step];
+      wizEl('wiz_body').innerHTML = wizBody(step);
+      wizEl('wiz_back').classList.toggle('invisible', step === 0 || step === 4);
+      wizEl('wiz_alt').classList.toggle('hidden', step !== 0);
+      wizEl('wiz_next').textContent = WIZ_NEXT[step];
+      wizUpdate();
+    }
+
+    // Refreshes the live parts of the current step (peers, checks, values the user did not touch)
+    function wizUpdate() {
+      if (!WIZ.open || !STATE) return;
+      const d = STATE, peers = wizPeers();
+      let blocked = WIZ.busy;
+      if (WIZ.step === 2) {
+        const left = Math.ceil((WIZ.scanUntil - Date.now()) / 1000);
+        const scanning = left > 0;
+        const where = WIZ.target || {floor: Number(d.config_floor_id), room: Number(d.config_room_id)};
+        wizEl('wiz_scan').innerHTML = scanning
+          ? `<span class="inline-block w-2 h-2 rounded-full bg-warn mr-2 animate-pulse"></span>Suche Geräte in Stockwerk ${where.floor}, Raum ${where.room} … ${left} s`
+          : `${peers.length ? peers.length + (peers.length === 1 ? ' weiteres Gerät' : ' weitere Geräte') : 'Keine weiteren Geräte'} in Stockwerk ${where.floor}, Raum ${where.room} gefunden.`;
+        wizEl('wiz_rescan').disabled = scanning;
+        wizEl('wiz_peers').innerHTML = peers.length ? '<ul class="divide-y divide-gray-700/60 bg-black/20 rounded-lg">' +
+          peers.slice().sort((a, b) => a.device_id - b.device_id).map(p =>
+            `<li class="flex justify-between gap-3 px-3 py-1.5"><span>Gerät ${sanitizeHTML(String(p.device_id))}${p.master ? MASTER_TAG : ''}</span>
+             <span class="text-gray-400">Phase ${sanitizeHTML(p.phase_cfg || '?')} · zuletzt vor ${sanitizeHTML(String(p.age_s))} s</span></li>`).join('') + '</ul>' : '';
+        if (!scanning && !WIZ.suggested) {
+          WIZ.suggested = true;  // once per scan, never over the user's choice
+          if (!WIZ.touched.wiz_dev) wizEl('wiz_dev').value = wizSuggestId();
+          const opt = wizPhaseOption(wizSuggestPhase());
+          if (!WIZ.touched.wiz_phase && opt) wizEl('wiz_phase').value = opt;
+        }
+        const dev = Number(wizEl('wiz_dev').value);
+        const clash = peers.filter(p => p.device_id === dev);
+        const hasMaster = peers.some(p => p.master);
+        const msgs = [];
+        if (clash.length) {
+          const free = wizFreeIds(5);
+          msgs.push(wizHint(`ID ${dev} ist im Raum bereits vergeben${clash[0].host ? ` (${sanitizeHTML(clash[0].host)})` : ''}. Zwei Geräte mit derselben ID stören sich gegenseitig – bitte eine freie ID wählen${free.length ? ': ' + free.join(', ') + (free.length === 5 ? ' …' : '') : ''}.`, 'danger'));
+          blocked = true;
+        } else if (dev === 1) {
+          msgs.push(wizHint('Dieses Gerät wird der <b>Master</b> des Raums.', 'accent'));
+        } else if (!scanning && !hasMaster) {
+          msgs.push(wizHint('Im Raum wurde kein Master (Gerät 1) gefunden. Jeder Raum braucht genau ein Gerät mit ID 1 – ist es eingeschaltet und auf denselben Raum eingestellt?', 'warn'));
+        }
+        if (!scanning && !peers.length) {
+          msgs.push(wizHint('Gehören weitere Geräte zu diesem Raum, prüfe: eingeschaltet, dieselbe Stockwerk- und Raum-ID, mit derselben Firmware (gleicher ESP-NOW-Schlüssel) geflasht? Ein Einzelgerät bekommt die ID 1.'));
+        }
+        wizEl('wiz_dev_msg').innerHTML = msgs.join('');
+        const nb = peers.filter(p => p.phase_cfg === 'B').length;
+        wizEl('wiz_phase_msg').innerHTML = (!scanning && peers.length) ? wizHint(
+          `Im Raum: ${peers.length - nb} × Phase A, ${nb} × Phase B – Vorschlag für dieses Gerät: <b>Phase ${wizSuggestPhase()}</b>.
+           Geräte mit Firmware vor 0.10.56 melden ihre Phase nicht und erscheinen als A.`) : '';
+        blocked = blocked || scanning;
+      } else if (WIZ.step === 3) {
+        const master = peers.find(p => p.master);
+        wizEl('wiz_role').innerHTML = d.is_master
+          ? wizHint('Diese Einstellungen gelten <b>raumweit</b>. Als Master gibt dieses Gerät sie für alle Geräte des Raums vor.', 'accent')
+          : wizHint(master
+              ? `Diese Einstellungen gelten <b>raumweit</b> und kommen vom Master (Gerät 1)${master.host ? ` – <a href="http://${sanitizeHTML(master.host)}/" class="underline">Dashboard des Masters</a>` : ''}. Angezeigt werden die Werte des Raums; eine Änderung hier gilt für alle Geräte.`
+              : 'Diese Einstellungen gelten <b>raumweit</b>. Sobald ein Master (Gerät 1) im Raum erreichbar ist, übernimmt dieses Gerät dessen Werte.', master ? 'gray' : 'warn');
+        for (const [k] of WIZ_SETTINGS) {
+          const el = wizEl('wiz_' + k);
+          if (el && !WIZ.touched[el.id] && document.activeElement !== el && d[k] !== null && d[k] !== undefined) el.value = Number(d[k]);
+        }
+        const mode = wizEl('wiz_mode');
+        if (mode && !WIZ.touched.wiz_mode && document.activeElement !== mode && d.luefter_modus) mode.value = d.luefter_modus;
+      } else if (WIZ.step === 4) {
+        const line = (k, v) => `<div class="flex justify-between gap-3 py-1"><span class="text-gray-400">${k}</span><span class="text-gray-100">${v}</span></div>`;
+        wizEl('wiz_summary').innerHTML = '<div class="bg-black/20 rounded-lg px-3 py-2 divide-y divide-gray-700/60">' +
+          line('Stockwerk / Raum', `${Number(d.config_floor_id)} / ${Number(d.config_room_id)}`) +
+          line('Geräte-ID', `${Number(d.config_device_id)}${d.is_master ? MASTER_TAG : ''}`) +
+          line('Phase', fmtTxt(d.phase)) +
+          line('Weitere Geräte im Raum', String(peers.length)) +
+          line('Betriebsmodus', fmtTxt(d.luefter_modus)) + '</div>';
+      }
+      wizEl('wiz_next').disabled = blocked;
+    }
+
+    function wizScan() {
+      WIZ.scanUntil = Date.now() + WIZ_SCAN_MS;
+      WIZ.suggested = false;
+      sendSet('force_discovery', 1, null, true);  // discovery broadcast + status request
+      wizUpdate();
+    }
+    function wizDefaults() {
+      const df = META.defaults || {};
+      for (const [k] of WIZ_SETTINGS) {
+        const el = wizEl('wiz_' + k);
+        if (el && df[k] !== undefined) { el.value = df[k]; WIZ.touched[el.id] = 1; }
+      }
+      const mode = wizEl('wiz_mode');
+      if (mode && [...mode.options].some(o => o.value === 'Smart-Automatik')) { mode.value = 'Smart-Automatik'; WIZ.touched.wiz_mode = 1; }
+    }
+    async function wizSkip() {
+      if (await sendSet('setup_done', 1, wizEl('wiz_alt'), true)) wizClose();
+    }
+
+    // Applies the current step, then moves on. Only changed values are sent.
+    async function wizNext() {
+      if (WIZ.busy || wizEl('wiz_next').disabled) return;
+      wizError('');
+      WIZ.busy = true;
+      wizUpdate();
+      try {
+        const d = STATE, step = WIZ.step;
+        if (step === 1) {
+          const floor = wizNum('wiz_floor', 'config_floor_id', 1), room = wizNum('wiz_room', 'config_room_id', 1);
+          if (floor === null || room === null) return;
+          const moved = !same(floor, d.config_floor_id) || !same(room, d.config_room_id);
+          if (!same(floor, d.config_floor_id) && !await sendSet('config_floor_id', floor, wizEl('wiz_floor'))) return;
+          if (!same(room, d.config_room_id) && !await sendSet('config_room_id', room, wizEl('wiz_room'))) return;
+          // A new room clears the peer list and asks the room by itself (config_helpers.h)
+          if (!moved) sendSet('force_discovery', 1, null, true);
+          WIZ.target = {floor: floor, room: room};
+          WIZ.scanUntil = Date.now() + WIZ_SCAN_MS;
+          WIZ.suggested = false;
+        } else if (step === 2) {
+          const dev = wizNum('wiz_dev', 'config_device_id');
+          if (dev === null) return;
+          const phase = wizEl('wiz_phase').value;
+          const changed = !same(dev, d.config_device_id);
+          if (changed && !await sendSet('config_device_id', dev, wizEl('wiz_dev'))) return;
+          if (phase && phase !== d.config_phase && !await sendSet('config_phase', phase, wizEl('wiz_phase'))) return;
+          // No longer the Master: fetch the room-wide settings from the Master's status response now
+          if (changed && dev !== 1 && wizPeers().some(p => p.master)) sendSet('force_discovery', 1, null, true);
+        } else if (step === 3) {
+          const vals = [];
+          for (const [k] of WIZ_SETTINGS) {
+            if (!wizEl('wiz_' + k)) continue;
+            const v = wizNum('wiz_' + k, k);
+            if (v === null) return;
+            if (!same(v, d[k])) vals.push([k, v, wizEl('wiz_' + k)]);
+          }
+          const mode = wizEl('wiz_mode');
+          if (mode && mode.value !== d.luefter_modus) vals.push(['luefter_modus', mode.value, mode]);
+          for (const [k, v, el] of vals) if (!await sendSet(k, v, el)) return;
+        } else if (step === 4) {
+          if (await sendSet('setup_done', 1, wizEl('wiz_next'), true)) {
+            wizClose();
+            toast('Einrichtung abgeschlossen', 'ok');
+          }
+          return;
+        }
+        WIZ.busy = false;
+        wizGo(step + 1);
+      } finally {
+        WIZ.busy = false;
+        wizUpdate();
       }
     }
 

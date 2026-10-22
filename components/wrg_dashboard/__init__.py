@@ -14,6 +14,7 @@ CONF_WEB_SERVER_BASE_ID = "web_server_base_id"
 CONF_PROJECT_VERSION = "project_version"
 CONF_FIRMWARE_VARIANT = "firmware_variant"
 CONF_HTML_DATA_ID = "html_data_id"
+CONF_DEFAULTS = "defaults"
 
 # The dashboard page, gzipped into flash at build time (~50 KB -> ~14 KB) and
 # served with Content-Encoding: gzip.
@@ -99,6 +100,8 @@ SWITCHES = {
     "child_lock_switch_id": "child_lock",
     "ignore_window_guard_switch_id": "ignore_window_guard",
     "peer_check_switch_id": "peer_check",
+    # Setup wizard done (packages/base/device_config.yaml)
+    "setup_done_switch_id": "setup_done",
     # Only set by packages/integration/bluetooth_proxy.yaml
     "bluetooth_proxy_switch_id": "bt_proxy",
 }
@@ -118,6 +121,16 @@ TABLES = (
     (BUTTONS, button.Button, "add_button"),
 )
 
+
+def _validate_defaults(value):
+    """Factory defaults shown by the setup wizard: number key -> value."""
+    value = cv.Schema({cv.string_strict: cv.float_})(value)
+    for key in value:
+        if key not in NUMBERS.values():
+            raise cv.Invalid(f"defaults: '{key}' is not a number key ({', '.join(sorted(NUMBERS.values()))})")
+    return value
+
+
 _schema = {
     cv.GenerateID(): cv.declare_id(WrgDashboard),
     cv.GenerateID(CONF_WEB_SERVER_BASE_ID): cv.use_id(web_server_base.WebServerBase),
@@ -125,6 +138,9 @@ _schema = {
     cv.Optional("ventilation_ctrl_id"): cv.use_id(cg.Component),
     cv.Optional(CONF_PROJECT_VERSION, default=""): cv.string,
     cv.Optional(CONF_FIRMWARE_VARIANT, default=""): cv.string,
+    # Factory defaults per number key (the default_* substitutions), listed in
+    # /meta for the setup wizard
+    cv.Optional(CONF_DEFAULTS, default={}): _validate_defaults,
 }
 for option, cls in DIRECT.items():
     _schema[cv.Optional(option)] = cv.use_id(cls)
@@ -148,6 +164,9 @@ async def to_code(config):
     html_gz = gzip.compress(HTML_FILE.read_bytes(), compresslevel=9, mtime=0)
     html_data = cg.progmem_array(config[CONF_HTML_DATA_ID], [HexInt(b) for b in html_gz])
     cg.add(var.set_html(html_data, len(html_gz)))
+
+    for key, value in config[CONF_DEFAULTS].items():
+        cg.add(var.add_default(key, value))
 
     if "ventilation_ctrl_id" in config:
         ctrl = await cg.get_variable(config["ventilation_ctrl_id"])

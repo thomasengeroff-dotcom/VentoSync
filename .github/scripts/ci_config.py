@@ -59,6 +59,7 @@ DEFAULTS = {
     "default_vacation_mode_index": ("components/ventilation_logic/defaults.h", "VACATION_MODE_INDEX"),
     "default_vacation_level": ("components/ventilation_logic/defaults.h", "VACATION_LEVEL"),
     "default_summer_cooling_threshold": ("components/ventilation_logic/summer_bypass.h", "DEFAULT_THRESHOLD_C"),
+    "default_auto_override_duration": ("components/ventilation_logic/level_override.h", "DEFAULT_DURATION_MIN"),
     "hvac_default_co2_threshold": ("components/ventilation_logic/hvac_coordinator.h", "DEFAULT_CO2_THRESHOLD_PPM"),
     "hvac_default_emergency_co2": ("components/ventilation_logic/hvac_coordinator.h", "DEFAULT_EMERGENCY_CO2_PPM"),
     "hvac_default_max_fan_level": ("components/ventilation_logic/hvac_coordinator.h", "DEFAULT_MAX_FAN_LEVEL"),
