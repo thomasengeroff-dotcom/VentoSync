@@ -84,8 +84,8 @@ Only values that differ from the device's current ones are sent, through the sam
   <img src="../screenshots/wrg-dashboard2.png" alt="WRG Dashboard Connected Devices & Live Sensor Data" width="48%" />
 </p>
 
-*Left: Main controls, fan speed slider, operating modes, and configuration parameters.*  
-*Right: Connected ESP-NOW peers and real-time telemetry tiles.*
+*Left: Automatik-Status with room hints, device & system, sensor data, air quality, maintenance and all settings (RAUMWEIT tagged, Gerätekonfiguration collapsed).*  
+*Right: devices in the room (ESP-NOW, with a link to their dashboard), 24 h history and statistics.*
 
 ---
 
