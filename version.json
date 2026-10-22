@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.56",
+    "project_version": "0.10.57",
     "project_date": "2026-10-22",
-    "project_description": "Setup wizard in the web dashboard (room, device ID with collision check, phase, room-wide basics)."
+    "project_description": "Dashboard styles built into the firmware: the page works without internet access."
 }
