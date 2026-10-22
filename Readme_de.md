@@ -230,7 +230,7 @@ Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderl
   <img src="documentation/screenshots/wrg-dashboard2.png" alt="WRG Dashboard Verbundene Geräte & Echtzeitdaten" width="48%" />
 </p>
 
-> 👉 *Das Dashboard ist die Webseite des Geräts unter `http://<geräte-ip>/` (seit 0.10.55 anstelle der nativen ESPHome-Seite; der „Besuchen“-Link in Home Assistant öffnet es). Vollständige Funktionsübersicht und ESP-NOW Live-Visualisierung siehe [📄 Lokales Web-Dashboard Guide](documentation/de/de_local-web-dashboard.md).*
+> 👉 *Das Dashboard ist die Webseite des Geräts unter `http://<geräte-ip>/` (seit 0.10.55 anstelle der nativen ESPHome-Seite; der „Besuchen“-Link in Home Assistant öffnet es). Die Seite ist auch ohne Internetzugang vollständig gestaltet, z. B. im Fallback-Hotspot (seit 0.10.57); nur die Diagramme brauchen Internet (Chart.js). Vollständige Funktionsübersicht und ESP-NOW Live-Visualisierung siehe [📄 Lokales Web-Dashboard Guide](documentation/de/de_local-web-dashboard.md).*
 
 ## 📡 ESP-NOW: Kabellose Autonomie
 
