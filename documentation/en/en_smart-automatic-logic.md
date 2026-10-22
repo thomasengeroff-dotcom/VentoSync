@@ -196,7 +196,7 @@ automation:
 | `Smart-Automatik Max Lüfterstufe` | `automatik_max_luefterstufe` | `automatik_max_fan_level` | 7 | Maximum speed (noise limiter for nights). |
 | `Smart-Automatik: CO2 Grenzwert` | `auto_co2_threshold` | `auto_co2_threshold_val` | 1000 ppm | Target setpoint for the CO2 PID. |
 | `Smart-Automatik: Feuchte Grenzwert` | `auto_humidity_threshold` | `auto_humidity_threshold_val` | 60 % | Target setpoint for the humidity PID. |
-| `Smart-Automatik: Sommerkühlung Schwelle` | `auto_summer_cooling_threshold` | `summer_cooling_threshold` | 22 °C | Indoor temperature above which the summer bypass may engage (section 4). |
+| `Smart-Automatik: Sommerkühlung Schwelle` | `auto_summer_cooling_threshold` | `summer_cooling_threshold` | 22 °C | Indoor temperature above which the summer bypass may engage (section 4), room-wide (protocol v15). |
 | `Sommerbetrieb` | `sommerbetrieb` | — | (binary) | Season gate from HA; `false` while HA is offline (heat recovery stays active). |
 | `Klima-Koordination` | `smart_climate_control` | `hvac_enabled_val` | Off | Enables the HVAC coordination modifier, room-wide (section 6). |
 | `Klima-Koordination: CO2 Grenzwert` | `hvac_co2_threshold` | `hvac_co2_threshold_val` | 1200 ppm | Relaxed CO2 setpoint while the AC is active. |

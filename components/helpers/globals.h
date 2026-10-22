@@ -192,7 +192,9 @@ extern esphome::globals::RestoringGlobalsComponent<int>
 extern esphome::globals::RestoringGlobalsComponent<int>
     *const auto_presence_val; ///< Presence offset (-5…+5, room-wide, manual modes only).
 extern esphome::globals::RestoringGlobalsComponent<int>
-    *const summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C).
+    *const summer_cooling_threshold; ///< Indoor temp threshold for summer cooling (°C, room-wide, ESP-NOW synced).
+extern esphome::template_::TemplateNumber
+    *const auto_summer_cooling_threshold; ///< HA number "Smart-Automatik: Sommerkühlung Schwelle".
 extern esphome::globals::RestoringGlobalsComponent<int>
     *const auto_override_duration_val; ///< Level override duration (30-300 min, room-wide, ESP-NOW synced).
 extern esphome::template_::TemplateNumber

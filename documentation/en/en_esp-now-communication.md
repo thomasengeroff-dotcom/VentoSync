@@ -63,7 +63,7 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protocol Architecture & Packet Validation (v14)
+## 🔒 Protocol Architecture & Packet Validation (v15)
 
 * **Frame Authentication (v13)**: every frame — state packets, heartbeats and the discovery strings, unicast and broadcast — carries a 16-byte trailer with a frame counter and an HMAC-SHA256 tag (see *Security* below). Frames without a valid tag or with an outdated counter are dropped before anything is parsed. Firmware ≥ 0.10.43 rejects v12 frames — **flash all devices of a room** and give them the same `espnow_key`.
 * **Magic Header Validation**: Every packet begins with a fixed magic byte (`0x42`) to immediately discard foreign or malformed 2.4 GHz packets.
@@ -71,6 +71,7 @@ sequenceDiagram
 * **Loop Prevention**: adopted values are applied without a new broadcast (`notify = false`), and devices only broadcast their **own** inputs, never a value fused from peers — so mirrored settings and room-wide maxima cannot ping-pong or latch between devices. (There are no sequence numbers in the packet.)
 * **Level override (v12)**: every packet carries the room's Smart-Automatik level override (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` from any device starts, changes or ends it; the Master heartbeat only starts / re-aligns it. Firmware ≥ 0.10.34 rejects v11 packets — **flash all devices of a room**.
 * **Vacation preset (v14)**: every packet carries the room-wide vacation preset (`vacation_preset_mode_index`, `vacation_preset_level`), adopted like the sliders from `MSG_STATE` and the Master heartbeat. Firmware ≥ 0.10.52 rejects v13 packets — **flash all devices of a room**.
+* **Summer cooling threshold (v15)**: every packet carries the room-wide `Smart-Automatik: Sommerkühlung Schwelle` (`summer_cooling_threshold`, 18–30 °C), adopted like the sliders from `MSG_STATE` and the Master heartbeat. Firmware ≥ 0.10.54 rejects v14 packets — **flash all devices of a room**.
 
 ---
 

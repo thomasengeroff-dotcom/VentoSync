@@ -59,6 +59,7 @@ substitutions:
   default_led_max_brightness: "80"       # %, status LED brightness limit
   default_vacation_mode_index: "3"       # vacation preset mode: 3 = Stoßlüftung (MODE_NAMES in globals.h)
   default_vacation_level: "1"            # 1-10, vacation preset fan level
+  default_summer_cooling_threshold: "22" # °C (18-30), indoor threshold of the summer bypass
 
   # SMART CLIMATE CONTROL (HVAC COORDINATION) CONFIG
   # The AC state is pushed by Home Assistant via the API action
@@ -214,6 +215,7 @@ ventilation_group:
   pre_vacation_intensity_global: pre_vacation_intensity
   vacation_preset_mode_global: vacation_preset_mode_index_val
   vacation_preset_level_global: vacation_preset_level_val
+  summer_cooling_threshold_global: summer_cooling_threshold
   hvac_enabled_global: hvac_enabled_val
   nox_boost_enabled_global: nox_boost_enabled_val
   auto_override_duration_global: auto_override_duration_val

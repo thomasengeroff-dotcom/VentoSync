@@ -21,7 +21,7 @@
 // Description: System-wide mode orchestration and lifecycle hooks.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-19
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 #include <esp_system.h>
@@ -299,6 +299,7 @@ inline void publish_room_settings_from_globals() {
   if (hvac_emergency_co2_val != nullptr) show(hvac_emergency_co2, hvac_emergency_co2_val->value());
   if (hvac_max_fan_level_val != nullptr) show(hvac_max_fan_level, hvac_max_fan_level_val->value());
   if (auto_override_duration_val != nullptr) show(auto_override_duration, auto_override_duration_val->value());
+  if (summer_cooling_threshold != nullptr) show(auto_summer_cooling_threshold, summer_cooling_threshold->value());
   if (max_led_brightness != nullptr) show(led_max_brightness_config, max_led_brightness->value() * 100.0f);
 }
 

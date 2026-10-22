@@ -36,6 +36,7 @@
 #include "esphome/components/ventilation_logic/level_override.h"
 #include "esphome/components/ventilation_logic/defaults.h"
 #include "esphome/components/ventilation_logic/hvac_coordinator.h"
+#include "esphome/components/ventilation_logic/summer_bypass.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -214,6 +215,7 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_intensity_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *vacation_preset_mode_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *vacation_preset_level_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *summer_cooling_threshold_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *nox_boost_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *auto_override_duration_global_{nullptr};
@@ -255,6 +257,8 @@ public:
   void set_vacation_preset_mode_global(esphome::globals::RestoringGlobalsComponent<int> *g) { vacation_preset_mode_global_ = g; }
   /** @brief Sets the vacation preset fan level reference (room-wide setting). */
   void set_vacation_preset_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { vacation_preset_level_global_ = g; }
+  /** @brief Sets the summer cooling threshold reference (room-wide setting, °C). */
+  void set_summer_cooling_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { summer_cooling_threshold_global_ = g; }
   /** @brief Sets the global Smart Climate Control enable flag reference (room-wide switch). */
   void set_hvac_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { hvac_enabled_global_ = g; }
   /** @brief Sets the room-wide NOx boost switch reference ("NOx-Stoßlüftung"). */
@@ -854,6 +858,12 @@ public:
         0, static_cast<int>(ventosync::packet::MODE_INDEX_COUNT) - 1));
     pkt.vacation_preset_level = static_cast<uint8_t>(std::clamp(
         vacation_preset_level_global_ != nullptr ? vacation_preset_level_global_->value() : df::VACATION_LEVEL, 1, 10));
+
+    // Summer cooling threshold (room-wide setting, clamped into the range parse() accepts)
+    pkt.summer_cooling_threshold = static_cast<uint8_t>(std::clamp(
+        summer_cooling_threshold_global_ != nullptr ? summer_cooling_threshold_global_->value()
+                                                    : static_cast<int>(ventosync::summer::DEFAULT_THRESHOLD_C),
+        ventosync::summer::THRESHOLD_MIN_C, ventosync::summer::THRESHOLD_MAX_C));
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

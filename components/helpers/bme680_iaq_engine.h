@@ -70,7 +70,9 @@ class BME680IAQEngine {
     if (std::isnan(gas_ohm) || gas_ohm < 1000.0f) {
       fail_count_++;
       out.healthy = (fail_count_ < cfg_.max_consecutive_fails);
-      if (!out.healthy) {
+      // Logged once per failure phase — a missing sensor fails every cycle
+      // (30 s) forever; the recovery below is logged once as well.
+      if (fail_count_ == cfg_.max_consecutive_fails) {
         ESP_LOGW(TAG_IAQ, "Sensor unhealthy: %d consecutive failures", fail_count_);
       }
       out.co2eq_ppm   = NAN;

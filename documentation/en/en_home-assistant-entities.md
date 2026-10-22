@@ -53,8 +53,8 @@ This file lists the Home Assistant entities provided by the VentoSync firmware (
   * *Type:* Sensor (min, updated every 30 s), room-wide state
   * *Documentation:* Remaining time of the level override started in Smart-Automatik with the Level button, the `Lüfter Intensität` slider, the fan entity speed or the web dashboard (room-wide). `0` = the automatic regulates. Ended early by a mode change. See [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
 * **`number.smart_automatik_sommerkuhlung_schwelle`** ("Smart-Automatik: Sommerkühlung Schwelle", YAML ID `auto_summer_cooling_threshold`)
-  * *Type:* Number (18–30 °C, default 22), config, per device
-  * *Documentation:* Indoor temperature above which the summer bypass (free cooling via `Durchlüften`) may start. Details: [Smart-Automatik Logic](en_smart-automatic-logic.md).
+  * *Type:* Number (18–30 °C, default 22), config, room-wide (since 0.10.54)
+  * *Documentation:* Indoor temperature above which the summer bypass (free cooling via `Durchlüften`) may start. Synced over ESP-NOW like the other Smart-Automatik sliders, so all devices of a room start the bypass at the same temperature. Details: [Smart-Automatik Logic](en_smart-automatic-logic.md).
 * **`number.smart_automatik_ubersteuerung_dauer`** ("Smart-Automatik: Übersteuerung Dauer", YAML ID `auto_override_duration`)
   * *Type:* Number (30–300 min, step 5, default 60), config, room-wide
   * *Documentation:* How long a level chosen in Smart-Automatik (Level button, HA slider / fan speed, web dashboard) overrides the automatic. Applies to the next override; a running one keeps its remaining time. See [📄 Smart Automatic Logic](en_smart-automatic-logic.md#7-level-override-level-button).
