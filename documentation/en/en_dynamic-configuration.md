@@ -57,6 +57,8 @@ esphome run ventosync.yaml
 
 ### 3. Set Device Parameters
 
+> 💡 **Without Home Assistant:** since 0.10.56 the local web dashboard (`http://<device-ip>/`) opens a **setup wizard** on a device that was never set up — floor / room, device ID with a check against the IDs already used in the room, phase with a suggestion, and the room-wide Smart-Automatik basics. See [Local Web Dashboard → Setup Wizard](en_local-web-dashboard.md#-setup-wizard-01056).
+
 In Home Assistant under the device card, configure the location:
 
 #### Example: Living Room, Floor 1, Device 1

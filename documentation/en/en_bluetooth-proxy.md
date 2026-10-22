@@ -117,7 +117,7 @@ hours). In addition the package applies three loss-free size optimisations:
 - `assertion_level: SILENT` — assertions still abort, but without file/line strings.
 - `logger: level: INFO` — DEBUG log strings are not compiled in.
 
-Result (complete variant incl. switch and dashboard toggle): **1,989,418 B of 2,031,616 B → ~41 KB headroom (97.9 %, 0.10.50 with ESPHome 2026.10.0; 0.10.49 with 2026.9.1: 2,003,762 B).**
+Result (complete variant incl. switch and dashboard toggle): **1,988,608 B of 2,031,616 B → ~42 KB headroom (97.9 %, 0.10.56 with ESPHome 2026.10.0; 0.10.50: 1,989,418 B; 0.10.49 with 2026.9.1: 2,003,762 B).**
 
 ### Consequences
 

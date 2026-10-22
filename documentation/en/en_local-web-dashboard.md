@@ -40,6 +40,21 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
 
 ---
 
+## 🧭 Setup Wizard *(0.10.56)*
+
+On a device that was never set up, the dashboard opens a **setup wizard** by itself — the on-site setup without Home Assistant. It appears while the device's (internal) flag *Einrichtung abgeschlossen* is off **and** floor, room and device ID still have their factory values; *Gerätekonfiguration → Einrichtungs-Assistent* opens it at any time. "×" (or Esc) postpones it until the next visit, **"Bereits eingerichtet"** hides it on this device for good. *Auf Standardwerte zurücksetzen* (HA button) clears the flag again.
+
+1. **Room** — floor ID and room ID. Devices with the same pair form a room (same mode and cycle, shared sensor values over ESP-NOW). 0 is not offered: with floor or room 0 a device sends no discovery broadcast.
+2. **Device in the room** — the device searches the room for 8 s (discovery broadcast + status request; after a floor / room change the peer list of the old room is dropped first) and lists the devices found with ID, MASTER tag and phase.
+   * **Device ID**: checked live against the IDs in use — a taken ID is shown in red with the free IDs, and *Weiter* stays disabled. Suggestion: the current ID if it is free, otherwise the lowest free one. Hints for "this device becomes the Master" and "no Master (device 1) found in the room".
+   * **Phase**: suggestion = the phase fewer devices of the room have, so as much air flows in as out (a pair: one A, one B). Peers report their configured phase since 0.10.56 (room flag bit 7); older firmware is shown as A.
+3. **Basic settings (room-wide)** — Smart-Automatik min / max level, CO2 and humidity threshold, summer cooling threshold, override duration and the operating mode, each with an explanation and its factory default (*Standardwerte eintragen* fills them all in). On a slave the values shown are the room's (taken over from the Master's status response right after the device ID was set); a change applies to the whole room, like everywhere else.
+4. **Done** — summary (floor / room, ID, Master, phase, devices in the room, mode); the flag is set.
+
+Only values that differ from the device's current ones are sent, through the same `/set` path as the settings (with the usual feedback messages).
+
+---
+
 ## 📸 Interface Preview
 
 ### VentoSync Dashboard (Tailwind CSS UI)
@@ -92,4 +107,4 @@ The dashboard dynamically scans and lists all active ESP-NOW ventilation units i
 >
 > An internet connection is therefore required for the web browser to load the dashboard styling and the charts. Without it the page stays usable (values, settings, peers; unstyled) and shows a note instead of the charts.
 
-The page itself (`components/wrg_dashboard/dashboard.html`) is gzip-compressed at build time (*0.10.49*, ~50 KB → ~14 KB in flash) and served with `Content-Encoding: gzip`.
+The page itself (`components/wrg_dashboard/dashboard.html`) is gzip-compressed at build time (*0.10.49*; since 0.10.56 ~78 KB → ~22 KB in flash) and served with `Content-Encoding: gzip`.

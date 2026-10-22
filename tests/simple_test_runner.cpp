@@ -2083,12 +2083,13 @@ bool test_peer_state_from_packet() {
   TEST_ASSERT(peer.current_mode_index == 0);
   TEST_ASSERT(peer.room_co2 == 850.0f);
   TEST_ASSERT(peer.window_open && peer.nox_active);
-  TEST_ASSERT(!peer.hvac_ac_active && !peer.presence && !peer.nox_strong);
+  TEST_ASSERT(!peer.hvac_ac_active && !peer.presence && !peer.nox_strong && !peer.phase_b);
   TEST_ASSERT(peer.vacation_pre_mode_index == 0xFF);
 
-  pkt.room_flags = esphome::ROOM_FLAG_AC_ACTIVE | esphome::ROOM_FLAG_PRESENCE | esphome::ROOM_FLAG_NOX_STRONG;
+  pkt.room_flags = esphome::ROOM_FLAG_AC_ACTIVE | esphome::ROOM_FLAG_PRESENCE | esphome::ROOM_FLAG_NOX_STRONG |
+                   esphome::ROOM_FLAG_PHASE_B;
   ventosync::packet::update_peer_state(peer, pkt, mac, 20000u);
-  TEST_ASSERT(peer.hvac_ac_active && peer.presence && peer.nox_strong);
+  TEST_ASSERT(peer.hvac_ac_active && peer.presence && peer.nox_strong && peer.phase_b);
   TEST_ASSERT(!peer.window_open && !peer.nox_active);
   TEST_ASSERT(peer.last_seen_ms == 20000u);
   return true;

@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 1,992,152 / 2,031,616 B (~39 KB headroom, 0.10.54 / ESPHome 2026.10.0) — CI compiles it only after the merge (PRs build
+  logger INFO. Image 1,988,608 / 2,031,616 B (~42 KB headroom, 0.10.56 / ESPHome 2026.10.0) — CI compiles it only after the merge (PRs build
   `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
@@ -212,6 +212,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
   bits 4–6 (0.10.38, no bump): bit 4 room-wide NOx-boost switch, bit 5 the sender's own NOx boost, bit 6 its own
   strong NOx event — an older Master never sets bit 4 and therefore keeps the room's NOx switch off;
+  bit 7 (0.10.56, no bump): the sender's configured phase is B — only for the dashboard's setup wizard, older firmware
+  reads as phase A;
   v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
   Smart-Automatik level override and its duration setting; v13 added the authentication trailer, see below;
@@ -362,7 +364,12 @@ Complex YAML lambda logic is extracted into focused header files:
   (Server-Sent Events) follows ESPHome's `/events` pattern: a `StreamSession` is tied to the socket, sent to only from
   `loop()` (non-blocking) and deleted only after httpd's `free_ctx` (`destroy()`) marked it dead. Entities are
   registered by JSON key (tables in `__init__.py`); `/set` accepts only those keys, via POST with the `X-VentoSync`
-  header and same origin (CSRF).
+  header and same origin (CSRF). `/meta` also lists the factory defaults (`defaults:` option, filled from the
+  `default_*` substitutions — never literal values). **Setup wizard** (0.10.56, `dashboard.html`): opens while
+  `setup_done_switch` (internal, `device_config.yaml`) is off and the IDs equal their defaults; it relies on a floor /
+  room change clearing `VentilationController::peers` and sending a status request (`invalidate_peer_cache_and_rediscover()`)
+  and on the Master's `MSG_STATUS_RESPONSE` carrying the room-wide settings (`handle_config_sync()`, like its heartbeat),
+  so a new slave shows — and never overwrites — the room's values.
 
 ### Type Safety & Best Practices
 

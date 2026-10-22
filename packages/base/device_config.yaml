@@ -79,6 +79,20 @@ select:
         - lambda: "update_phase_config(x);"
 
 # ---------------------------------------------------------
+# SETUP WIZARD STATE
+# ---------------------------------------------------------
+# Set by the dashboard's setup wizard when it finishes (or is skipped). While
+# it is off and floor / room / device ID still have their factory values, the
+# dashboard opens the wizard by itself. Native restore (NVS), no global.
+switch:
+  - platform: template
+    name: "Einrichtung abgeschlossen"
+    id: setup_done_switch
+    internal: true
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+# ---------------------------------------------------------
 # DEVICE INFO SENSORS
 # ---------------------------------------------------------
 text_sensor:
@@ -148,6 +162,8 @@ button:
         - select.set:
             id: config_phase
             option: "Phase A (Startet mit Zuluft)"
+        # The dashboard offers its setup wizard again
+        - switch.turn_off: setup_done_switch
         - logger.log: "Konfiguration auf Standardwerte zurückgesetzt"
 
   - platform: template

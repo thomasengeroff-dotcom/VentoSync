@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.56] - 2026-10-22
+
+### Added
+
+- **Setup wizard in the web dashboard** (issue #61, "On-Site Device Setup") — on a device that was never set up
+  (internal switch *Einrichtung abgeschlossen* off and floor / room / device ID at their factory values) the dashboard
+  opens a wizard by itself; *Gerätekonfiguration → Einrichtungs-Assistent* opens it any time:
+  1. floor and room ID (0 is not offered — it disables the discovery broadcast),
+  2. device ID and phase: the device searches the room for 8 s and lists the devices found (ID, Master, phase); a
+     taken ID is shown with the free ones and blocks *Weiter*, the suggestions are the own ID if free (else the lowest
+     free one) and the phase fewer devices of the room have,
+  3. the room-wide Smart-Automatik basics (min / max level, CO2 and humidity threshold, summer cooling threshold,
+     override duration) and the operating mode, each with an explanation and its factory default,
+  4. summary.
+  Only changed values are sent. "Bereits eingerichtet" hides the wizard on that device, the HA button
+  *Auf Standardwerte zurücksetzen* offers it again.
+- `/meta` lists the factory defaults of the settings (`defaults:` option of `wrg_dashboard`, filled from the `default_*`
+  substitutions); `/state` peers carry their configured phase (`phase_cfg`).
+
+### Changed
+
+- **ESP-NOW room flag bit 7 = the sender's configured phase B** — no protocol bump (same layout, v15); devices with
+  older firmware never set it and are shown as phase A in the wizard.
+- **Floor / room change**: the peer list of the old room is dropped at once (it stayed in the room fusion and the
+  dashboard for up to 15 min) and the new room is asked for its status immediately, so the device adopts the room's
+  mode and level without waiting for the next heartbeat. *ESP-NOW Discovery starten* also sends a status request.
+- **The Master's status response carries its room-wide settings** like its heartbeat: a device that just joined a room
+  has the room's sliders at once, so a change made right after joining cannot push its factory values to the room.
+- New substitutions `default_auto_override_duration` (60 min, checked against `DEFAULT_DURATION_MIN` by
+  `ci_config.py`) and `default_auto_presence_offset` (0) instead of literal initial values.
+- The dashboard page grows to ~22 KB in flash (gzip, was ~15.5 KB).
+
 ## [0.10.55] - 2026-10-22
 
 ### Changed

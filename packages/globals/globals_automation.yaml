@@ -91,7 +91,7 @@ globals:
   # presence and never in Smart-Automatik (PID-driven).
   - id: auto_presence_val
     type: int
-    initial_value: "0"
+    initial_value: "${default_auto_presence_offset}"
     restore_value: true
 
   # ---------------------------------------------------------
@@ -118,7 +118,7 @@ globals:
   # components/ventilation_logic/level_override.h.
   - id: auto_override_duration_val
     type: int
-    initial_value: "60"
+    initial_value: "${default_auto_override_duration}"
     restore_value: true
 
   # ---------------------------------------------------------

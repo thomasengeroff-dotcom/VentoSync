@@ -40,6 +40,21 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
 
 ---
 
+## 🧭 Einrichtungs-Assistent *(0.10.56)*
+
+Auf einem noch nicht eingerichteten Gerät öffnet das Dashboard von selbst einen **Einrichtungs-Assistenten** — die Einrichtung vor Ort ohne Home Assistant. Er erscheint, solange das (interne) Merkmal *Einrichtung abgeschlossen* aus ist **und** Stockwerk, Raum und Geräte-ID noch auf Werkseinstellung stehen; über *Gerätekonfiguration → Einrichtungs-Assistent* ist er jederzeit erreichbar. „×“ (oder Esc) verschiebt ihn auf den nächsten Aufruf, **„Bereits eingerichtet“** blendet ihn auf diesem Gerät dauerhaft aus. *Auf Standardwerte zurücksetzen* (HA-Button) setzt das Merkmal wieder zurück.
+
+1. **Raum** — Stockwerk-ID und Raum-ID. Geräte mit gleichem Paar bilden einen Raum (gleicher Modus und Takt, geteilte Sensorwerte per ESP-NOW). 0 wird nicht angeboten: mit Stockwerk oder Raum 0 sendet ein Gerät keinen Discovery-Broadcast.
+2. **Gerät im Raum** — das Gerät sucht 8 s lang die Geräte des Raums (Discovery-Broadcast + Statusanfrage; nach einem Stockwerk-/Raumwechsel wird zuerst die Peer-Liste des alten Raums verworfen) und listet sie mit ID, MASTER-Kennzeichnung und Phase.
+   * **Geräte-ID**: wird laufend gegen die vergebenen IDs geprüft — eine belegte ID erscheint rot mit den freien IDs, *Weiter* bleibt gesperrt. Vorschlag: die aktuelle ID, wenn sie frei ist, sonst die kleinste freie. Hinweise „dieses Gerät wird Master“ und „kein Master (Gerät 1) im Raum gefunden“.
+   * **Phase**: Vorschlag = die Phase, die weniger Geräte des Raums haben, damit gleich viel Luft hinein- wie hinausströmt (Paar: eines A, eines B). Peers melden ihre eingestellte Phase seit 0.10.56 (Raum-Flag Bit 7); ältere Firmware erscheint als A.
+3. **Grundeinstellungen (raumweit)** — Min./Max. Stufe der Smart-Automatik, CO2- und Feuchte-Grenzwert, Sommerkühlung-Schwelle, Übersteuerungsdauer und Betriebsmodus, jeweils mit Erklärung und Werkseinstellung (*Standardwerte eintragen* trägt alle ein). Auf einem Slave zeigt der Schritt die Werte des Raums (direkt nach dem Setzen der Geräte-ID aus der Statusantwort des Masters übernommen); eine Änderung gilt wie überall für den ganzen Raum.
+4. **Fertig** — Zusammenfassung (Stockwerk/Raum, ID, Master, Phase, Geräte im Raum, Modus); das Merkmal wird gesetzt.
+
+Gesendet werden nur Werte, die vom aktuellen Stand des Geräts abweichen — über denselben `/set`-Weg wie die Einstellungen (mit den üblichen Rückmeldungen).
+
+---
+
 ## 📸 Dashboard-Vorschau
 
 ### VentoSync Dashboard (Tailwind CSS UI)
@@ -92,4 +107,4 @@ Das Web-Dashboard scannt und visualisiert alle aktiven Lüftungsgeräte im selbe
 >
 > Für die grafische Darstellung und die Diagramme im Webbrowser ist daher eine aktive Internetverbindung erforderlich. Ohne sie bleibt die Seite bedienbar (Werte, Einstellungen, Peers; ungestylt) und zeigt statt der Diagramme einen Hinweis.
 
-Die Seite selbst (`components/wrg_dashboard/dashboard.html`) wird beim Build gzip-komprimiert (*0.10.49*, ~50 KB → ~14 KB im Flash) und mit `Content-Encoding: gzip` ausgeliefert.
+Die Seite selbst (`components/wrg_dashboard/dashboard.html`) wird beim Build gzip-komprimiert (*0.10.49*; seit 0.10.56 ~78 KB → ~22 KB im Flash) und mit `Content-Encoding: gzip` ausgeliefert.

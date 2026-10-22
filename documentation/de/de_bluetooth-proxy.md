@@ -117,7 +117,7 @@ Filterstunden) problemlos. Zusätzlich setzt das Paket drei verlustfreie Größe
 - `assertion_level: SILENT` – Assertions brechen weiterhin ab, aber ohne Datei-/Zeilen-Strings.
 - `logger: level: INFO` – DEBUG-Logstrings werden nicht einkompiliert.
 
-Ergebnis (komplette Variante inkl. Schalter und Dashboard-Toggle): **1.989.418 B von 2.031.616 B → ca. 41 KB Reserve (97,9 %, 0.10.50 mit ESPHome 2026.10.0; 0.10.49 mit 2026.9.1: 2.003.762 B).**
+Ergebnis (komplette Variante inkl. Schalter und Dashboard-Toggle): **1.988.608 B von 2.031.616 B → ca. 42 KB Reserve (97,9 %, 0.10.56 mit ESPHome 2026.10.0; 0.10.50: 1.989.418 B; 0.10.49 mit 2026.9.1: 2.003.762 B).**
 
 ### Konsequenzen
 

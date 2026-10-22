@@ -458,7 +458,7 @@ esphome upload ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
    - **Device ID** (Eindeutige Nummer des Geräts)
    - **Room ID** (Geräte mit gleicher Room ID synchronisieren sich)
    - **Floor ID**
-3. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings — auch Stockwerk-, Raum- und Geräte-ID sowie die Phase — über das lokale Web-Dashboard unter `http://<device-ip>/` konfiguriert werden.
+3. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings — auch Stockwerk-, Raum- und Geräte-ID sowie die Phase — über das lokale Web-Dashboard unter `http://<device-ip>/` konfiguriert werden. Seit 0.10.56 öffnet sich dort auf einem noch nicht eingerichteten Gerät ein **Einrichtungs-Assistent**: Stockwerk und Raum, Geräte-ID (geprüft gegen die im Raum schon vergebenen IDs) und Phase (mit Vorschlag), danach die raumweiten Grundeinstellungen der Smart-Automatik mit Erklärung. Erneut aufrufbar unter *Gerätekonfiguration → Einrichtungs-Assistent*.
 4. **Spaß haben**: Genieße dein smartes, energieeffizientes Lüftungssystem!
 5. **OTA-Updates**:
    Beispiel eines OTA Updates in Home Assistant:
