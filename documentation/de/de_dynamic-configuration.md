@@ -58,7 +58,7 @@ esphome run ventosync.yaml
 
 ### 3. Geräte-Konfiguration setzen
 
-> 💡 **Ohne Home Assistant:** Seit 0.10.56 öffnet das lokale Web-Dashboard (`http://<device-ip>/`) auf einem noch nicht eingerichteten Gerät einen **Einrichtungs-Assistenten** — Stockwerk/Raum, Geräte-ID mit Prüfung gegen die im Raum schon vergebenen IDs, Phase mit Vorschlag und die raumweiten Grundeinstellungen der Smart-Automatik. Siehe [Lokales Web-Dashboard → Einrichtungs-Assistent](de_local-web-dashboard.md#-einrichtungs-assistent-01056).
+> 💡 **Ohne Home Assistant:** Seit 0.10.56 öffnet das lokale Web-Dashboard (`http://<device-ip>/`) auf einem noch nicht eingerichteten Gerät einen **Einrichtungs-Assistenten** — Stockwerk/Raum, Geräte-ID mit Prüfung gegen die im Raum schon vergebenen IDs, Phase mit Vorschlag, danach Betriebsmodus, Grundeinstellungen der Smart-Automatik, Klima-Koordination, Urlaubsvorgabe und Kindersicherung (seit 0.10.58). Siehe [Lokales Web-Dashboard → Einrichtungs-Assistent](de_local-web-dashboard.md#-einrichtungs-assistent-01056).
 
 In Home Assistant unter dem Gerät findest du folgende Einstellungen:
 

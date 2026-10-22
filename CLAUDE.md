@@ -369,11 +369,13 @@ Complex YAML lambda logic is extracted into focused header files:
   `loop()` (non-blocking) and deleted only after httpd's `free_ctx` (`destroy()`) marked it dead. Entities are
   registered by JSON key (tables in `__init__.py`); `/set` accepts only those keys, via POST with the `X-VentoSync`
   header and same origin (CSRF). `/meta` also lists the factory defaults (`defaults:` option, filled from the
-  `default_*` substitutions — never literal values). **Setup wizard** (0.10.56, `dashboard.html`): opens while
+  `default_*` substitutions — never literal values; a select's default is its option index). **Setup wizard** (0.10.56, `dashboard.html`): opens while
   `setup_done_switch` (internal, `device_config.yaml`) is off and the IDs equal their defaults; it relies on a floor /
   room change clearing `VentilationController::peers` and sending a status request (`invalidate_peer_cache_and_rediscover()`)
   and on the Master's `MSG_STATUS_RESPONSE` carrying the room-wide settings (`handle_config_sync()`, like its heartbeat),
-  so a new slave shows — and never overwrites — the room's values.
+  so a new slave shows — and never overwrites — the room's values. Steps 3/4 are data-driven (`WIZ_GROUPS`: groups, rows
+  with a room-wide flag → **RAUMWEIT** / orange **PRÜFEN** badge, optional `when`, e.g. NOx only with `nox_index`); the
+  summary reuses the groups. Keep a row's room-wide flag in sync with `SETTINGS`.
 
 ### Type Safety & Best Practices
 

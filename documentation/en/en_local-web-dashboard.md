@@ -27,7 +27,7 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
   * *NOx-Stoßlüftung*: room-wide switch; the threshold only on the SGP41 variants.
   * *Urlaubsmodus*: operating mode and level, both room-wide (*0.10.52*).
   * *Netzwerk*: ESP-NOW sync interval, ESP-NOW peer check (Master LED blinks without peers, room-wide).
-  * *Gerätekonfiguration* *(0.10.55)*: floor ID, room ID, device ID, phase A/B and "Fenstersperre ignorieren" (all per device), plus the buttons **"ESP-NOW Discovery starten"** and **"Gerät neu starten"** (with confirmation). Changing floor or room starts a new peer discovery, like the HA entities.
+  * *Gerätekonfiguration* *(0.10.55)*, collapsed by default since 0.10.58 (only needed when setting up or moving a device — click the heading to open it): floor ID, room ID, device ID, phase A/B and "Fenstersperre ignorieren" (all per device), plus the buttons **"ESP-NOW Discovery starten"** and **"Gerät neu starten"** (with confirmation). Changing floor or room starts a new peer discovery, like the HA entities.
 
   Number fields take their limits from the device (`/meta`), so a value outside the HA slider range is not sent; the control briefly outlines teal (applied) or red (rejected).
 * **Maintenance**: filter operating days, filter alarm, local radar presence, and a **"Filterwechsel bestätigen"** button (with confirmation) that resets the filter counter like the HA button `Filterwechsel (Reset)`.
@@ -48,10 +48,29 @@ On a device that was never set up, the dashboard opens a **setup wizard** by its
 2. **Device in the room** — the device searches the room for 8 s (discovery broadcast + status request; after a floor / room change the peer list of the old room is dropped first) and lists the devices found with ID, MASTER tag and phase.
    * **Device ID**: checked live against the IDs in use — a taken ID is shown in red with the free IDs, and *Weiter* stays disabled. Suggestion: the current ID if it is free, otherwise the lowest free one. Hints for "this device becomes the Master" and "no Master (device 1) found in the room".
    * **Phase**: suggestion = the phase fewer devices of the room have, so as much air flows in as out (a pair: one A, one B). Peers report their configured phase since 0.10.56 (room flag bit 7); older firmware is shown as A.
-3. **Basic settings (room-wide)** — Smart-Automatik min / max level, CO2 and humidity threshold, summer cooling threshold, override duration and the operating mode, each with an explanation and its factory default (*Standardwerte eintragen* fills them all in). On a slave the values shown are the room's (taken over from the Master's status response right after the device ID was set); a change applies to the whole room, like everywhere else.
-4. **Done** — summary (floor / room, ID, Master, phase, devices in the room, mode); the flag is set.
+3. **Betrieb & Smart-Automatik** — grouped into *Betriebsmodus*, *Lüfterstufen der Smart-Automatik* (min / max level, override duration) and *Grenzwerte der Smart-Automatik* (CO2 and humidity threshold, summer cooling threshold).
+4. **Weitere Funktionen** *(0.10.58)* — *Klima-Koordination* (switch), *NOx-Stoßlüftung* (switch, only when an SGP41 + SHT45 board is fitted, i.e. `/state` has `nox_index`), *Urlaubsmodus* (operating mode and level of the vacation preset) and *Bedienung am Gerät* (child lock).
+5. **Done** — summary in the same groups (plus *Raum & Gerät*: floor / room, ID, Master, phase, devices in the room); the flag is set.
+
+Every value has an explanation, its factory default where one exists (*Standardwerte eintragen* fills in the defaults of the current step; the mode becomes the recommended Smart-Automatik) and a tag *(0.10.58)*:
+
+* **RAUMWEIT** — applies to all devices of the room and comes from the Master (device 1). On a slave the values shown are the room's (taken over from the Master's status response right after the device ID was set); changing them is only needed to adjust the Master's values, and a change applies to the whole room, like everywhere else.
+* **PRÜFEN** (orange) — applies to this device only and should be checked: floor / room, device ID, phase and the child lock.
 
 Only values that differ from the device's current ones are sent, through the same `/set` path as the settings (with the usual feedback messages).
+
+<p align="center">
+  <img src="../screenshots/setup-wizard-0-welcome.png" alt="Setup wizard: welcome" width="32%" />
+  <img src="../screenshots/setup-wizard-1-room.png" alt="Setup wizard step 1: room" width="32%" />
+  <img src="../screenshots/setup-wizard-2-device.png" alt="Setup wizard step 2: device ID and phase" width="32%" />
+</p>
+<p align="center">
+  <img src="../screenshots/setup-wizard-3-automatik.png" alt="Setup wizard step 3: mode and Smart-Automatik" width="32%" />
+  <img src="../screenshots/setup-wizard-4-functions.png" alt="Setup wizard step 4: further functions" width="32%" />
+  <img src="../screenshots/setup-wizard-5-summary.png" alt="Setup wizard: summary" width="32%" />
+</p>
+
+*Top: welcome with the legend of the tags, room, device in the room (three devices found, ID 4 and phase A suggested). Bottom: Betrieb & Smart-Automatik, Weitere Funktionen (SGP41 variant, hence with NOx-Stoßlüftung), summary.*
 
 ---
 

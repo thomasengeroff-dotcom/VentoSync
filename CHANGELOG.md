@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.58] - 2026-10-22
+
+### Added
+
+- **Setup wizard: further functions** — a new step *Weitere Funktionen* sets **Klima-Koordination** (room-wide switch),
+  **NOx-Stoßlüftung** (room-wide switch, only shown when an SGP41 + SHT45 board is fitted), the **vacation preset**
+  (*Urlaubsmodus*: operating mode and level, room-wide) and the **child lock** (this device only), each with an
+  explanation. *Standardwerte eintragen* also fills in the vacation preset's factory values (`/meta` `defaults` now
+  lists select defaults as option index).
+
+### Changed
+
+- **Setup wizard grouped** — four steps instead of three: *Raum*, *Gerät im Raum*, *Betrieb & Smart-Automatik*
+  (groups *Betriebsmodus*, *Lüfterstufen*, *Grenzwerte*) and *Weitere Funktionen*; the summary shows the same groups.
+  Every value carries a tag: **RAUMWEIT** values come from the room's Master — changing them is only needed to adjust
+  the Master's values — and an orange **PRÜFEN** marks the values of this device only (floor / room, device ID, phase,
+  child lock), which should be checked.
+- **Dashboard: *Gerätekonfiguration* collapsed by default** — the settings group is only needed when setting up or
+  moving a device; a click on its heading opens it (the wizard button is inside).
+- Docs: screenshots of the setup wizard in the local web dashboard guide.
+
 ## [0.10.57] - 2026-10-22
 
 ### Fixed

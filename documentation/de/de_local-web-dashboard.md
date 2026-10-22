@@ -27,7 +27,7 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
   * *NOx-Stoßlüftung*: raumweiter Schalter; die Schwelle nur bei den SGP41-Varianten.
   * *Urlaubsmodus*: Betriebsmodus und Stufe, beide raumweit (*0.10.52*).
   * *Netzwerk*: ESP-NOW-Sync-Intervall, ESP-NOW-Peerprüfung (Master-LED blinkt ohne Peers, raumweit).
-  * *Gerätekonfiguration* *(0.10.55)*: Stockwerk-ID, Raum-ID, Geräte-ID, Phase A/B und „Fenstersperre ignorieren“ (alle pro Gerät) sowie die Buttons **„ESP-NOW Discovery starten“** und **„Gerät neu starten“** (mit Rückfrage). Eine Änderung von Stockwerk oder Raum startet wie bei den HA-Entitäten eine neue Peer-Suche.
+  * *Gerätekonfiguration* *(0.10.55)*, seit 0.10.58 standardmäßig zugeklappt (nur beim Einrichten oder Umziehen eines Geräts nötig — ein Klick auf die Überschrift öffnet sie): Stockwerk-ID, Raum-ID, Geräte-ID, Phase A/B und „Fenstersperre ignorieren“ (alle pro Gerät) sowie die Buttons **„ESP-NOW Discovery starten“** und **„Gerät neu starten“** (mit Rückfrage). Eine Änderung von Stockwerk oder Raum startet wie bei den HA-Entitäten eine neue Peer-Suche.
 
   Zahlenfelder übernehmen ihre Grenzen vom Gerät (`/meta`); ein Wert außerhalb des HA-Slider-Bereichs wird nicht gesendet. Das Bedienelement wird kurz türkis (übernommen) oder rot (abgelehnt) umrandet.
 * **Wartung**: Filter-Betriebstage, Filteralarm, lokale Radar-Präsenz und ein Button **„Filterwechsel bestätigen“** (mit Rückfrage), der den Filterzähler wie der HA-Button `Filterwechsel (Reset)` zurücksetzt.
@@ -48,10 +48,29 @@ Auf einem noch nicht eingerichteten Gerät öffnet das Dashboard von selbst eine
 2. **Gerät im Raum** — das Gerät sucht 8 s lang die Geräte des Raums (Discovery-Broadcast + Statusanfrage; nach einem Stockwerk-/Raumwechsel wird zuerst die Peer-Liste des alten Raums verworfen) und listet sie mit ID, MASTER-Kennzeichnung und Phase.
    * **Geräte-ID**: wird laufend gegen die vergebenen IDs geprüft — eine belegte ID erscheint rot mit den freien IDs, *Weiter* bleibt gesperrt. Vorschlag: die aktuelle ID, wenn sie frei ist, sonst die kleinste freie. Hinweise „dieses Gerät wird Master“ und „kein Master (Gerät 1) im Raum gefunden“.
    * **Phase**: Vorschlag = die Phase, die weniger Geräte des Raums haben, damit gleich viel Luft hinein- wie hinausströmt (Paar: eines A, eines B). Peers melden ihre eingestellte Phase seit 0.10.56 (Raum-Flag Bit 7); ältere Firmware erscheint als A.
-3. **Grundeinstellungen (raumweit)** — Min./Max. Stufe der Smart-Automatik, CO2- und Feuchte-Grenzwert, Sommerkühlung-Schwelle, Übersteuerungsdauer und Betriebsmodus, jeweils mit Erklärung und Werkseinstellung (*Standardwerte eintragen* trägt alle ein). Auf einem Slave zeigt der Schritt die Werte des Raums (direkt nach dem Setzen der Geräte-ID aus der Statusantwort des Masters übernommen); eine Änderung gilt wie überall für den ganzen Raum.
-4. **Fertig** — Zusammenfassung (Stockwerk/Raum, ID, Master, Phase, Geräte im Raum, Modus); das Merkmal wird gesetzt.
+3. **Betrieb & Smart-Automatik** — gruppiert in *Betriebsmodus*, *Lüfterstufen der Smart-Automatik* (Min./Max. Stufe, Übersteuerungsdauer) und *Grenzwerte der Smart-Automatik* (CO2- und Feuchte-Grenzwert, Sommerkühlung-Schwelle).
+4. **Weitere Funktionen** *(0.10.58)* — *Klima-Koordination* (Schalter), *NOx-Stoßlüftung* (Schalter, nur wenn ein SGP41 + SHT45 Board verbaut ist, d. h. `/state` enthält `nox_index`), *Urlaubsmodus* (Betriebsmodus und Intensität der Urlaubsvorgabe) und *Bedienung am Gerät* (Kindersicherung).
+5. **Fertig** — Zusammenfassung in denselben Gruppen (plus *Raum & Gerät*: Stockwerk/Raum, ID, Master, Phase, Geräte im Raum); das Merkmal wird gesetzt.
+
+Jeder Wert hat eine Erklärung, seine Werkseinstellung, falls es eine gibt (*Standardwerte eintragen* trägt die Werkseinstellungen des aktuellen Schritts ein, als Modus die empfohlene Smart-Automatik), und eine Kennzeichnung *(0.10.58)*:
+
+* **RAUMWEIT** — gilt für alle Geräte des Raums und kommt vom Master (Gerät 1). Auf einem Slave zeigt der Assistent die Werte des Raums (direkt nach dem Setzen der Geräte-ID aus der Statusantwort des Masters übernommen); ändern muss man sie nur, um die Werte des Masters anzupassen, und eine Änderung gilt wie überall für den ganzen Raum.
+* **PRÜFEN** (orange) — gilt nur für dieses Gerät und sollte geprüft werden: Stockwerk/Raum, Geräte-ID, Phase und Kindersicherung.
 
 Gesendet werden nur Werte, die vom aktuellen Stand des Geräts abweichen — über denselben `/set`-Weg wie die Einstellungen (mit den üblichen Rückmeldungen).
+
+<p align="center">
+  <img src="../screenshots/setup-wizard-0-welcome.png" alt="Einrichtungs-Assistent: Willkommen" width="32%" />
+  <img src="../screenshots/setup-wizard-1-room.png" alt="Einrichtungs-Assistent Schritt 1: Raum" width="32%" />
+  <img src="../screenshots/setup-wizard-2-device.png" alt="Einrichtungs-Assistent Schritt 2: Geräte-ID und Phase" width="32%" />
+</p>
+<p align="center">
+  <img src="../screenshots/setup-wizard-3-automatik.png" alt="Einrichtungs-Assistent Schritt 3: Betrieb und Smart-Automatik" width="32%" />
+  <img src="../screenshots/setup-wizard-4-functions.png" alt="Einrichtungs-Assistent Schritt 4: Weitere Funktionen" width="32%" />
+  <img src="../screenshots/setup-wizard-5-summary.png" alt="Einrichtungs-Assistent: Zusammenfassung" width="32%" />
+</p>
+
+*Oben: Willkommen mit der Legende der Kennzeichnungen, Raum, Gerät im Raum (drei Geräte gefunden, Vorschlag ID 4 und Phase A). Unten: Betrieb & Smart-Automatik, Weitere Funktionen (SGP41-Variante, daher mit NOx-Stoßlüftung), Zusammenfassung.*
 
 ---
 

@@ -639,8 +639,8 @@ float WrgDashboard::room_humidity_() const {
  * @brief   Serializes the static limits of the writable settings (runs once).
  * @details numbers: [min, max, step] from the entity traits, selects: their
  *          options, buttons: their keys, defaults: the factory values of the
- *          `defaults:` option (setup wizard) — so the UI never duplicates the
- *          YAML ranges and defaults.
+ *          `defaults:` option (setup wizard; a select's default is its option
+ *          index) — so the UI never duplicates the YAML ranges and defaults.
  */
 std::string WrgDashboard::build_meta_json_() {
   JsonDocument doc;
