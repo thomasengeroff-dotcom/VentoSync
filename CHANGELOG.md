@@ -24,8 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   child lock), which should be checked.
 - **Dashboard: *Gerätekonfiguration* collapsed by default** — the settings group is only needed when setting up or
   moving a device; a click on its heading opens it (the wizard button is inside).
-- Docs: screenshots of the setup wizard in the local web dashboard guide; web dashboard and setup wizard added to the
-  VentoMaxx comparison (README and comparison guide; the original uses DIP switches for group and direction).
+- Docs: screenshots of the setup wizard in the local web dashboard guide.
 
 ## [0.10.57] - 2026-10-22
 
