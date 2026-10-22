@@ -10,7 +10,7 @@ sidebar_label: Actions
 | [`esphome.<node>_set_ac_active`](#set_ac_active) | `active: bool` | Klimaanlage des Raums aktiv → [Klima-Koordination](../entitaeten/klima-koordination.md) |
 | [`esphome.<node>_set_window_open`](#set_window_open) | `window_open: bool` | Fenster des Raums offen → [Fenstersperre](../entitaeten/fenstersperre.md) |
 
-`<node>` ist der ESPHome-Node-Name des Geräts mit Unterstrichen statt Bindestrichen: `ventosync-wohnzimmer` → `esphome.ventosync_wohnzimmer_set_window_open`. Die verfügbaren Actions zeigt *Entwicklerwerkzeuge → Aktionen* (Suche nach `esphome.`).
+`<node>` ist der ESPHome-Node-Name des Geräts mit Unterstrichen statt Bindestrichen. Er endet auf die letzten sechs Stellen der MAC-Adresse: `ventosync-a1b2c3` → `esphome.ventosync_a1b2c3_set_window_open`. Ein Umbenennen des Geräts in Home Assistant ändert ihn nicht. Die verfügbaren Actions zeigt *Entwicklerwerkzeuge → Aktionen* (Suche nach `esphome.ventosync_`); die MAC-Adresse steht auf der Geräteseite unter *Geräteinformationen* — siehe [Node-Name für Actions](../konzepte/entitaets-ids.md#node-name-für-actions).
 
 ## Gemeinsame Regeln
 
@@ -43,7 +43,7 @@ esphome.<node>_set_ac_active
 Wirkung nur bei eingeschaltetem Schalter `Klima-Koordination` und im Modus `Smart-Automatik`. Rückmeldung: [`binary_sensor.…_klima_aktiv_ha_signal`](../entitaeten/klima-koordination.md#klima-aktiv-ha-signal) und `sensor.…_klima_koordination_status`.
 
 ```yaml
-action: esphome.ventosync_wohnzimmer_set_ac_active
+action: esphome.ventosync_a1b2c3_set_ac_active
 data:
   active: true
 ```
@@ -65,7 +65,7 @@ esphome.<node>_set_window_open
 Nach 5 s „offen“ stoppen alle Lüfter des Raums (außer Geräte mit `Fenstersperre ignorieren`). Rückmeldung: [`binary_sensor.…_fenster_offen_ha_signal`](../entitaeten/fenstersperre.md#fenster-offen-ha-signal) und `sensor.…_fenstersperre_aktiv`.
 
 ```yaml
-action: esphome.ventosync_wohnzimmer_set_window_open
+action: esphome.ventosync_a1b2c3_set_window_open
 data:
   window_open: "{{ is_state('binary_sensor.fenster_wohnzimmer', 'on') }}"
 ```

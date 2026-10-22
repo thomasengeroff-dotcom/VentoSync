@@ -27,7 +27,7 @@ With several windows, bundle them in a **Binary Sensor Group** helper (**Setting
 
 ### Step 2: Automation
 
-`<device_name>` is the ESPHome node name of the unit (hyphens become underscores, e.g. `ventosync-dg-buero` → `esphome.ventosync_dg_buero_set_window_open`).
+`<device_name>` is the ESPHome node name of the unit: `ventosync-` plus the last six digits of its MAC address, hyphens become underscores (e.g. `ventosync-a1b2c3` → `esphome.ventosync_a1b2c3_set_window_open`). Renaming the device in Home Assistant does not change it; *Developer tools → Actions* lists all actions (search for `esphome.ventosync_`).
 
 ```yaml
 automation:

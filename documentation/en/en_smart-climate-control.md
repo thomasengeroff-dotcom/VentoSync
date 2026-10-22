@@ -199,7 +199,7 @@ All sliders and the switch are `entity_category: config`, persisted in NVS and t
 
 ## 🛠️ Home Assistant Setup
 
-Create one automation per room that pushes the AC state to the VentoSync units of that room. `<device_name>` is the ESPHome node name of the unit (hyphens become underscores, e.g. `ventosync-dg-buero` → `esphome.ventosync_dg_buero_set_ac_active`).
+Create one automation per room that pushes the AC state to the VentoSync units of that room. `<device_name>` is the ESPHome node name of the unit: `ventosync-` plus the last six digits of its MAC address, hyphens become underscores (e.g. `ventosync-a1b2c3` → `esphome.ventosync_a1b2c3_set_ac_active`). Renaming the device in Home Assistant does not change it; *Developer tools → Actions* lists all actions (search for `esphome.ventosync_`).
 
 ```yaml
 automation:

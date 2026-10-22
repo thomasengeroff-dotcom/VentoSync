@@ -3,7 +3,7 @@ title: Automationen
 sidebar_label: Automationen
 ---
 
-Fertige Automationen und Skripte für typische Aufgaben. Alle Beispiele verwenden das Gerät „VentoSync Wohnzimmer“ (Entitäts-Präfix `ventosync_wohnzimmer`, Node-Name `ventosync-wohnzimmer`) — IDs bitte an die eigenen Geräte anpassen.
+Fertige Automationen und Skripte für typische Aufgaben. Alle Beispiele verwenden das Gerät „VentoSync Wohnzimmer“ (Entitäts-Präfix `ventosync_wohnzimmer`, Node-Name `ventosync-a1b2c3`) — IDs bitte an die eigenen Geräte anpassen, siehe [Entitäts-IDs](../konzepte/entitaets-ids.md).
 
 Die Beispiele sind im Format von `automations.yaml` bzw. `scripts.yaml` geschrieben. Im Automations-Editor: neue Automation → *⋮ → In YAML bearbeiten* → Inhalt ohne den führenden Bindestrich vor `alias:` einfügen.
 
@@ -31,11 +31,11 @@ Pausiert die Lüftung des Raums, solange ein Fenster offen ist ([Fenstersperre](
     window_open: "{{ is_state('binary_sensor.fenster_wohnzimmer', 'on') }}"
   actions:
     # Ein Gerät pro Raum genügt; für Redundanz alle Geräte des Raums.
-    - action: esphome.ventosync_wohnzimmer_set_window_open
+    - action: esphome.ventosync_a1b2c3_set_window_open
       data:
         window_open: "{{ window_open }}"
       continue_on_error: true
-    - action: esphome.ventosync_wohnzimmer_2_set_window_open
+    - action: esphome.ventosync_d4e5f6_set_window_open
       data:
         window_open: "{{ window_open }}"
       continue_on_error: true
@@ -60,7 +60,7 @@ Drosselt die Smart-Automatik, solange die Klimaanlage des Raums läuft ([Klima-K
     ac_active: >
       {{ states('climate.wohnzimmer_klima') in ['cool', 'heat', 'heat_cool', 'dry', 'auto'] }}
   actions:
-    - action: esphome.ventosync_wohnzimmer_set_ac_active
+    - action: esphome.ventosync_a1b2c3_set_ac_active
       data:
         active: "{{ ac_active }}"
       continue_on_error: true
@@ -69,6 +69,38 @@ Drosselt die Smart-Automatik, solange die Klimaanlage des Raums läuft ([Klima-K
 :::note Klimageräte ohne `hvac_mode`
 Liefert eine Integration nur `hvac_action`, einen Template-Binärsensor mit `delay_off` (z. B. 10 min) dazwischenschalten und dessen Zustand senden. So glättet man das Takten des Kompressors.
 :::
+
+#### Variante: Klimastatus als Binärsensor
+
+Statt die Bedingung in der Automation auszuwerten, kann ein Vorlagen-Binärsensor den Klimastatus des Raums bereitstellen (*Helfer → Vorlage → Binärsensor*, Geräteklasse *Läuft*). Der Sensor lässt sich auch im Dashboard anzeigen, und mehrere Klimageräte eines Raums lassen sich darin zusammenfassen.
+
+```yaml
+# Vorlagen-Binärsensor „Klima aktiv Wohnzimmer“ → binary_sensor.klima_aktiv_wohnzimmer
+{{ states('climate.wohnzimmer_klima') in ['cool', 'heat', 'heat_cool', 'dry', 'auto'] }}
+```
+
+```yaml
+- alias: "VentoSync: Klimastatus Wohnzimmer"
+  mode: queued
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.klima_aktiv_wohnzimmer
+    - trigger: homeassistant
+      event: start
+    - trigger: time_pattern
+      minutes: "/5"
+  variables:
+    ac_active: "{{ is_state('binary_sensor.klima_aktiv_wohnzimmer', 'on') }}"
+  actions:
+    - action: esphome.ventosync_a1b2c3_set_ac_active
+      data:
+        active: "{{ ac_active }}"
+      continue_on_error: true
+    - action: esphome.ventosync_d4e5f6_set_ac_active
+      data:
+        active: "{{ ac_active }}"
+      continue_on_error: true
+```
 
 ### Urlaubsmodus automatisch
 

@@ -199,7 +199,7 @@ Alle Slider und der Schalter sind `entity_category: config`, werden im NVS gespe
 
 ## 🛠️ Home-Assistant-Einrichtung
 
-Pro Raum eine Automation anlegen, die den Klima-Status an die VentoSync-Geräte dieses Raums sendet. `<gerätename>` ist der ESPHome-Node-Name des Geräts (Bindestriche werden zu Unterstrichen, z. B. `ventosync-dg-buero` → `esphome.ventosync_dg_buero_set_ac_active`).
+Pro Raum eine Automation anlegen, die den Klima-Status an die VentoSync-Geräte dieses Raums sendet. `<gerätename>` ist der ESPHome-Node-Name des Geräts: `ventosync-` plus die letzten sechs Stellen der MAC-Adresse, Bindestriche werden zu Unterstrichen (z. B. `ventosync-a1b2c3` → `esphome.ventosync_a1b2c3_set_ac_active`). Ein Umbenennen des Geräts in Home Assistant ändert ihn nicht; alle Actions listet *Entwicklerwerkzeuge → Aktionen* (Suche nach `esphome.ventosync_`).
 
 ```yaml
 automation:
