@@ -230,7 +230,7 @@ Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderl
   <img src="documentation/screenshots/wrg-dashboard2.png" alt="WRG Dashboard Verbundene Geräte & Echtzeitdaten" width="48%" />
 </p>
 
-> 👉 *Vollständige Funktionsübersicht, ESP-NOW Live-Visualisierung und Standard-ESPHome-Interface siehe [📄 Lokales Web-Dashboard Guide](documentation/de/de_local-web-dashboard.md).*
+> 👉 *Das Dashboard ist die Webseite des Geräts unter `http://<geräte-ip>/` (seit 0.10.55 anstelle der nativen ESPHome-Seite; der „Besuchen“-Link in Home Assistant öffnet es). Vollständige Funktionsübersicht und ESP-NOW Live-Visualisierung siehe [📄 Lokales Web-Dashboard Guide](documentation/de/de_local-web-dashboard.md).*
 
 ## 📡 ESP-NOW: Kabellose Autonomie
 
@@ -458,7 +458,7 @@ esphome upload ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
    - **Device ID** (Eindeutige Nummer des Geräts)
    - **Room ID** (Geräte mit gleicher Room ID synchronisieren sich)
    - **Floor ID**
-3. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings über das lokale Web-Dashboard konfiguriert werden unter `http://<device-ip>` oder `http://<device-ip>/ui`.
+3. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings — auch Stockwerk-, Raum- und Geräte-ID sowie die Phase — über das lokale Web-Dashboard unter `http://<device-ip>/` konfiguriert werden.
 4. **Spaß haben**: Genieße dein smartes, energieeffizientes Lüftungssystem!
 5. **OTA-Updates**:
    Beispiel eines OTA Updates in Home Assistant:
@@ -476,9 +476,9 @@ Seit 0.10.31 sind direkte Uploads auf das Gerät (`esphome run` / `esphome uploa
 
 #### 🌐 Zugriff auf das Web-Dashboard (standardmäßig ohne Login)
 
-Die Weboberflächen (`http://<geräte-ip>/` und das VentoSync-Dashboard `/ui`) haben **keinen Login**: Jeder im selben Netzwerk kann die Werte lesen und Modus, Lüfterstufe und raumweite Einstellungen ändern. Das LAN ist die Vertrauensgrenze, wie bei der API (siehe oben).
+Das Web-Dashboard (`http://<geräte-ip>/`) hat **keinen Login**: Jeder im selben Netzwerk kann die Werte lesen und Modus, Lüfterstufe und raumweite Einstellungen ändern. Das LAN ist die Vertrauensgrenze, wie bei der API (siehe oben).
 
-- **Login aktivieren** im eigenen Build: den `auth:`-Block unter `web_server:` in `packages/base/esp32c6_common.yaml` einkommentieren und `webuser` / `webpw` in `secrets.yaml` eintragen. Er schützt die native Seite **und** das Dashboard (`/ui`, `/state`, `/stream`, `/history`, `/meta`, `/set`). Die Release-Binaries lassen ihn aus, weil sie ohne Secrets gebaut werden.
+- **Login aktivieren** im eigenen Build: den `auth:`-Block unter `web_server:` in `packages/base/esp32c6_common.yaml` einkommentieren und `webuser` / `webpw` in `secrets.yaml` eintragen. Er schützt das Dashboard und alle seine Endpunkte (`/`, `/ui`, `/state`, `/stream`, `/history`, `/meta`, `/set`). Die Release-Binaries lassen ihn aus, weil sie ohne Secrets gebaut werden.
 - **Schutz gegen Überflutung** (seit 0.10.42): Das Dashboard hält höchstens 16 offene Änderungen vor; weitere `/set`-Anfragen bekommen HTTP 503, bis die Warteschlange abgearbeitet ist (alle 100 ms), und Werte mit mehr als 32 Zeichen werden abgelehnt.
 - **Keine Änderungen von fremden Seiten** (seit 0.10.48): `/set` nimmt nur `POST` mit dem Header `X-VentoSync` von der Seite des Geräts selbst an; Anfragen mit fremdem `Origin` bekommen HTTP 403. Eine andere Webseite im selben Netz kann die Lüftung also nicht mehr über einen versteckten Link oder ein Formular umschalten.
 

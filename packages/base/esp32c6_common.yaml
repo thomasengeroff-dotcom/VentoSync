@@ -169,10 +169,15 @@ improv_serial:
 web_server_base:
   id: my_web_server_base
 
-# Visit http://<device-ip> to see a simple control dashboard and logs
+# Kept although its page is never shown: only with web_server does the device
+# report its web port to Home Assistant, which builds the device page's "Visit"
+# link from it. "/" is answered by the VentoSync dashboard (wrg_dashboard sets
+# up before web_server, so its handler comes first). local: false — the native
+# page's JS bundle would only waste flash.
 web_server:
   port: 80
-  local: true
+  local: false
+  log: false
   # No firmware upload via http://<device-ip>/update: that endpoint is plaintext
   # and unauthenticated and would bypass the OTA encryption above. The captive
   # portal keeps its upload page while the fallback hotspot is active (recovery).
@@ -180,7 +185,7 @@ web_server:
   # this also silences the "OTA encryption does not cover the web_server OTA
   # platform" warning.
   ota: false
-  # Optional login for the native page AND the VentoSync dashboard (/ui, /state,
+  # Optional login for the VentoSync dashboard (/, /ui, /state,
   # /set — registered via add_handler(), so covered by this auth). Off in the
   # release builds (no secrets in CI); needs webuser / webpw in secrets.yaml.
   # auth:

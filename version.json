@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.54",
+    "project_version": "0.10.55",
     "project_date": "2026-10-22",
-    "project_description": "Room-wide summer cooling threshold (ESP-NOW v15), BME680 failure warning logged once."
+    "project_description": "VentoSync dashboard replaces the native ESPHome web page; device configuration in the dashboard."
 }

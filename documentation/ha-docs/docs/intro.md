@@ -44,5 +44,5 @@ Für den Alltag genügen wenige Entitäten. Beispiel-IDs gelten für ein Gerät 
 | `binary_sensor.ventosync_wohnzimmer_filterwechsel_alarm` | Filterwechsel fällig. |
 
 :::tip Lokales Web-Dashboard
-Jedes Gerät hat zusätzlich ein eigenes Web-Dashboard unter `http://<ip-adresse>/ui`, das ohne Home Assistant funktioniert. Siehe [Lokales Web-Dashboard](https://github.com/thomasengeroff-dotcom/VentoSync/blob/master/documentation/de/de_local-web-dashboard.md).
+Jedes Gerät hat zusätzlich ein eigenes Web-Dashboard unter `http://<ip-adresse>/`, das ohne Home Assistant funktioniert. Siehe [Lokales Web-Dashboard](https://github.com/thomasengeroff-dotcom/VentoSync/blob/master/documentation/de/de_local-web-dashboard.md).
 :::

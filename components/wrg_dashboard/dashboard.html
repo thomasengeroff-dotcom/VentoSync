@@ -5,7 +5,7 @@
   Copyright (c) 2026 Thomas Engeroff — GPL v3 (see LICENSE)
 
   File:        dashboard.html
-  Description: Single-page web dashboard (GET /ui). Gzipped into the firmware
+  Description: Single-page web dashboard (GET /, alias /ui). Gzipped into the firmware
                at build time by __init__.py — edit this file directly.
   Author:      Thomas Engeroff
   Created:     2026-03-09
@@ -86,7 +86,7 @@
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-ID:</span> <span class="font-medium text-lg"><span id="val_device_id">--</span> <span id="master_badge" class="hidden text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">MASTER</span></span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Floor / Raum:</span> <span class="font-medium text-lg"><span id="val_floor_id">--</span> / <span id="val_room_id">--</span></span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-Phase (A/B):</span> <span class="font-medium text-lg" id="val_phase">--</span></div>
-        <div class="text-xs text-gray-500">IDs und Phase ändern: <a href="/" class="text-accent hover:underline">ESPHome-Seite</a></div>
+        <div class="text-xs text-gray-500">IDs und Phase ändern: Einstellungen → Gerätekonfiguration</div>
         <div class="border-t border-gray-700 pt-3 space-y-1 text-sm">
           <div class="flex justify-between"><span class="text-gray-400">Firmware:</span> <span id="sys_version">--</span></div>
           <div class="flex justify-between"><span class="text-gray-400">Variante:</span> <span id="sys_variant">--</span></div>
@@ -166,6 +166,11 @@
             <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Smart-Automatik</span><div id="grp_auto" class="space-y-3"></div></div>
             <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">NOx-Stoßlüftung</span><div id="grp_nox" class="space-y-3"></div></div>
             <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Netzwerk</span><div id="grp_net" class="space-y-3"></div></div>
+            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Gerätekonfiguration</span>
+              <p class="text-xs text-gray-500 mb-3">Geräte mit gleichem Stockwerk und Raum bilden einen Raum; Gerät 1 ist der Master. Benachbarte Geräte bekommen unterschiedliche Phasen.</p>
+              <div id="grp_device" class="space-y-3"></div>
+              <div id="device_actions" class="flex flex-wrap gap-2 mt-3"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -268,8 +273,17 @@
                 ['n', 'nox_boost_threshold', 'Schwelle (dieses Gerät)', 'Index', 0]],
       grp_vac: [['s', 'vacation_mode', 'Betriebsmodus', '', 1],
                 ['n', 'vacation_intensity', 'Intensität', '', 1]],
-      grp_net: [['n', 'sync_interval_config', 'ESP-NOW Sync-Intervall', 'min', 1]],
+      grp_net: [['n', 'sync_interval_config', 'ESP-NOW Sync-Intervall', 'min', 1],
+                ['t', 'peer_check', 'ESP-NOW Peerprüfung (Master-LED ohne Peers)', '', 1]],
+      grp_device: [['n', 'config_floor_id', 'Stockwerk-ID', '', 0],
+                   ['n', 'config_room_id', 'Raum-ID', '', 0],
+                   ['n', 'config_device_id', 'Geräte-ID', '', 0],
+                   ['s', 'config_phase', 'Geräte-Phase', '', 0],
+                   ['t', 'ignore_window_guard', 'Fenstersperre ignorieren', '', 0]],
     };
+    // Device action buttons, shown when /meta lists the key: [key, label, confirmation]
+    const ACTIONS = [['force_discovery', 'ESP-NOW Discovery starten', ''],
+                     ['restart', 'Gerät neu starten', 'Gerät jetzt neu starten? Die Lüftung stoppt für einige Sekunden.']];
     const INPUT_CLS = 'bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block p-1.5';
     // Names of the writable keys for the feedback messages
     const LABELS = {luefter_modus: 'Lüfter Modus', fan_intensity_display: 'Lüfter Intensität', filter_reset: 'Filterwechsel'};
@@ -321,6 +335,7 @@
         if ((META.buttons || []).includes('filter_reset')) {
           document.getElementById('btn_filter_reset').classList.remove('hidden');
         }
+        renderActions();
         pollState();
       } catch (e) {
         console.error('Error fetching meta:', e);
@@ -591,7 +606,7 @@
     function peerLink(host) {
       if (!host) return '';
       const h = sanitizeHTML(host);
-      return `<a href="http://${h}/ui" class="block text-xs text-accent hover:underline mt-3" title="Öffnet ${h} – erfordert mDNS (.local) im Netzwerk">Dashboard dieses Geräts öffnen ↗</a>`;
+      return `<a href="http://${h}/" class="block text-xs text-accent hover:underline mt-3" title="Öffnet ${h} – erfordert mDNS (.local) im Netzwerk">Dashboard dieses Geräts öffnen ↗</a>`;
     }
     const BADGE_IN = "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>";
     const BADGE_OUT = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
@@ -849,6 +864,18 @@
       }
       // The stream pushes the change at once; without it, re-read /state
       if (Date.now() - lastStreamMs >= STREAM_QUIET_MS) setTimeout(pollState, 500);
+    }
+
+    function renderActions() {
+      const keys = (META && META.buttons) || [];
+      document.getElementById('device_actions').innerHTML = ACTIONS.filter(([k]) => keys.includes(k)).map(([k, label]) => {
+        LABELS[k] = label;
+        return `<button id="btn_${k}" onclick="pressAction('${k}')" class="text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 transition-colors">${label}</button>`;
+      }).join('');
+    }
+    function pressAction(k) {
+      const [, , question] = ACTIONS.find(a => a[0] === k);
+      if (!question || confirm(question)) sendSet(k, 1, document.getElementById('btn_' + k));
     }
 
     function filterReset() {

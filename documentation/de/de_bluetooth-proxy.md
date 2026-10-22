@@ -48,7 +48,7 @@ Der Proxy ist unabhängig von der Lüftungslogik: Kein ESP-NOW-Paket, keine raum
 Der Proxy ist einkompiliert, aber **standardmäßig deaktiviert**. Er wird pro Gerät eingeschaltet:
 
 - **Home Assistant:** Konfigurations-Entität **`switch.<gerät>_bluetooth_proxy`** („Bluetooth Proxy“).
-- **Lokales Web-Dashboard** (`http://<geräte-ip>/ui`): Schalter **„Bluetooth Proxy (experimentell)“** in der
+- **Lokales Web-Dashboard** (`http://<geräte-ip>/`): Schalter **„Bluetooth Proxy (experimentell)“** in der
   Gruppe *Einstellungen → Steuerung*. Der Schalter erscheint nur in dieser Variante.
 
 Verhalten:

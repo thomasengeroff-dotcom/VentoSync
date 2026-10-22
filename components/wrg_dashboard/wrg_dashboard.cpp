@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-21
+// Modified:    2026-10-22
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -140,7 +140,7 @@ bool WrgDashboard::canHandle(AsyncWebServerRequest *request) const {
     return true;  // any method: handle_set_() answers 405 for non-POST
   }
   return request->method() == HTTP_GET &&
-         (url == "/ui" || url == "/state" || url == "/meta" || url == "/history"
+         (url == "/" || url == "/ui" || url == "/state" || url == "/meta" || url == "/history"
 #ifdef USE_ESP32
           || url == "/stream"
 #endif
@@ -406,7 +406,7 @@ void WrgDashboard::dispatch_set_(const DashboardAction &action) {
 void WrgDashboard::handleRequest(AsyncWebServerRequest *request) {
   char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
   auto url = request->url_to(url_buf);
-  if (url == "/ui") {
+  if (url == "/" || url == "/ui") {  // "/ui": old bookmarks and peer links of older firmware
     this->handle_root_(request);
     return;
   }

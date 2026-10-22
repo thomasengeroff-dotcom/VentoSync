@@ -271,7 +271,15 @@ wrg_dashboard:
   hvac_switch_id: smart_climate_control
   nox_boost_switch_id: nox_boost_switch
   child_lock_switch_id: child_lock_switch
+  ignore_window_guard_switch_id: ignore_window_guard_switch
+  peer_check_switch_id: peer_check_switch
   filter_reset_button_id: filter_reset_btn
+  restart_button_id: force_restart_button
+  discovery_button_id: force_discovery_button
+  config_floor_id_id: config_floor_id
+  config_room_id_id: config_room_id
+  config_device_id_id: config_device_id
+  config_phase_id: config_phase
   auto_status_id: automatik_status
   auto_reason_id: automatik_grund
   hvac_status_id: hvac_status
