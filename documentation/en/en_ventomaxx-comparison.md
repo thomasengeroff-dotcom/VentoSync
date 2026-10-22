@@ -71,7 +71,7 @@ The **VentoSync** offers **100% of the original functionality** and massively ex
 | **Data Transparency** | ❌ None (Black box) | ✅ **Full history** (Temp, CO2, Humidity, Pressure, RPM, Op-hours) + **`Automatik-Status`** (what the fan does and why) + HA events | ✅ **Data-driven optimization** |
 | **Config Sync** | ❌ No (each device individually) | ✅ **Automatic via ESP-NOW**: All settings synchronized group-wide | ✅ **Set once, active everywhere** |
 | **Updates** | ❌ No (hardware swap needed) | ✅ **OTA Updates** (Over-the-Air) | ✅ **Future-proof** |
-| **Configuration** | DIP switch on PCB | **Web interface / YAML / HA Slider** | ✅ **Convenient** |
+| **Configuration** | DIP switches on PCB (group assignment and direction) | **Setup wizard in the web dashboard** (room, device ID with duplicate check, phase suggestion, basic settings with explanations), plus web interface / YAML / HA slider | ✅ **Convenient, no tools** |
 | **System & License** | Closed (proprietary) | ✅ **100% Open Source (GPL v3)** | ✅ **No vendor lock-in** |
 
 ---
