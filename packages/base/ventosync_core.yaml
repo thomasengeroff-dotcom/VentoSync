@@ -26,7 +26,7 @@
 #                ventosync_base_v2.yaml  → PCB v2.0 (ESP32-C6-MINI-1U-H4, native GPIO)
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-10-21
+# Modified:    2026-10-22
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -57,6 +57,8 @@ substitutions:
   default_auto_co2_threshold: "1000"     # ppm, CO2 PID setpoint (Pettenkofer)
   default_auto_humidity_threshold: "60"  # %, humidity PID setpoint (mold protection)
   default_led_max_brightness: "80"       # %, status LED brightness limit
+  default_vacation_mode_index: "3"       # vacation preset mode: 3 = Stoßlüftung (MODE_NAMES in globals.h)
+  default_vacation_level: "1"            # 1-10, vacation preset fan level
 
   # SMART CLIMATE CONTROL (HVAC COORDINATION) CONFIG
   # The AC state is pushed by Home Assistant via the API action
@@ -210,6 +212,8 @@ ventilation_group:
   vacation_state_global: vacation_state
   pre_vacation_mode_index_global: pre_vacation_mode_index
   pre_vacation_intensity_global: pre_vacation_intensity
+  vacation_preset_mode_global: vacation_preset_mode_index_val
+  vacation_preset_level_global: vacation_preset_level_val
   hvac_enabled_global: hvac_enabled_val
   nox_boost_enabled_global: nox_boost_enabled_val
   auto_override_duration_global: auto_override_duration_val

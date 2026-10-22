@@ -25,7 +25,7 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
   * *Smart-Automatik*: min / max level, CO2 and humidity thresholds, presence offset, override duration, summer cooling threshold.
   * *Klima-Koordination*: switch, CO2 threshold, max level, CO2 emergency limit.
   * *NOx-Stoßlüftung*: room-wide switch; the threshold only on the SGP41 variants.
-  * *Urlaubsmodus*: operating mode and level.
+  * *Urlaubsmodus*: operating mode and level, both room-wide (*0.10.52*).
   * *Netzwerk*: ESP-NOW sync interval.
 
   Number fields take their limits from the device (`/meta`), so a value outside the HA slider range is not sent; the control briefly outlines teal (applied) or red (rejected).

@@ -35,11 +35,11 @@ Jede Einstellung in der [Entitäten-Referenz](../entitaeten/uebersicht.md) ist m
 
 ### Raumweite Einstellungen
 
-`Lüftermodus`, `Lüfter Intensität` (und die Fan-Entität), `Durchlüften Dauer (min)`, alle `Smart-Automatik`-Grenzwerte und -Stufen, `Smart-Automatik: Übersteuerung Dauer`, `Radar Lüfter-Anpassung`, `Klima-Koordination` mit ihren drei Reglern, `NOx-Stoßlüftung`, `Maximale LED Helligkeit` und `Sync Intervall`.
+`Lüftermodus`, `Lüfter Intensität` (und die Fan-Entität), `Durchlüften Dauer (min)`, alle `Smart-Automatik`-Grenzwerte und -Stufen, `Smart-Automatik: Übersteuerung Dauer`, `Radar Lüfter-Anpassung`, `Klima-Koordination` mit ihren drei Reglern, `NOx-Stoßlüftung`, `Urlaubsmodus Betriebsmodus` / `Urlaubsmodus Intensität`, `Maximale LED Helligkeit` und `Sync Intervall`.
 
 ### Einstellungen pro Gerät
 
-`Smart-Automatik: Sommerkühlung Schwelle`, `NOx-Stoßlüftung: Schwelle`, `Fenstersperre ignorieren`, `Kindersicherung`, `ESP-NOW Peerprüfung`, `Bluetooth Proxy`, `Urlaubsmodus Betriebsmodus` / `Urlaubsmodus Intensität` (wirksam ist der Wert am Master), die IDs und die Phase sowie Filterzähler, Neustart und BME680-Basiswert.
+`Smart-Automatik: Sommerkühlung Schwelle`, `NOx-Stoßlüftung: Schwelle`, `Fenstersperre ignorieren`, `Kindersicherung`, `ESP-NOW Peerprüfung`, `Bluetooth Proxy`, die IDs und die Phase sowie Filterzähler, Neustart und BME680-Basiswert.
 
 :::tip Raumweite Werte am Master setzen
 Für Automationen und Skripte genügt es, eine raumweite Einstellung an **einem** Gerät pro Raum zu setzen. Nimm dafür den **Master**: Er wiederholt seine Werte regelmäßig, sodass ein Wert, der ihn nicht erreicht hat (z. B. weil er gerade neu startete), beim nächsten Heartbeat wieder überschrieben würde.

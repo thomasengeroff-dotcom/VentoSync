@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-18
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -994,6 +994,9 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     auto_override_duration->publish_state(pkt->auto_override_duration_min);
   }
 
+  // 2d. Vacation preset (room-wide setting, protocol v14; range-checked by parse()).
+  vacation_adopt_preset(pkt);
+
   // 3. System Timers
   if (sync_interval_config != nullptr &&
       v->sync_interval_ms != static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000)) {
@@ -1031,7 +1034,7 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
  * @brief   Synchronizes global system state (Mode, Intensity, Power) from a peer.
  * @details Maps external VentilationPacket indices back to local UI components.
  * @param[in] pkt    Pointer to the parsed VentilationPacket.
- * @param[in] force  If true, state is applied even if no change is detected.
+ * @param[in] force  If true, the mode is applied even if no change is detected.
  */
 inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force = false) {
   auto *v = ventilation_ctrl;
@@ -1040,13 +1043,17 @@ inline void handle_state_sync(const esphome::VentilationPacket *pkt, bool force 
 
   // Issue #4 FIX: Only override fan intensity from peer in manual modes.
   // In Automatik mode, the local PID controller is the authority for intensity.
-  bool is_auto = (auto_mode_active != nullptr && auto_mode_active->value());
-  if (!is_auto && fan_intensity_level != nullptr && 
-      fan_intensity_display != nullptr &&
-      (v->current_fan_intensity != pkt->fan_intensity || force)) {
-    v->set_fan_intensity(pkt->fan_intensity, false);  // Updates PWM output
-    fan_intensity_level->value() = pkt->fan_intensity;
-    fan_intensity_display->publish_state(pkt->fan_intensity);
+  // Decided by the packet's mode too and compared with the level the fan runs
+  // on — on_packet_received() has already updated v->current_fan_intensity
+  // (see ventosync::packet::level_to_adopt()).
+  const bool is_auto = (auto_mode_active != nullptr && auto_mode_active->value());
+  if (fan_intensity_level != nullptr && fan_intensity_display != nullptr) {
+    const uint8_t level = ventosync::packet::level_to_adopt(*pkt, fan_intensity_level->value(), is_auto);
+    if (level != 0) {
+      v->set_fan_intensity(level, false);  // Updates PWM output
+      fan_intensity_level->value() = level;
+      fan_intensity_display->publish_state(level);
+    }
   }
 
   // Trust the sender's explicit UI index (range-checked in validate_and_parse_packet())

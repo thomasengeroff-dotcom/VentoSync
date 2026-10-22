@@ -245,7 +245,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v13 authenticated frames), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v14, authenticated frames), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -563,12 +563,12 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
   - `switch.nox_stossluftung` — Enable the NOx boost in Smart-Automatik, **room-wide** (default: off)
   - `number.nox_stossluftung_schwelle` — NOx index that starts the boost, 20–100 (default: `20`, only on devices with the SGP41 board)
 - **Automatik-Status**: `text_sensor.automatik_status` (what the fan does and why), `text_sensor.automatik_grund` (reason key), `event.luftung_ereignis` (reason changes, NOx aborts)
-  > The switch and the three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v13), so they only have to be set once per room. Home Assistant pushes the AC state with the API action `set_ac_active` to at least one device per room; it is shared room-wide as well. *→ [Setup in 📄 Smart Climate Control](documentation/en/en_smart-climate-control.md#️-home-assistant-setup)*
+  > The switch and the three threshold sliders are **room-wide**: changing one on any unit is synchronized to all devices of the room via ESP-NOW (protocol v14), so they only have to be set once per room. Home Assistant pushes the AC state with the API action `set_ac_active` to at least one device per room; it is shared room-wide as well. *→ [Setup in 📄 Smart Climate Control](documentation/en/en_smart-climate-control.md#️-home-assistant-setup)*
 - **Diagnostics**: Display of RPM, temperature, humidity, and **CO2 content (ppm)**
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Fan intensity when vacation is active, 1–10 (default: `1`)
-  > Set both on the **Master** (device ID 1) — it applies and restores the vacation mode for the whole room.
+  > Both are **room-wide** (ESP-NOW protocol v14) — a change on any device is taken over by the whole room. The **Master** (device ID 1) applies and restores the vacation mode for the room, the other devices take over its mode and level.
 
 👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Entities_Documentation.md](documentation/en/en_home-assistant-entities.md)**. A detailed Home Assistant guide in the style of developers.home-assistant.io — every entity with ranges and scope (room / device), API actions, events, example automations and dashboard cards — is available in **[documentation/ha-docs](documentation/ha-docs/docs/intro.md)** (Docusaurus site, German only).
 

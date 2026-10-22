@@ -9,18 +9,18 @@ Der Urlaubsmodus schaltet alle Räume während einer Abwesenheit auf eine sparsa
 
 | Entität | Entitäts-ID | Typ | Werte | Standard | Gültigkeit | Kategorie |
 | --- | --- | --- | --- | --- | --- | --- |
-| Urlaubsmodus Betriebsmodus | `select.…_urlaubsmodus_betriebsmodus` | Select | Optionen wie `Lüftermodus` | `Stoßlüftung` | Gerät (wirksam am Master) | config |
-| Urlaubsmodus Intensität | `number.…_urlaubsmodus_intensitat` | Number | 1 – 10 | 1 | Gerät (wirksam am Master) | config |
+| Urlaubsmodus Betriebsmodus | `select.…_urlaubsmodus_betriebsmodus` | Select | Optionen wie `Lüftermodus` | `Stoßlüftung` | Raum | config |
+| Urlaubsmodus Intensität | `number.…_urlaubsmodus_intensitat` | Number | 1 – 10 | 1 | Raum | config |
 | *Eingang:* `input_boolean.ventosync_vacation_mode` | — | Helfer in HA | on / off | — | alle Geräte | — |
 
-Beide Einstellungen werden gespeichert, aber **nicht** raumweit synchronisiert. Am Master (Gerät 1) einstellen — er wendet den Urlaubsmodus für den Raum an.
+Beide Einstellungen gelten **raumweit** (seit 0.10.52): Eine Änderung an einem beliebigen Gerät übernehmen alle Geräte des Raums, der Master wiederholt die Werte mit jedem Heartbeat. Angewendet wird der Urlaubsmodus vom Master (Gerät 1) — ist er nicht erreichbar, von einem anderen Gerät des Raums mit denselben Werten.
 
 ## Ablauf
 
 | Schritt | Verhalten |
 | --- | --- |
-| Helfer → `on` | Jedes Gerät sichert seinen aktuellen Modus und seine Stufe. Der Master jedes Raums schaltet den Raum auf `Urlaubsmodus Betriebsmodus` / `Urlaubsmodus Intensität`, die anderen Geräte folgen ihm. |
-| Während des Urlaubs | `Automatik-Status` zeigt `Urlaubsmodus → Stufe 1`, `Automatik-Grund` ist `urlaub`. Ein Neustart (Gerät oder Home Assistant) ändert nichts. |
+| Helfer → `on` | Jedes Gerät sichert seinen aktuellen Modus und seine Stufe. Der Master jedes Raums schaltet den Raum auf `Urlaubsmodus Betriebsmodus` / `Urlaubsmodus Intensität`, die anderen Geräte übernehmen Modus **und** Stufe von ihm. |
+| Während des Urlaubs | Alle Geräte des Raums laufen auf der `Urlaubsmodus Intensität`; `Lüfter Intensität` zeigt diese Stufe. `Automatik-Status` zeigt `Urlaubsmodus → Stufe 3` (bei Intensität 3), `Automatik-Grund` ist `urlaub`. Ein Neustart (Gerät oder Home Assistant) ändert nichts. |
 | Helfer → `off` | Der Master stellt den gesicherten Modus und die Stufe für den Raum wieder her. |
 | Helfer `unavailable` | Beendet den Urlaub **nicht** (z. B. während eines HA-Neustarts) — nur ein echtes `off`. |
 

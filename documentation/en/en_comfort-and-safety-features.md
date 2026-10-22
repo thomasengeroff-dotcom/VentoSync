@@ -66,7 +66,7 @@ To simplify diagnostics and live monitoring of ESP-NOW multi-device synchronizat
 An automated, energy-saving mode designed for extended absences, switched by a Home Assistant toggle helper (default `input_boolean.ventosync_vacation_mode`, substitution `vacation_sensor_id`).
 
 ### How It Works
-1. **Activation (room-wide)**: The **Master** (device ID 1) of each room saves its current operating mode and fan level and switches the room to the configured vacation preset (default: *Boost Ventilation at level 1*). The other devices follow the Master over ESP-NOW — they do not apply the preset themselves, so no device can accidentally save the vacation state as its "previous" state.
+1. **Activation (room-wide)**: The **Master** (device ID 1) of each room saves its current operating mode and fan level and switches the room to the configured vacation preset (default: *Boost Ventilation at level 1*). The other devices take over the Master's mode and level over ESP-NOW — they do not apply the preset themselves, so no device can accidentally save the vacation state as its "previous" state.
 2. **Restoration**: Disabling vacation mode makes the Master restore the saved mode and level for the whole room.
 3. **Without a reachable Master** a device applies and restores the vacation mode on its own. The vacation state is stored persistently (`vacation_state`), so a reboot or a repeated trigger during the vacation never overwrites the saved state.
 
@@ -74,7 +74,7 @@ An automated, energy-saving mode designed for extended absences, switched by a H
 > Devices that were already in vacation mode when updating to 0.10.27 do not know about the active vacation yet: toggle the helper off and on once, or restore the mode manually after the vacation.
 
 ### Home Assistant Entities
-Configurable under the device *Configuration* section (set them on the Master — it applies the preset for the room):
+Configurable under the device *Configuration* section — **room-wide** settings (since 0.10.52): a change on any device is synchronized to the whole room:
 
 | Entity | Type | Default | Description |
 | :--- | :--- | :--- | :--- |

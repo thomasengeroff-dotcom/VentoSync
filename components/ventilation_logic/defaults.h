@@ -18,12 +18,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 //
 // File:        defaults.h
-// Description: Factory defaults of the room-wide Smart-Automatik settings
+// Description: Factory defaults of the room-wide Smart-Automatik and vacation settings
 //              (C++ fallbacks). Mirror of the default_* substitutions in
 //              packages/base/ventosync_core.yaml — CI-checked.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-18
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -44,12 +44,16 @@ constexpr int AUTO_MAX_FAN_LEVEL = 7;           ///< default_auto_max_fan_level 
 constexpr int AUTO_CO2_THRESHOLD_PPM = 1000;    ///< default_auto_co2_threshold (Pettenkofer)
 constexpr int AUTO_HUMIDITY_THRESHOLD_PCT = 60; ///< default_auto_humidity_threshold (mold protection)
 constexpr int LED_MAX_BRIGHTNESS_PCT = 80;      ///< default_led_max_brightness (status LEDs)
+constexpr int VACATION_MODE_INDEX = 3;          ///< default_vacation_mode_index (Stoßlüftung)
+constexpr int VACATION_LEVEL = 1;               ///< default_vacation_level (lowest level)
 
 static_assert(AUTO_MIN_FAN_LEVEL >= 1 && AUTO_MIN_FAN_LEVEL <= 3, "HA slider range 1-3");
 static_assert(AUTO_MAX_FAN_LEVEL >= 5 && AUTO_MAX_FAN_LEVEL <= 10, "HA slider range 5-10");
 static_assert(AUTO_CO2_THRESHOLD_PPM >= 400 && AUTO_CO2_THRESHOLD_PPM <= 2000, "HA slider range 400-2000");
 static_assert(AUTO_HUMIDITY_THRESHOLD_PCT >= 40 && AUTO_HUMIDITY_THRESHOLD_PCT <= 100, "HA slider range 40-100");
 static_assert(LED_MAX_BRIGHTNESS_PCT >= 5 && LED_MAX_BRIGHTNESS_PCT <= 100, "HA slider range 5-100");
+static_assert(VACATION_MODE_INDEX >= 0 && VACATION_MODE_INDEX <= 4, "Mode index 0-4 (MODE_NAMES)");
+static_assert(VACATION_LEVEL >= 1 && VACATION_LEVEL <= 10, "HA slider range 1-10");
 
 }  // namespace defaults
 }  // namespace ventosync

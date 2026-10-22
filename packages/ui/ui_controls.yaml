@@ -21,7 +21,7 @@
 # Description: Web UI and physical control entities for ventilation.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-10-18
+# Modified:    2026-10-22
 # ==========================================================================
 
 
@@ -308,7 +308,9 @@ number:
           sync_settings_to_peers();
           evaluate_auto_mode();
 
-  # Vacation Mode: Fan intensity level when vacation mode is active
+  # Vacation Mode: Fan intensity level when vacation mode is active.
+  # ROOM-WIDE (ESP-NOW v14) like the Smart-Automatik sliders — see
+  # vacation_set_preset_level() in vacation_helpers.h.
   - platform: template
     name: "Urlaubsmodus Intensität"
     id: vacation_intensity_number
@@ -318,12 +320,9 @@ number:
     max_value: 10
     step: 1
     mode: slider
-    optimistic: true
-    restore_value: true
-    initial_value: 1
+    lambda: "return id(vacation_preset_level_val);"
     set_action:
-      - lambda: |-
-          ESP_LOGI("vacation", "Urlaubsmodus Intensität set to: %.0f", x);
+      - lambda: "vacation_set_preset_level(x);"
 
 
 # ---------------------------------------------------------
@@ -544,14 +543,14 @@ select:
       - lambda: |-
           set_operating_mode_select(x); // W5: pass std::string directly, not c_str()
 
-  # Vacation Mode: Operating mode to activate when vacation is enabled
+  # Vacation Mode: Operating mode to activate when vacation is enabled.
+  # ROOM-WIDE (ESP-NOW v14) like the Smart-Automatik sliders — see
+  # vacation_set_preset_mode() in vacation_helpers.h.
   - platform: template
     name: "Urlaubsmodus Betriebsmodus"
     id: vacation_mode_select
     icon: "mdi:bag-suitcase"
     entity_category: config
-    optimistic: true
-    restore_value: true
     # --- Keep in sync with operating mode name constants (MODE_NAMES[]) in globals.h
     options:
       - "Smart-Automatik"
@@ -559,10 +558,9 @@ select:
       - "Durchlüften"
       - "Stoßlüftung"
       - "Aus"
-    initial_option: "Stoßlüftung"
+    lambda: "return vacation_preset_mode_name();"
     set_action:
-      - lambda: |-
-          ESP_LOGI("vacation", "Urlaubsmodus Betriebsmodus set to: %s", x.c_str());
+      - lambda: "vacation_set_preset_mode(x);"
 
 button:
   - platform: restart

@@ -36,7 +36,7 @@ Text aus Grund und angewendeter Lüfterstufe, zum Beispiel:
 | `Keine Sensordaten: Stufe 3 gehalten` | kein Gerät des Raums liefert Messwerte |
 | `Pausiert: Fenster offen` | Fenstersperre stoppt den Lüfter |
 | `Manuell: Wärmerückgewinnung → Stufe 5` | manueller Modus |
-| `Urlaubsmodus → Stufe 1` | Urlaubsmodus aktiv |
+| `Urlaubsmodus → Stufe 1` | Urlaubsmodus aktiv (Stufe = `Urlaubsmodus Intensität` des Masters) |
 | `Aus` | Modus `Aus` |
 
 Zusätze am Ende des Texts:

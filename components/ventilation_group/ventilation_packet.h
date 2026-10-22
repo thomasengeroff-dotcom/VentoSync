@@ -22,7 +22,7 @@
 //              pure packet validation. No ESPHome dependencies — unit-tested.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-20
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -52,7 +52,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 13; // Bumped: HMAC-authenticated frames (espnow_auth.h trailer)
+static constexpr uint8_t PROTOCOL_VERSION = 14; // Bumped: room-wide vacation preset (vacation_preset_*)
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -139,6 +139,11 @@ struct __attribute__((packed)) VentilationPacket {
   uint8_t auto_override_level;        ///< Override level 1-10, 0 = none.
   uint16_t auto_override_remaining_s; ///< Remaining override time in seconds (max 18000).
   uint16_t auto_override_duration_min; ///< Room-wide override duration setting (30-300 min).
+
+  // Vacation preset (v14) — room-wide setting like the sliders: the mode and
+  // level the room leader applies when the vacation starts.
+  uint8_t vacation_preset_mode_index; ///< Mode index 0-4 ("Urlaubsmodus Betriebsmodus").
+  uint8_t vacation_preset_level;      ///< Fan level 1-10 ("Urlaubsmodus Intensität").
 };
 
 static_assert(sizeof(VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250,
@@ -250,6 +255,10 @@ inline std::optional<esphome::VentilationPacket> parse(const uint8_t *data, size
     return out_of_range("current_mode_index", pkt.current_mode_index);
   if (pkt.current_mode > esphome::MODE_STOSSLUEFTUNG) return out_of_range("current_mode", pkt.current_mode);
   if (pkt.vent_timer_min > 1440) return out_of_range("vent_timer_min", pkt.vent_timer_min);
+  if (pkt.vacation_preset_mode_index >= MODE_INDEX_COUNT)
+    return out_of_range("vacation_preset_mode_index", pkt.vacation_preset_mode_index);
+  if (pkt.vacation_preset_level < 1 || pkt.vacation_preset_level > 10)
+    return out_of_range("vacation_preset_level", pkt.vacation_preset_level);
   return pkt;
 }
 
@@ -296,6 +305,38 @@ inline void update_peer_state(esphome::PeerState &peer, const esphome::Ventilati
   peer.nox_strong = (pkt.room_flags & esphome::ROOM_FLAG_NOX_STRONG) != 0;
   peer.vacation_pre_mode_index = pkt.vacation_pre_mode_index;
   peer.vacation_pre_intensity = pkt.vacation_pre_intensity;
+}
+
+/// Smart-Automatik on the wire (UI mode index 0, globals.h MODE_INDEX_AUTO).
+constexpr uint8_t MODE_INDEX_AUTO = 0;
+
+/**
+ * @brief   Fan level a receiver takes over from a peer's state packet.
+ *
+ * @details The manual modes run the whole room on the sender's level. In
+ *          Smart-Automatik the local automatic decides (a slave follows the
+ *          Master in auto_level.h), so a receiver that already runs it keeps
+ *          its level.
+ *
+ *          Decided by the packet's mode as well: a packet that switches the
+ *          room from Smart-Automatik to a manual mode (e.g. the vacation
+ *          preset) arrives while the receiver still runs the automatic — its
+ *          level has to be taken over all the same.
+ *
+ *          Compared with the level the fan runs on (`local_level`), not with
+ *          VentilationController::current_fan_intensity: on_packet_received()
+ *          has already updated that cache, so a level that arrived first in a
+ *          heartbeat (MSG_SYNC) would otherwise never reach the fan.
+ *
+ * @param[in] local_level  Level the receiver's fan runs on (fan_intensity_level).
+ * @param[in] local_auto   Receiver runs Smart-Automatik before this packet.
+ * @return  Level to apply (1–10), or 0 to keep the local level.
+ */
+inline uint8_t level_to_adopt(const esphome::VentilationPacket &pkt, int local_level, bool local_auto) {
+  if (pkt.fan_intensity < 1 || pkt.fan_intensity > 10) return 0;
+  if (local_auto && pkt.current_mode_index == MODE_INDEX_AUTO) return 0;
+  if (pkt.fan_intensity == local_level) return 0;
+  return pkt.fan_intensity;
 }
 
 }  // namespace packet
