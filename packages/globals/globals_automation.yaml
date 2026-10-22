@@ -25,7 +25,7 @@
 #              across reboots.
 # Author:      Thomas Engeroff
 # Created:     2026-05-16
-# Modified:    2026-10-18
+# Modified:    2026-10-22
 # ==========================================================================
 
 globals:
@@ -101,10 +101,11 @@ globals:
   # Indoor temperature threshold for summer cooling mode (°C).
   # When indoor temp exceeds this AND outdoor temp is lower,
   # the system switches to cross-ventilation (Durchlüften) to
-  # cool the room with outside air.
+  # cool the room with outside air. ROOM-WIDE (ESP-NOW v15): synced like the
+  # Smart-Automatik sliders. Range 18-30 = ventosync::summer::THRESHOLD_*_C.
   - id: summer_cooling_threshold
     type: int
-    initial_value: "22"
+    initial_value: "${default_summer_cooling_threshold}"
     restore_value: true
 
   # ---------------------------------------------------------

@@ -242,7 +242,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v14 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v15 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -549,6 +549,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **Timer**: `number.durchluften_dauer_min` — Dauer für `Durchlüften` in Minuten (0–120, Standard: 30; 0 = Dauerbetrieb); danach kehrt der Raum in die `Wärmerückgewinnung` zurück
 - **LED-Helligkeit**: `number.maximale_led_helligkeit` ("Maximale LED Helligkeit", 5–100 %, Standard: 80 %) zur Begrenzung der maximalen Panel-Helligkeit.
 - **CO2-Grenzwert**: `number.smart_automatik_co2_grenzwert` (400–2000 ppm, Standard: 1000; im Smart-Automatik-Modus immer aktiv)
+- **Sommerkühlung-Schwelle**: `number.smart_automatik_sommerkuhlung_schwelle` (18–30 °C, Standard: 22) — Raumtemperatur, ab der die Smart-Automatik in den Sommer-Bypass wechseln darf; **raumweit** (ESP-NOW-Protokoll v15)
 - **Klima-Koordination** *(Konfiguration)*:
   - `switch.klima_koordination` — HVAC-Koordination aktivieren, **raumweit** (Standard: aus)
   - `number.klima_koordination_co2_grenzwert` — Gelockerter CO2-Sollwert bei aktiver Klimaanlage, 800–1500 ppm (Standard: `1200`)

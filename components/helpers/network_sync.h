@@ -997,6 +997,17 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
   // 2d. Vacation preset (room-wide setting, protocol v14; range-checked by parse()).
   vacation_adopt_preset(pkt);
 
+  // 2e. Summer cooling threshold (room-wide setting, protocol v15; range-checked
+  //     by parse()). Re-evaluates Smart-Automatik so the bypass follows at once.
+  if (summer_cooling_threshold != nullptr && auto_summer_cooling_threshold != nullptr &&
+      pkt->summer_cooling_threshold != summer_cooling_threshold->value()) {
+    summer_cooling_threshold->value() = pkt->summer_cooling_threshold;
+    auto_summer_cooling_threshold->publish_state(pkt->summer_cooling_threshold);
+    ESP_LOGI("auto_mode", "Sommerkühlung Schwelle %d°C (room-wide sync from device %d)",
+             pkt->summer_cooling_threshold, pkt->device_id);
+    dirty = true;
+  }
+
   // 3. System Timers
   if (sync_interval_config != nullptr &&
       v->sync_interval_ms != static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000)) {

@@ -30,7 +30,7 @@ Alle Entitäten, die die VentoSync-Firmware in Home Assistant anlegt. Die IDs si
 | Smart-Automatik Max Lüfterstufe | `number.…_smart_automatik_max_lufterstufe` | number | – | Raum | alle | [Smart-Automatik](smart-automatik.md#min-lüfterstufe--max-lüfterstufe) |
 | Smart-Automatik: Übersteuerung Dauer | `number.…_smart_automatik_ubersteuerung_dauer` | number | config | Raum | alle | [Smart-Automatik](smart-automatik.md#übersteuerung-dauer) |
 | Automatik-Übersteuerung Restzeit | `sensor.…_automatik_ubersteuerung_restzeit` | sensor | – | Raum | alle | [Smart-Automatik](smart-automatik.md#automatik-übersteuerung-restzeit) |
-| Smart-Automatik: Sommerkühlung Schwelle | `number.…_smart_automatik_sommerkuhlung_schwelle` | number | config | Gerät | alle | [Smart-Automatik](smart-automatik.md#sommerkühlung-schwelle) |
+| Smart-Automatik: Sommerkühlung Schwelle | `number.…_smart_automatik_sommerkuhlung_schwelle` | number | config | Raum | alle | [Smart-Automatik](smart-automatik.md#sommerkühlung-schwelle) |
 | Radar Lüfter-Anpassung | `number.…_radar_lufter_anpassung` | number | config | Raum | alle | [Smart-Automatik](smart-automatik.md#radar-lüfter-anpassung) |
 | Automatik-Status | `sensor.…_automatik_status` | sensor (Text) | – | Gerät | alle | [Automatik-Status](automatik-status.md#automatik-status) |
 | Automatik-Grund | `sensor.…_automatik_grund` | sensor (Text) | – | Gerät | alle | [Automatik-Status](automatik-status.md#automatik-grund) |

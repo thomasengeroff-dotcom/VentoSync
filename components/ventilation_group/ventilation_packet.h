@@ -34,6 +34,7 @@
 
 #include "ventilation_state_machine.h"
 #include "../ventilation_logic/espnow_auth.h"
+#include "../ventilation_logic/summer_bypass.h"
 
 /** @brief Magic header for packet validation. */
 static constexpr uint8_t PACKET_MAGIC = 0x42;
@@ -52,7 +53,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 14; // Bumped: room-wide vacation preset (vacation_preset_*)
+static constexpr uint8_t PROTOCOL_VERSION = 15; // Bumped: room-wide summer cooling threshold
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -144,6 +145,11 @@ struct __attribute__((packed)) VentilationPacket {
   // level the room leader applies when the vacation starts.
   uint8_t vacation_preset_mode_index; ///< Mode index 0-4 ("Urlaubsmodus Betriebsmodus").
   uint8_t vacation_preset_level;      ///< Fan level 1-10 ("Urlaubsmodus Intensität").
+
+  // Summer cooling threshold (v15) — room-wide Smart-Automatik setting like the
+  // sliders, so all devices of a room start the summer bypass at the same
+  // indoor temperature.
+  uint8_t summer_cooling_threshold; ///< Indoor threshold 18-30 °C ("Sommerkühlung Schwelle").
 };
 
 static_assert(sizeof(VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250,
@@ -259,6 +265,9 @@ inline std::optional<esphome::VentilationPacket> parse(const uint8_t *data, size
     return out_of_range("vacation_preset_mode_index", pkt.vacation_preset_mode_index);
   if (pkt.vacation_preset_level < 1 || pkt.vacation_preset_level > 10)
     return out_of_range("vacation_preset_level", pkt.vacation_preset_level);
+  if (pkt.summer_cooling_threshold < ventosync::summer::THRESHOLD_MIN_C ||
+      pkt.summer_cooling_threshold > ventosync::summer::THRESHOLD_MAX_C)
+    return out_of_range("summer_cooling_threshold", pkt.summer_cooling_threshold);
   return pkt;
 }
 

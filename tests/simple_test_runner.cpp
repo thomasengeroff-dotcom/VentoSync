@@ -1982,6 +1982,7 @@ static esphome::VentilationPacket valid_packet() {
   pkt.vent_timer_min = 0;
   pkt.vacation_preset_mode_index = 3; // Stoßlüftung
   pkt.vacation_preset_level = 1;
+  pkt.summer_cooling_threshold = 22;
   return pkt;
 }
 
@@ -2033,6 +2034,8 @@ bool test_packet_parse() {
       {"vacation_preset_mode_index", [](esphome::VentilationPacket &p) { p.vacation_preset_mode_index = 5; }},
       {"vacation_preset_level", [](esphome::VentilationPacket &p) { p.vacation_preset_level = 0; }},
       {"vacation_preset_level", [](esphome::VentilationPacket &p) { p.vacation_preset_level = 11; }},
+      {"summer_cooling_threshold", [](esphome::VentilationPacket &p) { p.summer_cooling_threshold = 17; }},
+      {"summer_cooling_threshold", [](esphome::VentilationPacket &p) { p.summer_cooling_threshold = 31; }},
   };
   for (const auto &c : cases) {
     auto p = valid_packet();
@@ -2052,6 +2055,7 @@ bool test_packet_parse() {
   edge.vent_timer_min = 1440;
   edge.vacation_preset_mode_index = 4; // Aus
   edge.vacation_preset_level = 10;
+  edge.summer_cooling_threshold = 30;
   auto eb = to_bytes(edge);
   TEST_ASSERT(vp::parse(eb.data(), eb.size(), res).has_value());
 

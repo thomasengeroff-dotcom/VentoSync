@@ -40,6 +40,7 @@ CONF_PRE_VAC_MODE_GLOBAL = 'pre_vacation_mode_index_global'
 CONF_PRE_VAC_INTENSITY_GLOBAL = 'pre_vacation_intensity_global'
 CONF_VAC_PRESET_MODE_GLOBAL = 'vacation_preset_mode_global'
 CONF_VAC_PRESET_LEVEL_GLOBAL = 'vacation_preset_level_global'
+CONF_SUMMER_THRESHOLD_GLOBAL = 'summer_cooling_threshold_global'
 CONF_HVAC_ENABLED_GLOBAL = 'hvac_enabled_global'
 CONF_NOX_BOOST_ENABLED_GLOBAL = 'nox_boost_enabled_global'
 CONF_OVERRIDE_DURATION_GLOBAL = 'auto_override_duration_global'
@@ -87,6 +88,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_PRE_VAC_INTENSITY_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_VAC_PRESET_MODE_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_VAC_PRESET_LEVEL_GLOBAL): cv.use_id(GlobalsComponent),
+    cv.Optional(CONF_SUMMER_THRESHOLD_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_HVAC_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_NOX_BOOST_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_OVERRIDE_DURATION_GLOBAL): cv.use_id(GlobalsComponent),
@@ -189,6 +191,9 @@ async def to_code(config):
     if CONF_VAC_PRESET_LEVEL_GLOBAL in config:
         g = await cg.get_variable(config[CONF_VAC_PRESET_LEVEL_GLOBAL])
         cg.add(var.set_vacation_preset_level_global(g))
+    if CONF_SUMMER_THRESHOLD_GLOBAL in config:
+        g = await cg.get_variable(config[CONF_SUMMER_THRESHOLD_GLOBAL])
+        cg.add(var.set_summer_cooling_threshold_global(g))
     if CONF_HVAC_ENABLED_GLOBAL in config:
         g = await cg.get_variable(config[CONF_HVAC_ENABLED_GLOBAL])
         cg.add(var.set_hvac_enabled_global(g))

@@ -17,7 +17,7 @@ Hintergründe zur Regelung: [Smart-Automatik-Logik](https://github.com/thomaseng
 | Smart-Automatik Max Lüfterstufe | `number.…_smart_automatik_max_lufterstufe` | 5 – 10 | 7 | Raum | – |
 | Smart-Automatik: Übersteuerung Dauer | `number.…_smart_automatik_ubersteuerung_dauer` | 30 – 300 min, Schritt 5 | 60 | Raum | config |
 | Automatik-Übersteuerung Restzeit | `sensor.…_automatik_ubersteuerung_restzeit` | min | – | Raum (Zustand) | – |
-| Smart-Automatik: Sommerkühlung Schwelle | `number.…_smart_automatik_sommerkuhlung_schwelle` | 18 – 30 °C | 22 | Gerät | config |
+| Smart-Automatik: Sommerkühlung Schwelle | `number.…_smart_automatik_sommerkuhlung_schwelle` | 18 – 30 °C | 22 | Raum | config |
 | Radar Lüfter-Anpassung | `number.…_radar_lufter_anpassung` | −5 … +5 | 0 | Raum | config |
 
 Alle Einstellungen werden im Gerät gespeichert. Raumweite Einstellungen nur an einem Gerät (am besten dem Master) ändern — siehe [Raum & Master](../konzepte/raum-und-master.md#raumweit-oder-pro-gerät).
@@ -115,7 +115,7 @@ below: 1
 
 ## Sommerkühlung Schwelle
 
-`number.…_smart_automatik_sommerkuhlung_schwelle` — Raumtemperatur, ab der die Automatik den **Sommer-Bypass** starten darf: Statt Wärme zurückzugewinnen, lüftet das Gerät in eine Richtung (wie `Durchlüften`) und holt kühlere Außenluft herein.
+`number.…_smart_automatik_sommerkuhlung_schwelle` — Raumtemperatur, ab der die Automatik den **Sommer-Bypass** starten darf: Statt Wärme zurückzugewinnen, lüftet das Gerät in eine Richtung (wie `Durchlüften`) und holt kühlere Außenluft herein. Die Schwelle gilt raumweit (seit 0.10.54): Eine Änderung an einem Gerät übernehmen alle Geräte des Raums.
 
 Der Bypass startet, wenn **alle** Bedingungen erfüllt sind:
 

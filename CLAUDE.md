@@ -15,7 +15,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
   naming — do not rename to `scd43_*`.
-- Communication: ESP-NOW (protocol v14, HMAC-authenticated) for multi-device sync (no Wi-Fi router required between units),
+- Communication: ESP-NOW (protocol v15, HMAC-authenticated) for multi-device sync (no Wi-Fi router required between units),
   ESPHome Native API to Home Assistant (optional MQTT variant)
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names,
   UI labels, and user-facing strings remain in **German**.
@@ -120,7 +120,7 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
-  logger INFO. Image 1,991,548 / 2,031,616 B (~39 KB headroom, 0.10.52 / ESPHome 2026.10.0) — CI compiles it only after the merge (PRs build
+  logger INFO. Image 1,992,152 / 2,031,616 B (~39 KB headroom, 0.10.54 / ESPHome 2026.10.0) — CI compiles it only after the merge (PRs build
   `ventosync-full` and `ventosync-v2-sgp41`), so check the size locally (`esphome compile ventosync_nosensor_btproxy.yaml`) when a change adds code. Switching a device to it
   needs a **USB flash** (partition table, NVS lost); back to a standard variant works over OTA. BLE is off after boot,
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
@@ -206,7 +206,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v14` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 14` in `ventilation_packet.h`;
+- **Protocol version:** `v15` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 15` in `ventilation_packet.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
@@ -215,7 +215,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   v11 added `vacation_pre_mode_index` / `vacation_pre_intensity`, the room leader's pre-vacation snapshot;
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
   Smart-Automatik level override and its duration setting; v13 added the authentication trailer, see below;
-  v14 added `vacation_preset_mode_index` / `vacation_preset_level`, the room-wide vacation preset).
+  v14 added `vacation_preset_mode_index` / `vacation_preset_level`, the room-wide vacation preset;
+  v15 added `summer_cooling_threshold`, the room-wide summer cooling threshold).
 - **Changing `VentilationPacket`** (`components/ventilation_group/ventilation_packet.h`, with `PeerState`, the room
   flags and `update_peer_state()`): bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof + trailer ≤ 250)`,
   extend the range checks in `ventosync::packet::parse()` and the unit tests T-8a/T-8b,
@@ -247,7 +248,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   restarts the room's schedule and push-pull pairs never blow in the same direction.
 - **Heartbeat:** `sync_interval_config` (default 60 s). **Peer timeout:** `PEER_TIMEOUT_MS = 900000` (15 min)
   for mode/level following and the dashboard.
-- **Room-wide settings** (sliders, HVAC switch, vacation preset): a change is sent as `MSG_STATE` (`sync_settings_to_peers()`),
+- **Room-wide settings** (sliders incl. the summer cooling threshold, HVAC switch, vacation preset): a change is sent as `MSG_STATE` (`sync_settings_to_peers()`),
   applied in `handle_config_sync()` only inside the HA slider ranges, and re-asserted by the Master heartbeat.
 - **Level from a peer** (`handle_state_sync()`): decided by `ventosync::packet::level_to_adopt()` — by the packet's mode
   (a packet that switches the room out of Smart-Automatik arrives while the receiver still runs it) and compared with
@@ -319,7 +320,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v14 mesh communication (frame authentication glue), packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v15 mesh communication (frame authentication glue), packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock

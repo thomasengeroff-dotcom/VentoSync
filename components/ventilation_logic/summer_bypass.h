@@ -22,7 +22,7 @@
 //              incl. hysteresis and the re-measure guard. Unit-tested.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-18
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -38,7 +38,13 @@
 namespace ventosync {
 namespace summer {
 
-constexpr float DEFAULT_THRESHOLD_C = 22.0f;  ///< Indoor threshold if the HA number is missing.
+constexpr float DEFAULT_THRESHOLD_C = 22.0f;  ///< Factory default (default_summer_cooling_threshold).
+/// Range of the room-wide HA number "Sommerkühlung Schwelle" (°C) — also the
+/// range ventosync::packet::parse() accepts (protocol v15).
+constexpr int THRESHOLD_MIN_C = 18;
+constexpr int THRESHOLD_MAX_C = 30;
+static_assert(DEFAULT_THRESHOLD_C >= THRESHOLD_MIN_C && DEFAULT_THRESHOLD_C <= THRESHOLD_MAX_C,
+              "HA slider range 18-30");
 constexpr float MIN_DELTA_C = 1.5f;           ///< Outdoor must be this much cooler to start.
 constexpr float DELTA_HYSTERESIS_C = 0.5f;    ///< Stop when outdoor is less than this cooler.
 constexpr float INDOOR_HYSTERESIS_C = 0.5f;   ///< Stop when indoor falls this far below the threshold.

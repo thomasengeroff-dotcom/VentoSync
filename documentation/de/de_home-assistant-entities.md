@@ -53,8 +53,8 @@ Diese Datei listet die Home-Assistant-Entitäten der VentoSync-Firmware (`ventos
   * *Typ:* Sensor (min, Aktualisierung alle 30 s), raumweiter Zustand
   * *Dokumentation:* Restzeit der in der Smart-Automatik gestarteten Übersteuerung – per Stufen-Taste, Slider `Lüfter Intensität`, Geschwindigkeit der Fan-Entität oder Web-Dashboard (raumweit). `0` = die Automatik regelt. Ein Moduswechsel beendet sie vorzeitig. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).
 * **`number.smart_automatik_sommerkuhlung_schwelle`** („Smart-Automatik: Sommerkühlung Schwelle“, YAML-ID `auto_summer_cooling_threshold`)
-  * *Typ:* Number (18–30 °C, Standard 22), Konfiguration, pro Gerät
-  * *Dokumentation:* Innentemperatur, ab der der Sommer-Bypass (freie Kühlung per `Durchlüften`) starten darf. Details: [Smart-Automatik Logik](de_smart-automatic-logic.md).
+  * *Typ:* Number (18–30 °C, Standard 22), Konfiguration, raumweit (seit 0.10.54)
+  * *Dokumentation:* Innentemperatur, ab der der Sommer-Bypass (freie Kühlung per `Durchlüften`) starten darf. Wird wie die übrigen Smart-Automatik-Slider per ESP-NOW abgeglichen, sodass alle Geräte eines Raums den Bypass bei derselben Temperatur starten. Details: [Smart-Automatik Logik](de_smart-automatic-logic.md).
 * **`number.smart_automatik_ubersteuerung_dauer`** („Smart-Automatik: Übersteuerung Dauer“, YAML-ID `auto_override_duration`)
   * *Typ:* Number (30–300 min, Schrittweite 5, Standard 60), Konfiguration, raumweit
   * *Dokumentation:* Wie lange eine in der Smart-Automatik gewählte Stufe (Stufen-Taste, HA-Slider / Fan-Geschwindigkeit, Web-Dashboard) die Automatik übersteuert. Gilt ab der nächsten Übersteuerung; eine laufende behält ihre Restzeit. Siehe [📄 Smart-Automatik Logik](de_smart-automatic-logic.md#7-stufen-übersteuerung-stufen-taste).

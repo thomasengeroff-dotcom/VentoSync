@@ -194,7 +194,9 @@ number:
           sync_settings_to_peers();
           evaluate_auto_mode(); // Force re-eval
 
-  # Auto Mode: Summer Cooling Indoor Temperature Threshold
+  # Auto Mode: Summer Cooling Indoor Temperature Threshold.
+  # ROOM-WIDE (ESP-NOW v15). Range must match THRESHOLD_MIN_C / THRESHOLD_MAX_C
+  # in components/ventilation_logic/summer_bypass.h.
   - platform: template
     name: "Smart-Automatik: Sommerkühlung Schwelle"
     id: auto_summer_cooling_threshold
@@ -207,9 +209,11 @@ number:
     lambda: "return id(summer_cooling_threshold);"
     set_action:
       - lambda: |-
-          id(summer_cooling_threshold) = (int)x;
-          id(auto_summer_cooling_threshold).publish_state(x);
-          ESP_LOGI("auto_mode", "Sommerkühlung Schwelle auf %d°C gesetzt", (int)x);
+          id(summer_cooling_threshold) = std::clamp(static_cast<int>(x),
+              ventosync::summer::THRESHOLD_MIN_C, ventosync::summer::THRESHOLD_MAX_C);
+          id(auto_summer_cooling_threshold).publish_state(id(summer_cooling_threshold));
+          sync_settings_to_peers();
+          ESP_LOGI("auto_mode", "Sommerkühlung Schwelle auf %d°C gesetzt", id(summer_cooling_threshold));
 
   # Auto Mode: Level override duration (Level button in Smart-Automatik).
   # ROOM-WIDE (ESP-NOW v12). Range must match MIN/MAX_DURATION_MIN in

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.54] - 2026-10-22
+
+> ⚠️ **ESP-NOW protocol v15 — flash all devices of a room.** v14 and v15 devices reject each other's packets.
+> After the update the **Master's** *Smart-Automatik: Sommerkühlung Schwelle* applies to the whole room (Master
+> heartbeat) — check the value once and change it on any device if needed.
+
+### Changed
+
+- **Summer cooling threshold is room-wide** — *Smart-Automatik: Sommerkühlung Schwelle* was stored per device, so
+  the devices of one room could start the summer bypass at different indoor temperatures (field test: 30 °C on two
+  devices, 22 °C on the other two). It is now synced like the other Smart-Automatik sliders: a change on any device
+  (HA or web dashboard, which now shows the **RAUMWEIT** badge) goes out as `MSG_STATE`, the other devices adopt it in
+  `handle_config_sync()` and the Master heartbeat re-asserts it. New packet field `summer_cooling_threshold`
+  (18–30 °C, `ventosync::summer::THRESHOLD_MIN_C` / `THRESHOLD_MAX_C`), range-checked in
+  `ventosync::packet::parse()` (T-8a); `PROTOCOL_VERSION` is now 15. The factory default moved to the substitution
+  `default_summer_cooling_threshold` (22 °C) ↔ `ventosync::summer::DEFAULT_THRESHOLD_C`, checked by
+  `ci_config.py check`.
+
+### Fixed
+
+- **BME680 warning flooded the log** — a missing or failing BME680 logged `Sensor unhealthy: N consecutive failures`
+  on every IAQ cycle (every 30 s) once 10 readings in a row had failed. The warning is now logged once per failure
+  phase; `Sensor recovered after N failures` (INFO) still marks the end. Same pattern as the CO2 staleness fix in
+  0.10.53.
+
 ## [0.10.53] - 2026-10-22
 
 ### Fixed

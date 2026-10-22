@@ -245,7 +245,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v14, authenticated frames), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v15, authenticated frames), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -552,6 +552,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **Timer**: `number.durchluften_dauer_min` — duration of `Durchlüften` in minutes (0–120, default: 30; 0 = continuous); afterwards the room returns to `Wärmerückgewinnung`
 - **LED Brightness**: `number.maximale_led_helligkeit` ("Maximale LED Helligkeit", 5–100 %, default: 80 %) to limit the maximum panel brightness.
 - **CO2 Limit**: `number.smart_automatik_co2_grenzwert` (400–2000 ppm, default: 1000; always active in Smart-Automatik mode)
+- **Summer Cooling Threshold**: `number.smart_automatik_sommerkuhlung_schwelle` (18–30 °C, default: 22) — indoor temperature above which Smart-Automatik may switch to the summer bypass; **room-wide** (ESP-NOW protocol v15)
 - **Smart Climate Control** *(Configuration)*:
   - `switch.klima_koordination` — Enable HVAC coordination, **room-wide** (default: off)
   - `number.klima_koordination_co2_grenzwert` — Relaxed CO2 target while the AC is active, 800–1500 ppm (default: `1200`)
