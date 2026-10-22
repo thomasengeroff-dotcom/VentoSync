@@ -22,11 +22,13 @@ Instead of hardcoding device addresses in YAML code, all ventilation units can b
 
 | Parameter | Description | Range | Default |
 | :--- | :--- | :--- | :--- |
-| **Floor ID** | Floor / Story number | 0-9 | 1 |
-| **Room ID** | Room number | 0-10 | 1 |
+| **Floor ID** | Floor / Story number | 1-9 (0 = not set up) | 1 |
+| **Room ID** | Room number | 1-10 (0 = not set up) | 1 |
 | **Device ID** | Unique device identifier | 1-25 | 1 |
 | **Device Phase (A/B)** | Initial ventilation cycle phase | A or B | A |
 | **Own MAC Address** | Diagnostic MAC display | - | (automatic) |
+
+> ⚠️ **Do not use floor or room 0:** the inputs accept 0, but a device with floor **or** room 0 sends no discovery broadcasts and never finds the other devices of its room. Numbering therefore starts at 1 — e.g. floor 1 = ground floor, floor 2 = upper floor.
 
 **Note on ESP-NOW:** Communication uses an automated **hybrid discovery model**. New peers find each other via broadcast, while operational data sync runs resource-efficiently via **unicast**. **No manual MAC configuration is required!**
 
@@ -35,7 +37,9 @@ Instead of hardcoding device addresses in YAML code, all ventilation units can b
 - **Phase A:** Starts with **Supply Air** (Intake / IN)
 - **Phase B:** Starts with **Exhaust Air** (Extract / OUT)
 
-**Rule:** Units mounted on the **same exterior wall** should share the **same phase**.
+The phase refers to the room (in / out), not to the wall the unit is mounted on.
+
+**Rule:** In heat recovery the units of a room run push-pull. For as much air to flow in as out, a room should have **as many Phase A as Phase B units** — a **pair therefore needs one Phase A and one Phase B unit**, whether both sit on the same wall or on opposite walls. In cross-ventilation Phase A blows in continuously and Phase B blows out; for a through-draught put the A unit on one side of the home and the B unit on the opposite side.
 
 ---
 
@@ -76,7 +80,7 @@ Device Phase:   Phase A (Starts with intake)
 Floor ID:       1
 Room ID:        2  (Same room!)
 Device ID:      2  (Second unit in the room)
-Device Phase:   Phase A (Same wall = same phase!)
+Device Phase:   Phase B (Counterpart of device 1 – a pair needs A and B!)
 ```
 
 ### 4. Automated ESP-NOW Discovery
@@ -95,23 +99,27 @@ ESP-NOW uses a hybrid broadcast/unicast protocol:
 
 ## 🏢 Multi-Floor Example Configuration
 
-### Ground Floor (Floor 0)
+Floor and room IDs start at **1** (with 0 a device sends no discovery broadcasts, see above).
+
+### Ground Floor (Floor 1)
 
 | Room | Unit | Floor ID | Room ID | Device ID | Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Kitchen | 1 | 0 | 1 | 1 | A |
-| Kitchen | 2 | 0 | 1 | 2 | B |
-| Living Room | 1 | 0 | 2 | 1 | A |
-| Living Room | 2 | 0 | 2 | 2 | B |
+| Kitchen | 1 | 1 | 1 | 1 | A |
+| Kitchen | 2 | 1 | 1 | 2 | B |
+| Living Room | 1 | 1 | 2 | 1 | A |
+| Living Room | 2 | 1 | 2 | 2 | B |
 
-### Upper Floor (Floor 1)
+### Upper Floor (Floor 2)
 
 | Room | Unit | Floor ID | Room ID | Device ID | Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Bedroom | 1 | 1 | 1 | 1 | A |
-| Bedroom | 2 | 1 | 1 | 2 | B |
-| Child Room | 1 | 1 | 2 | 1 | A |
-| Bathroom | 1 | 1 | 3 | 1 | A |
+| Bedroom | 1 | 2 | 1 | 1 | A |
+| Bedroom | 2 | 2 | 1 | 2 | B |
+| Child Room | 1 | 2 | 2 | 1 | A |
+| Bathroom | 1 | 2 | 3 | 1 | A |
+
+A single unit (child room, bathroom) has no counterpart; its phase does not matter.
 
 ---
 
@@ -156,5 +164,5 @@ set_action:
 | Problem | Solution |
 | :--- | :--- |
 | Units do not synchronize | Verify Floor ID and Room ID match, and Device IDs are unique |
-| Inverted airflow direction | Toggle Phase setting from A to B or B to A |
+| Paired units blow in the same direction | A pair needs different phases (one A, one B). If a unit blows the wrong way despite the right phase, its fan is mounted or wired the other way round — toggle its phase so the two units run opposite again |
 | Settings reset after reboot | Ensure `restore_value: true` is configured in NVS globals |
