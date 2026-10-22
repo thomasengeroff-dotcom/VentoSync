@@ -63,13 +63,14 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protokoll-Architektur & Paketvalidierung (v13)
+## 🔒 Protokoll-Architektur & Paketvalidierung (v14)
 
 * **Frame-Authentifizierung (v13)**: Jeder Frame — Statuspakete, Heartbeats und die Discovery-Strings, Unicast wie Broadcast — trägt einen 16-Byte-Trailer mit Frame-Zähler und HMAC-SHA256-Tag (siehe *Sicherheit* unten). Frames ohne gültigen Tag oder mit veraltetem Zähler werden verworfen, bevor irgendetwas ausgewertet wird. Firmware ≥ 0.10.43 verwirft v12-Frames — **alle Geräte eines Raums flashen** und ihnen denselben `espnow_key` geben.
 * **Magic Header**: Jedes Datenpaket beginnt mit einem festen Prüfbyte (`0x42`), um fremde oder fehlerhafte 2,4-GHz-Pakete sofort zu verwerfen.
 * **Firmware-Versionsprüfung**: Strikte Validierung verhindert Fehlinterpretationen bei unterschiedlichen Firmware-Ständen.
 * **Schleifen-Schutz**: Übernommene Werte werden ohne neuen Broadcast angewendet (`notify = false`), und Geräte senden nur ihre **eigenen** Eingangswerte, nie einen aus Peers fusionierten Wert — gespiegelte Einstellungen und raumweite Maxima können daher nicht zwischen Geräten hin- und herspringen oder sich gegenseitig festhalten. (Sequenznummern gibt es im Paket nicht.)
 * **Stufen-Übersteuerung (v12)**: Jedes Paket trägt die Stufen-Übersteuerung der Smart-Automatik des Raums (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` eines beliebigen Geräts startet, ändert oder beendet sie; der Master-Heartbeat startet bzw. synchronisiert sie nur. Firmware ≥ 0.10.34 verwirft v11-Pakete — **alle Geräte eines Raums flashen**.
+* **Urlaubs-Voreinstellung (v14)**: Jedes Paket trägt die raumweite Urlaubs-Voreinstellung (`vacation_preset_mode_index`, `vacation_preset_level`), übernommen wie die Slider aus `MSG_STATE` und dem Master-Heartbeat. Firmware ≥ 0.10.52 verwirft v13-Pakete — **alle Geräte eines Raums flashen**.
 
 ---
 

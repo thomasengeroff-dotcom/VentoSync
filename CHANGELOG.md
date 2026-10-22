@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.10.52] - 2026-10-22
 
+> ⚠️ **ESP-NOW protocol v14 — flash all devices of a room.** v13 and v14 devices reject each other's packets.
+> The vacation preset (*Urlaubsmodus Betriebsmodus* / *Urlaubsmodus Intensität*) starts at the factory default
+> (*Stoßlüftung*, level 1) after the update — set it once on any device of the room.
+
+### Added
+
+- **Room-wide vacation preset** — *Urlaubsmodus Betriebsmodus* and *Urlaubsmodus Intensität* are room-wide settings
+  like the Smart-Automatik sliders: a change on any device (HA or web dashboard) is sent to the room (`MSG_STATE`),
+  adopted in `handle_config_sync()` and re-asserted by the Master heartbeat. Until now every device kept its own
+  values, only the Master's were applied, and a device stepping in for an unreachable Master switched the room with
+  its own — different — preset. Packet fields `vacation_preset_mode_index` (0–4) and `vacation_preset_level` (1–10),
+  range-checked in `ventosync::packet::parse()` (T-8a). The values live in the globals `vacation_preset_mode_index_val`
+  / `vacation_preset_level_val` (factory defaults `default_vacation_mode_index` / `default_vacation_level` ↔
+  `ventosync::defaults::VACATION_*`, CI-checked); the HA select / number are template entities reading them.
+
 ### Fixed
 
 - **Vacation mode: the other devices of a room ran on their old level** — the Master applied the vacation preset
@@ -28,9 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Vacation mode docs (ha-docs, EN/DE guides, READMEs): the other devices take over the Master's mode **and** level;
-  `Automatik-Status` shows the Master's `Urlaubsmodus Intensität`; recommendation to set the same vacation preset on
-  every device of a room, because a device that steps in for an unreachable Master uses its own.
+- Vacation mode docs (ha-docs, EN/DE guides, READMEs, ESP-NOW guides): the preset is room-wide, the other devices
+  take over the Master's mode **and** level, and `Automatik-Status` shows the preset level (the docs always said
+  "Stufe 1").
 
 ## [0.10.51] - 2026-10-21
 

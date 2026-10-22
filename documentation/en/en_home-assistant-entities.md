@@ -149,8 +149,8 @@ The panel LEDs themselves are driven by the firmware and are **not** exposed as 
 
 ## 6. Vacation Mode
 
-* **`select.urlaubsmodus_betriebsmodus`** ("Urlaubsmodus Betriebsmodus") — mode during vacation (default `Stoßlüftung`), config.
-* **`number.urlaubsmodus_intensitat`** ("Urlaubsmodus Intensität") — level during vacation (1–10, default 1), config.
+* **`select.urlaubsmodus_betriebsmodus`** ("Urlaubsmodus Betriebsmodus") — mode during vacation (default `Stoßlüftung`), config, room-wide.
+* **`number.urlaubsmodus_intensitat`** ("Urlaubsmodus Intensität") — level during vacation (1–10, default 1), config, room-wide.
 * Switched by the HA helper `input_boolean.ventosync_vacation_mode` (substitution `vacation_sensor_id`); the Master applies it for the room. Setup: [Vacation Mode](en_vacation-mode-ha-setup.md).
 
 ## 7. Setup, Network & Diagnostics

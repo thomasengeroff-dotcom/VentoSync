@@ -101,8 +101,8 @@ Alle Sensoren gelten pro Gerät.
 
 | Name | Entitäts-ID | Domain | Kategorie | Gültigkeit | Varianten | Seite |
 | --- | --- | --- | --- | --- | --- | --- |
-| Urlaubsmodus Betriebsmodus | `select.…_urlaubsmodus_betriebsmodus` | select | config | Gerät | alle | [Urlaubsmodus](urlaubsmodus.md) |
-| Urlaubsmodus Intensität | `number.…_urlaubsmodus_intensitat` | number | config | Gerät | alle | [Urlaubsmodus](urlaubsmodus.md) |
+| Urlaubsmodus Betriebsmodus | `select.…_urlaubsmodus_betriebsmodus` | select | config | Raum | alle | [Urlaubsmodus](urlaubsmodus.md) |
+| Urlaubsmodus Intensität | `number.…_urlaubsmodus_intensitat` | number | config | Raum | alle | [Urlaubsmodus](urlaubsmodus.md) |
 | Filterwechsel Alarm | `binary_sensor.…_filterwechsel_alarm` | binary_sensor | – | Gerät | alle | [Wartung](wartung.md#filterwechsel-alarm) |
 | Filter Betriebstage | `sensor.…_filter_betriebstage` | sensor | diagnostic | Gerät | alle | [Wartung](wartung.md#filter-betriebstage) |
 | Filterwechsel (Reset) | `button.…_filterwechsel_reset` | button | config | Gerät | alle | [Wartung](wartung.md#filterwechsel-reset) |

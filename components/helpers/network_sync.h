@@ -994,6 +994,9 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     auto_override_duration->publish_state(pkt->auto_override_duration_min);
   }
 
+  // 2d. Vacation preset (room-wide setting, protocol v14; range-checked by parse()).
+  vacation_adopt_preset(pkt);
+
   // 3. System Timers
   if (sync_interval_config != nullptr &&
       v->sync_interval_ms != static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000)) {

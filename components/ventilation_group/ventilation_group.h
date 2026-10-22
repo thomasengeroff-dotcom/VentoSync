@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-20
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -212,6 +212,8 @@ public:
   esphome::globals::RestoringGlobalsComponent<int> *vacation_state_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_mode_index_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *pre_vacation_intensity_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *vacation_preset_mode_global_{nullptr};
+  esphome::globals::RestoringGlobalsComponent<int> *vacation_preset_level_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *nox_boost_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *auto_override_duration_global_{nullptr};
@@ -249,6 +251,10 @@ public:
   void set_pre_vacation_mode_index_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_mode_index_global_ = g; }
   /** @brief Sets the pre-vacation fan level reference (shared while leading). */
   void set_pre_vacation_intensity_global(esphome::globals::RestoringGlobalsComponent<int> *g) { pre_vacation_intensity_global_ = g; }
+  /** @brief Sets the vacation preset mode index reference (room-wide setting). */
+  void set_vacation_preset_mode_global(esphome::globals::RestoringGlobalsComponent<int> *g) { vacation_preset_mode_global_ = g; }
+  /** @brief Sets the vacation preset fan level reference (room-wide setting). */
+  void set_vacation_preset_level_global(esphome::globals::RestoringGlobalsComponent<int> *g) { vacation_preset_level_global_ = g; }
   /** @brief Sets the global Smart Climate Control enable flag reference (room-wide switch). */
   void set_hvac_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { hvac_enabled_global_ = g; }
   /** @brief Sets the room-wide NOx boost switch reference ("NOx-Stoßlüftung"). */
@@ -841,6 +847,13 @@ public:
         auto_override_duration_global_ != nullptr ? auto_override_duration_global_->value()
                                                   : ventosync::auto_override::DEFAULT_DURATION_MIN,
         ventosync::auto_override::MIN_DURATION_MIN, ventosync::auto_override::MAX_DURATION_MIN));
+
+    // Vacation preset (room-wide setting, clamped into the ranges parse() accepts)
+    pkt.vacation_preset_mode_index = static_cast<uint8_t>(std::clamp(
+        vacation_preset_mode_global_ != nullptr ? vacation_preset_mode_global_->value() : df::VACATION_MODE_INDEX,
+        0, static_cast<int>(ventosync::packet::MODE_INDEX_COUNT) - 1));
+    pkt.vacation_preset_level = static_cast<uint8_t>(std::clamp(
+        vacation_preset_level_global_ != nullptr ? vacation_preset_level_global_->value() : df::VACATION_LEVEL, 1, 10));
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

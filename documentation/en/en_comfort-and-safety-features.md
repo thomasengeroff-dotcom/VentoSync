@@ -74,7 +74,7 @@ An automated, energy-saving mode designed for extended absences, switched by a H
 > Devices that were already in vacation mode when updating to 0.10.27 do not know about the active vacation yet: toggle the helper off and on once, or restore the mode manually after the vacation.
 
 ### Home Assistant Entities
-Configurable under the device *Configuration* section (set them on the Master — it applies the preset for the room):
+Configurable under the device *Configuration* section — **room-wide** settings (since 0.10.52): a change on any device is synchronized to the whole room:
 
 | Entity | Type | Default | Description |
 | :--- | :--- | :--- | :--- |

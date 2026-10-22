@@ -149,8 +149,8 @@ Die Panel-LEDs selbst steuert die Firmware; sie sind **keine** Light-Entitäten 
 
 ## 6. Urlaubsmodus
 
-* **`select.urlaubsmodus_betriebsmodus`** („Urlaubsmodus Betriebsmodus“) — Modus während des Urlaubs (Standard `Stoßlüftung`), Konfiguration.
-* **`number.urlaubsmodus_intensitat`** („Urlaubsmodus Intensität“) — Stufe während des Urlaubs (1–10, Standard 1), Konfiguration.
+* **`select.urlaubsmodus_betriebsmodus`** („Urlaubsmodus Betriebsmodus“) — Modus während des Urlaubs (Standard `Stoßlüftung`), Konfiguration, raumweit.
+* **`number.urlaubsmodus_intensitat`** („Urlaubsmodus Intensität“) — Stufe während des Urlaubs (1–10, Standard 1), Konfiguration, raumweit.
 * Geschaltet über den HA-Helper `input_boolean.ventosync_vacation_mode` (Substitution `vacation_sensor_id`); der Master schaltet den Raum. Einrichtung: [Urlaubsmodus](de_vacation-mode-ha-setup.md).
 
 ## 7. Einrichtung, Netzwerk & Diagnose

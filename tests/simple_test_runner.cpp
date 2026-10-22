@@ -1966,6 +1966,8 @@ static esphome::VentilationPacket valid_packet() {
   pkt.hvac_max_fan_level = 3;
   pkt.sync_interval_min = 1;
   pkt.vent_timer_min = 0;
+  pkt.vacation_preset_mode_index = 3; // Stoßlüftung
+  pkt.vacation_preset_level = 1;
   return pkt;
 }
 
@@ -2014,6 +2016,9 @@ bool test_packet_parse() {
       {"current_mode_index", [](esphome::VentilationPacket &p) { p.current_mode_index = 5; }},
       {"current_mode", [](esphome::VentilationPacket &p) { p.current_mode = 4; }},
       {"vent_timer_min", [](esphome::VentilationPacket &p) { p.vent_timer_min = 1441; }},
+      {"vacation_preset_mode_index", [](esphome::VentilationPacket &p) { p.vacation_preset_mode_index = 5; }},
+      {"vacation_preset_level", [](esphome::VentilationPacket &p) { p.vacation_preset_level = 0; }},
+      {"vacation_preset_level", [](esphome::VentilationPacket &p) { p.vacation_preset_level = 11; }},
   };
   for (const auto &c : cases) {
     auto p = valid_packet();
@@ -2031,6 +2036,8 @@ bool test_packet_parse() {
   edge.current_mode_index = 4;
   edge.sync_interval_min = 1440;
   edge.vent_timer_min = 1440;
+  edge.vacation_preset_mode_index = 4; // Aus
+  edge.vacation_preset_level = 10;
   auto eb = to_bytes(edge);
   TEST_ASSERT(vp::parse(eb.data(), eb.size(), res).has_value());
 

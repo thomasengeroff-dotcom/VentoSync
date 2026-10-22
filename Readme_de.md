@@ -242,7 +242,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v13 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v14 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -560,11 +560,11 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
   - `switch.nox_stossluftung` — NOx-Stoßlüftung in der Smart-Automatik aktivieren, **raumweit** (Standard: aus)
   - `number.nox_stossluftung_schwelle` — NOx-Index, der die Stoßlüftung startet, 20–100 (Standard: `20`, nur auf Geräten mit SGP41-Board)
 - **Automatik-Status**: `text_sensor.automatik_status` (was der Lüfter macht und warum), `text_sensor.automatik_grund` (Grund-Schlüssel), `event.luftung_ereignis` (Grundwechsel, NOx-Abbrüche)
-  > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v13) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
+  > Der Schalter und die drei Grenzwert-Slider gelten **raumweit**: Eine Änderung an einem beliebigen Gerät wird per ESP-NOW (Protokoll v14) an alle Geräte des Raums übertragen und muss daher nur einmal pro Raum gesetzt werden. Home Assistant sendet den Klima-Status mit der API-Action `set_ac_active` an mindestens ein Gerät pro Raum; auch er wird raumweit geteilt. *→ [Einrichtung in 📄 Klima-Koordination](documentation/de/de_smart-climate-control.md#️-home-assistant-einrichtung)*
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)
-  > Beide am **Master** (Geräte-ID 1) einstellen — er schaltet und stellt den Urlaubsmodus für den ganzen Raum wieder her, die übrigen Geräte übernehmen Modus und Stufe. Am besten auf allen Geräten des Raums gleich setzen: Ein für den Master einspringendes Gerät nutzt seine eigenen Werte.
+  > Beide gelten **raumweit** (ESP-NOW-Protokoll v14) — eine Änderung an einem beliebigen Gerät übernimmt der ganze Raum. Der **Master** (Geräte-ID 1) schaltet und stellt den Urlaubsmodus für den Raum wieder her, die übrigen Geräte übernehmen Modus und Stufe.
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
 👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/de/de_home-assistant-entities.md)**. Eine ausführliche Home-Assistant-Dokumentation im Stil von developers.home-assistant.io — alle Entitäten mit Wertebereichen und Gültigkeit (Raum / Gerät), API-Actions, Events sowie Beispiel-Automationen und Dashboard-Karten — liegt unter **[documentation/ha-docs](documentation/ha-docs/docs/intro.md)** (Docusaurus-Site, auf Deutsch).

@@ -1,5 +1,5 @@
 {
     "project_version": "0.10.52",
     "project_date": "2026-10-22",
-    "project_description": "Vacation mode: the other devices of a room take over the Master's preset level; the HA level number updates immediately."
+    "project_description": "Room-wide vacation preset (ESP-NOW v14); the other devices of a room take over the Master's vacation level."
 }

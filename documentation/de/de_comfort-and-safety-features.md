@@ -74,7 +74,7 @@ Der Urlaubsmodus ist ein konfigurierbarer Energiesparmodus für längere Abwesen
 > Geräte, die sich beim Update auf 0.10.27 bereits im Urlaubsmodus befinden, kennen den laufenden Urlaub noch nicht: den Helper einmal aus- und wieder einschalten oder den Modus nach dem Urlaub manuell zurückstellen.
 
 ### Home Assistant Konfiguration
-Die Parameter sind in den Geräteeinstellungen unter *Konfiguration* anpassbar (am Master einstellen — er schaltet den Raum):
+Die Parameter sind in den Geräteeinstellungen unter *Konfiguration* anpassbar — **raumweite** Einstellungen (seit 0.10.52): Eine Änderung an einem beliebigen Gerät wird an den ganzen Raum übertragen:
 
 | Entität | Typ | Standard | Beschreibung |
 | :--- | :--- | :--- | :--- |

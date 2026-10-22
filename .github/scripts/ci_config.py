@@ -10,7 +10,7 @@
 # Description: Single source for the firmware variant list (.github/variants.json)
 #              and consistency checks between YAML and C++ defaults.
 # Created:     2026-10-18
-# Modified:    2026-10-18
+# Modified:    2026-10-22
 # ==========================================================================
 """CI configuration helper (dependency-free, Python >= 3.8).
 
@@ -56,6 +56,8 @@ DEFAULTS = {
     "default_auto_co2_threshold": ("components/ventilation_logic/defaults.h", "AUTO_CO2_THRESHOLD_PPM"),
     "default_auto_humidity_threshold": ("components/ventilation_logic/defaults.h", "AUTO_HUMIDITY_THRESHOLD_PCT"),
     "default_led_max_brightness": ("components/ventilation_logic/defaults.h", "LED_MAX_BRIGHTNESS_PCT"),
+    "default_vacation_mode_index": ("components/ventilation_logic/defaults.h", "VACATION_MODE_INDEX"),
+    "default_vacation_level": ("components/ventilation_logic/defaults.h", "VACATION_LEVEL"),
     "hvac_default_co2_threshold": ("components/ventilation_logic/hvac_coordinator.h", "DEFAULT_CO2_THRESHOLD_PPM"),
     "hvac_default_emergency_co2": ("components/ventilation_logic/hvac_coordinator.h", "DEFAULT_EMERGENCY_CO2_PPM"),
     "hvac_default_max_fan_level": ("components/ventilation_logic/hvac_coordinator.h", "DEFAULT_MAX_FAN_LEVEL"),

@@ -52,7 +52,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 13; // Bumped: HMAC-authenticated frames (espnow_auth.h trailer)
+static constexpr uint8_t PROTOCOL_VERSION = 14; // Bumped: room-wide vacation preset (vacation_preset_*)
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -139,6 +139,11 @@ struct __attribute__((packed)) VentilationPacket {
   uint8_t auto_override_level;        ///< Override level 1-10, 0 = none.
   uint16_t auto_override_remaining_s; ///< Remaining override time in seconds (max 18000).
   uint16_t auto_override_duration_min; ///< Room-wide override duration setting (30-300 min).
+
+  // Vacation preset (v14) — room-wide setting like the sliders: the mode and
+  // level the room leader applies when the vacation starts.
+  uint8_t vacation_preset_mode_index; ///< Mode index 0-4 ("Urlaubsmodus Betriebsmodus").
+  uint8_t vacation_preset_level;      ///< Fan level 1-10 ("Urlaubsmodus Intensität").
 };
 
 static_assert(sizeof(VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250,
@@ -250,6 +255,10 @@ inline std::optional<esphome::VentilationPacket> parse(const uint8_t *data, size
     return out_of_range("current_mode_index", pkt.current_mode_index);
   if (pkt.current_mode > esphome::MODE_STOSSLUEFTUNG) return out_of_range("current_mode", pkt.current_mode);
   if (pkt.vent_timer_min > 1440) return out_of_range("vent_timer_min", pkt.vent_timer_min);
+  if (pkt.vacation_preset_mode_index >= MODE_INDEX_COUNT)
+    return out_of_range("vacation_preset_mode_index", pkt.vacation_preset_mode_index);
+  if (pkt.vacation_preset_level < 1 || pkt.vacation_preset_level > 10)
+    return out_of_range("vacation_preset_level", pkt.vacation_preset_level);
   return pkt;
 }
 
