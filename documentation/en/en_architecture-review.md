@@ -39,7 +39,7 @@ The project correctly utilizes ESPHome's `RestoringGlobalsComponent` (via `resto
 
 *   **Header Guards (`#pragma once`)**: Ensure all custom `.h` files under `components/helpers/` have `#pragma once` at the top to prevent multiple inclusion errors during complex compilation phases.
 *   **Mutex Contexts**: The ESP-NOW implementation uses `std::mutex` for the receive/event queues. Since ESPHome is primarily single-threaded (cooperative multitasking), true threading only occurs if the Wi-Fi/ESP-NOW callbacks fire from a FreeRTOS ISR/interrupt context. The architecture correctly queues events (`peer_event_queue`) to be processed in the main loop, avoiding race conditions and dangerous flash write operations inside the callback context.
-*   **Tailwind/Chart.js Local Hosting**: The local web dashboard currently relies on external CDNs for Tailwind CSS and Chart.js. While excellent for reducing firmware flash size, it limits the UI's functionality in a completely offline scenario (air-gapped network). Continuing to optimize this or offering a fully-offline dashboard variant could be a future step.
+*   **Chart.js Local Hosting**: Since 0.10.57 the dashboard's Tailwind CSS is built into the firmware (~4 KB), so the page works fully offline except for the charts, which still load Chart.js from a CDN (~70 KB compressed — more than the Bluetooth proxy variant's free flash). A small built-in chart renderer could remove the last external dependency.
 
 ## 5. Conclusion
 VentoSync is a textbook example of how to scale ESPHome from simple sensor nodes to complex, distributed embedded systems. The architecture is robust, highly modular, and fully compliant with ESPHome best practices for large codebases.

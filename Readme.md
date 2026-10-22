@@ -233,7 +233,7 @@ You do not need a smart home server to use VentoSync: Each ventilation unit host
   <img src="documentation/screenshots/wrg-dashboard2.png" alt="WRG Dashboard Connected Devices & Real-time Data" width="48%" />
 </p>
 
-> 👉 *The dashboard is the device's web page at `http://<device-ip>/` (since 0.10.55 it replaces the native ESPHome page; the "Visit" link in Home Assistant opens it). For all dashboard features and the ESP-NOW live visualization, see [📄 Local Web Dashboard Guide](documentation/en/en_local-web-dashboard.md).*
+> 👉 *The dashboard is the device's web page at `http://<device-ip>/` (since 0.10.55 it replaces the native ESPHome page; the "Visit" link in Home Assistant opens it). The page is fully styled without internet access, e.g. in the fallback hotspot (since 0.10.57); only the charts need internet (Chart.js). For all dashboard features and the ESP-NOW live visualization, see [📄 Local Web Dashboard Guide](documentation/en/en_local-web-dashboard.md).*
 
 ## 📡 ESP-NOW: Wireless Autonomy
 

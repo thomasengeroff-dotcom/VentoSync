@@ -359,6 +359,10 @@ Complex YAML lambda logic is extracted into focused header files:
   (`WIFI - 0.5`) is above `web_server`'s (`WIFI - 1.0`), so its handler is registered first. Keep `web_server:`
   (`local: false`, `log: false`, `ota: false`) — without it the device reports no web port and Home Assistant drops the
   device page's "Visit" link (`configuration_url`). The page is `dashboard.html` — gzipped into flash by `__init__.py` at build time, edit it directly.
+  Its Tailwind styles are **not** loaded from a CDN: `__init__.py` inlines the committed, generated `dashboard.css` in place
+  of `<link rel="stylesheet" href="dashboard.css">`, so the page works offline (fallback hotspot). After changing classes
+  run `components/wrg_dashboard/tailwind/build_css.sh` and commit `dashboard.css` (`lint.yaml` runs it with `--check`);
+  never build class names from fragments in JavaScript. Only Chart.js still comes from a CDN (charts degrade to a note).
   The server runs in its own task: read entities / `peers` only in `loop()` (it serializes `/state` and `/meta`),
   never in the request handler; the history ring buffer (`history.h`) is shared under the same mutex. `/stream`
   (Server-Sent Events) follows ESPHome's `/events` pattern: a `StreamSession` is tied to the socket, sent to only from
@@ -496,7 +500,8 @@ Triggered on push and pull request to `master`:
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
     of `CHANGELOG.md`. **Skipped if the tag already exists** (never silently overwrites a release).
 - **`lint.yaml`**: `ci_config.py check` (variant list ↔ files / `firmware_variant` / CLAUDE.md table, YAML
-  `default_*` substitutions ↔ C++ defaults; runs on every change) and `esphome config` validation of **all** variants
+  `default_*` substitutions ↔ C++ defaults; runs on every change), `build_css.sh --check` (dashboard stylesheet up to
+  date) and `esphome config` validation of **all** variants
   of `variants.json` incl. the generated MQTT one (dummy secrets) — catches YAML errors of the variants that PRs no
   longer compile.
 - **`codeql.yaml`**: CodeQL analysis of the C/C++ code (`build-mode: none`, `security-extended` +

@@ -103,8 +103,6 @@ Das Web-Dashboard scannt und visualisiert alle aktiven Lüftungsgeräte im selbe
 ## 🌐 Hybrider Offline-Betrieb
 
 > [!IMPORTANT]
-> **CDN Asset-Laden**: Während alle Steuerungslogiken, PID-Regelungen und Sensorauswertungen zu 100 % lokal auf dem ESP32-C6 laufen (voll funktionsfähig auch ohne Internetverbindung), lädt das Web-Dashboard die Bibliotheken **Tailwind CSS** und **Chart.js** über ein externes CDN (`https://cdn.tailwindcss.com`...).
->
-> Für die grafische Darstellung und die Diagramme im Webbrowser ist daher eine aktive Internetverbindung erforderlich. Ohne sie bleibt die Seite bedienbar (Werte, Einstellungen, Peers; ungestylt) und zeigt statt der Diagramme einen Hinweis.
+> **Nur die Diagramme brauchen Internet**: Alle Steuerungslogiken, PID-Regelungen und Sensorauswertungen laufen zu 100 % lokal auf dem ESP32-C6. Seit *0.10.57* steckt auch die Gestaltung des Dashboards (**Tailwind CSS**) in der Firmware, die Seite ist also ohne Internetzugang vollständig — z. B. im Fallback-Hotspot. Nur **Chart.js** wird weiterhin von einem CDN geladen (`cdn.jsdelivr.net`, ~70 KB komprimiert, zu groß für den Flash der Bluetooth-Proxy-Variante); ohne Internet zeigt die Seite statt der drei Diagramme einen Hinweis.
 
-Die Seite selbst (`components/wrg_dashboard/dashboard.html`) wird beim Build gzip-komprimiert (*0.10.49*; seit 0.10.56 ~78 KB → ~22 KB im Flash) und mit `Content-Encoding: gzip` ausgeliefert.
+Die Seite selbst (`components/wrg_dashboard/dashboard.html`) wird beim Build gzip-komprimiert (*0.10.49*) und mit `Content-Encoding: gzip` ausgeliefert. Seit *0.10.57* bettet der Build vorher das erzeugte Stylesheet `dashboard.css` ein (nur die Tailwind-Klassen, die die Seite nutzt, ~4 KB komprimiert), ~93 KB → ~26 KB im Flash. Nach Änderungen an Klassen in `dashboard.html` wird es mit `components/wrg_dashboard/tailwind/build_css.sh` neu erzeugt (gepinnte Tailwind-Standalone-CLI, kein Node.js) und mit eingecheckt; die CI (`lint.yaml`) schlägt fehl, solange es veraltet ist.

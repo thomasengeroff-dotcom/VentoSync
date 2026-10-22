@@ -39,6 +39,12 @@ jobs:
       - name: Check variant list and defaults
         run: python3 .github/scripts/ci_config.py check
 
+      # dashboard.css is generated from the classes in dashboard.html and
+      # inlined into the firmware; it must be regenerated with every class change.
+      - name: Check dashboard stylesheet
+        if: steps.changes.outputs.firmware == 'true'
+        run: components/wrg_dashboard/tailwind/build_css.sh --check
+
       - name: Create dummy secrets.yaml
         if: steps.changes.outputs.firmware == 'true'
         run: |

@@ -103,8 +103,6 @@ The dashboard dynamically scans and lists all active ESP-NOW ventilation units i
 ## 🌐 Hybrid-Offline Operation
 
 > [!IMPORTANT]
-> **CDN Asset Loading**: While all ventilation logic, PID control, and sensor telemetry run 100% locally on the ESP32-C6 (completely functional even without an active internet connection), the web dashboard loads **Tailwind CSS** and **Chart.js** via an external CDN (`https://cdn.tailwindcss.com`...).
->
-> An internet connection is therefore required for the web browser to load the dashboard styling and the charts. Without it the page stays usable (values, settings, peers; unstyled) and shows a note instead of the charts.
+> **Only the charts need internet**: All ventilation logic, PID control and sensor telemetry run 100 % locally on the ESP32-C6. Since *0.10.57* the dashboard's styling (**Tailwind CSS**) is built into the firmware too, so the page is complete without internet access — e.g. in the fallback hotspot. Only **Chart.js** is still loaded from a CDN (`cdn.jsdelivr.net`, ~70 KB compressed, too large for the flash of the Bluetooth proxy variant); without internet the page shows a note instead of the three charts.
 
-The page itself (`components/wrg_dashboard/dashboard.html`) is gzip-compressed at build time (*0.10.49*; since 0.10.56 ~78 KB → ~22 KB in flash) and served with `Content-Encoding: gzip`.
+The page itself (`components/wrg_dashboard/dashboard.html`) is gzip-compressed at build time (*0.10.49*) and served with `Content-Encoding: gzip`. Since *0.10.57* the build first inlines the generated stylesheet `dashboard.css` (only the Tailwind classes the page uses, ~4 KB compressed), ~93 KB → ~26 KB in flash. After changing classes in `dashboard.html`, regenerate it with `components/wrg_dashboard/tailwind/build_css.sh` (pinned Tailwind standalone CLI, no Node.js) and commit the result; CI (`lint.yaml`) fails while it is outdated.

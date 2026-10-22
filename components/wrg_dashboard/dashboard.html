@@ -6,7 +6,8 @@
 
   File:        dashboard.html
   Description: Single-page web dashboard (GET /, alias /ui). Gzipped into the firmware
-               at build time by __init__.py — edit this file directly.
+               at build time by __init__.py together with the inlined dashboard.css —
+               edit this file directly, then run tailwind/build_css.sh.
   Author:      Thomas Engeroff
   Created:     2026-03-09
   Modified:    2026-10-22
@@ -16,25 +17,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Wohnraumlüftung Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Replaced by the committed dashboard.css at build time (__init__.py), so the page needs no
+       internet; regenerate it with tailwind/build_css.sh after changing classes. -->
+  <link rel="stylesheet" href="dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            bg: '#121212',
-            card: '#1e1e1e',
-            accent: '#03dac6',
-            accentHover: '#01b4a0',
-            danger: '#cf6679',
-            warn: '#f2b84b',
-          }
-        }
-      }
-    }
-  </script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     input[type=range]::-webkit-slider-thumb {
