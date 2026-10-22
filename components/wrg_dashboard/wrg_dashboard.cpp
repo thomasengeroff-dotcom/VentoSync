@@ -571,7 +571,12 @@ std::string WrgDashboard::build_state_json_() {
       p["master"] = peer.device_id == MASTER_DEVICE_ID;
       p["mode_index"] = peer.current_mode_index;
       p["speed"] = peer.fan_intensity;
-      p["phase"] = peer.phase_state;
+      // Current direction from our room-synced cycle and the peer's configured
+      // phase (absent while the fan stands or the direction is unknown)
+      bool dir_in = false;
+      if (v->state_machine.peer_direction_in(peer.current_mode, !peer.phase_b, now, dir_in)) {
+        p["dir"] = dir_in ? "in" : "out";
+      }
       // last_seen_ms can be a few ms ahead of now (packet stamped after the loop's timestamp)
       p["age_s"] = static_cast<int32_t>(age) < 0 ? 0u : age / 1000u;
       p["fresh"] = static_cast<int32_t>(age) < static_cast<int32_t>(fusion_age);

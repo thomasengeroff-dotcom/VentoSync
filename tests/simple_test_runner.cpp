@@ -1332,6 +1332,49 @@ bool test_phase_logic() {
   return true;
 }
 
+// Dashboard peer cards: a peer's direction follows our synced cycle and its
+// own phase group — opposite to ours in WRG for the other group, never the
+// packet's phase_state (same for both groups, up to a heartbeat old).
+bool test_peer_direction() {
+  esphome::VentilationStateMachine sm;
+  sm.setup();
+  sm.cycle_duration_ms = 1000;
+  sm.is_phase_a = true;
+  bool in = false;
+
+  // WRG, global phase A: group A in, group B out — and inverted after the flip
+  sm.set_mode(esphome::MODE_ECO_RECOVERY, 0, 0);
+  sm.update(0);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_ECO_RECOVERY, true, 0, in) && in);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_ECO_RECOVERY, false, 0, in) && !in);
+  sm.update(1100);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_ECO_RECOVERY, true, 1100, in) && !in);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_ECO_RECOVERY, false, 1100, in) && in);
+  // Our own direction uses the same rule
+  TEST_ASSERT(sm.get_target_state(1100).direction_in == sm.direction_in_for(true));
+
+  // A cyclic mode that differs from ours: unknown; Durchlüften only depends on the phase
+  TEST_ASSERT(!sm.peer_direction_in(esphome::MODE_STOSSLUEFTUNG, true, 1100, in));
+  TEST_ASSERT(!sm.peer_direction_in(esphome::MODE_OFF, true, 1100, in));
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_VENTILATION, true, 1100, in) && in);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_VENTILATION, false, 1100, in) && !in);
+
+  // Aus: the fan stands
+  sm.set_mode(esphome::MODE_OFF, 2000, 0);
+  TEST_ASSERT(!sm.peer_direction_in(esphome::MODE_OFF, true, 2000, in));
+
+  // Stoßlüftung: first burst A in / B out, nothing during the pause
+  sm.set_mode(esphome::MODE_STOSSLUEFTUNG, 3000, 0);
+  sm.update(3000);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_STOSSLUEFTUNG, true, 3000, in) && in);
+  TEST_ASSERT(sm.peer_direction_in(esphome::MODE_STOSSLUEFTUNG, false, 3000, in) && !in);
+  const uint32_t pause = 3000 + esphome::VentilationStateMachine::STOSS_ACTIVE_MS + 1000;
+  sm.update(pause);
+  TEST_ASSERT(!sm.peer_direction_in(esphome::MODE_STOSSLUEFTUNG, true, pause, in));
+
+  return true;
+}
+
 // ============================================================
 // T-1: set_mode() — K-3 Fix Regression (Early-Return Logic)
 // Validates that the removed 'changed' variable doesn't alter
@@ -2410,6 +2453,12 @@ int main() {
     std::cout << "[PASS] Phase Logic" << std::endl;
   } else {
     std::cout << "[FAIL] Phase Logic" << std::endl;
+    all_passed = false;
+  }
+  if (test_peer_direction()) {
+    std::cout << "[PASS] Peer Direction (dashboard)" << std::endl;
+  } else {
+    std::cout << "[FAIL] Peer Direction (dashboard)" << std::endl;
     all_passed = false;
   }
 

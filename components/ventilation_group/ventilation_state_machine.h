@@ -21,7 +21,7 @@
 // Description: State machine for ventilation modes and timing.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-19
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -212,6 +212,28 @@ public:
    * @return  HardwareState  A composite struct for the low-level drivers.
    */
   HardwareState get_target_state(uint32_t now) const;
+  /**
+   * @brief   Airflow direction of a device in phase group @p phase_a under
+   *          this machine's mode and cycle position.
+   * @details The rule of get_target_state(), also used for the other devices
+   *          of the room: their cycle is synced, only the phase group differs.
+   */
+  bool direction_in_for(bool phase_a) const;
+  /**
+   * @brief   Current airflow direction of another device of the room
+   *          (dashboard peer cards).
+   * @details Derived from this machine's room-synced cycle and the peer's
+   *          configured phase, so it is exact at any time — unlike the
+   *          packet's phase_state, which is the room's cycle phase (the same
+   *          for A and B) at send time, up to one heartbeat old.
+   * @param[in]  peer_mode     Peer's VentilationMode (PeerState::current_mode).
+   * @param[in]  peer_phase_a  Peer's configured phase is A.
+   * @param[in]  now           Current system time in milliseconds.
+   * @param[out] direction_in  true = intake (IN), false = exhaust (OUT).
+   * @return  false if unknown or the fan stands: Aus, Stoßlüftung pause, or
+   *          a cyclic mode that differs from ours (mode change in flight).
+   */
+  bool peer_direction_in(uint8_t peer_mode, bool peer_phase_a, uint32_t now, bool &direction_in) const;
   /**
    * @brief   Calculates the remaining duration for timed modes.
    *
