@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-18
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -115,6 +115,8 @@ static constexpr int MODE_INDEX_COUNT = static_cast<int>(sizeof(MODE_NAMES) / si
 static_assert(MODE_INDEX_AUS == MODE_INDEX_COUNT - 1, "\"Aus\" must be the last mode index");
 static_assert(MODE_INDEX_COUNT == ventosync::packet::MODE_INDEX_COUNT,
               "MODE_NAMES must match the mode indices accepted on the wire (ventilation_packet.h)");
+static_assert(MODE_INDEX_AUTO == ventosync::packet::MODE_INDEX_AUTO,
+              "Smart-Automatik must use the same mode index on the wire (ventilation_packet.h)");
 
 // --- Binary Peer Cache (Runtime) ----------------------------------------
 /// @brief Runtime peer entry for fast MAC lookup during send operations.

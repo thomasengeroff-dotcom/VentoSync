@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.52] - 2026-10-22
+
+### Fixed
+
+- **Vacation mode: the other devices of a room ran on their old level** — the Master applied the vacation preset
+  (e.g. *Stoßlüftung* level 3), but the other devices only took over the mode and kept the level they had before
+  (level 1 in a room coming from Smart-Automatik). Found in a field test with four devices. Two causes in
+  `handle_state_sync()` (`network_sync.h`):
+  - The level was skipped while the receiver still ran Smart-Automatik — the packet that switches the room to the
+    preset arrives exactly then. The decision now also uses the packet's mode.
+  - The level was compared with `VentilationController::current_fan_intensity`, which `on_packet_received()` had
+    already updated. When the Master's heartbeat (`MSG_SYNC`) carried the new level before the rate-limited
+    `MSG_STATE`, the fan never got it, and no later packet corrected it. It is now compared with the level the fan
+    runs on (`fan_intensity_level`).
+
+  The same applied to any level change that reached a device first through a heartbeat, e.g. restoring a manual
+  mode after the vacation. The decision is the new pure function `ventosync::packet::level_to_adopt()`
+  (`ventilation_packet.h`, unit test T-8g).
+- **"Lüfter Intensität" lagged up to 60 s** when the firmware set the level itself (vacation preset and restore):
+  `set_fan_intensity_slider()` now publishes the number right away.
+
+### Changed
+
+- Vacation mode docs (ha-docs, EN/DE guides, READMEs): the other devices take over the Master's mode **and** level;
+  `Automatik-Status` shows the Master's `Urlaubsmodus Intensität`; recommendation to set the same vacation preset on
+  every device of a room, because a device that steps in for an unreachable Master uses its own.
+
 ## [0.10.51] - 2026-10-21
 
 ### Added

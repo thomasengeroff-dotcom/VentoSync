@@ -564,7 +564,7 @@ Alle Funktionen sind vollständig in Home Assistant integriert. Änderungen am P
 - **Urlaubsmodus** *(Konfiguration)*:
   - `select.urlaubsmodus_betriebsmodus` — Betriebsmodus bei aktivem Urlaubsmodus (Standard: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Lüfterstufe bei aktivem Urlaubsmodus, 1–10 (Standard: `1`)
-  > Beide am **Master** (Geräte-ID 1) einstellen — er schaltet und stellt den Urlaubsmodus für den ganzen Raum wieder her.
+  > Beide am **Master** (Geräte-ID 1) einstellen — er schaltet und stellt den Urlaubsmodus für den ganzen Raum wieder her, die übrigen Geräte übernehmen Modus und Stufe. Am besten auf allen Geräten des Raums gleich setzen: Ein für den Master einspringendes Gerät nutzt seine eigenen Werte.
 - **Diagnose**: Anzeige von RPM, Temperatur, Feuchte und **CO2-Gehalt (ppm)**
 
 👉 **Tipp:** Eine detaillierte Übersicht aller verfügbaren Home Assistant Entitäten inklusive ihrer technischen Namen (`ID`) und Funktion findest du im Dokument **[Entities_Documentation.md](documentation/de/de_home-assistant-entities.md)**. Eine ausführliche Home-Assistant-Dokumentation im Stil von developers.home-assistant.io — alle Entitäten mit Wertebereichen und Gültigkeit (Raum / Gerät), API-Actions, Events sowie Beispiel-Automationen und Dashboard-Karten — liegt unter **[documentation/ha-docs](documentation/ha-docs/docs/intro.md)** (Docusaurus-Site, auf Deutsch).

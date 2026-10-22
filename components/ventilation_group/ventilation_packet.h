@@ -22,7 +22,7 @@
 //              pure packet validation. No ESPHome dependencies — unit-tested.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-20
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -296,6 +296,38 @@ inline void update_peer_state(esphome::PeerState &peer, const esphome::Ventilati
   peer.nox_strong = (pkt.room_flags & esphome::ROOM_FLAG_NOX_STRONG) != 0;
   peer.vacation_pre_mode_index = pkt.vacation_pre_mode_index;
   peer.vacation_pre_intensity = pkt.vacation_pre_intensity;
+}
+
+/// Smart-Automatik on the wire (UI mode index 0, globals.h MODE_INDEX_AUTO).
+constexpr uint8_t MODE_INDEX_AUTO = 0;
+
+/**
+ * @brief   Fan level a receiver takes over from a peer's state packet.
+ *
+ * @details The manual modes run the whole room on the sender's level. In
+ *          Smart-Automatik the local automatic decides (a slave follows the
+ *          Master in auto_level.h), so a receiver that already runs it keeps
+ *          its level.
+ *
+ *          Decided by the packet's mode as well: a packet that switches the
+ *          room from Smart-Automatik to a manual mode (e.g. the vacation
+ *          preset) arrives while the receiver still runs the automatic — its
+ *          level has to be taken over all the same.
+ *
+ *          Compared with the level the fan runs on (`local_level`), not with
+ *          VentilationController::current_fan_intensity: on_packet_received()
+ *          has already updated that cache, so a level that arrived first in a
+ *          heartbeat (MSG_SYNC) would otherwise never reach the fan.
+ *
+ * @param[in] local_level  Level the receiver's fan runs on (fan_intensity_level).
+ * @param[in] local_auto   Receiver runs Smart-Automatik before this packet.
+ * @return  Level to apply (1–10), or 0 to keep the local level.
+ */
+inline uint8_t level_to_adopt(const esphome::VentilationPacket &pkt, int local_level, bool local_auto) {
+  if (pkt.fan_intensity < 1 || pkt.fan_intensity > 10) return 0;
+  if (local_auto && pkt.current_mode_index == MODE_INDEX_AUTO) return 0;
+  if (pkt.fan_intensity == local_level) return 0;
+  return pkt.fan_intensity;
 }
 
 }  // namespace packet

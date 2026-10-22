@@ -66,7 +66,7 @@ Für eine einfache Diagnose und Überwachung der ESP-NOW-Gruppensynchronisation 
 Der Urlaubsmodus ist ein konfigurierbarer Energiesparmodus für längere Abwesenheiten und wird über einen Home-Assistant-Toggle-Helper geschaltet (Standard `input_boolean.ventosync_vacation_mode`, Substitution `vacation_sensor_id`).
 
 ### Funktionsweise
-1. **Aktivierung (raumweit)**: Der **Master** (Geräte-ID 1) jedes Raums sichert seinen aktuellen Betriebsmodus und seine Lüfterstufe und schaltet den Raum in den konfigurierten Urlaubsmodus (Standard: *Stoßlüftung auf Stufe 1*). Die übrigen Geräte folgen dem Master per ESP-NOW — sie schalten nicht selbst um, sodass kein Gerät versehentlich den Urlaubszustand als „vorherigen“ Zustand sichert.
+1. **Aktivierung (raumweit)**: Der **Master** (Geräte-ID 1) jedes Raums sichert seinen aktuellen Betriebsmodus und seine Lüfterstufe und schaltet den Raum in den konfigurierten Urlaubsmodus (Standard: *Stoßlüftung auf Stufe 1*). Die übrigen Geräte übernehmen Modus und Stufe des Masters per ESP-NOW — sie schalten nicht selbst um, sodass kein Gerät versehentlich den Urlaubszustand als „vorherigen“ Zustand sichert.
 2. **Wiederherstellung**: Beim Deaktivieren stellt der Master den gesicherten Modus und die Stufe für den ganzen Raum wieder her.
 3. **Ohne erreichbaren Master** schaltet und stellt ein Gerät den Urlaubsmodus selbst her. Der Urlaubszustand wird dauerhaft gespeichert (`vacation_state`); ein Neustart oder ein wiederholter Auslöser während des Urlaubs überschreibt den gesicherten Zustand nie.
 

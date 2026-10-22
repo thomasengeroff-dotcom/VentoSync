@@ -21,7 +21,7 @@
 // Description: Processing of physical button and slider interactions.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-19
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -121,6 +121,9 @@ inline void set_fan_intensity_slider(float value) {
   }
 
   fan_intensity_level->value() = val;
+  // Internal callers (vacation mode) do not go through the HA number's
+  // set_action — without this HA shows the old level until the next poll.
+  if (fan_intensity_display != nullptr) fan_intensity_display->publish_state(val);
   ventilation_ctrl->set_fan_intensity(val);
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
   fan_speed_update->execute();

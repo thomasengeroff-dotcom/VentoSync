@@ -568,7 +568,7 @@ All functions are fully integrated into Home Assistant. Changes on the panel are
 - **Vacation Mode** *(Configuration)*:
   - `select.urlaubsmodus_betriebsmodus` — Operating mode when vacation is active (default: `Stoßlüftung`)
   - `number.urlaubsmodus_intensitat` — Fan intensity when vacation is active, 1–10 (default: `1`)
-  > Set both on the **Master** (device ID 1) — it applies and restores the vacation mode for the whole room.
+  > Set both on the **Master** (device ID 1) — it applies and restores the vacation mode for the whole room, the other devices take over its mode and level. Best set the same values on every device of the room: a device that steps in for the Master uses its own.
 
 👉 **Tip:** A detailed overview of all available Home Assistant entities, including their technical names (`ID`) and functions, can be found in the document **[Entities_Documentation.md](documentation/en/en_home-assistant-entities.md)**. A detailed Home Assistant guide in the style of developers.home-assistant.io — every entity with ranges and scope (room / device), API actions, events, example automations and dashboard cards — is available in **[documentation/ha-docs](documentation/ha-docs/docs/intro.md)** (Docusaurus site, German only).
 

@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-21
+// Modified:    2026-10-22
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -2261,6 +2261,39 @@ bool test_dashboard_history() {
   return true;
 }
 
+// ============================================================
+// T-8g: Level taken over from a peer's state packet (vacation mode)
+// ============================================================
+bool test_level_to_adopt() {
+  using ventosync::packet::level_to_adopt;
+  auto pkt = valid_packet();
+
+  // Room switches from Smart-Automatik to the vacation preset (Stoßlüftung 3):
+  // the receiver still runs the automatic while the packet is processed.
+  pkt.current_mode_index = 3;
+  pkt.fan_intensity = 3;
+  TEST_ASSERT(level_to_adopt(pkt, 1, true) == 3);
+  TEST_ASSERT(level_to_adopt(pkt, 1, false) == 3);
+  // Compared with the level the fan runs on, not with a cache that already
+  // holds the packet's level: the fan still on 1 takes over 3.
+  TEST_ASSERT(level_to_adopt(pkt, 3, false) == 0);
+
+  // Smart-Automatik keeps the local level while the receiver runs it …
+  pkt.current_mode_index = 0;
+  pkt.fan_intensity = 5;
+  TEST_ASSERT(level_to_adopt(pkt, 2, true) == 0);
+  // … but a packet that switches a manual receiver into it brings the level.
+  TEST_ASSERT(level_to_adopt(pkt, 3, false) == 5);
+
+  // Invalid levels are never applied.
+  pkt.current_mode_index = 1;
+  pkt.fan_intensity = 0;
+  TEST_ASSERT(level_to_adopt(pkt, 4, false) == 0);
+  pkt.fan_intensity = 11;
+  TEST_ASSERT(level_to_adopt(pkt, 4, false) == 0);
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -2420,6 +2453,7 @@ int main() {
     {"T-8d: Summer bypass decision + re-measure guard", test_summer_bypass},
     {"T-8e: Timer started after the loop timestamp (#54)", test_timer_start_after_now},
     {"T-8f: Dashboard history ring buffer (24 h, 5 min)", test_dashboard_history},
+    {"T-8g: Level taken over from a peer (vacation preset)", test_level_to_adopt},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {
