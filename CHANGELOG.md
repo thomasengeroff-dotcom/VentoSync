@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.53] - 2026-10-22
+
+### Fixed
+
+- **CO2 staleness warning flooded the Home Assistant log** — variants without a CO2 source (`nosensor`, `NTConly`,
+  `radar_only`) logged `CO2 staleness timeout (>5min). Publishing NaN.` on every `effective_co2` update (every 30 s,
+  ~2,900 lines per device and day in `home-assistant.log`). The warning is now logged once per stale phase, and
+  `CO2 value available again.` (INFO) once the value returns. Behaviour unchanged: `effective_co2` still turns NaN
+  after 5 min without data.
+- **"Watchdog Restarts" stayed *unknown*** — the sensor had `update_interval: never` and was never published; it now
+  publishes the counter every 60 s. The counter itself could get lost: `check_brain_health()` incremented it right
+  before `esp_restart()`, which runs no shutdown hooks, so the value never reached NVS. It is now stored and committed
+  (`global_preferences->sync()`) before the restart.
+- **Implausible fan RPM from an open tacho input** — without a 4-pin fan the tacho input (GPIO20) can pick up noise,
+  `sensor.lufter_drehzahl` then showed about ±19,000 RPM (a new value every 2 s). Tacho readings above 6000 RPM
+  (`VentilationLogic::TACHO_MAX_RPM`, level 10 ≈ 4200 RPM) now fall back to the virtual RPM model
+  (`VentilationLogic::is_plausible_tacho_rpm()`, unit test *Tacho Plausibility*).
+
 ## [0.10.52] - 2026-10-22
 
 > ⚠️ **ESP-NOW protocol v14 — flash all devices of a room.** v13 and v14 devices reject each other's packets.

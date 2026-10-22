@@ -45,7 +45,7 @@ Zur Schonung der Motorelektronik und zur akustischen Optimierung werden alle Dre
 Nicht alle verbauten Lüfter verfügen über ein physisches Tachosignal (z. B. der 3-PIN ebm-papst 4412 F/2 GLL).
 
 * **Virtuelle Berechnung**: Ohne Tachosignal schätzt VentoSync die Drehzahl als *Geschwindigkeitsanteil × 4200 RPM* (der Geschwindigkeitsanteil folgt der nichtlinearen Stufenkurve: Stufe 1 = 10 %, Stufe 6 = 50 %, Stufe 10 = 100 %), einschließlich der 5-s-Rampen.
-* **Physisches Tachosignal**: Bei einem 4-PIN-Lüfter mit Tachoausgang (z. B. AxiRev) werden die Impulse an GPIO20 (Hardware-Pulse-Counter) verwendet. Der Wert dient der Anzeige und Diagnose — die Drehzahl wird nicht geregelt (kein Closed-Loop).
+* **Physisches Tachosignal**: Bei einem 4-PIN-Lüfter mit Tachoausgang (z. B. AxiRev) werden die Impulse an GPIO20 (Hardware-Pulse-Counter) verwendet. Werte über 6000 RPM – Störimpulse an einem offenen Tacho-Eingang, z. B. ohne Lüfter oder mit 3-PIN-Lüfter – werden verworfen, dann gilt die virtuelle Berechnung. Der Wert dient der Anzeige und Diagnose — die Drehzahl wird nicht geregelt (kein Closed-Loop).
 * **Entität**: `sensor.lufter_drehzahl` („Lüfter Drehzahl“), negativ bei Abluft.
 
 ---

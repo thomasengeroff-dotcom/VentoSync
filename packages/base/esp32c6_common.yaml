@@ -21,7 +21,7 @@
 # Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-10-18
+# Modified:    2026-10-22
 # ==========================================================================
 
 substitutions:
@@ -224,9 +224,10 @@ sensor:
     unit_of_measurement: "reboots"
     icon: "mdi:restart-alert"
     entity_category: diagnostic
-    update_interval: never
+    update_interval: 60s
+    accuracy_decimals: 0
     lambda: |-
-      // Requires a global counter incremented in on_boot or reset_reason check
+      // Persistent counter, incremented by check_brain_health() (health_helpers.h)
       return id(watchdog_restarts_count);
 
   # Internal RAM monitoring

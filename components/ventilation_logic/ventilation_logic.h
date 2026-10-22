@@ -21,7 +21,7 @@
 // Description: Core ventilation math and logic utilities.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-15
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 
@@ -131,6 +131,22 @@ public:
    */
   static float calculate_virtual_fan_rpm(float speed, bool direction_is_intake,
                                          float ramp_factor = 1.0f);
+
+  /// @name Tacho plausibility window (pulse counter, RPM)
+  /// @{
+  static constexpr float TACHO_MIN_RPM = 10.0f;    ///< Below: no tacho signal (3-pin fan).
+  static constexpr float TACHO_MAX_RPM = 6000.0f;  ///< Above: noise on an open tacho input.
+  /// @}
+
+  /**
+   * @brief   True if a tacho reading is a real fan speed.
+   * @details A 4-pin fan reaches about 4200 RPM at level 10. Readings far
+   *          above that come from a floating or noisy tacho input (no fan or a
+   *          3-pin fan) and must fall back to the virtual RPM model.
+   * @param[in] raw_rpm  RPM from the pulse counter (unsigned).
+   * @return  True inside (TACHO_MIN_RPM, TACHO_MAX_RPM]; false for NaN.
+   */
+  static bool is_plausible_tacho_rpm(float raw_rpm);
 
   /**
    * @brief   Returns a human-readable German CO2 classification.

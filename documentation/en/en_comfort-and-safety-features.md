@@ -45,7 +45,7 @@ To protect the motor electronics and minimize acoustic disruption, all speed tra
 Not all installed fans include a physical tachometer output (e.g., the 3-PIN ebm-papst 4412 F/2 GLL).
 
 * **Virtual Calculation**: For fans without tachometer output, VentoSync estimates the RPM as *speed fraction × 4200 RPM* (the speed fraction follows the non-linear level curve: level 1 = 10 %, level 6 = 50 %, level 10 = 100 %), including the 5 s ramps.
-* **Physical Tachometer**: When a 4-PIN fan with tacho output (e.g. AxiRev) is installed, its pulses on GPIO20 (hardware pulse counter) are used instead. The value is for display and diagnostics only — the fan speed is not closed-loop controlled.
+* **Physical Tachometer**: When a 4-PIN fan with tacho output (e.g. AxiRev) is installed, its pulses on GPIO20 (hardware pulse counter) are used instead. Readings above 6000 RPM — noise on an open tacho input, e.g. without a fan or with a 3-pin fan — are discarded in favour of the virtual calculation. The value is for display and diagnostics only — the fan speed is not closed-loop controlled.
 * **Entity**: `sensor.lufter_drehzahl` ("Lüfter Drehzahl"), negative while extracting.
 
 ---

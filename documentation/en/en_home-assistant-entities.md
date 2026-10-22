@@ -23,7 +23,8 @@ This file lists the Home Assistant entities provided by the VentoSync firmware (
   * *Documentation:* Manual fan level. In Smart-Automatik it shows the automatic's level; changing it (here or in the web dashboard) starts the room-wide **level override** like the Level button (see `number.smart_automatik_ubersteuerung_dauer`).
 * **`sensor.lufter_drehzahl`** ("Lüfter Drehzahl", YAML ID `fan_rpm`)
   * *Type:* Sensor (RPM, negative while extracting)
-  * *Documentation:* Tacho RPM of a 4-pin fan, otherwise estimated as speed fraction × 4200 RPM.
+  * *Documentation:* Tacho RPM of a 4-pin fan, otherwise estimated as speed fraction × 4200 RPM. Tacho readings
+    above 6000 RPM (noise on an open tacho input) also fall back to the estimate.
 * **`sensor.lufter_pwm`** ("Lüfter PWM", YAML ID `fan_pwm_percent`)
   * *Type:* Sensor (%)
   * *Documentation:* Current PWM duty cycle (50 % = standstill, < 50 % extract, > 50 % supply).
@@ -165,6 +166,8 @@ The panel LEDs themselves are driven by the firmware and are **not** exposed as 
 * **`text_sensor.gerate_konfiguration`** ("Geräte-Konfiguration"), **`sensor.id_stockwerk`**, **`sensor.id_raum`**, **`sensor.id_gerat`** — active IDs and phase (diagnostic).
 * **`text_sensor.esp_now_peers`** ("ESP-NOW Peers") and **`switch.esp_now_peerprufung`** ("ESP-NOW Peerprüfung") — known peers of the room.
 * System: `sensor.wlan_signal`, `sensor.wlan_kanal`, `sensor.laufzeit`, `sensor.freier_speicher_ram`, `sensor.watchdog_restarts`, `sensor.internal_esp32_c6_temperature`, `text_sensor.ip_adresse`, `text_sensor.wlan_ssid`, `text_sensor.esphome_version`, `text_sensor.projektversion`, `update.firmware_update`.
+  `sensor.watchdog_restarts` ("Watchdog Restarts") counts the restarts forced by the brain-freeze watchdog (main loop
+  silent for 10 min); stored in NVS, published every 60 s.
 
 ## 8. Flash Memory & Lifetime (NVS)
 

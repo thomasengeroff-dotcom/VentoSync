@@ -24,6 +24,7 @@ Diese Datei listet die Home-Assistant-Entitäten der VentoSync-Firmware (`ventos
 * **`sensor.lufter_drehzahl`** („Lüfter Drehzahl“, YAML-ID `fan_rpm`)
   * *Typ:* Sensor (RPM, negativ bei Abluft)
   * *Dokumentation:* Tacho-Drehzahl eines 4-Pin-Lüfters, sonst geschätzt als Geschwindigkeitsanteil × 4200 RPM.
+    Tacho-Werte über 6000 RPM (Störimpulse an einem offenen Tacho-Eingang) fallen ebenfalls auf die Schätzung zurück.
 * **`sensor.lufter_pwm`** („Lüfter PWM“, YAML-ID `fan_pwm_percent`)
   * *Typ:* Sensor (%)
   * *Dokumentation:* Aktuelles PWM-Tastverhältnis (50 % = Stillstand, < 50 % Abluft, > 50 % Zuluft).
@@ -165,6 +166,8 @@ Die Panel-LEDs selbst steuert die Firmware; sie sind **keine** Light-Entitäten 
 * **`text_sensor.gerate_konfiguration`** („Geräte-Konfiguration“), **`sensor.id_stockwerk`**, **`sensor.id_raum`**, **`sensor.id_gerat`** — aktive IDs und Phase (Diagnose).
 * **`text_sensor.esp_now_peers`** („ESP-NOW Peers“) und **`switch.esp_now_peerprufung`** („ESP-NOW Peerprüfung“) — bekannte Peers des Raums.
 * System: `sensor.wlan_signal`, `sensor.wlan_kanal`, `sensor.laufzeit`, `sensor.freier_speicher_ram`, `sensor.watchdog_restarts`, `sensor.internal_esp32_c6_temperature`, `text_sensor.ip_adresse`, `text_sensor.wlan_ssid`, `text_sensor.esphome_version`, `text_sensor.projektversion`, `update.firmware_update`.
+  `sensor.watchdog_restarts` („Watchdog Restarts“) zählt die vom Brain-Freeze-Watchdog erzwungenen Neustarts
+  (Hauptschleife 10 min still); im NVS gespeichert, alle 60 s veröffentlicht.
 
 ## 8. Flash-Speicher & Lebensdauer (NVS)
 

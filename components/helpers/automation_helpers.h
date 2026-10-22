@@ -21,13 +21,12 @@
 // Description: Hardware fan speed and direction management.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-09-24
+// Modified:    2026-10-22
 // ==========================================================================
 #pragma once
 #include "globals.h"
 
 // --- Constants ---
-constexpr float MIN_PHYSICAL_RPM = 10.0f; // Minimum valid RPM reading from tacho
 constexpr float RAMPING_UPPER_BOUND = 0.99f; // Upper bound for active ramping phase
 constexpr float RAMPING_LOWER_BOUND = 0.01f; // Lower bound for active ramping phase
 
@@ -167,8 +166,9 @@ inline float get_current_target_speed() {
  * @return  float  Signed virtual RPM (negative for exhaust/raus).
  */
 inline float calculate_virtual_fan_rpm(float raw_rpm) {
-  // 1. If physical tacho signal is valid (4-pin fan), use it immediately
-  if (raw_rpm > MIN_PHYSICAL_RPM) {
+  // 1. If physical tacho signal is valid (4-pin fan), use it immediately.
+  //    Readings above TACHO_MAX_RPM are noise on an open tacho input.
+  if (VentilationLogic::is_plausible_tacho_rpm(raw_rpm)) {
     bool direction_in = true;
     if (ventilation_ctrl != nullptr) {
       direction_in = ventilation_ctrl->state_machine.get_target_state(millis())
