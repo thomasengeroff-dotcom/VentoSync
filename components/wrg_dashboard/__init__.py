@@ -136,11 +136,15 @@ TABLES = (
 
 
 def _validate_defaults(value):
-    """Factory defaults shown by the setup wizard: number key -> value."""
+    """Factory defaults shown by the setup wizard: number key -> value,
+    select key -> option index."""
     value = cv.Schema({cv.string_strict: cv.float_})(value)
-    for key in value:
-        if key not in NUMBERS.values():
-            raise cv.Invalid(f"defaults: '{key}' is not a number key ({', '.join(sorted(NUMBERS.values()))})")
+    keys = set(NUMBERS.values()) | set(SELECTS.values())
+    for key, default in value.items():
+        if key not in keys:
+            raise cv.Invalid(f"defaults: '{key}' is not a number or select key ({', '.join(sorted(keys))})")
+        if key in SELECTS.values() and (default < 0 or default != int(default)):
+            raise cv.Invalid(f"defaults: '{key}' is a select, its default must be an option index")
     return value
 
 
@@ -151,8 +155,8 @@ _schema = {
     cv.Optional("ventilation_ctrl_id"): cv.use_id(cg.Component),
     cv.Optional(CONF_PROJECT_VERSION, default=""): cv.string,
     cv.Optional(CONF_FIRMWARE_VARIANT, default=""): cv.string,
-    # Factory defaults per number key (the default_* substitutions), listed in
-    # /meta for the setup wizard
+    # Factory defaults per number key / select option index (the default_*
+    # substitutions), listed in /meta for the setup wizard
     cv.Optional(CONF_DEFAULTS, default={}): _validate_defaults,
 }
 for option, cls in DIRECT.items():

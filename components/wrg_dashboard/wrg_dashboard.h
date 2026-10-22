@@ -162,7 +162,7 @@ public:
 #ifdef USE_BUTTON
   void add_button(const char *key, button::Button *b) { buttons_.push_back({key, b}); }
 #endif
-  /// Factory default of a number key (setup wizard, listed in /meta).
+  /// Factory default of a number key or a select's option index (setup wizard, listed in /meta).
   void add_default(const char *key, float value) { defaults_.push_back({key, value}); }
 
   /**

@@ -300,3 +300,5 @@ wrg_dashboard:
     auto_humidity_threshold: ${default_auto_humidity_threshold}
     auto_summer_cooling_threshold: ${default_summer_cooling_threshold}
     auto_override_duration: ${default_auto_override_duration}
+    vacation_intensity: ${default_vacation_level}
+    vacation_mode: ${default_vacation_mode_index}   # option index (MODE_NAMES order)

@@ -461,7 +461,7 @@ esphome upload ventosync_nosensor.yaml --device <IP-Address> --no-logs
    - **Device ID** (Unique number for this device)
    - **Room ID** (Devices with the same Room ID will synchronize)
    - **Floor ID**
-3. **Alternative - Web Dashboard**: If you don't use Home Assistant, you can configure all settings — including floor, room and device ID and the phase — via the local web dashboard at `http://<device-ip>/`. Since 0.10.56 a **setup wizard** opens there on a device that was never set up: floor and room, device ID (checked against the IDs already used in the room) and phase (with a suggestion), then the room-wide Smart-Automatik basics with explanations. It can be reopened under *Gerätekonfiguration → Einrichtungs-Assistent*.
+3. **Alternative - Web Dashboard**: If you don't use Home Assistant, you can configure all settings — including floor, room and device ID and the phase — via the local web dashboard at `http://<device-ip>/`. Since 0.10.56 a **setup wizard** opens there on a device that was never set up: floor and room, device ID (checked against the IDs already used in the room) and phase (with a suggestion), then — grouped and explained — the operating mode, the Smart-Automatik basics, Klima-Koordination, NOx-Stoßlüftung (SGP41 board only), vacation preset and child lock (since 0.10.58). **RAUMWEIT** marks values that come from the room's Master, an orange **PRÜFEN** the ones that apply to this device only. It can be reopened under *Gerätekonfiguration → Einrichtungs-Assistent*.
 4. **Enjoy**: Sit back and enjoy your smart HRV system!
 5. **OTA Updates**:
    Example of Update process in Home Assistant:
