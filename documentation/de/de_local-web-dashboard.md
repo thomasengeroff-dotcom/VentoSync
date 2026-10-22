@@ -25,7 +25,7 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
   * *Smart-Automatik*: Min-/Max-Stufe, CO2- und Feuchte-Grenzwert, Anwesenheits-Anpassung, Übersteuerungsdauer, Sommerkühlung-Schwelle.
   * *Klima-Koordination*: Schalter, CO2-Grenzwert, Max-Stufe, CO2-Notfallgrenze.
   * *NOx-Stoßlüftung*: raumweiter Schalter; die Schwelle nur bei den SGP41-Varianten.
-  * *Urlaubsmodus*: Betriebsmodus und Stufe.
+  * *Urlaubsmodus*: Betriebsmodus und Stufe, beide raumweit (*0.10.52*).
   * *Netzwerk*: ESP-NOW-Sync-Intervall.
 
   Zahlenfelder übernehmen ihre Grenzen vom Gerät (`/meta`); ein Wert außerhalb des HA-Slider-Bereichs wird nicht gesendet. Das Bedienelement wird kurz türkis (übernommen) oder rot (abgelehnt) umrandet.

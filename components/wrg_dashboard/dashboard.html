@@ -9,7 +9,7 @@
                at build time by __init__.py — edit this file directly.
   Author:      Thomas Engeroff
   Created:     2026-03-09
-  Modified:    2026-10-21
+  Modified:    2026-10-22
 -->
 <html lang="de" class="dark">
 <head>
@@ -266,8 +266,8 @@
                  ['n', 'hvac_emergency_co2', 'CO2-Notfallgrenze', 'ppm', 1]],
       grp_nox: [['t', 'nox_boost', 'NOx-Stoßlüftung aktiv', '', 1],
                 ['n', 'nox_boost_threshold', 'Schwelle (dieses Gerät)', 'Index', 0]],
-      grp_vac: [['s', 'vacation_mode', 'Betriebsmodus', '', 0],
-                ['n', 'vacation_intensity', 'Intensität', '', 0]],
+      grp_vac: [['s', 'vacation_mode', 'Betriebsmodus', '', 1],
+                ['n', 'vacation_intensity', 'Intensität', '', 1]],
       grp_net: [['n', 'sync_interval_config', 'ESP-NOW Sync-Intervall', 'min', 1]],
     };
     const INPUT_CLS = 'bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block p-1.5';

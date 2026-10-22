@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its own — different — preset. Packet fields `vacation_preset_mode_index` (0–4) and `vacation_preset_level` (1–10),
   range-checked in `ventosync::packet::parse()` (T-8a). The values live in the globals `vacation_preset_mode_index_val`
   / `vacation_preset_level_val` (factory defaults `default_vacation_mode_index` / `default_vacation_level` ↔
-  `ventosync::defaults::VACATION_*`, CI-checked); the HA select / number are template entities reading them.
+  `ventosync::defaults::VACATION_*`, CI-checked); the HA select / number are template entities reading them. The web
+  dashboard marks both settings **RAUMWEIT**.
 
 ### Fixed
 
