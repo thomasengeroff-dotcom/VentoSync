@@ -27,7 +27,7 @@ Bei mehreren Fenstern die Kontakte in einem **Binary-Sensor-Gruppen**-Helfer bü
 
 ### Schritt 2: Automation
 
-`<gerätename>` ist der ESPHome-Node-Name des Geräts (Bindestriche werden zu Unterstrichen, z. B. `ventosync-dg-buero` → `esphome.ventosync_dg_buero_set_window_open`).
+`<gerätename>` ist der ESPHome-Node-Name des Geräts: `ventosync-` plus die letzten sechs Stellen der MAC-Adresse, Bindestriche werden zu Unterstrichen (z. B. `ventosync-a1b2c3` → `esphome.ventosync_a1b2c3_set_window_open`). Ein Umbenennen des Geräts in Home Assistant ändert ihn nicht; alle Actions listet *Entwicklerwerkzeuge → Aktionen* (Suche nach `esphome.ventosync_`).
 
 ```yaml
 automation:
