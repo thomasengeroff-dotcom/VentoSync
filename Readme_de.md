@@ -116,6 +116,8 @@ Diese Lösung ist ein **Drop-in Replacement** für die [VentoMaxx V-WRG / WRG PL
 | Lüfterregelung | 5 feste Stufen | **10 Stufen (diskrete PID-Regelung)** |
 | Transparenz | ❌ | ✅ `Automatik-Status` in HA (was die Lüftung macht und warum) + HA-Ereignisse |
 | Smart Home | ❌ | ✅ Home Assistant (nativ) |
+| Web-Dashboard | ❌ | ✅ Eigenes Dashboard auf jedem Gerät (Browser, ohne App, Home Assistant oder Internet): Live-Werte, 24-h-Verlauf, alle Einstellungen, Geräte im Raum |
+| Einrichtung | DIP-Schalter auf der Platine (Gruppenzuordnung und Richtung) | ✅ **Einrichtungs-Assistent** im Web-Dashboard: Raum, Geräte-ID mit Prüfung auf Doppelvergabe, Phase mit Vorschlag anhand der Geräte im Raum, Grundeinstellungen – alles erklärt |
 | Wartungsalarm | Timer-LED | ✅ Prädiktiv + Push |
 | Synchronisation | Stromleitung | ✅ Kabellos (**ESP-NOW Protocol**) & Echtzeit-Sync |
 | Updates | nur per Servicetechniker (muss eingeschickt werden) | ✅ Over-the-Air (OTA) |

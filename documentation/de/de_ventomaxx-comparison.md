@@ -87,7 +87,7 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 | **Gruppensteuerung** | Master/Slave über Kabel | ✅ **ESP-NOW Group Controller**: Alle Geräte als eine Einheit im HA Dashboard | ✅ **Intuitiv + kabellos** |
 | **Netzwerk-Visualisierung** | ❌ Nein | ✅ **ESP-NOW Live-Ansicht**: Status aller Peers im Dashboard | ✅ **Echtzeit-Monitoring** |
 | **Updates** | ❌ Nein (Hardware-Tausch nötig) | ✅ **OTA-Updates** (Over-the-Air) | ✅ **Zukunftssicher** |
-| **Konfiguration** | DIP-Schalter auf Platine | **Web-Oberfläche / YAML / HA Slider** | ✅ **Komfortabel** |
+| **Konfiguration** | DIP-Schalter auf Platine (Gruppenzuordnung und Richtung) | **Einrichtungs-Assistent im Web-Dashboard** (Raum, Geräte-ID mit Prüfung auf Doppelvergabe, Phase mit Vorschlag, Grundeinstellungen mit Erklärung), dazu Web-Oberfläche / YAML / HA Slider | ✅ **Komfortabel, ohne Werkzeug** |
 | **System & Lizenz** | Geschlossen (proprietär) | ✅ **100% Open Source (GPL v3)** | ✅ **Kein Vendor-Lock-In** |
 
 ---

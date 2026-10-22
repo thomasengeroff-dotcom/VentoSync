@@ -119,6 +119,8 @@ This solution is a **drop-in replacement** for the [VentoMaxx V-WRG / WRG PLUS](
 | Fan Control | 5 fixed levels | **10 levels (discrete PID)** |
 | Transparency | ❌ | ✅ `Automatik-Status` in HA (what the ventilation does and why) + HA events |
 | Smart Home | ❌ | ✅ Home Assistant (native) |
+| Web Dashboard | ❌ | ✅ Built-in dashboard on every unit (browser, no app, Home Assistant or internet needed): live values, 24 h history, all settings, devices in the room |
+| Setup | DIP switches on the PCB (group assignment and direction) | ✅ **Setup wizard** in the web dashboard: room, device ID with duplicate check, phase suggested from the devices in the room, basic settings – all explained |
 | Maintenance Alarm | Timer-LED | ✅ Predictive + Push |
 | Synchronization | Power line | ✅ Wireless (**ESP-NOW Protocol**) & Real-time Sync |
 | Updates | Service technician (must be sent in) | ✅ Over-the-Air (OTA) |
