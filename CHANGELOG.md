@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.59] - 2026-10-22
+
+### Fixed
+
+- **Dashboard: wrong IN / OUT on the peer cards** — the badge showed the room's push-pull cycle phase from the peer's
+  last ESP-NOW packet (`phase_state`): the same value for phase A and phase B devices and up to one heartbeat (60 s)
+  old, while the direction flips every 50–70 s — so it was mostly wrong, although the fans themselves ran correctly.
+  The device now computes each peer's direction from its own room-synced cycle and the peer's configured phase
+  (`VentilationStateMachine::peer_direction_in()`, unit-tested), so the badge is right at any moment; `--` while the
+  fan stands (Aus, Stoßlüftung pause) or the peer is switching to another mode. `/state` peer key `phase` replaced by
+  `dir` (`"in"` / `"out"`, absent when unknown). No protocol change; peers with firmware older than 0.10.56 report no
+  phase and are shown as phase A.
+
+### Changed
+
+- Docs: the local web dashboard guide explains how to open the dashboard from Home Assistant (device page →
+  **„Besuchen“** / "Visit").
+
 ## [0.10.58] - 2026-10-22
 
 ### Added

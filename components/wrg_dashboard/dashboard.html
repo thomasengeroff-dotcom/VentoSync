@@ -641,8 +641,8 @@
 
       (data.peers || []).forEach(peer => {
         const mode = MODE_SHORT[peer.mode_index] || "Unbekannt";
-        // Direction only means something while the fan runs
-        const badge = peer.mode_index === 4 ? BADGE_NONE : (peer.phase ? BADGE_IN : BADGE_OUT);
+        // Computed by the device from its synced cycle and the peer's phase; absent while the fan stands
+        const badge = peer.dir === 'in' ? BADGE_IN : (peer.dir === 'out' ? BADGE_OUT : BADGE_NONE);
         const flags = [peer.presence ? miniFlag('Präsenz') : '', peer.window ? miniFlag('Fenster offen') : '',
                        peer.ac ? miniFlag('Klima an') : '', peer.nox ? miniFlag('NOx') : ''].join('');
         const seen = `zuletzt vor ${peer.age_s} s`;

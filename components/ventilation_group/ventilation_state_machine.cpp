@@ -21,7 +21,7 @@
 // Description: Implementation of the ventilation state machine.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-19
+// Modified:    2026-10-22
 // ==========================================================================
 #include "ventilation_state_machine.h"
 #include <climits>
@@ -340,23 +340,44 @@ HardwareState VentilationStateMachine::get_target_state(uint32_t now) const {
         }
     }
 
-    // Direction Logic
+    state.direction_in = direction_in_for(is_phase_a);
+    return state;
+}
+
+/**
+ * @brief   Airflow direction of a device in the given phase group.
+ * @param[in] phase_a  true = phase group A.
+ * @return  true = intake (IN), false = exhaust (OUT).
+ */
+bool VentilationStateMachine::direction_in_for(bool phase_a) const {
     if (current_mode == MODE_VENTILATION) {
-        state.direction_in = is_phase_a;
-    } else if (current_mode == MODE_STOSSLUEFTUNG) {
+        return phase_a;
+    }
+    if (current_mode == MODE_STOSSLUEFTUNG) {
         // One-way burst: Phase A in / Phase B out, inverted every second burst
         // (the flip happens during the pause, never under load).
-        state.direction_in = stoss_direction_flip ? !is_phase_a : is_phase_a;
-    } else {
-        // ECO_RECOVERY
-        if (global_phase) {
-            state.direction_in = is_phase_a;
-        } else {
-            state.direction_in = !is_phase_a;
-        }
+        return stoss_direction_flip ? !phase_a : phase_a;
     }
-    
-    return state;
+    // ECO_RECOVERY: the groups alternate with the global phase
+    return global_phase ? phase_a : !phase_a;
+}
+
+/**
+ * @brief   Current airflow direction of another device of the room.
+ * @details See the header; the cycle-dependent modes need our own mode to
+ *          match, MODE_VENTILATION only depends on the phase.
+ */
+bool VentilationStateMachine::peer_direction_in(uint8_t peer_mode, bool peer_phase_a, uint32_t now,
+                                                bool &direction_in) const {
+    if (peer_mode == MODE_VENTILATION) {
+        direction_in = peer_phase_a;
+        return true;
+    }
+    if (peer_mode != current_mode || !get_target_state(now).fan_enabled) {
+        return false;
+    }
+    direction_in = direction_in_for(peer_phase_a);
+    return true;
 }
 
 } // namespace esphome

@@ -38,6 +38,21 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
 > [!NOTE]
 > Since 0.10.55 the dashboard replaces the native ESPHome page at `/`. ESPHome's `web_server` component stays in the firmware (`local: false`, `log: false`) only because Home Assistant builds the "Visit" link from the web port it reports; `wrg_dashboard` sets up before it, so its handler answers `/`. The native entity table and log viewer are therefore no longer reachable — logs via `esphome logs <variant>.yaml --device <ip>` or the ESPHome add-on.
 
+### 🏠 Opening the dashboard from Home Assistant
+
+No IP address or bookmark needed: in Home Assistant open *Settings → Devices & services → ESPHome* and select the
+VentoSync device (or click any of its entities and then the device name). In the **Device info** card on the left,
+below the *ESPHome* integration entry, the link **"Visit"** (German UI: **„Besuchen“**, with the ⚙ and ↗ icons) opens
+the device's dashboard in a new browser tab.
+
+![Home Assistant device page of a VentoSync unit with the "Besuchen" (Visit) link in the device info card](../screenshots/ha-device-page-visit.png)
+
+* The link works wherever the browser can reach the device's IP address — at home, or remotely through a VPN. Through
+  Nabu Casa / a remote HA URL alone the device itself is not reachable.
+* Each device has its own link; from there the peer cards' *"Dashboard dieses Geräts öffnen ↗"* jumps to the other
+  devices of the room.
+* The link is missing when the firmware has no `web_server:` block (see the note above) — keep it in custom configs.
+
 ---
 
 ## 🧭 Setup Wizard *(0.10.56)*
@@ -96,7 +111,7 @@ The dashboard dynamically scans and lists all active ESP-NOW ventilation units i
 * **Status dot**: teal while the peer's data is fresh enough for the room fusion (≥ 5 min, two heartbeats), amber when it is older (the card stays until the 15-minute peer timeout)
 * **Operating Mode** (Automatik, WRG, Durchlüften, Stoßlüftung, Aus) — since 0.10.48 a peer in Smart-Automatik is shown as "Automatik" instead of the mode it currently runs
 * **Fan Speed Level** (1–10)
-* **Current Airflow Direction** (IN / OUT; `--` in mode Aus)
+* **Current Airflow Direction** (IN / OUT; `--` while the fan stands — Aus, Stoßlüftung pause — or while the peer is switching to another mode). Since 0.10.59 the device computes it from its own room-synced push-pull cycle and the peer's **configured phase** A/B, so it is right at any moment and changes with the cycle. Before, the card showed the room's cycle phase from the peer's last packet (the same for A and B, up to one heartbeat old), so it was mostly wrong. Peers with firmware older than 0.10.56 report no phase and are shown as phase A.
 * **Room inputs of that device**: Präsenz, Fenster offen, Klima an, NOx (its own ESP-NOW room flags)
 * **Telemetry** (fan RPM, board temperature, PID demand)
 * **Air quality per device** (CO2 in ppm, rating, temperature, relative humidity)
