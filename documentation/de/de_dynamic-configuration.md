@@ -21,11 +21,13 @@ Statt die Geräte-IDs fest im YAML-Code zu definieren, können alle Lüftungsger
 
 | Parameter | Beschreibung | Bereich | Standard |
 | :--- | :--- | :--- | :--- |
-| **Stockwerk (Floor ID)** | Stockwerk-Nummer | 0-9 | 1 |
-| **Raum (Room ID)** | Raum-Nummer | 0-10 | 1 |
+| **Stockwerk (Floor ID)** | Stockwerk-Nummer | 1-9 (0 = nicht eingerichtet) | 1 |
+| **Raum (Room ID)** | Raum-Nummer | 1-10 (0 = nicht eingerichtet) | 1 |
 | **Geräte-ID (Device ID)** | Eindeutige Geräte-ID | 1-25 | 1 |
 | **Geräte-Phase (A/B)** | Startphase des Geräts | A oder B | A |
 | **Eigene MAC Adresse** | Anzeige der eigenen MAC | - | (automatisch) |
+
+> ⚠️ **Stockwerk und Raum 0 nicht verwenden:** Die Eingabefelder erlauben zwar 0, ein Gerät mit Stockwerk **oder** Raum 0 sendet aber keine Suchrufe (Discovery-Broadcasts) und findet die anderen Geräte seines Raums nicht. Die Nummerierung beginnt deshalb bei 1 — z. B. Stockwerk 1 = Erdgeschoss, Stockwerk 2 = Obergeschoss.
 
 **Hinweis zu ESP-NOW:** Die Kommunikation erfolgt automatisch über ein **hybrides Discovery-System**. Neue Geräte finden sich per Broadcast, der restliche Datenaustausch erfolgt ressourcenschonend und sicher per **Unicast**. Es ist **keine manuelle MAC-Konfiguration** erforderlich!
 
@@ -34,7 +36,9 @@ Statt die Geräte-IDs fest im YAML-Code zu definieren, können alle Lüftungsger
 **Phase A:** Startet mit **Zuluft** (Rein)  
 **Phase B:** Startet mit **Abluft** (Raus)
 
-**Regel:** Geräte an der **gleichen Wand** sollten die **gleiche Phase** haben.
+Die Phase bezieht sich auf den Raum (hinein / hinaus), nicht auf die Wand, an der das Gerät sitzt.
+
+**Regel:** Bei der Wärmerückgewinnung arbeiten die Geräte eines Raums im Gegentakt. Damit gleich viel Luft hinein- wie hinausströmt, sollten im Raum **gleich viele Geräte Phase A und Phase B** haben — ein **Paar braucht also ein Gerät mit Phase A und eines mit Phase B**, egal ob die beiden an derselben oder an gegenüberliegenden Wänden sitzen. Beim Durchlüften bläst Phase A dauerhaft hinein und Phase B hinaus; für eine Querlüftung setzt man das A-Gerät an die eine und das B-Gerät an die gegenüberliegende Seite der Wohnung.
 
 ## 🚀 Workflow: Geräte einrichten
 
@@ -73,7 +77,7 @@ Geräte-Phase:            Phase A (Startet mit Zuluft)
 Stockwerk (Floor ID):     1
 Raum (Room ID):          2  (Gleicher Raum!)
 Geräte-ID (Device ID):   2  (Zweites Gerät im Raum)
-Geräte-Phase:            Phase A (Gleiche Wand = gleiche Phase!)
+Geräte-Phase:            Phase B (Gegenstück zu Gerät 1 – ein Paar braucht A und B!)
 ```
 
 ### 4. ESP-NOW Kommunikation (automatisch)
@@ -100,23 +104,27 @@ Die Werte werden **automatisch im Flash** gespeichert und bleiben nach Neustarts
 
 ## 🏢 Beispiel-Konfiguration: Mehrgeschossiges Haus
 
-### Erdgeschoss (Floor 0)
+Stockwerk- und Raum-IDs beginnen bei **1** (mit 0 sendet ein Gerät keine Suchrufe, siehe oben).
+
+### Erdgeschoss (Floor 1)
 
 | Raum | Gerät | Floor ID | Room ID | Device ID | Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Küche | 1 | 0 | 1 | 1 | A |
-| Küche | 2 | 0 | 1 | 2 | B |
-| Wohnzimmer | 1 | 0 | 2 | 1 | A |
-| Wohnzimmer | 2 | 0 | 2 | 2 | B |
+| Küche | 1 | 1 | 1 | 1 | A |
+| Küche | 2 | 1 | 1 | 2 | B |
+| Wohnzimmer | 1 | 1 | 2 | 1 | A |
+| Wohnzimmer | 2 | 1 | 2 | 2 | B |
 
-### Obergeschoss (Floor 1)
+### Obergeschoss (Floor 2)
 
 | Raum | Gerät | Floor ID | Room ID | Device ID | Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Schlafzimmer | 1 | 1 | 1 | 1 | A |
-| Schlafzimmer | 2 | 1 | 1 | 2 | B |
-| Kinderzimmer | 1 | 1 | 2 | 1 | A |
-| Bad | 1 | 1 | 3 | 1 | A |
+| Schlafzimmer | 1 | 2 | 1 | 1 | A |
+| Schlafzimmer | 2 | 2 | 1 | 2 | B |
+| Kinderzimmer | 1 | 2 | 2 | 1 | A |
+| Bad | 1 | 2 | 3 | 1 | A |
+
+Ein Einzelgerät (Kinderzimmer, Bad) hat kein Gegenstück; seine Phase ist dann beliebig.
 
 ## 🔄 ESP-NOW Synchronisation
 
@@ -130,13 +138,13 @@ Geräte kommunizieren nur mit anderen Geräten, die:
 
 ```text
 Gerät A: Floor 1, Room 2, Device 1, Phase A
-Gerät B: Floor 1, Room 2, Device 2, Phase A
+Gerät B: Floor 1, Room 2, Device 2, Phase B
 ```
 
 Diese beiden Geräte synchronisieren sich automatisch:
 
 - Gerät A: Zuluft → Gerät B: Abluft
-- Nach 70s wechseln beide die Richtung
+- Nach 70 s (Stufe 1) bis 50 s (Stufe 10) wechseln beide die Richtung
 - Kontinuierlicher Luftaustausch mit Wärmerückgewinnung
 
 ## 🛠️ Technische Details
@@ -198,14 +206,15 @@ Die Einstellungen erscheinen als **Number-Inputs** und **Select-Dropdown**:
 
 1. **Stockwerk & Raum** zuerst setzen
 2. **Geräte-ID** eindeutig vergeben (1, 2, 3, ...)
-3. **Phase** entsprechend der Wandposition wählen
+3. **Phase** so wählen, dass im Raum gleich viele Geräte Phase A und Phase B haben (Paar: A + B)
 4. **Warten** bis Gerät neu synchronisiert (max. 3 min oder manuell Neustart)
 
 ### Phase-Auswahl
 
-- Geräte an **gegenüberliegenden Wänden** → **Unterschiedliche Phasen**
-- Geräte an **gleicher Wand** → **Gleiche Phase**
-- Bei Unsicherheit: **Alle auf Phase A** starten und beobachten
+- **Paar** (zwei Geräte im Raum) → ein Gerät **Phase A**, eines **Phase B** — unabhängig von der Wand
+- **Mehrere Geräte** → möglichst gleich viele A und B (bei ungerader Anzahl eines mehr A oder B)
+- **Einzelgerät** → Phase beliebig (Standard: A)
+- Der Einrichtungs-Assistent im Web-Dashboard zählt die Phasen der Geräte im Raum und schlägt die passende vor
 
 ### Änderungen während Betrieb
 
@@ -233,7 +242,7 @@ Die Einstellungen erscheinen als **Number-Inputs** und **Select-Dropdown**:
 
 1. Ändere Phase von A → B oder B → A
 2. Beobachte Verhalten
-3. Bei Paar-Betrieb: Beide Geräte sollten gleiche Phase haben
+3. Bei Paar-Betrieb: Die beiden Geräte müssen gegenläufig blasen (eines hinein, eines hinaus) — also unterschiedliche Phasen haben. Bläst ein Gerät trotz richtiger Phase falsch herum, ist der Lüfter verkehrt herum eingebaut oder angeschlossen; dann seine Phase tauschen, sodass die Luftrichtungen wieder gegenläufig sind
 
 ### Werte werden nicht gespeichert
 
