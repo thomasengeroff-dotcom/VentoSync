@@ -83,20 +83,29 @@ NUMBERS = {
     "vacation_intensity_id": "vacation_intensity",
     # Only set by packages/sensors/sensor_SGP41_SHT45.yaml
     "nox_boost_threshold_id": "nox_boost_threshold",
+    # Device configuration (packages/base/device_config.yaml)
+    "config_floor_id_id": "config_floor_id",
+    "config_room_id_id": "config_room_id",
+    "config_device_id_id": "config_device_id",
 }
 SELECTS = {
     "luefter_modus_id": "luefter_modus",
     "vacation_mode_id": "vacation_mode",
+    "config_phase_id": "config_phase",
 }
 SWITCHES = {
     "hvac_switch_id": "hvac_enabled",
     "nox_boost_switch_id": "nox_boost",
     "child_lock_switch_id": "child_lock",
+    "ignore_window_guard_switch_id": "ignore_window_guard",
+    "peer_check_switch_id": "peer_check",
     # Only set by packages/integration/bluetooth_proxy.yaml
     "bluetooth_proxy_switch_id": "bt_proxy",
 }
 BUTTONS = {
     "filter_reset_button_id": "filter_reset",
+    "restart_button_id": "restart",
+    "discovery_button_id": "force_discovery",
 }
 
 TABLES = (

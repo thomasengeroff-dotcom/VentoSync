@@ -48,7 +48,7 @@ changes when it is enabled.
 The proxy is compiled in but **disabled by default**. It is turned on per device:
 
 - **Home Assistant:** configuration entity **`switch.<device>_bluetooth_proxy`** ("Bluetooth Proxy").
-- **Local web dashboard** (`http://<device-ip>/ui`): toggle **"Bluetooth Proxy (experimentell)"** in the
+- **Local web dashboard** (`http://<device-ip>/`): toggle **"Bluetooth Proxy (experimentell)"** in the
   *Einstellungen → Steuerung* group. The toggle only appears in this variant.
 
 Behaviour:

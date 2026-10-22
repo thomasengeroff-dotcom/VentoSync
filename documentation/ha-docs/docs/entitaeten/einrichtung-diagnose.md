@@ -71,7 +71,7 @@ Die Sensoren werden jede Minute aktualisiert. Sie tragen denselben Namen wie die
 | WLAN Signal | `sensor.…_wlan_signal` | dBm | diagnostic | Signalstärke, alle 60 s. |
 | WLAN Kanal | `sensor.…_wlan_kanal` | Sensor | diagnostic | Aktueller WLAN-Kanal. ESP-NOW funkt auf demselben Kanal. |
 | WLAN SSID | `sensor.…_wlan_ssid` | Text | – | Verbundenes WLAN. |
-| IP-Adresse | `sensor.…_ip_adresse` | Text | – | IP des Geräts, z. B. für das Web-Dashboard `http://<ip>/ui`. |
+| IP-Adresse | `sensor.…_ip_adresse` | Text | – | IP des Geräts, z. B. für das Web-Dashboard `http://<ip>/`. |
 | Laufzeit | `sensor.…_laufzeit` | h | diagnostic | Zeit seit dem letzten Start. |
 | Freier Speicher (RAM) | `sensor.…_freier_speicher_ram` | B | diagnostic | Freier Heap. |
 | Watchdog Restarts | `sensor.…_watchdog_restarts` | Anzahl | diagnostic | Vom Watchdog ausgelöste Neustarts. |

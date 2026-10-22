@@ -21,7 +21,7 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-21
+// Modified:    2026-10-22
 // ==========================================================================
 
 #pragma once
@@ -115,10 +115,12 @@ public:
   void loop() override;
   /**
    * @brief   Returns the setup priority.
-   * @return  WIFI priority minus 1.0.
+   * @return  WIFI priority minus 0.5 — above web_server (WIFI - 1.0), so this
+   *          handler is registered first and answers "/" instead of the
+   *          native ESPHome page.
    */
   float get_setup_priority() const override {
-    return setup_priority::WIFI - 1.0f;
+    return setup_priority::WIFI - 0.5f;
   }
 
   // Web server
@@ -163,7 +165,7 @@ public:
   /**
    * @brief   Checks if the request can be handled by this component.
    * @param[in] request  The incoming AsyncWebServerRequest.
-   * @return  true for GET /ui, /state, /meta, /history, /stream and POST /set.
+   * @return  true for GET /, /ui, /state, /meta, /history, /stream and POST /set.
    */
   bool canHandle(AsyncWebServerRequest *request) const override;
   /**

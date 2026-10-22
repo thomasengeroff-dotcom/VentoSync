@@ -352,8 +352,11 @@ Complex YAML lambda logic is extracted into focused header files:
   - `defaults.h` (`ventosync::defaults`): factory defaults of the Smart-Automatik settings (see *Factory defaults*).
 - **`ventilation_group/ventilation_packet.h`** (pure, unit-tested): wire format (`VentilationPacket`, `MessageType`,
   `ROOM_FLAG_*`, `PROTOCOL_VERSION`), `PeerState`, `ventosync::packet::parse()` and `update_peer_state()`.
-- **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/ui`, `/state`, `/stream`, `/history`,
-  `/meta`, `POST /set`). The page is `dashboard.html` — gzipped into flash by `__init__.py` at build time, edit it directly.
+- **`wrg_dashboard`** (`WrgDashboard`): async web server hosting the local SPA (`/`, alias `/ui`, `/state`, `/stream`,
+  `/history`, `/meta`, `POST /set`). Since 0.10.55 it answers `/` instead of the native ESPHome page: its setup priority
+  (`WIFI - 0.5`) is above `web_server`'s (`WIFI - 1.0`), so its handler is registered first. Keep `web_server:`
+  (`local: false`, `log: false`, `ota: false`) — without it the device reports no web port and Home Assistant drops the
+  device page's "Visit" link (`configuration_url`). The page is `dashboard.html` — gzipped into flash by `__init__.py` at build time, edit it directly.
   The server runs in its own task: read entities / `peers` only in `loop()` (it serializes `/state` and `/meta`),
   never in the request handler; the history ring buffer (`history.h`) is shared under the same mutex. `/stream`
   (Server-Sent Events) follows ESPHome's `/events` pattern: a `StreamSession` is tied to the socket, sent to only from

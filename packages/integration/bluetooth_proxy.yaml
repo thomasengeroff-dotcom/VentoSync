@@ -45,7 +45,7 @@
 #
 # Author:      Thomas Engeroff
 # Created:     2026-10-02
-# Modified:    2026-10-02
+# Modified:    2026-10-22
 # ==========================================================================
 
 esp32:
@@ -121,6 +121,6 @@ switch:
           tag: bt_proxy
           format: "Bluetooth proxy disabled (BLE stack released)"
 
-# Expose the switch in the local web dashboard (/ui).
+# Expose the switch in the local web dashboard (http://<device-ip>/).
 wrg_dashboard:
   bluetooth_proxy_switch_id: bt_proxy_switch

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.55] - 2026-10-22
+
+### Changed
+
+- **VentoSync dashboard is the device's web page** — `http://<device-ip>/` (and the **"Visit"** link on the device page
+  in Home Assistant) now opens the VentoSync dashboard instead of the native ESPHome entity table; `/ui` keeps working
+  for bookmarks, the peer links now point to `/`. `wrg_dashboard` sets up before `web_server`
+  (`setup_priority::WIFI - 0.5`), so its handler answers `/`. ESPHome's `web_server` stays (`local: false`,
+  `log: false`, `ota: false`) because Home Assistant builds the "Visit" link from the web port it reports. The native
+  page and its log viewer are no longer reachable — logs via `esphome logs` or the ESPHome add-on. `local: false`
+  drops the native page's bundled JS from flash.
+- **Device configuration in the dashboard** — new settings group *Gerätekonfiguration*: floor ID, room ID, device ID,
+  phase A/B and *Fenstersperre ignorieren*, plus the buttons *ESP-NOW Discovery starten* and *Gerät neu starten*
+  (with confirmation); the group *Netzwerk* gained the room-wide *ESP-NOW Peerprüfung*. Until now IDs and phase could
+  only be set in Home Assistant or on the native page.
+
 ## [0.10.54] - 2026-10-22
 
 > ⚠️ **ESP-NOW protocol v15 — flash all devices of a room.** v14 and v15 devices reject each other's packets.

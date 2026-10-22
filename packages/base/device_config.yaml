@@ -152,6 +152,7 @@ button:
 
   - platform: template
     name: "Force ESPNOW Discovery"
+    id: force_discovery_button
     icon: "mdi:access-point-network"
     entity_category: diagnostic
     on_press:
