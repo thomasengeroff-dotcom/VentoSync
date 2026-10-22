@@ -38,6 +38,22 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
 > [!NOTE]
 > Seit 0.10.55 ersetzt das Dashboard die native ESPHome-Seite unter `/`. ESPHomes `web_server`-Komponente bleibt nur in der Firmware (`local: false`, `log: false`), weil Home Assistant den „Besuchen“-Link aus dem gemeldeten Web-Port baut; `wrg_dashboard` startet vor ihr, daher beantwortet sein Handler `/`. Die native Entitätstabelle und die Log-Anzeige sind damit nicht mehr erreichbar — Logs über `esphome logs <variante>.yaml --device <ip>` oder das ESPHome-Add-on.
 
+### 🏠 Dashboard aus Home Assistant öffnen
+
+Ohne IP-Adresse oder Lesezeichen: In Home Assistant *Einstellungen → Geräte & Dienste → ESPHome* öffnen und das
+VentoSync-Gerät wählen (oder eine seiner Entitäten anklicken und dann auf den Gerätenamen). In der Karte
+**Geräte-Informationen** links öffnet der Link **„Besuchen“** (mit ⚙- und ↗-Symbol, unter dem Eintrag der
+*ESPHome*-Integration) das Dashboard des Geräts in einem neuen Browser-Tab.
+
+![Home-Assistant-Geräteseite eines VentoSync-Geräts mit dem Link „Besuchen“ in der Karte Geräte-Informationen](../screenshots/ha-device-page-visit.png)
+
+* Der Link funktioniert überall, wo der Browser die IP-Adresse des Geräts erreicht — zu Hause oder unterwegs per VPN.
+  Nur über Nabu Casa / eine externe HA-URL ist das Gerät selbst nicht erreichbar.
+* Jedes Gerät hat seinen eigenen Link; von dort springt man über *„Dashboard dieses Geräts öffnen ↗“* auf den
+  Peer-Karten zu den anderen Geräten des Raums.
+* Der Link fehlt, wenn die Firmware keinen `web_server:`-Block hat (siehe Hinweis oben) — in eigenen Konfigurationen
+  beibehalten.
+
 ---
 
 ## 🧭 Einrichtungs-Assistent *(0.10.56)*
@@ -96,7 +112,7 @@ Das Web-Dashboard scannt und visualisiert alle aktiven Lüftungsgeräte im selbe
 * **Status-Punkt**: türkis, solange die Daten des Peers frisch genug für die Raum-Fusion sind (≥ 5 min, zwei Heartbeats), gelb, wenn sie älter sind (die Karte bleibt bis zum 15-Minuten-Peer-Timeout)
 * **Aktueller Betriebsmodus** (Automatik, WRG, Durchlüften, Stoßlüftung, Aus) — seit 0.10.48 erscheint ein Peer in der Smart-Automatik als „Automatik“ statt mit dem Modus, den er gerade fährt
 * **Lüfterstufe** (1–10)
-* **Aktuelle Luftrichtung** (IN / OUT; `--` im Modus Aus)
+* **Aktuelle Luftrichtung** (IN / OUT; `--`, solange der Lüfter steht — Aus, Stoßlüftungs-Pause — oder der Peer gerade in einen anderen Modus wechselt). Seit 0.10.59 berechnet das Gerät sie aus seinem eigenen, raumweit synchronisierten Push-Pull-Zyklus und der **eingestellten Phase** A/B des Peers; sie stimmt damit jederzeit und wechselt mit dem Zyklus. Vorher zeigte die Karte die Zyklus-Phase des Raums aus dem letzten Paket des Peers (für A und B gleich, bis zu einen Heartbeat alt) und war daher meist falsch. Peers mit Firmware vor 0.10.56 melden keine Phase und erscheinen als Phase A.
 * **Raum-Eingänge dieses Geräts**: Präsenz, Fenster offen, Klima an, NOx (seine eigenen ESP-NOW-Raum-Flags)
 * **Telemetrie** (Lüfter-RPM, Board-Temperatur, PID-Bedarf)
 * **Luftqualität je Gerät** (CO2 in ppm, Bewertung, Temperatur, relative Luftfeuchtigkeit)
