@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.57",
+    "project_version": "0.10.58",
     "project_date": "2026-10-22",
-    "project_description": "Dashboard styles built into the firmware: the page works without internet access."
+    "project_description": "Setup wizard: grouped settings with RAUMWEIT / PRÜFEN tags, more functions; device configuration collapsed."
 }
