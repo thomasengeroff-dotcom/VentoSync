@@ -22,7 +22,7 @@
 //              watchdog management for 24/7 continuous operation.
 // Author:      Thomas Engeroff
 // Created:     2026-05-16
-// Modified:    2026-05-16
+// Modified:    2026-10-22
 //
 // Dependencies: globals.h (watchdog_restarts_count)
 //               VentilationController (ventilation_ctrl, last_loop_ms)
@@ -79,8 +79,9 @@ static constexpr uint32_t HEALTH_CHECK_INTERVAL_S = 300;
  *   4. esp_restart() – clean software reset
  *
  * @note The watchdog_restarts_count global is incremented before restart
- *       and persisted to flash (restore_value: yes), enabling post-mortem
- *       analysis via the HA sensor.
+ *       and committed to NVS right away (restore_value: yes; esp_restart()
+ *       runs no shutdown hooks), enabling post-mortem analysis via the HA
+ *       sensor "Watchdog Restarts".
  *
  * @note Called every 300s from `health_check_timer` interval in
  *       logic_automation.yaml.
@@ -110,8 +111,12 @@ inline void check_brain_health() {
                  static_cast<unsigned long>(silence_ms),
                  static_cast<unsigned long>(BRAIN_FREEZE_TIMEOUT_MS));
 
-        // Increment persistent restart counter for post-mortem diagnostics
+        // Increment persistent restart counter for post-mortem diagnostics.
+        // esp_restart() skips the shutdown hooks, so store the global and
+        // commit the preferences to NVS here — otherwise the increment is lost.
         id(watchdog_restarts_count) += 1;
+        watchdog_restarts_count->update();
+        esphome::global_preferences->sync();
         ESP_LOGE("health", "Watchdog restart count: %d",
                  id(watchdog_restarts_count));
 

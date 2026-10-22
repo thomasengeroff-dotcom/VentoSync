@@ -21,7 +21,7 @@
 # Description: Configuration for climate sensors (BME390, SCD41) and IAQ.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-04-21
+# Modified:    2026-10-22
 # ==========================================================================
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
@@ -45,18 +45,26 @@ sensor:
     update_interval: 30s
     lambda: |-
       static uint32_t last_valid_sensor_ms = millis();
-      if (!std::isnan(id(scd41_co2).state)) {
+      // Logged once per stale phase: variants without a CO2 source
+      // (nosensor, NTConly, radar_only) are stale for good.
+      static bool stale_logged = false;
+      float co2 = id(scd41_co2).state;
+      if (std::isnan(co2)) co2 = id(iaq_co2eq).state;
+      if (!std::isnan(co2)) {
         last_valid_sensor_ms = millis();
-        return id(scd41_co2).state;
-      }
-      if (!std::isnan(id(iaq_co2eq).state)) {
-        last_valid_sensor_ms = millis();
-        return id(iaq_co2eq).state;
+        if (stale_logged) {
+          ESP_LOGI("co2", "CO2 value available again.");
+          stale_logged = false;
+        }
+        return co2;
       }
       // Both sensors NaN — hold last value for up to 5 minutes, then publish NaN
       // to signal PID that input is stale. Auto mode handles NaN gracefully.
       if (millis() - last_valid_sensor_ms > 300000) {
-        ESP_LOGW("co2", "CO2 staleness timeout (>5min). Publishing NaN.");
+        if (!stale_logged) {
+          ESP_LOGW("co2", "CO2 staleness timeout (>5min). Publishing NaN.");
+          stale_logged = true;
+        }
         return NAN;
       }
       return id(effective_co2).state;

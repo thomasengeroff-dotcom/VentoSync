@@ -153,6 +153,20 @@ bool test_virtual_rpm_calculation() {
   return true;
 }
 
+bool test_tacho_plausibility() {
+  // No signal (3-pin fan) and noise on an open input -> virtual model
+  TEST_ASSERT(!VentilationLogic::is_plausible_tacho_rpm(0.0f));
+  TEST_ASSERT(!VentilationLogic::is_plausible_tacho_rpm(10.0f));
+  TEST_ASSERT(!VentilationLogic::is_plausible_tacho_rpm(19000.0f));
+  TEST_ASSERT(!VentilationLogic::is_plausible_tacho_rpm(NAN));
+  // Real 4-pin fan speeds, up to the upper bound
+  TEST_ASSERT(VentilationLogic::is_plausible_tacho_rpm(420.0f));
+  TEST_ASSERT(VentilationLogic::is_plausible_tacho_rpm(4200.0f));
+  TEST_ASSERT(VentilationLogic::is_plausible_tacho_rpm(6000.0f));
+  TEST_ASSERT(!VentilationLogic::is_plausible_tacho_rpm(6000.5f));
+  return true;
+}
+
 bool test_fan_logic() {
   TEST_ASSERT(VentilationLogic::is_fan_slider_off(0.5f) == true);
   TEST_ASSERT(VentilationLogic::is_fan_slider_off(1.5f) == false);
@@ -2353,6 +2367,12 @@ int main() {
     std::cout << "[PASS] Virtual RPM Calculation" << std::endl;
   } else {
     std::cout << "[FAIL] Virtual RPM Calculation" << std::endl;
+    all_passed = false;
+  }
+  if (test_tacho_plausibility()) {
+    std::cout << "[PASS] Tacho Plausibility" << std::endl;
+  } else {
+    std::cout << "[FAIL] Tacho Plausibility" << std::endl;
     all_passed = false;
   }
 

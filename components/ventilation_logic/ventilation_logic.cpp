@@ -21,7 +21,7 @@
 // Description: Core ventilation math and logic implementation.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-15
+// Modified:    2026-10-22
 // ==========================================================================
 #include "ventilation_logic.h"
 
@@ -209,6 +209,15 @@ float VentilationLogic::calculate_virtual_fan_rpm(float speed, bool direction_is
     
     float rpm = effective_speed * 4200.0f;
     return direction_is_intake ? rpm : -rpm;
+}
+
+/**
+ * @brief   True if a tacho reading is a real fan speed.
+ * @param[in] raw_rpm  RPM from the pulse counter.
+ * @return  True inside (TACHO_MIN_RPM, TACHO_MAX_RPM]; false for NaN.
+ */
+bool VentilationLogic::is_plausible_tacho_rpm(float raw_rpm) {
+    return raw_rpm > TACHO_MIN_RPM && raw_rpm <= TACHO_MAX_RPM;
 }
 
 /**

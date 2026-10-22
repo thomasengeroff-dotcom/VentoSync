@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.52",
+    "project_version": "0.10.53",
     "project_date": "2026-10-22",
-    "project_description": "Room-wide vacation preset (ESP-NOW v14); the other devices of a room take over the Master's vacation level."
+    "project_description": "Diagnostics fixes: CO2 staleness warning logged once, Watchdog Restarts sensor published and persisted, implausible tacho RPM discarded."
 }

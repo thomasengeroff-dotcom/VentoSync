@@ -22,7 +22,7 @@
 #              management, discovery state, and health monitoring counters.
 # Author:      Thomas Engeroff
 # Created:     2026-05-16
-# Modified:    2026-05-16
+# Modified:    2026-10-22
 # ==========================================================================
 
 globals:
@@ -64,7 +64,8 @@ globals:
   # Persistent counter of watchdog-triggered restarts.
   # Incremented by check_brain_health() in health_helpers.h
   # before each forced restart. Exposed as HA diagnostic sensor
-  # for post-mortem analysis. Reset manually via HA service call.
+  # for post-mortem analysis ("Watchdog Restarts", published every 60 s).
+  # Reset manually via HA service call.
   - id: watchdog_restarts_count
     type: int
     initial_value: '0'
