@@ -3,7 +3,7 @@ import logging
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import fan, switch, sensor, binary_sensor
+from esphome.components import fan, switch, sensor, binary_sensor, text
 from esphome.const import CONF_ID
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ CONF_SUMMER_THRESHOLD_GLOBAL = 'summer_cooling_threshold_global'
 CONF_HVAC_ENABLED_GLOBAL = 'hvac_enabled_global'
 CONF_NOX_BOOST_ENABLED_GLOBAL = 'nox_boost_enabled_global'
 CONF_OVERRIDE_DURATION_GLOBAL = 'auto_override_duration_global'
+CONF_DEVICE_NAME_TEXT = 'device_name_text'
 CONF_ESPNOW_KEY = 'espnow_key'
 
 # Public example passphrase from secrets_example.yaml — warn when it is used.
@@ -92,6 +93,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_HVAC_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_NOX_BOOST_ENABLED_GLOBAL): cv.use_id(GlobalsComponent),
     cv.Optional(CONF_OVERRIDE_DURATION_GLOBAL): cv.use_id(GlobalsComponent),
+    # "Gerätename" (packages/base/device_config.yaml), sent to the peers (v16)
+    cv.Optional(CONF_DEVICE_NAME_TEXT): cv.use_id(text.Text),
     # Room key for authenticated ESP-NOW frames — must be identical on all
     # devices of a room (secrets.yaml: espnow_key).
     cv.Required(CONF_ESPNOW_KEY): cv.All(cv.string_strict, cv.Length(min=16, max=128)),
@@ -203,3 +206,6 @@ async def to_code(config):
     if CONF_OVERRIDE_DURATION_GLOBAL in config:
         g = await cg.get_variable(config[CONF_OVERRIDE_DURATION_GLOBAL])
         cg.add(var.set_auto_override_duration_global(g))
+    if CONF_DEVICE_NAME_TEXT in config:
+        t = await cg.get_variable(config[CONF_DEVICE_NAME_TEXT])
+        cg.add(var.set_device_name_text(t))

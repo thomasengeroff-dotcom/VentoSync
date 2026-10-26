@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-22
+// Modified:    2026-10-26
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -2102,13 +2102,21 @@ bool test_packet_parse() {
   auto eb = to_bytes(edge);
   TEST_ASSERT(vp::parse(eb.data(), eb.size(), res).has_value());
 
+  // Device name (v16): an unterminated name is terminated, not rejected
+  auto named = valid_packet();
+  std::memset(named.device_name, 'x', sizeof(named.device_name));
+  auto nb = to_bytes(named);
+  auto np = vp::parse(nb.data(), nb.size(), res);
+  TEST_ASSERT(np.has_value());
+  TEST_ASSERT(std::strlen(np->device_name) == vp::DEVICE_NAME_SIZE - 1);
+
   // Wire size incl. the authentication trailer fits into one ESP-NOW frame
   TEST_ASSERT(sizeof(esphome::VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250);
   return true;
 }
 
 // ============================================================
-// T-8b: Packet -> PeerState (room flags decoding)
+// T-8b: Packet -> PeerState (room flags decoding, device name)
 // ============================================================
 bool test_peer_state_from_packet() {
   auto pkt = valid_packet();
@@ -2135,6 +2143,34 @@ bool test_peer_state_from_packet() {
   TEST_ASSERT(peer.hvac_ac_active && peer.presence && peer.nox_strong && peer.phase_b);
   TEST_ASSERT(!peer.window_open && !peer.nox_active);
   TEST_ASSERT(peer.last_seen_ms == 20000u);
+  TEST_ASSERT(peer.name[0] == '\0');  // no name
+
+  // Device name (v16)
+  namespace vp = ventosync::packet;
+  const std::string office = "VentoSync - DG B\xC3\xBCro";  // "Büro"
+  vp::copy_device_name(pkt.device_name, sizeof(pkt.device_name), office.data(), office.size());
+  ventosync::packet::update_peer_state(peer, pkt, mac, 21000u);
+  TEST_ASSERT(std::string(peer.name.data()) == office);
+
+  // copy_device_name(): NUL-padded, cut at the size limit on a UTF-8 boundary
+  // and before control characters
+  char buf[vp::DEVICE_NAME_SIZE];
+  const std::string ascii(40, 'a');
+  vp::copy_device_name(buf, sizeof(buf), ascii.data(), ascii.size());
+  TEST_ASSERT(std::strlen(buf) == vp::DEVICE_NAME_SIZE - 1);
+  std::string umlaut(vp::DEVICE_NAME_SIZE - 2, 'a');
+  umlaut += "\xC3\xBC";  // "ü" would need bytes 30 + 31: dropped as a whole
+  vp::copy_device_name(buf, sizeof(buf), umlaut.data(), umlaut.size());
+  TEST_ASSERT(std::string(buf) == std::string(vp::DEVICE_NAME_SIZE - 2, 'a'));
+  std::string fits(vp::DEVICE_NAME_SIZE - 3, 'a');
+  fits += "\xC3\xBC";  // ends exactly at byte 31: kept
+  vp::copy_device_name(buf, sizeof(buf), fits.data(), fits.size());
+  TEST_ASSERT(std::string(buf) == fits);
+  const std::string ctrl = "Bad\nName";
+  vp::copy_device_name(buf, sizeof(buf), ctrl.data(), ctrl.size());
+  TEST_ASSERT(std::string(buf) == "Bad");
+  vp::copy_device_name(buf, sizeof(buf), nullptr, 5);
+  TEST_ASSERT(buf[0] == '\0' && buf[vp::DEVICE_NAME_SIZE - 1] == '\0');
   return true;
 }
 
@@ -2529,7 +2565,7 @@ int main() {
     {"T-7y: Automatik-Status text + reason debounce", test_auto_status},
     {"T-7z: ESP-NOW authentication (HMAC trailer, replay guard)", test_espnow_auth},
     {"T-8a: ESP-NOW packet parsing (header, size, field ranges)", test_packet_parse},
-    {"T-8b: Packet -> PeerState (room flags decoding)", test_peer_state_from_packet},
+    {"T-8b: Packet -> PeerState (room flags decoding, device name)", test_peer_state_from_packet},
     {"T-8c: Smart-Automatik level ramp + Master following", test_auto_level},
     {"T-8d: Summer bypass decision + re-measure guard", test_summer_bypass},
     {"T-8e: Timer started after the loop timestamp (#54)", test_timer_start_after_now},

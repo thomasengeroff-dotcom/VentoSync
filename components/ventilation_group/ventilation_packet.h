@@ -22,7 +22,7 @@
 //              pure packet validation. No ESPHome dependencies — unit-tested.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-22
+// Modified:    2026-10-26
 // ==========================================================================
 #pragma once
 
@@ -39,6 +39,14 @@
 /** @brief Magic header for packet validation. */
 static constexpr uint8_t PACKET_MAGIC = 0x42;
 
+namespace ventosync {
+namespace packet {
+/// Size of VentilationPacket::device_name incl. the terminating NUL (v16).
+/// The HA text "Gerätename" allows DEVICE_NAME_SIZE - 1 bytes (max_length).
+constexpr size_t DEVICE_NAME_SIZE = 32;
+}  // namespace packet
+}  // namespace ventosync
+
 namespace esphome {
 
 /// @brief ESP-NOW packet type identifiers.
@@ -53,7 +61,7 @@ enum MessageType {
 
 /// Ensure breaking packet schema changes are detected across nodes.
 /// Bump this whenever the VentilationPacket layout or semantics change.
-static constexpr uint8_t PROTOCOL_VERSION = 15; // Bumped: room-wide summer cooling threshold
+static constexpr uint8_t PROTOCOL_VERSION = 16; // Bumped: device name
 
 /// @name VentilationPacket::room_flags bits (protocol v10)
 /// @{
@@ -154,6 +162,10 @@ struct __attribute__((packed)) VentilationPacket {
   // sliders, so all devices of a room start the summer bypass at the same
   // indoor temperature.
   uint8_t summer_cooling_threshold; ///< Indoor threshold 18-30 °C ("Sommerkühlung Schwelle").
+
+  // Device name (v16) — the sender's own "Gerätename" (UTF-8, NUL-padded,
+  // empty = none), shown on the peers' dashboards. Display only.
+  char device_name[ventosync::packet::DEVICE_NAME_SIZE];
 };
 
 static_assert(sizeof(VentilationPacket) + ventosync::espnow_auth::TRAILER_SIZE <= 250,
@@ -184,6 +196,7 @@ struct PeerState {
   bool phase_b;        ///< Peer's configured phase is B (ROOM_FLAG_PHASE_B).
   uint8_t vacation_pre_mode_index; ///< Leader's pre-vacation mode index, else 0xFF.
   uint8_t vacation_pre_intensity;  ///< Leader's pre-vacation fan level, else 0.
+  std::array<char, ventosync::packet::DEVICE_NAME_SIZE> name{}; ///< Peer's "Gerätename" (NUL-terminated, may be empty).
 };
 
 }  // namespace esphome
@@ -273,7 +286,29 @@ inline std::optional<esphome::VentilationPacket> parse(const uint8_t *data, size
   if (pkt.summer_cooling_threshold < ventosync::summer::THRESHOLD_MIN_C ||
       pkt.summer_cooling_threshold > ventosync::summer::THRESHOLD_MAX_C)
     return out_of_range("summer_cooling_threshold", pkt.summer_cooling_threshold);
+  // Display-only text: terminate instead of rejecting the packet
+  pkt.device_name[DEVICE_NAME_SIZE - 1] = '\0';
   return pkt;
+}
+
+/**
+ * @brief   Copies a device name into a fixed field (VentilationPacket::device_name).
+ *
+ * @details At most `size - 1` bytes, cut at a UTF-8 character boundary (never
+ *          half an umlaut) and before the first control character; the rest
+ *          of the field is NUL-padded.
+ */
+inline void copy_device_name(char *dst, size_t size, const char *src, size_t len) {
+  if (dst == nullptr || size == 0) return;
+  std::memset(dst, 0, size);
+  if (src == nullptr) return;
+  size_t n = 0;
+  while (n < len && n < size - 1 && static_cast<unsigned char>(src[n]) >= 0x20 && src[n] != 0x7F) n++;
+  // Dropped a continuation byte (10xxxxxx)? Then also drop its lead byte(s).
+  if (n < len && n == size - 1) {
+    while (n > 0 && (static_cast<unsigned char>(src[n]) & 0xC0) == 0x80) n--;
+  }
+  std::memcpy(dst, src, n);
 }
 
 /// @brief Short English label of a ParseError (log output).
@@ -320,6 +355,8 @@ inline void update_peer_state(esphome::PeerState &peer, const esphome::Ventilati
   peer.phase_b = (pkt.room_flags & esphome::ROOM_FLAG_PHASE_B) != 0;
   peer.vacation_pre_mode_index = pkt.vacation_pre_mode_index;
   peer.vacation_pre_intensity = pkt.vacation_pre_intensity;
+  std::memcpy(peer.name.data(), pkt.device_name, peer.name.size());
+  peer.name.back() = '\0';
 }
 
 /// Smart-Automatik on the wire (UI mode index 0, globals.h MODE_INDEX_AUTO).

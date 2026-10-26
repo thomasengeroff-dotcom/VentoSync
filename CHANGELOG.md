@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.60] - 2026-10-26
+
+### Added
+
+- **Device name (`Gerätename`)** — new text entity `text.geratename` (config, max. 31 bytes, stored in NVS) for a
+  readable name such as „VentoSync - DG Büro“. The web dashboard shows it as page and browser-tab title, on the
+  *Gerät & System* card and on this device's card; it is editable under *Einstellungen → Gerätekonfiguration* and in
+  step 2 of the setup wizard (summary included), so it also works without Home Assistant. Without a name everything
+  shows „Gerät <ID>“ as before. The device cannot read the name given in Home Assistant's device registry — enter it
+  once in HA or the dashboard.
+- **Peer cards show the other devices' names** — every device sends its name over ESP-NOW, so the *Verbundene Geräte*
+  cards and the setup wizard's device list show „VentoSync - DG Büro“ (with „Gerät 2“ beside it) instead of only
+  „Gerät 2“. `/state` peer key `name` (absent when empty), `/meta` key `texts` (length limits), `/set` accepts text
+  keys.
+
+### Changed
+
+- **ESP-NOW protocol v16** — `VentilationPacket` carries the sender's own `device_name` (32 bytes, UTF-8, display
+  only; `parse()` terminates it instead of rejecting the packet, the sender cuts it on a UTF-8 boundary). Mixed v15 /
+  v16 devices reject each other's packets — **flash all devices of a room**.
+
 ## [0.10.59] - 2026-10-22
 
 ### Fixed

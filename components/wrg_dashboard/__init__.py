@@ -33,7 +33,7 @@ def build_page() -> bytes:
     return html.replace(CSS_LINK, f"<style>{css}</style>").encode("utf-8")
 
 
-from esphome.components import sensor, binary_sensor, text_sensor, number, select, switch, button
+from esphome.components import sensor, binary_sensor, text_sensor, number, select, switch, button, text
 
 wrg_dashboard_ns = cg.esphome_ns.namespace("wrg_dashboard")
 WrgDashboard = wrg_dashboard_ns.class_("WrgDashboard", cg.Component)
@@ -118,6 +118,10 @@ SWITCHES = {
     # Only set by packages/integration/bluetooth_proxy.yaml
     "bluetooth_proxy_switch_id": "bt_proxy",
 }
+TEXTS = {
+    # Device name (packages/base/device_config.yaml)
+    "device_name_id": "device_name",
+}
 BUTTONS = {
     "filter_reset_button_id": "filter_reset",
     "restart_button_id": "restart",
@@ -131,6 +135,7 @@ TABLES = (
     (NUMBERS, number.Number, "add_number"),
     (SELECTS, select.Select, "add_select"),
     (SWITCHES, switch.Switch, "add_switch"),
+    (TEXTS, text.Text, "add_text"),
     (BUTTONS, button.Button, "add_button"),
 )
 

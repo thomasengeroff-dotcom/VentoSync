@@ -21,7 +21,7 @@
 // Description: Web server component definitions for the dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-22
+// Modified:    2026-10-26
 // ==========================================================================
 
 #pragma once
@@ -34,6 +34,9 @@
 #endif
 #ifdef USE_BUTTON
 #include "esphome/components/button/button.h"
+#endif
+#ifdef USE_TEXT
+#include "esphome/components/text/text.h"
 #endif
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
@@ -91,7 +94,8 @@ public:
   /// every 100 ms, so a human using the UI never gets near it; a client
   /// flooding /set gets HTTP 503 instead of exhausting the heap.
   static constexpr size_t MAX_PENDING_ACTIONS = 16;
-  /// Maximum length of a /set value (longest legit value: a mode name).
+  /// Maximum length of a /set value in bytes (longest legit values: a mode
+  /// name, the device name with max. 31 bytes).
   static constexpr size_t MAX_VALUE_LEN = 32;
   /// /state is rebuilt this often while a client polls.
   static constexpr uint32_t STATE_REBUILD_MS = 1000;
@@ -162,6 +166,9 @@ public:
 #ifdef USE_BUTTON
   void add_button(const char *key, button::Button *b) { buttons_.push_back({key, b}); }
 #endif
+#ifdef USE_TEXT
+  void add_text(const char *key, text::Text *t) { texts_.push_back({key, t}); }
+#endif
   /// Factory default of a number key or a select's option index (setup wizard, listed in /meta).
   void add_default(const char *key, float value) { defaults_.push_back({key, value}); }
 
@@ -188,6 +195,7 @@ protected:
   void handle_set_(AsyncWebServerRequest *request);
   void handle_history_(AsyncWebServerRequest *request);
   bool is_writable_key_(const std::string &key) const;
+  bool is_text_key_(const std::string &key) const;
   void dispatch_set_(const DashboardAction &action);
   std::string build_state_json_();
   std::string build_meta_json_();
@@ -261,6 +269,9 @@ protected:
 #endif
 #ifdef USE_BUTTON
   std::vector<KeyedEntity<button::Button>> buttons_;
+#endif
+#ifdef USE_TEXT
+  std::vector<KeyedEntity<text::Text>> texts_;
 #endif
   std::vector<std::pair<const char *, float>> defaults_;
 };

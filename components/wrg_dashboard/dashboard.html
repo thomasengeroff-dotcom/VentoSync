@@ -10,7 +10,7 @@
                edit this file directly, then run tailwind/build_css.sh.
   Author:      Thomas Engeroff
   Created:     2026-03-09
-  Modified:    2026-10-22
+  Modified:    2026-10-26
 -->
 <html lang="de" class="dark">
 <head>
@@ -46,8 +46,9 @@
   <div class="w-full max-w-5xl space-y-6">
 
     <header class="text-center space-y-2">
-      <h1 class="text-3xl font-bold tracking-tight text-white">
-        WRG Lüftung Dashboard
+      <!-- The device name ("Gerätename") replaces the generic title once set -->
+      <h1 class="text-3xl font-bold tracking-tight text-white break-words">
+        <span id="hdr_title">WRG Lüftung Dashboard</span>
         <span id="hdr_version" class="text-sm font-normal text-gray-500 ml-2"></span>
       </h1>
       <div class="text-xs text-gray-500 mb-4"><span id="conn_dot" class="inline-block w-2 h-2 rounded-full bg-gray-500 mr-1.5"></span><span id="conn_label">Verbinde …</span></div>
@@ -70,10 +71,11 @@
       <!-- Device & system info -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-3">
         <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Gerät &amp; System</h2>
+        <div class="flex justify-between items-center gap-3"><span class="text-gray-400 text-sm shrink-0">Gerätename:</span> <span class="font-medium text-lg truncate" id="val_device_name">--</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-ID:</span> <span class="font-medium text-lg"><span id="val_device_id">--</span> <span id="master_badge" class="hidden text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">MASTER</span></span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Floor / Raum:</span> <span class="font-medium text-lg"><span id="val_floor_id">--</span> / <span id="val_room_id">--</span></span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-Phase (A/B):</span> <span class="font-medium text-lg" id="val_phase">--</span></div>
-        <div class="text-xs text-gray-500">IDs und Phase ändern: Einstellungen → Gerätekonfiguration</div>
+        <div class="text-xs text-gray-500">Name, IDs und Phase ändern: Einstellungen → Gerätekonfiguration</div>
         <div class="border-t border-gray-700 pt-3 space-y-1 text-sm">
           <div class="flex justify-between"><span class="text-gray-400">Firmware:</span> <span id="sys_version">--</span></div>
           <div class="flex justify-between"><span class="text-gray-400">Variante:</span> <span id="sys_variant">--</span></div>
@@ -263,8 +265,8 @@
             </div>`;
     }
 
-    // Settings rows: [type (n = number, t = toggle, s = select), /state key, label, unit, room-wide].
-    // Limits and select options come from /meta (the YAML entity definitions).
+    // Settings rows: [type (n = number, t = toggle, s = select, x = text), /state key, label, unit, room-wide].
+    // Limits, text lengths and select options come from /meta (the YAML entity definitions).
     const SETTINGS = {
       grp_control: [['n', 'vent_timer', 'Durchlüften-Dauer', 'min (0 = unbegrenzt)', 1],
                     ['t', 'child_lock', 'Kindersicherung (Tasten sperren)', '', 0],
@@ -286,7 +288,8 @@
                 ['n', 'vacation_intensity', 'Intensität', '', 1]],
       grp_net: [['n', 'sync_interval_config', 'ESP-NOW Sync-Intervall', 'min', 1],
                 ['t', 'peer_check', 'ESP-NOW Peerprüfung (Master-LED ohne Peers)', '', 1]],
-      grp_device: [['n', 'config_floor_id', 'Stockwerk-ID', '', 0],
+      grp_device: [['x', 'device_name', 'Gerätename', '', 0],
+                   ['n', 'config_floor_id', 'Stockwerk-ID', '', 0],
                    ['n', 'config_room_id', 'Raum-ID', '', 0],
                    ['n', 'config_device_id', 'Geräte-ID', '', 0],
                    ['s', 'config_phase', 'Geräte-Phase', '', 0],
@@ -309,6 +312,8 @@
             ctl = `<span class="flex items-center gap-2 shrink-0"><input type="number" id="${k}" data-num="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-20 text-center"><span class="text-xs text-gray-500">${unit}</span></span>`;
           } else if (t === 't') {
             ctl = `<input type="checkbox" id="${k}" data-sw="${k}" onchange="sendSet('${k}', this.checked ? 1 : 0, this)" class="w-5 h-5 accent-accent cursor-pointer shrink-0">`;
+          } else if (t === 'x') {
+            ctl = `<input type="text" id="${k}" data-txt="${k}" onchange="sendSet('${k}', this.value.trim(), this)" placeholder="z. B. VentoSync - DG Büro" class="${INPUT_CLS} w-56 min-w-0">`;
           } else {
             ctl = `<select id="${k}" data-sel="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-44 cursor-pointer"></select>`;
           }
@@ -343,6 +348,10 @@
         for (const [k, opts] of Object.entries(META.selects || {})) {
           const el = document.getElementById(k);
           if (el) el.innerHTML = opts.map(o => `<option value="${sanitizeHTML(o)}">${sanitizeHTML(o)}</option>`).join('');
+        }
+        for (const [k, [, max]] of Object.entries(META.texts || {})) {
+          const el = document.getElementById(k);
+          if (el) el.maxLength = max;  // characters; sendSet() checks the bytes (umlauts = 2)
         }
         if ((META.buttons || []).includes('filter_reset')) {
           document.getElementById('btn_filter_reset').classList.remove('hidden');
@@ -564,8 +573,21 @@
       document.getElementById('status_chips').innerHTML = chips.join('');
     }
 
+    // Readable device name ("Gerätename"), empty when not set
+    const deviceName = v => (typeof v === 'string') ? v.trim() : '';
+    // Card title: the name with the device ID beside it, else "Gerät <id>"
+    function deviceTitle(name, id, master) {
+      const tag = master ? MASTER_TAG : '';
+      const idTxt = `Gerät ${sanitizeHTML(String(id))}`;
+      return name ? `${sanitizeHTML(name)}${tag} <span class="text-xs font-normal text-gray-500">${idTxt}</span>` : idTxt + tag;
+    }
+
     function renderSystem(data) {
       const sys = data.sys || {};
+      const name = deviceName(data.device_name);
+      document.getElementById('hdr_title').textContent = name || 'WRG Lüftung Dashboard';
+      document.title = name || 'Wohnraumlüftung Dashboard';
+      document.getElementById('val_device_name').textContent = name || '--';
       document.getElementById('hdr_version').textContent = sys.version ? 'v' + sys.version : '';
       document.getElementById('sys_version').textContent = sys.version || '--';
       document.getElementById('sys_variant').textContent = sys.variant || '--';
@@ -634,7 +656,7 @@
       const localMode = data.luefter_modus === 'Wärmerückgewinnung' ? 'WRG' : (data.luefter_modus || '--');
       const localFlags = [data.radar_presence ? miniFlag('Präsenz') : ''].join('');
 
-      let html = peerCard(`Gerät ${sanitizeHTML(String(data.device_id || "--"))}${data.is_master ? MASTER_TAG : ''} (lokal)`, true,
+      let html = peerCard(`${deviceTitle(deviceName(data.device_name), data.device_id || "--", data.is_master)} <span class="text-xs font-normal text-gray-500">(lokal)</span>`, true,
           localMode, data.fan_intensity_display || "--", localBadge, fmtNum(data.fan_rpm, 0, ""),
           fmtNum(data.temperature, 1, " °C"), pct(data.pid_demand), localFlags, 'bg-gray-400', 'Dieses Gerät',
           airQualityBlock(data.room_co2, data.room_co2_bewertung, data.room_temperature, data.room_humidity));
@@ -646,7 +668,7 @@
         const flags = [peer.presence ? miniFlag('Präsenz') : '', peer.window ? miniFlag('Fenster offen') : '',
                        peer.ac ? miniFlag('Klima an') : '', peer.nox ? miniFlag('NOx') : ''].join('');
         const seen = `zuletzt vor ${peer.age_s} s`;
-        html += peerCard(`Gerät ${sanitizeHTML(String(peer.device_id))}${peer.master ? MASTER_TAG : ''} <span class="text-xs font-normal text-gray-500">${seen}</span>`, false,
+        html += peerCard(`${deviceTitle(deviceName(peer.name), peer.device_id, peer.master)} <span class="text-xs font-normal text-gray-500">${seen}</span>`, false,
             mode, peer.speed, badge, fmtNum(peer.rpm, 0, ""), fmtNum(peer.board_t, 1, " °C"), pct(peer.pid_demand), flags,
             peer.fresh ? 'bg-accent' : 'bg-warn', peer.fresh ? 'Aktuell' : 'Veraltet: ' + seen,
             airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity), peerLink(peer.host));
@@ -861,6 +883,12 @@
         toast(`${label}: Wert außerhalb ${lim[0]}–${lim[1]}`, 'err');
         return false;
       }
+      const tlim = META && META.texts && META.texts[id];
+      if (tlim && new TextEncoder().encode(String(val)).length > tlim[1]) {
+        flash(el, false);
+        toast(`${label}: zu lang (max. ${tlim[1]} Bytes, Umlaute zählen doppelt)`, 'err');
+        return false;
+      }
       if (id === 'fan_intensity_display') document.getElementById("label_fan_intensity").innerText = val;
 
       let accepted = false;
@@ -1033,6 +1061,11 @@
       return `<select id="${id}" onchange="WIZ.touched[this.id] = 1; wizUpdate()" class="${INPUT_CLS} w-56 cursor-pointer">` +
         options.map(o => `<option value="${sanitizeHTML(o)}"${o === value ? ' selected' : ''}>${sanitizeHTML(o)}</option>`).join('') + '</select>';
     }
+    function wizText(id, key, value) {
+      const max = ((META.texts || {})[key] || [0, 255])[1];
+      return `<input type="text" id="${id}" maxlength="${max}" value="${sanitizeHTML(deviceName(value))}" placeholder="z. B. VentoSync - DG Büro"
+          oninput="WIZ.touched[this.id] = 1" class="${INPUT_CLS} w-56 min-w-0">`;
+    }
     function wizToggle(id, value) {
       return `<input type="checkbox" id="${id}"${value ? ' checked' : ''} onchange="WIZ.touched[this.id] = 1; wizUpdate()" class="w-5 h-5 accent-accent cursor-pointer shrink-0">`;
     }
@@ -1083,7 +1116,7 @@
         return `<p>Dieser Assistent richtet das Gerät in vier Schritten ein:</p>
           <ol class="list-decimal ml-5 space-y-1">
             <li><b class="text-gray-100">Raum</b> – zu welchem Raum das Gerät gehört (Stockwerk und Raum).</li>
-            <li><b class="text-gray-100">Gerät</b> – Geräte-ID und Phase; dabei wird geprüft, ob die ID im Raum schon vergeben ist.</li>
+            <li><b class="text-gray-100">Gerät</b> – Geräte-ID, Phase und Name; dabei wird geprüft, ob die ID im Raum schon vergeben ist.</li>
             <li><b class="text-gray-100">Betrieb &amp; Smart-Automatik</b> – Betriebsmodus, Lüfterstufen und Grenzwerte der Automatik.</li>
             <li><b class="text-gray-100">Weitere Funktionen</b> – ${extras}.</li>
           </ol>
@@ -1116,7 +1149,9 @@
           <div id="wiz_dev_msg" class="space-y-2"></div>
           ${wizRow('Phase', wizSelect('wiz_phase', phases, d.config_phase),
               'Bei der Wärmerückgewinnung wechselt jedes Gerät etwa jede Minute die Richtung: Phase A beginnt mit Zuluft (hinein), Phase B mit Abluft (hinaus); beim Durchlüften bläst A dauerhaft hinein und B hinaus. Damit gleich viel Luft hinein- wie hinausströmt, sollten im Raum gleich viele Geräte Phase A und Phase B haben – bei einem Paar also eines A und eines B.', 0)}
-          <div id="wiz_phase_msg"></div>`;
+          <div id="wiz_phase_msg"></div>
+          ${d.device_name === undefined ? '' : wizRow('Gerätename', wizText('wiz_name', 'device_name', d.device_name),
+              'Optional, z. B. „VentoSync - DG Büro“: erscheint als Titel dieses Dashboards und auf den Gerätekarten aller Geräte im Raum. In Home Assistant heißt die Einstellung <i>Gerätename</i>.', 0)}`;
       }
       if (step === 3 || step === 4) {
         const groups = wizGroups(step, d);
@@ -1164,7 +1199,7 @@
         wizEl('wiz_rescan').disabled = scanning;
         wizEl('wiz_peers').innerHTML = peers.length ? '<ul class="divide-y divide-gray-700/60 bg-black/20 rounded-lg">' +
           peers.slice().sort((a, b) => a.device_id - b.device_id).map(p =>
-            `<li class="flex justify-between gap-3 px-3 py-1.5"><span>Gerät ${sanitizeHTML(String(p.device_id))}${p.master ? MASTER_TAG : ''}</span>
+            `<li class="flex justify-between gap-3 px-3 py-1.5"><span>${deviceTitle(deviceName(p.name), p.device_id, p.master)}</span>
              <span class="text-gray-400">Phase ${sanitizeHTML(p.phase_cfg || '?')} · zuletzt vor ${sanitizeHTML(String(p.age_s))} s</span></li>`).join('') + '</ul>' : '';
         if (!scanning && !WIZ.suggested) {
           WIZ.suggested = true;  // once per scan, never over the user's choice
@@ -1178,7 +1213,8 @@
         const msgs = [];
         if (clash.length) {
           const free = wizFreeIds(5);
-          msgs.push(wizHint(`ID ${dev} ist im Raum bereits vergeben${clash[0].host ? ` (${sanitizeHTML(clash[0].host)})` : ''}. Zwei Geräte mit derselben ID stören sich gegenseitig – bitte eine freie ID wählen${free.length ? ': ' + free.join(', ') + (free.length === 5 ? ' …' : '') : ''}.`, 'danger'));
+          const who = deviceName(clash[0].name) || clash[0].host;
+          msgs.push(wizHint(`ID ${dev} ist im Raum bereits vergeben${who ? ` (${sanitizeHTML(who)})` : ''}. Zwei Geräte mit derselben ID stören sich gegenseitig – bitte eine freie ID wählen${free.length ? ': ' + free.join(', ') + (free.length === 5 ? ' …' : '') : ''}.`, 'danger'));
           blocked = true;
         } else if (dev === 1) {
           msgs.push(wizHint('Dieses Gerät wird der <b>Master</b> des Raums.', 'accent'));
@@ -1218,6 +1254,7 @@
             line('Stockwerk / Raum', `${Number(d.config_floor_id)} / ${Number(d.config_room_id)}`, 0) +
             line('Geräte-ID', `${Number(d.config_device_id)}${d.is_master ? MASTER_TAG : ''}`, 0) +
             line('Phase', fmtTxt(d.phase), 0) +
+            (d.device_name === undefined ? '' : line('Gerätename', fmtTxt(deviceName(d.device_name)), 0)) +
             line('Weitere Geräte im Raum', String(peers.length))) +
           [3, 4].flatMap(s => wizGroups(s, d)).map(g => block(g.title, g.rows.map(r => line(r[2], value(r), r[4])).join(''))).join('');
       }
@@ -1269,6 +1306,9 @@
           const changed = !same(dev, d.config_device_id);
           if (changed && !await sendSet('config_device_id', dev, wizEl('wiz_dev'))) return;
           if (phase && phase !== d.config_phase && !await sendSet('config_phase', phase, wizEl('wiz_phase'))) return;
+          const nameEl = wizEl('wiz_name');
+          if (nameEl && nameEl.value.trim() !== deviceName(d.device_name) &&
+              !await sendSet('device_name', nameEl.value.trim(), nameEl)) return;
           // No longer the Master: fetch the room-wide settings from the Master's status response now
           if (changed && dev !== 1 && wizPeers().some(p => p.master)) sendSet('force_discovery', 1, null, true);
         } else if (step === 3 || step === 4) {
