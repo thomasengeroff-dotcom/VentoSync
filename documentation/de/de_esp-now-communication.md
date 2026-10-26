@@ -63,7 +63,7 @@ sequenceDiagram
 
 ---
 
-## 🔒 Protokoll-Architektur & Paketvalidierung (v15)
+## 🔒 Protokoll-Architektur & Paketvalidierung (v16)
 
 * **Frame-Authentifizierung (v13)**: Jeder Frame — Statuspakete, Heartbeats und die Discovery-Strings, Unicast wie Broadcast — trägt einen 16-Byte-Trailer mit Frame-Zähler und HMAC-SHA256-Tag (siehe *Sicherheit* unten). Frames ohne gültigen Tag oder mit veraltetem Zähler werden verworfen, bevor irgendetwas ausgewertet wird. Firmware ≥ 0.10.43 verwirft v12-Frames — **alle Geräte eines Raums flashen** und ihnen denselben `espnow_key` geben.
 * **Magic Header**: Jedes Datenpaket beginnt mit einem festen Prüfbyte (`0x42`), um fremde oder fehlerhafte 2,4-GHz-Pakete sofort zu verwerfen.
@@ -72,6 +72,7 @@ sequenceDiagram
 * **Stufen-Übersteuerung (v12)**: Jedes Paket trägt die Stufen-Übersteuerung der Smart-Automatik des Raums (`auto_override_level`, `auto_override_remaining_s`). `MSG_STATE` eines beliebigen Geräts startet, ändert oder beendet sie; der Master-Heartbeat startet bzw. synchronisiert sie nur. Firmware ≥ 0.10.34 verwirft v11-Pakete — **alle Geräte eines Raums flashen**.
 * **Urlaubs-Voreinstellung (v14)**: Jedes Paket trägt die raumweite Urlaubs-Voreinstellung (`vacation_preset_mode_index`, `vacation_preset_level`), übernommen wie die Slider aus `MSG_STATE` und dem Master-Heartbeat. Firmware ≥ 0.10.52 verwirft v13-Pakete — **alle Geräte eines Raums flashen**.
 * **Sommerkühlung-Schwelle (v15)**: Jedes Paket trägt die raumweite `Smart-Automatik: Sommerkühlung Schwelle` (`summer_cooling_threshold`, 18–30 °C), übernommen wie die Slider aus `MSG_STATE` und dem Master-Heartbeat. Firmware ≥ 0.10.54 verwirft v14-Pakete — **alle Geräte eines Raums flashen**.
+* **Gerätename (v16)**: Jedes Paket trägt den eigenen `Gerätename` des Senders (`device_name`, 32 Byte UTF-8, mit NUL aufgefüllt, leer = keiner), angezeigt auf den Peer-Karten der Dashboards der anderen Geräte. Nur zur Anzeige — nie übernommen oder weitergesendet; `parse()` terminiert das Feld, statt das Paket zu verwerfen. Firmware ≥ 0.10.60 verwirft v15-Pakete — **alle Geräte eines Raums flashen**.
 
 ---
 

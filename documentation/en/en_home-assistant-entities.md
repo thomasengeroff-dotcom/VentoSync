@@ -159,6 +159,7 @@ The panel LEDs themselves are driven by the firmware and are **not** exposed as 
 (Mainly needed for the initial configuration after installing the hardware.)
 
 * **`number.id_stockwerk`**, **`number.id_raum`**, **`number.id_gerat`** ("ID Stockwerk" / "ID Raum" / "ID Gerät", config) — floor, room and device ID. Devices with the same floor + room form a room group; device ID 1 is the Master.
+* **`text.geratename`** ("Gerätename", config, *0.10.60*) — readable device name, e.g. `VentoSync - DG Büro` (max. 31 bytes, empty = none, stored in NVS). The web dashboard shows it as its title and on the device cards, and the device sends it to its room's peers over ESP-NOW (protocol v16), so their dashboards show it too. The device cannot read the name from HA's device registry — set it here or in the web dashboard (*Gerätekonfiguration*).
 * **`select.gerate_phase_a_b`** ("Geräte-Phase (A|B)", YAML ID `config_phase`) — Phase A starts with supply air, Phase B with extract air (push-pull pairs need one of each).
 * **`button.auf_standardwerte_zurucksetzen`** ("Auf Standardwerte zurücksetzen", config) — resets floor, room and device ID and the phase; the web dashboard then offers its setup wizard again (0.10.56).
 * **`button.force_espnow_discovery`** ("Force ESPNOW Discovery", diagnostic) — searches for peers of the room.

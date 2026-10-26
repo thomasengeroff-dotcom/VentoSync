@@ -159,6 +159,7 @@ Die Panel-LEDs selbst steuert die Firmware; sie sind **keine** Light-Entitäten 
 (Hauptsächlich für die Erstkonfiguration nach dem Einbau der Hardware.)
 
 * **`number.id_stockwerk`**, **`number.id_raum`**, **`number.id_gerat`** („ID Stockwerk“ / „ID Raum“ / „ID Gerät“, Konfiguration) — Stockwerk-, Raum- und Geräte-ID. Geräte mit gleichem Stockwerk + Raum bilden eine Raumgruppe; Geräte-ID 1 ist der Master.
+* **`text.geratename`** („Gerätename“, Konfiguration, *0.10.60*) — sprechender Gerätename, z. B. `VentoSync - DG Büro` (max. 31 Byte, leer = keiner, im NVS gespeichert). Das Web-Dashboard zeigt ihn als Titel und auf den Gerätekarten, und das Gerät sendet ihn per ESP-NOW (Protokoll v16) an die Geräte seines Raums, sodass auch deren Dashboards ihn zeigen. Den Namen aus der Geräteverwaltung von HA kann das Gerät nicht lesen — hier oder im Web-Dashboard (*Gerätekonfiguration*) eintragen.
 * **`select.gerate_phase_a_b`** („Geräte-Phase (A|B)“, YAML-ID `config_phase`) — Phase A beginnt mit Zuluft, Phase B mit Abluft (Push-Pull-Paare brauchen je eines).
 * **`button.auf_standardwerte_zurucksetzen`** („Auf Standardwerte zurücksetzen“, Konfiguration) — setzt Stockwerk-, Raum- und Geräte-ID sowie die Phase zurück; das Web-Dashboard bietet danach wieder den Einrichtungs-Assistenten an (0.10.56).
 * **`button.force_espnow_discovery`** („Force ESPNOW Discovery“, Diagnose) — sucht nach Peers des Raums.

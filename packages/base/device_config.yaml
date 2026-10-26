@@ -79,6 +79,28 @@ select:
         - lambda: "update_phase_config(x);"
 
 # ---------------------------------------------------------
+# DEVICE NAME
+# ---------------------------------------------------------
+# Readable name, e.g. "VentoSync - DG Buero", shown by the web dashboard (title,
+# device cards) and sent to the room's peers via ESP-NOW (protocol v16), so
+# their dashboards show it too. The device cannot read the name given in Home
+# Assistant's device registry — enter it here (HA or dashboard). NVS-restored.
+# max_length = DEVICE_NAME_SIZE - 1 (ventilation_packet.h), in bytes (UTF-8).
+text:
+  - platform: template
+    name: "Gerätename"
+    id: device_name
+    icon: "mdi:rename"
+    mode: text
+    max_length: 31
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    set_action:
+      then:
+        - lambda: "id(ventilation_ctrl).trigger_sync();"  # peers get the name with the next MSG_SYNC
+
+# ---------------------------------------------------------
 # SETUP WIZARD STATE
 # ---------------------------------------------------------
 # Set by the dashboard's setup wizard when it finishes (or is skipped). While

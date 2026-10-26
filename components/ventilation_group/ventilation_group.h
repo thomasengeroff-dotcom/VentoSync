@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-22
+// Modified:    2026-10-26
 // ==========================================================================
 #pragma once
 
@@ -219,6 +219,9 @@ public:
   esphome::globals::RestoringGlobalsComponent<bool> *hvac_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<bool> *nox_boost_enabled_global_{nullptr};
   esphome::globals::RestoringGlobalsComponent<int> *auto_override_duration_global_{nullptr};
+#ifdef USE_TEXT
+  text::Text *device_name_text_{nullptr}; ///< HA text "Gerätename" (sent to the peers, v16).
+#endif
 
   // --- SETTERS (called by ESPHome codegen from YAML config) ---
   /** @brief Sets the global mode index reference. */
@@ -265,6 +268,10 @@ public:
   void set_nox_boost_enabled_global(esphome::globals::RestoringGlobalsComponent<bool> *g) { nox_boost_enabled_global_ = g; }
   /** @brief Sets the level override duration reference (room-wide setting, minutes). */
   void set_auto_override_duration_global(esphome::globals::RestoringGlobalsComponent<int> *g) { auto_override_duration_global_ = g; }
+#ifdef USE_TEXT
+  /** @brief Sets the device name text entity ("Gerätename", shown on the peers' dashboards). */
+  void set_device_name_text(text::Text *t) { device_name_text_ = t; }
+#endif
 
   /** @return true while vacation mode is active (vacation_state != 0, leading or following). */
   bool is_vacation_active() const {
@@ -865,6 +872,14 @@ public:
         summer_cooling_threshold_global_ != nullptr ? summer_cooling_threshold_global_->value()
                                                     : static_cast<int>(ventosync::summer::DEFAULT_THRESHOLD_C),
         ventosync::summer::THRESHOLD_MIN_C, ventosync::summer::THRESHOLD_MAX_C));
+
+    // Own device name (display only, empty without one)
+#ifdef USE_TEXT
+    if (device_name_text_ != nullptr && device_name_text_->has_state()) {
+      const std::string &name = device_name_text_->state;
+      ventosync::packet::copy_device_name(pkt.device_name, sizeof(pkt.device_name), name.data(), name.size());
+    }
+#endif
     
     // Timers
     // FIXED H-4: Clamp before cast to prevent silent uint16_t truncation

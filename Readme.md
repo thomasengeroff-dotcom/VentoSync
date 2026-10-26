@@ -247,7 +247,7 @@ I deliberately chose **not** to use powerline communication (PLC / data transmis
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="External Antenna in Housing" width="500" />
 </p>
 
-> 👉 *For complete protocol details (v15, authenticated frames), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
+> 👉 *For complete protocol details (v16, authenticated frames), dynamic room discovery, unicast architecture, and antenna optimization, see [📄 ESP-NOW Communication Guide](documentation/en/en_esp-now-communication.md).*
 
 ---
 
@@ -463,7 +463,8 @@ esphome upload ventosync_nosensor.yaml --device <IP-Address> --no-logs
    - **Device ID** (Unique number for this device)
    - **Room ID** (Devices with the same Room ID will synchronize)
    - **Floor ID**
-3. **Alternative - Web Dashboard**: If you don't use Home Assistant, you can configure all settings — including floor, room and device ID and the phase — via the local web dashboard at `http://<device-ip>/`. Since 0.10.56 a **setup wizard** opens there on a device that was never set up: floor and room, device ID (checked against the IDs already used in the room) and phase (with a suggestion), then — grouped and explained — the operating mode, the Smart-Automatik basics, Klima-Koordination, NOx-Stoßlüftung (SGP41 board only), vacation preset and child lock (since 0.10.58). **RAUMWEIT** marks values that come from the room's Master, an orange **PRÜFEN** the ones that apply to this device only. It can be reopened under *Gerätekonfiguration → Einrichtungs-Assistent*.
+   - **Device name** (`Gerätename`, optional, e.g. "VentoSync - DG Büro" — the web dashboards of all devices in the room show it; the device cannot read the name from HA's device registry, so enter it here)
+3. **Alternative - Web Dashboard**: If you don't use Home Assistant, you can configure all settings — including floor, room and device ID, the phase and the device name — via the local web dashboard at `http://<device-ip>/`. Since 0.10.56 a **setup wizard** opens there on a device that was never set up: floor and room, device ID (checked against the IDs already used in the room) and phase (with a suggestion), then — grouped and explained — the operating mode, the Smart-Automatik basics, Klima-Koordination, NOx-Stoßlüftung (SGP41 board only), vacation preset and child lock (since 0.10.58). **RAUMWEIT** marks values that come from the room's Master, an orange **PRÜFEN** the ones that apply to this device only. It can be reopened under *Gerätekonfiguration → Einrichtungs-Assistent*.
 4. **Enjoy**: Sit back and enjoy your smart HRV system!
 5. **OTA Updates**:
    Example of Update process in Home Assistant:

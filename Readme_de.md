@@ -244,7 +244,7 @@ Ich habe mich hier bewusst **gegen die fehleranfällige Kommunikation über die 
   <img src="EasyEDA-Pro/PCB%20mounting/PCB-ANT-in-Gehäuse.jpg" alt="Externe Antenne im Gehäuse" width="500" />
 </p>
 
-> 👉 *Ausführliche Details zu Protokoll v15 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
+> 👉 *Ausführliche Details zu Protokoll v16 (authentifizierte Frames), dynamischer Raum-Discovery, Unicast-Architektur und Antennen-Optimierung siehe [📄 ESP-NOW Kommunikation Guide](documentation/de/de_esp-now-communication.md).*
 
 ---
 
@@ -460,7 +460,8 @@ esphome upload ventosync_nosensor.yaml --device <IP-Adresse> --no-logs
    - **Device ID** (Eindeutige Nummer des Geräts)
    - **Room ID** (Geräte mit gleicher Room ID synchronisieren sich)
    - **Floor ID**
-3. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings — auch Stockwerk-, Raum- und Geräte-ID sowie die Phase — über das lokale Web-Dashboard unter `http://<device-ip>/` konfiguriert werden. Seit 0.10.56 öffnet sich dort auf einem noch nicht eingerichteten Gerät ein **Einrichtungs-Assistent**: Stockwerk und Raum, Geräte-ID (geprüft gegen die im Raum schon vergebenen IDs) und Phase (mit Vorschlag), danach — gruppiert und erklärt — Betriebsmodus, Grundeinstellungen der Smart-Automatik, Klima-Koordination, NOx-Stoßlüftung (nur mit SGP41-Board), Urlaubsvorgabe und Kindersicherung (seit 0.10.58). **RAUMWEIT** kennzeichnet Werte, die vom Master des Raums kommen, ein oranges **PRÜFEN** die Werte nur dieses Geräts. Erneut aufrufbar unter *Gerätekonfiguration → Einrichtungs-Assistent*.
+   - **Gerätename** (optional, z. B. „VentoSync - DG Büro“ — die Web-Dashboards aller Geräte im Raum zeigen ihn; den Namen aus der Geräteverwaltung von HA kann das Gerät nicht lesen, daher hier eintragen)
+3. **Alternative - Web Dashboard**: Alternativ können (auch ohne Home Assistant) alle Settings — auch Stockwerk-, Raum- und Geräte-ID, die Phase und der Gerätename — über das lokale Web-Dashboard unter `http://<device-ip>/` konfiguriert werden. Seit 0.10.56 öffnet sich dort auf einem noch nicht eingerichteten Gerät ein **Einrichtungs-Assistent**: Stockwerk und Raum, Geräte-ID (geprüft gegen die im Raum schon vergebenen IDs) und Phase (mit Vorschlag), danach — gruppiert und erklärt — Betriebsmodus, Grundeinstellungen der Smart-Automatik, Klima-Koordination, NOx-Stoßlüftung (nur mit SGP41-Board), Urlaubsvorgabe und Kindersicherung (seit 0.10.58). **RAUMWEIT** kennzeichnet Werte, die vom Master des Raums kommen, ein oranges **PRÜFEN** die Werte nur dieses Geräts. Erneut aufrufbar unter *Gerätekonfiguration → Einrichtungs-Assistent*.
 4. **Spaß haben**: Genieße dein smartes, energieeffizientes Lüftungssystem!
 5. **OTA-Updates**:
    Beispiel eines OTA Updates in Home Assistant:

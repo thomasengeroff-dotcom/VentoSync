@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-22
+// Modified:    2026-10-26
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -355,6 +355,13 @@ bool WrgDashboard::is_writable_key_(const std::string &key) const {
 #ifdef USE_BUTTON
   for (const auto &e : this->buttons_) if (key == e.key) return true;
 #endif
+  return this->is_text_key_(key);
+}
+
+bool WrgDashboard::is_text_key_(const std::string &key) const {
+#ifdef USE_TEXT
+  for (const auto &e : this->texts_) if (key == e.key) return true;
+#endif
   return false;
 }
 
@@ -392,6 +399,16 @@ void WrgDashboard::dispatch_set_(const DashboardAction &action) {
     if (action.key == e.key) {
       ESP_LOGI(TAG, "Dashboard pressed button: %s", e.key);
       e.entity->press();
+      return;
+    }
+  }
+#endif
+#ifdef USE_TEXT
+  for (const auto &e : this->texts_) {
+    if (action.key == e.key) {
+      auto call = e.entity->make_call();
+      call.set_value(action.s_value);  // TextCall rejects values outside min/max length
+      call.perform();
       return;
     }
   }
@@ -549,6 +566,9 @@ std::string WrgDashboard::build_state_json_() {
 #ifdef USE_SWITCH
   for (const auto &e : this->switches_) doc[e.key] = e.entity->state;
 #endif
+#ifdef USE_TEXT
+  for (const auto &e : this->texts_) doc[e.key] = e.entity->has_state() ? e.entity->state.c_str() : "";
+#endif
 
   // Room status (same sources as the automatic itself)
   if (v != nullptr) {
@@ -597,6 +617,7 @@ std::string WrgDashboard::build_state_json_() {
       p["ac"] = peer.hvac_ac_active;
       p["nox"] = peer.nox_active;
       p["phase_cfg"] = peer.phase_b ? "B" : "A";  // configured phase (firmware < 0.10.56: always "A")
+      if (peer.name[0] != '\0') p["name"] = peer.name.data();  // its "Gerätename" (v16)
       // Link to the peer's dashboard (mDNS, see setup())
       if (!this->host_prefix_.empty()) {
         char host[16];
@@ -643,9 +664,10 @@ float WrgDashboard::room_humidity_() const {
 /**
  * @brief   Serializes the static limits of the writable settings (runs once).
  * @details numbers: [min, max, step] from the entity traits, selects: their
- *          options, buttons: their keys, defaults: the factory values of the
- *          `defaults:` option (setup wizard; a select's default is its option
- *          index) — so the UI never duplicates the YAML ranges and defaults.
+ *          options, texts: [min, max] length in bytes, buttons: their keys,
+ *          defaults: the factory values of the `defaults:` option (setup
+ *          wizard; a select's default is its option index) — so the UI never
+ *          duplicates the YAML ranges and defaults.
  */
 std::string WrgDashboard::build_meta_json_() {
   JsonDocument doc;
@@ -661,6 +683,14 @@ std::string WrgDashboard::build_meta_json_() {
     JsonArray opts = selects[e.key].to<JsonArray>();
     for (const char *opt : e.entity->traits.get_options()) opts.add(opt);
   }
+  JsonObject texts = doc["texts"].to<JsonObject>();
+#ifdef USE_TEXT
+  for (const auto &e : this->texts_) {
+    JsonArray r = texts[e.key].to<JsonArray>();
+    r.add(e.entity->traits.get_min_length());
+    r.add(e.entity->traits.get_max_length());
+  }
+#endif
   JsonArray buttons = doc["buttons"].to<JsonArray>();
 #ifdef USE_BUTTON
   for (const auto &e : this->buttons_) buttons.add(e.key);
@@ -713,10 +743,10 @@ void WrgDashboard::handle_set_(AsyncWebServerRequest *request) {
   char *end = nullptr;
   a.f_value = std::strtof(val.c_str(), &end);
   if (end == val.c_str() || !std::isfinite(a.f_value)) {
-    a.f_value = NAN;  // only selects take non-numeric values
-    bool is_select = false;
-    for (const auto &e : this->selects_) is_select = is_select || a.key == e.key;
-    if (!is_select) {
+    a.f_value = NAN;  // only selects and texts take non-numeric values
+    bool takes_text = this->is_text_key_(a.key);
+    for (const auto &e : this->selects_) takes_text = takes_text || a.key == e.key;
+    if (!takes_text) {
       request->send(400, "text/plain", "Invalid value");
       return;
     }

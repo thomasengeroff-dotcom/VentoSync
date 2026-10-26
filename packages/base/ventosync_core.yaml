@@ -26,7 +26,7 @@
 #                ventosync_base_v2.yaml  → PCB v2.0 (ESP32-C6-MINI-1U-H4, native GPIO)
 # Author:      Thomas Engeroff
 # Created:     2026-01-27
-# Modified:    2026-10-22
+# Modified:    2026-10-26
 # ==========================================================================
 substitutions:
   device_name: ventosync
@@ -221,6 +221,7 @@ ventilation_group:
   hvac_enabled_global: hvac_enabled_val
   nox_boost_enabled_global: nox_boost_enabled_val
   auto_override_duration_global: auto_override_duration_val
+  device_name_text: device_name
 
 # Pure C++ helper library (IAQ classification, ramp logic, fan level cycling)
 ventilation_logic:
@@ -283,6 +284,7 @@ wrg_dashboard:
   config_room_id_id: config_room_id
   config_device_id_id: config_device_id
   config_phase_id: config_phase
+  device_name_id: device_name
   auto_status_id: automatik_status
   auto_reason_id: automatik_grund
   hvac_status_id: hvac_status

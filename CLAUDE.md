@@ -15,7 +15,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
   naming — do not rename to `scd43_*`.
-- Communication: ESP-NOW (protocol v15, HMAC-authenticated) for multi-device sync (no Wi-Fi router required between units),
+- Communication: ESP-NOW (protocol v16, HMAC-authenticated) for multi-device sync (no Wi-Fi router required between units),
   ESPHome Native API to Home Assistant (optional MQTT variant)
 - Language policy: **Code comments and all internal developer documentation in English.** HA entity names,
   UI labels, and user-facing strings remain in **German**.
@@ -206,7 +206,7 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 
 ## ESP-NOW Protocol & Cluster Synchronization
 
-- **Protocol version:** `v15` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 15` in `ventilation_packet.h`;
+- **Protocol version:** `v16` (`PACKET_MAGIC = 0x42`, `PROTOCOL_VERSION = 16` in `ventilation_packet.h`;
   v8 added `room_co2` and the room-wide Smart Climate Control thresholds, v9 added `room_humidity`,
   v10 added `room_flags`: bit 0 room-wide HVAC switch, bit 1 the sender's own HA AC state, bit 2 its own HA
   window state, bit 3 its own radar presence — bit 3 added in 0.10.23 without a bump, layout unchanged;
@@ -218,7 +218,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   v12 added `auto_override_level` / `auto_override_remaining_s` / `auto_override_duration_min`, the room's
   Smart-Automatik level override and its duration setting; v13 added the authentication trailer, see below;
   v14 added `vacation_preset_mode_index` / `vacation_preset_level`, the room-wide vacation preset;
-  v15 added `summer_cooling_threshold`, the room-wide summer cooling threshold).
+  v15 added `summer_cooling_threshold`, the room-wide summer cooling threshold;
+  v16 added `device_name`, the sender's own `Gerätename` (32 bytes, display only — `parse()` terminates it,
+  `copy_device_name()` cuts on a UTF-8 boundary; YAML `max_length: 31` = `DEVICE_NAME_SIZE - 1`)).
 - **Changing `VentilationPacket`** (`components/ventilation_group/ventilation_packet.h`, with `PeerState`, the room
   flags and `update_peer_state()`): bump `PROTOCOL_VERSION`, keep the `static_assert(sizeof + trailer ≤ 250)`,
   extend the range checks in `ventosync::packet::parse()` and the unit tests T-8a/T-8b,
@@ -322,7 +324,7 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`health_helpers.h`** — System watchdog, loop freeze detection, and stack/heap monitoring
 - **`hrv_efficiency.h`** — Real-time sensible and latent heat recovery calculation (DIN EN 13141-8)
 - **`led_feedback.h`** — Original VentoMaxx panel LED control (PCA9685/MCP23017), dimming, diagnostic blinks
-- **`network_sync.h`** — ESP-NOW v15 mesh communication (frame authentication glue), packet handlers, peer caching, and room sync
+- **`network_sync.h`** — ESP-NOW v16 mesh communication (frame authentication glue), packet handlers, peer caching, and room sync
 - **`system_boot_helpers.h`** — Low-level GPIO configuration, RF-switch antenna path activation, boot discovery
 - **`system_lifecycle.h`** — Multi-stage boot orchestration, filter operating hours tracking, reboot hooks
 - **`user_input.h`** — Button debouncing, click/long-press handlers, timed boost countdowns, Child Lock
@@ -367,7 +369,7 @@ Complex YAML lambda logic is extracted into focused header files:
   never in the request handler; the history ring buffer (`history.h`) is shared under the same mutex. `/stream`
   (Server-Sent Events) follows ESPHome's `/events` pattern: a `StreamSession` is tied to the socket, sent to only from
   `loop()` (non-blocking) and deleted only after httpd's `free_ctx` (`destroy()`) marked it dead. Entities are
-  registered by JSON key (tables in `__init__.py`); `/set` accepts only those keys, via POST with the `X-VentoSync`
+  registered by JSON key (tables in `__init__.py`); `/set` accepts only those keys (texts: `TEXTS`, e.g. `device_name`; `/meta` lists their length limits), via POST with the `X-VentoSync`
   header and same origin (CSRF). `/meta` also lists the factory defaults (`defaults:` option, filled from the
   `default_*` substitutions — never literal values; a select's default is its option index). **Setup wizard** (0.10.56, `dashboard.html`): opens while
   `setup_done_switch` (internal, `device_config.yaml`) is off and the IDs equal their defaults; it relies on a floor /
