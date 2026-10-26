@@ -63,7 +63,7 @@ To avoid incorrect intermediate values in Home Assistant and to accurately captu
 - **Median Fallback:** If the reference sensor is temporarily unavailable, the system uses the median of the last 3 values as a safe compromise.
 - **120s Failsafe Timeout:** A generous watchdog ensures the sensors stay "online" in Home Assistant even during long phases where values are legitimately blocked by the Phase-Lock.
 
-*Note on redundancy:* `temp_zuluft` (Outdoor NTC) provides the actual outside temperature when the airflow is directed inward. `temp_abluft` (Indoor NTC) provides the room temperature when the airflow is directed outward and serves as redundancy for the more precise sensor board.
+*Note on redundancy:* `temp_zuluft` (Outdoor NTC) provides the actual outside temperature when the airflow is directed inward. `temp_abluft` (Indoor NTC) provides the room temperature when the airflow is directed outward and serves as redundancy for the more precise sensor board. Smart-Automatik takes the indoor temperature from the sensor board at H2 (SCD43 or SHT45), then from the indoor NTC; the BMP390 on the main board measures the board / power supply (10–15 K above the room) and is never used as room temperature.
 
 Specifically, the following sensor is used:
 

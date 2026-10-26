@@ -123,6 +123,7 @@ Since decentralized units typically lack a physical bypass flap, the logic simul
 - **Condition**: Indoor Temp > threshold (slider, default 22°C) AND Outdoor Temp < (Indoor - 1.5°C) AND HA "Sommerbetrieb" is ON AND no active AC (Smart Climate Control).
 - **Release**: "Sommerbetrieb" OFF, or Outdoor ≥ Indoor − 0.5°C, or Indoor < threshold − 0.5°C.
 - **Action**: Switch to `MODE_VENTILATION` (one-way flow, no timer).
+- **Indoor temperature**: sensor board at H2 (SCD43 or SHT45), else the indoor NTC, else a peer / the last reading (≤ 30 min). The BMP390 on the main board is never used — it measures the board / power supply (10–15 K above the room; until 0.11.0 it kept the bypass on).
 - **Temperatures**: In one-way flow only the NTC facing its own air stream is measurable (intake: outdoor, exhaust: indoor). The other value comes from a peer, else from the device's last reading (≤ 30 min); if still unknown, `guard_summer_bypass()` returns to heat recovery and blocks re-entry for 5 min (`SUMMER_COOLING_REMEASURE_MS`) to re-measure.
 - **Benefit**: Draws in cool night air efficiently without warming it up in the ceramic heat exchanger.
 

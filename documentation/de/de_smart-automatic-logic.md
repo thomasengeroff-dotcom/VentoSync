@@ -122,6 +122,7 @@ Da dezentrale Geräte bauartbedingt keine mechanische Bypass-Klappe besitzen, si
 - **Bedingung**: Raumtemperatur > Schwelle (Slider, Standard 22°C) UND Außentemperatur < (Raum - 1.5°C) UND HA „Sommerbetrieb“ ist AKTIV UND keine aktive Klimaanlage (Klima-Koordination).
 - **Freigabe**: „Sommerbetrieb“ AUS, oder Außen ≥ Raum − 0,5°C, oder Raum < Schwelle − 0,5°C.
 - **Aktion**: Wechsel in `MODE_VENTILATION` (Durchlüften / unidirektionaler Luftstrom, ohne Timer).
+- **Innentemperatur**: Sensorboard an H2 (SCD43 oder SHT45), sonst der Innen-NTC, sonst ein Peer bzw. der letzte Messwert (≤ 30 min). Der BMP390 auf der Hauptplatine wird nie verwendet — er misst die Platine bzw. das Netzteil (10–15 K über dem Raum; bis 0.11.0 hielt er den Bypass dauerhaft an).
 - **Temperaturen**: Bei unidirektionalem Luftstrom ist nur der NTC im eigenen Luftstrom messbar (ansaugend: außen, ausblasend: innen). Der andere Wert kommt von einem Peer, sonst aus der letzten eigenen Messung (≤ 30 min); fehlt er weiterhin, kehrt `guard_summer_bypass()` in die Wärmerückgewinnung zurück und sperrt den Wiedereintritt 5 min lang (`SUMMER_COOLING_REMEASURE_MS`) zum Nachmessen.
 - **Vorteil**: Zieht kühle Nachtluft effizient ein, ohne sie im Keramik-Wärmespeicher aufzuheizen.
 

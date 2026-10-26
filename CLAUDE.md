@@ -429,6 +429,10 @@ substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA
   publishes (intake: outdoor, exhaust: indoor); the other one freezes at its last value. Never use it —
   `get_effective_temperatures()` falls back to peers / `HeldReading` (≤ 30 min) and `guard_summer_bypass()`
   returns to heat recovery to re-measure.
+- **The BMP390 (`id: temperature`) is not the room temperature:** it sits on the board near the Traco power supply
+  and reads 10–15 K above the room (power supply guard and `board_temp` only). The indoor temperature `eff_in`
+  (summer bypass, absolute humidity) comes from the sensor board (`scd41_temperature`: SCD43 / SHT45) → indoor NTC →
+  peer → held reading (`get_effective_temperatures()`); until 0.11.0 the BMP390 was used and kept the summer bypass on.
 - **No power-off / sleep state:** `system_on`, the Wi-Fi-off long press and `system_sleep` were removed in 0.10.26
   (rev. 1 PCB cannot wake from deep sleep). `api.reboot_timeout: 0s` keeps standalone devices (no HA client) from
   rebooting every 15 min. The Power button toggles `Aus` ↔ `last_active_mode_index`.

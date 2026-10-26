@@ -293,11 +293,15 @@ extern esphome::ledc::LEDCOutput
 
 /// @name Sensors
 /// @{
+// scd41_temperature / scd41_humidity: SCD43 board, or the SHT45 on the SGP41
+// board (template sensors extending the mock, VENTOSYNC_NO_SCD41).
 #ifdef VENTOSYNC_NO_SCD41
 extern esphome::template_::TemplateSensor *const scd41_co2; ///< SCD41 CO2 sensor.
+extern esphome::template_::TemplateSensor *const scd41_temperature; ///< Room temperature (sensor board)
 extern esphome::template_::TemplateSensor *const scd41_humidity; ///< Indoor Humidity
 #else
 extern esphome::sensor::Sensor *const scd41_co2; ///< SCD41 CO2 sensor.
+extern esphome::sensor::Sensor *const scd41_temperature; ///< Room temperature (sensor board)
 extern esphome::sensor::Sensor *const scd41_humidity; ///< Indoor Humidity
 #endif
 
@@ -309,7 +313,8 @@ extern esphome::binary_sensor::BinarySensor *const radar_presence; ///< Presence
 
 extern esphome::template_::TemplateSensor
     *const effective_co2; ///< Unified CO2 sensor (SCD43 or SGP41 VOC CO2 equivalent).
-extern esphome::sensor::Sensor *const temperature; ///< Room Temperature (SCD41)
+// The BMP390 (`temperature`) is the board / power supply temperature, never the
+// room temperature — it reads 10–15 K above the room.
 extern esphome::ntc::NTC *const temp_zuluft; ///< Outside Air Temperature (NTC Outside)
 extern esphome::ntc::NTC *const temp_abluft; ///< Inside Air Temperature (NTC Inside)
 extern esphome::homeassistant::HomeassistantSensor

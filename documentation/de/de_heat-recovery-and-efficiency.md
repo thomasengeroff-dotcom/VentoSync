@@ -63,7 +63,7 @@ Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden und die wahren therm
 - **Median-Fallback:** Sollte ein Referenzsensor temporär ausfallen, nutzt das System den Median der letzten 3 Werte als sicheren Kompromiss.
 - **120s Failsafe-Timeout:** Ein großzügiger Watchdog hält die Sensoren in Home Assistant "online", auch wenn während langer Lüftungsphasen durch den Phase-Lock zeitweise keine Werte geliefert werden.
 
-*Hinweis zur Redundanz:* `temp_zuluft` (Außen-NTC) liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_abluft` (Innen-NTC) liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren Sensorboard.
+*Hinweis zur Redundanz:* `temp_zuluft` (Außen-NTC) liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_abluft` (Innen-NTC) liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren Sensorboard. Die Smart-Automatik nimmt die Innentemperatur vom Sensorboard an H2 (SCD43 oder SHT45), danach vom Innen-NTC; der BMP390 auf der Hauptplatine misst die Platine bzw. das Netzteil (10–15 K über dem Raum) und wird nie als Raumtemperatur verwendet.
 
 Konkret wird der folgende Sensor verwendet:
 

@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (e.g. `ventosync_NTConly.yaml`); the partition table is the same. `ventosync.yaml` (full) is now SCD43 board + LD2450
   radar + NTCs; its old `BME680 …` entities stay in Home Assistant as orphans and can be deleted there.
 
+### Fixed
+
+- **Indoor temperature came from the board sensor** — Smart-Automatik used the BMP390 as the room's indoor
+  temperature (`eff_in`). The BMP390 sits on the main board next to the Traco power supply and reads 10–15 K above
+  the room (e.g. 40 °C at 24 °C room temperature), so the indoor NTC was effectively never used, the **summer bypass**
+  (indoor > threshold, default 22 °C) could engage whenever `Sommerbetrieb` was active, and the **absolute indoor humidity** of
+  the enthalpy and mold guards was calculated far too high (ventilation was rated as "drying" too often). The indoor
+  temperature now comes from the sensor board at H2 (SCD43 or SHT45), then the indoor NTC, then a peer / the last
+  reading (≤ 30 min); the BMP390 is only used for the power supply guard and the board temperature. The ESP-NOW
+  field `t_in` now carries this room temperature as well (no protocol change).
+
 ### Changed
 
 - **Room temperature / humidity in the ESP-NOW packet** come only from the sensor board at H2 (SCD43 or SHT45); NaN

@@ -99,6 +99,6 @@ Auf der Platine, alle Varianten.
 | Entität | Entitäts-ID | Einheit | Beschreibung |
 | --- | --- | --- | --- |
 | BMP390 Luftdruck | `sensor.…_bmp390_luftdruck` | hPa | Absoluter Luftdruck; kompensiert die SCD43-Messung. |
-| BMP390 Temperatur | `sensor.…_bmp390_temperatur` | °C | Temperatur auf der Platine (Gehäusetemperatur, nicht Raumtemperatur). Überwacht das Netzteil: Warnung ab 50 °C, Not-Abschaltung ab 60 °C — siehe [Benachrichtigungen](../integration/actions.md#vom-gerät-ausgelöste-benachrichtigungen). |
+| BMP390 Temperatur | `sensor.…_bmp390_temperatur` | °C | Temperatur auf der Platine (Gehäusetemperatur, nicht Raumtemperatur — liegt 10–15 K über dem Raum und wird von der Regelung nie als Raumtemperatur verwendet). Überwacht das Netzteil: Warnung ab 50 °C, Not-Abschaltung ab 60 °C — siehe [Benachrichtigungen](../integration/actions.md#vom-gerät-ausgelöste-benachrichtigungen). |
 
 Aktualisierung alle 60 s.
