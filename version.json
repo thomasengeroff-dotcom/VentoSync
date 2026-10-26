@@ -1,5 +1,5 @@
 {
-    "project_version": "0.10.59",
-    "project_date": "2026-10-22",
-    "project_description": "Dashboard: peer cards show the real airflow direction (IN / OUT) per device phase."
+    "project_version": "0.10.60",
+    "project_date": "2026-10-26",
+    "project_description": "Device name (Gerätename) in the web dashboard and on the peer cards, ESP-NOW protocol v16."
 }
