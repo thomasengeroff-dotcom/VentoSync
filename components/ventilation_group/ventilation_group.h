@@ -195,11 +195,9 @@ public:
   switch_::Switch *direction_switch{nullptr}; ///< ON = intake, OFF = exhaust.
   sensor::Sensor *fan_rpm_sensor_{nullptr};   ///< Local RPM sensor.
   sensor::Sensor *board_temp_sensor_{nullptr}; ///< Local board temp (BMP390).
-  sensor::Sensor *scd41_temp_sensor_{nullptr}; ///< Local room temp (SCD41).
-  sensor::Sensor *bme680_temp_sensor_{nullptr}; ///< Fallback room temp (BME680).
-  sensor::Sensor *co2_sensor_{nullptr};         ///< Effective CO2 (SCD41 / BME680 eCO2 fallback).
-  sensor::Sensor *scd41_humidity_sensor_{nullptr};  ///< Primary room humidity (SCD41).
-  sensor::Sensor *bme680_humidity_sensor_{nullptr}; ///< Fallback room humidity (BME680).
+  sensor::Sensor *scd41_temp_sensor_{nullptr}; ///< Local room temp (SCD43 / SHT45).
+  sensor::Sensor *co2_sensor_{nullptr};         ///< Effective CO2 (SCD43 / SGP41 VOC CO2 equivalent).
+  sensor::Sensor *scd41_humidity_sensor_{nullptr};  ///< Room humidity (SCD43 / SHT45).
   esphome::globals::RestoringGlobalsComponent<int> *mode_index_global_{nullptr}; ///< Global UI mode index.
   esphome::globals::RestoringGlobalsComponent<int> *automatik_min_fan_level_global_{nullptr}; 
   esphome::globals::RestoringGlobalsComponent<int> *automatik_max_fan_level_global_{nullptr};
@@ -240,10 +238,8 @@ public:
   void set_max_led_brightness_global(esphome::globals::RestoringGlobalsComponent<float> *g) { max_led_brightness_global_ = g; }
   /** @brief Sets the effective CO2 sensor shared with peers. */
   void set_co2_sensor(sensor::Sensor *s) { co2_sensor_ = s; }
-  /** @brief Sets the primary room humidity sensor (SCD41) shared with peers. */
+  /** @brief Sets the room humidity sensor (SCD43 / SHT45) shared with peers. */
   void set_scd41_humidity_sensor(sensor::Sensor *s) { scd41_humidity_sensor_ = s; }
-  /** @brief Sets the fallback room humidity sensor (BME680) shared with peers. */
-  void set_bme680_humidity_sensor(sensor::Sensor *s) { bme680_humidity_sensor_ = s; }
   /** @brief Sets the global Smart Climate Control CO2 setpoint reference. */
   void set_hvac_co2_threshold_global(esphome::globals::RestoringGlobalsComponent<int> *g) { hvac_co2_threshold_global_ = g; }
   /** @brief Sets the global Smart Climate Control emergency CO2 reference. */
@@ -328,10 +324,8 @@ public:
   void set_fan_rpm_sensor(sensor::Sensor *s) { fan_rpm_sensor_ = s; }
   /** @brief Binds the local board temperature sensor. */
   void set_board_temp_sensor(sensor::Sensor *s) { board_temp_sensor_ = s; }
-  /** @brief Binds the local room temperature sensor (Primary). */
+  /** @brief Binds the local room temperature sensor (SCD43 / SHT45). */
   void set_scd41_temp_sensor(sensor::Sensor *s) { scd41_temp_sensor_ = s; }
-  /** @brief Binds the local room temperature sensor (Fallback). */
-  void set_bme680_temp_sensor(sensor::Sensor *s) { bme680_temp_sensor_ = s; }
 
   VentilationController() {}
 
@@ -898,27 +892,16 @@ public:
     pkt.fan_rpm = (fan_rpm_sensor_ && fan_rpm_sensor_->has_state()) ? fan_rpm_sensor_->state : static_cast<float>(NAN);
     pkt.board_temp = (board_temp_sensor_ && board_temp_sensor_->has_state()) ? board_temp_sensor_->state : static_cast<float>(NAN);
 
-    // Room Temp Logic: SCD41 (Primary) -> BME680 (Fallback)
-    float r_temp = static_cast<float>(NAN);
-    if (scd41_temp_sensor_ && scd41_temp_sensor_->has_state()) {
-        r_temp = scd41_temp_sensor_->state;
-    } else if (bme680_temp_sensor_ && bme680_temp_sensor_->has_state()) {
-        r_temp = bme680_temp_sensor_->state;
-    }
-    pkt.room_temp = r_temp;
+    // Room temperature / humidity of the sensor board at H2 (SCD43 or SHT45;
+    // NaN without a board or while its stale guard holds NaN)
+    pkt.room_temp = (scd41_temp_sensor_ && scd41_temp_sensor_->has_state())
+        ? scd41_temp_sensor_->state : static_cast<float>(NAN);
+    pkt.room_humidity = (scd41_humidity_sensor_ && scd41_humidity_sensor_->has_state())
+        ? scd41_humidity_sensor_->state : static_cast<float>(NAN);
 
     // Effective CO2 (NaN when no sensor or stale) — shared for Smart Climate Control
     pkt.room_co2 = (co2_sensor_ && co2_sensor_->has_state()) ? co2_sensor_->state : static_cast<float>(NAN);
 
-    // Room Humidity Logic: SCD41 (Primary) -> BME680 (Fallback), mirrors room_temp
-    float r_hum = static_cast<float>(NAN);
-    if (scd41_humidity_sensor_ && scd41_humidity_sensor_->has_state()) {
-        r_hum = scd41_humidity_sensor_->state;
-    } else if (bme680_humidity_sensor_ && bme680_humidity_sensor_->has_state()) {
-        r_hum = bme680_humidity_sensor_->state;
-    }
-    pkt.room_humidity = r_hum;
-    
     // Sync PID demand and NTC values
     pkt.pid_demand = local_pid_demand;
     pkt.t_in = local_t_in;

@@ -7,20 +7,18 @@ VentoSync gibt es als mehrere Firmware-Varianten, je nachdem, welche Sensoren im
 
 ## Variantenübersicht
 
-| Variante (YAML) | Platine | SCD43 | BME680 | SGP41 + SHT45 | Radar | NTC & WRG | `Effektiver CO2 Wert` |
-| --- | --- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `ventosync.yaml` | v1.0 | ✅ | ✅ | – | ✅ | ✅ | ✅ |
-| `ventosync_bme680_only.yaml` | v1.0 | – | ✅ | – | – | ✅ | ✅ |
-| `ventosync_scd43_only.yaml` | v1.0 | ✅ | – | – | – | ✅ | ✅ |
-| `ventosync_sgp41.yaml` | v1.0 | – | – | ✅ | – | ✅ | ✅ |
-| `ventosync_radar_only.yaml` | v1.0 | – | – | – | ✅ | ✅ | – |
-| `ventosync_NTConly.yaml` | v1.0 | – | – | – | – | ✅ | – |
-| `ventosync_nosensor.yaml` | v1.0 | – | – | – | – | – | – |
-| `ventosync_nosensor_btproxy.yaml` | v1.0 | – | – | – | – | – | – |
-| `ventosync_v2_bme680_only.yaml` | v2.0 | – | ✅ | – | – | ✅ | ✅ |
-| `ventosync_v2_scd43_only.yaml` | v2.0 | ✅ | – | – | – | ✅ | ✅ |
-| `ventosync_v2_sgp41.yaml` | v2.0 | – | – | ✅ | – | ✅ | ✅ |
-| `ventosync_v2_nosensor.yaml` | v2.0 | – | – | – | – | – | – |
+| Variante (YAML) | Platine | SCD43 | SGP41 + SHT45 | Radar | NTC & WRG | `Effektiver CO2 Wert` |
+| --- | --- | :---: | :---: | :---: | :---: | :---: |
+| `ventosync.yaml` | v1.0 | ✅ | – | ✅ | ✅ | ✅ |
+| `ventosync_scd43_only.yaml` | v1.0 | ✅ | – | – | ✅ | ✅ |
+| `ventosync_sgp41.yaml` | v1.0 | – | ✅ | – | ✅ | ✅ |
+| `ventosync_radar_only.yaml` | v1.0 | – | – | ✅ | ✅ | – |
+| `ventosync_NTConly.yaml` | v1.0 | – | – | – | ✅ | – |
+| `ventosync_nosensor.yaml` | v1.0 | – | – | – | – | – |
+| `ventosync_nosensor_btproxy.yaml` | v1.0 | – | – | – | – | – |
+| `ventosync_v2_scd43_only.yaml` | v2.0 | ✅ | – | – | ✅ | ✅ |
+| `ventosync_v2_sgp41.yaml` | v2.0 | – | ✅ | – | ✅ | ✅ |
+| `ventosync_v2_nosensor.yaml` | v2.0 | – | – | – | – | – |
 
 Der Luftdrucksensor **BMP390** sitzt auf der Platine und ist in allen Varianten vorhanden.
 
@@ -29,7 +27,6 @@ Der Luftdrucksensor **BMP390** sitzt auf der Platine und ist in allen Varianten 
 | Spalte | Entitäten, die ohne den Sensor fehlen |
 | --- | --- |
 | SCD43 | `SCD41 CO2`, `SCD41 Temperatur`, `SCD41 Luftfeuchtigkeit` |
-| BME680 | alle `BME680 …`-Sensoren und der Button `BME680 Basiswert zurücksetzen` |
 | SGP41 + SHT45 | `SHT45 …`, `SGP41 …` und `NOx-Stoßlüftung: Schwelle` |
 | Radar | `Radar Anwesenheit`, `Radar Bewegung`, `Radar Stillstand`, `Radar Anzahl Ziele` |
 | NTC & WRG | `Temp. Abluft (Innen)`, `Temp. Zuluft (Außen)` (+ `RAW`), `WRG Effizienz`, `WRG Effizienz (Zyklus)`, `WRG Energie (Zyklus)`, `WRG Referenz-Messpunkt` |
@@ -42,7 +39,7 @@ Auch Geräte ohne Klimasensor bieten den Modus `Smart-Automatik` und alle Grenzw
 :::
 
 :::note SGP41: CO2-Äquivalent statt CO2
-In den `sgp41`-Varianten ist `Effektiver CO2 Wert` kein gemessener CO2-Wert, sondern ein aus dem VOC-Index berechnetes Äquivalent (400–2200 ppm). Der VOC-Index bezieht sich auf die letzten 24 Stunden: Eine gleichbleibende Belastung sinkt mit der Zeit wieder auf Index 100 (≈ 600 ppm). Gleiches gilt sinngemäß für den BME680-Schätzwert.
+In den `sgp41`-Varianten ist `Effektiver CO2 Wert` kein gemessener CO2-Wert, sondern ein aus dem VOC-Index berechnetes Äquivalent (400–2200 ppm). Der VOC-Index bezieht sich auf die letzten 24 Stunden: Eine gleichbleibende Belastung sinkt mit der Zeit wieder auf Index 100 (≈ 600 ppm).
 :::
 
 ## MQTT-Variante

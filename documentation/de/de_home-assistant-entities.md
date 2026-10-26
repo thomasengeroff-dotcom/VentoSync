@@ -8,7 +8,7 @@ Diese Datei listet die Home-Assistant-Entitäten der VentoSync-Firmware (`ventos
 > [!IMPORTANT]
 > **Entitäts-IDs:** Home Assistant bildet die Entitäts-ID aus **Gerätename + Entitätsname** (Umlaute werden zu einfachen Buchstaben: `ü` → `u`). Die IDs unten sind **ohne Geräte-Präfix** angegeben — bei einem Gerät „Wohnzimmer“ heißt der Modus-Select `select.wohnzimmer_luftermodus`, nicht `select.luftermodus`. Die Namen in Anführungszeichen sind die in HA angezeigten Entitätsnamen; die YAML-ID wird nur beim Bearbeiten der Firmware benötigt.
 >
-> Entitäten, die fehlende Hardware voraussetzen, sind in den reduzierten Varianten ausgeblendet (`internal: true`): Klimasensoren ohne SCD43/BME680, NTC- und Effizienzsensoren in `nosensor`.
+> Entitäten, die fehlende Hardware voraussetzen, sind in den reduzierten Varianten ausgeblendet (`internal: true`): Klimasensoren ohne Sensorboard (SCD43 / SGP41 + SHT45), NTC- und Effizienzsensoren in `nosensor`.
 
 ## 1. Steuerung & Betriebsmodus
 
@@ -104,7 +104,7 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 ## 3. Sensordaten & Klima
 
 ### Kombinierte & berechnete Werte
-* **`sensor.effektiver_co2_wert`** („Effektiver CO2 Wert“, YAML-ID `effective_co2`) — CO2 für die Regelung: SCD43 (NDIR), BME680-CO2-Schätzung als Rückfall; in den `sgp41`-Varianten das CO2-Äquivalent des SGP41-VOC-Index.
+* **`sensor.effektiver_co2_wert`** („Effektiver CO2 Wert“, YAML-ID `effective_co2`) — CO2 für die Regelung: SCD43 (NDIR); in den `sgp41`-Varianten das CO2-Äquivalent des SGP41-VOC-Index.
 * **`text_sensor.co2_bewertung`** („CO2 Bewertung“, YAML-ID `effective_co2_bewertung`) — qualitative Einstufung des CO2-Werts.
 * **`sensor.wrg_effizienz`** („WRG Effizienz“, YAML-ID `heat_recovery_efficiency`) — gemessener WRG-Wirkungsgrad (%), siehe [Wärmerückgewinnung & Effizienz](de_heat-recovery-and-efficiency.md).
 * **`sensor.wrg_effizienz_zyklus`** („WRG Effizienz (Zyklus)“) / **`sensor.wrg_energie_zyklus`** („WRG Energie (Zyklus)“) — Wirkungsgrad und rückgewonnene Energie (Wh) des letzten Push-Pull-Zyklus.
@@ -122,7 +122,6 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 
 ### Hardware-Sensoren
 * **SCD43** (Präzisions-CO2, `ventosync` / `ventosync_scd43_only` / `ventosync_v2_scd43_only`): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
-* **BME680** (Umwelt & IAQ): `sensor.bme680_temperatur`, `sensor.bme680_luftdruck_relativ`, `sensor.bme680_taupunkt`, `sensor.bme680_absolute_feuchtigkeit`, `sensor.bme680_gas_basiswert`, `sensor.bme680_luftqualitat_co2eq`, `sensor.bme680_iaq_trend`, `binary_sensor.bme680_sensor_health`, `text_sensor.bme680_iaq_bewertung`, `text_sensor.bme680_iaq_trendrichtung`, `text_sensor.bme680_sensor_status`
 * **SGP41 + SHT45 Sensorboard** (nur `ventosync_sgp41` / `ventosync_v2_sgp41`): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit` (Raumtemperatur / -feuchte für die Regelung), `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index` (Sensirion-Index 1–500, 100 bzw. 1 = normal, informativ), `sensor.sgp41_voc_co2_aquivalent` („SGP41 VOC CO2-Äquivalent“, VOC-Index abgebildet auf 400–2200 ppm, speist `Effektiver CO2 Wert`)
 * **BMP390** (Präzisions-Luftdruck): `sensor.bmp390_luftdruck`, `sensor.bmp390_temperatur`
 * **NTC-Thermistoren** (Luft im Rohr): `sensor.temp_abluft_innen` („Temp. Abluft (Innen)“), `sensor.temp_zuluft_aussen` („Temp. Zuluft (Außen)“), dazu die Diagnosewerte `…_raw`
@@ -137,7 +136,6 @@ Raumweiter Lüftungsstopp, solange ein Fenster offen ist. Einrichtung: [📄 Fen
 * **`binary_sensor.filterwechsel_alarm`** („Filterwechsel Alarm“, YAML-ID `filter_change_alarm`) — aktiv nach 8.760 Lüfter-Betriebsstunden oder 3 Jahren seit dem letzten Filterwechsel. Einrichtung: [Filterwechsel-Alarm](de_filter-change-alarm-ha-setup.md).
 * **`sensor.filter_betriebstage`** („Filter Betriebstage“, YAML-ID `filter_operating_days_sensor`) — Betriebstage seit dem letzten Filterwechsel (Diagnose).
 * **`button.filterwechsel_reset`** („Filterwechsel (Reset)“, YAML-ID `filter_reset_btn`) — setzt den Zähler nach dem Filtertausch zurück (Konfiguration).
-* **`button.bme680_basiswert_zurucksetzen`** („BME680 Basiswert zurücksetzen“) — setzt den Gas-Basiswert des BME680 zurück (neue Einlaufphase).
 * **`button.esp_neustart_erzwingen`** („ESP Neustart erzwingen“, YAML-ID `force_restart_button`) — startet den ESP32 neu (Konfiguration).
 * **`number.maximale_led_helligkeit`** („Maximale LED Helligkeit“, YAML-ID `led_max_brightness_config`) — maximale Panel-LED-Helligkeit, 5–100 % (Standard 80 %), raumweit.
 * **`switch.kindersicherung`** („Kindersicherung“, YAML-ID `child_lock_switch`) — sperrt die Tasten dieses Geräts (Konfiguration, persistent). Siehe [Komfort & Sicherheit](de_comfort-and-safety-features.md#-kindersicherung-child-protection-mode).
@@ -175,5 +173,4 @@ Die Panel-LEDs selbst steuert die Firmware; sie sind **keine** Light-Entitäten 
 Um den Flash-Speicher des ESP32 vor vorzeitigem Verschleiß zu schützen, werden hochfrequente Daten im RAM gepuffert:
 
 * **Filter-Betriebsstunden:** höchstens alle **8 Stunden** in den NVS geschrieben (nach einem plötzlichen Stromausfall gehen höchstens die letzten 8 h Laufzeit verloren).
-* **BME680-Basiswert:** höchstens einmal pro Stunde und nur bei einer Änderung ≥ 2 %.
 * **Einstellungen** (Modus, Slider, Schalter): werden bei Änderung gespeichert.

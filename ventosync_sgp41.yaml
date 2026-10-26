@@ -26,7 +26,7 @@
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
 # Created:     2026-10-15
-# Modified:    2026-10-15
+# Modified:    2026-10-26
 # ==========================================================================
 
 substitutions:
@@ -36,14 +36,12 @@ substitutions:
 esphome:
   build_flags:
       - "-DVENTOSYNC_NO_SCD41"
-      - "-DVENTOSYNC_NO_BME680"
       - "-DVENTOSYNC_NO_RADAR"
 
 packages:
   base: !include packages/base/ventosync_base.yaml
-  # The SGP41/SHT45 package extends the SCD41 and BME680 mocks (room climate
-  # and VOC CO2 equivalent) — keep all three together.
+  # The SGP41/SHT45 package extends the SCD41 mock (room climate) and
+  # voc_co2eq (sensors_climate.yaml) — keep the mock in this variant.
   mock_scd41: !include packages/sensors/mock_scd41.yaml
-  mock_bme680: !include packages/sensors/mock_bme680.yaml
   sgp41_sht45: !include packages/sensors/sensor_SGP41_SHT45.yaml
   mock_radar: !include packages/sensors/mock_radar.yaml

@@ -28,7 +28,7 @@ Alle Einstellungen werden im Gerät gespeichert. Raumweite Einstellungen nur an 
 
 `number.…_smart_automatik_co2_grenzwert` — Sollwert des CO2-Reglers. Liegt der CO2-Wert des Raums darüber, lüftet die Automatik stärker. Die CO2-Regelung ist in der Smart-Automatik immer aktiv und hat Vorrang vor der Feuchte: Sobald CO2 Bedarf meldet, übernimmt der CO2-Regler; die Feuchte kann die Stufe dann nur noch anheben, nicht absenken.
 
-Geregelt wird nach dem **höchsten** aktuellen CO2-Wert aller Geräte des Raums (bei Geräten mit SGP41 bzw. BME680 nach deren CO2-Äquivalent).
+Geregelt wird nach dem **höchsten** aktuellen CO2-Wert aller Geräte des Raums (bei Geräten mit SGP41 nach deren CO2-Äquivalent).
 
 | Wert | Einordnung (DIN EN 13779) |
 | --- | --- |

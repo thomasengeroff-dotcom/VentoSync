@@ -19,7 +19,7 @@ The formerly enormous main file was drastically slimmed down to simplify readabi
 - **`communication/`**: Configures the high-performance ESP-NOW broadcast and unicast protocol pipelines.
 - **`globals/`**: Encapsulates runtime global variables (automation, network sync, UI, fan states) into clean, separated packages.
 - **`io/`**: Encapsulates the physical hardware. Includes I2C buses, port expanders, basic pinouts, and central fan configuration.
-- **`sensors/`**: Contains the entire measurement periphery (SCD43, BME680, Radar, NTCs, BMP390).
+- **`sensors/`**: Contains the entire measurement periphery (SCD43, SGP41 + SHT45, Radar, NTCs, BMP390).
   - 🧩 **Sensor Mocks**: If a sensor is missing (e.g., SCD43), mocks (`mock_scd41.yaml`) automatically step in. These prevent compile errors, suppress log spamming, and seamlessly hide non-existent sensors from Home Assistant using `internal: true`.
 - **`actuators/`**: The "brain" of the system. This is where high-performance automations, PID climate controllers, vacation logic, and safety-critical thermal shutdown (`logic_safety.yaml`) reside.
 - **`integration/`**: Isolates all external Home Assistant data points (`homeassistant.yaml`) to keep the system capable of running autonomously.

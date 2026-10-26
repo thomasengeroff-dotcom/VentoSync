@@ -44,8 +44,6 @@ DIRECT = {
     "effective_co2_id": sensor.Sensor,
     "scd41_temperature_id": sensor.Sensor,
     "scd41_humidity_id": sensor.Sensor,
-    "bme680_temperature_id": sensor.Sensor,
-    "bme680_humidity_id": sensor.Sensor,
 }
 
 # Pass-through entities: config option -> JSON key in /state (and /set for

@@ -15,7 +15,7 @@ Die Logik ist über mehrere Schichten verteilt, um Wartbarkeit und hohe Performa
 | **Hauptschleife** | [`logic_automation.yaml`](../../packages/actuators/logic_automation.yaml) | Stößt den Auswertezyklus alle 10 Sekunden an. Ruft `evaluate_auto_mode()` auf. |
 | **Kernlogik (C++)** | [`auto_mode.h`](../../components/helpers/auto_mode.h) | Die „Engine“. Implementiert Mathematik, Sensorfusion und Modus-Umschaltlogik. |
 | **PID-Regler** | [`logic_pid.yaml`](../../packages/actuators/logic_pid.yaml) | Definiert die internen CO2- und Feuchte-PID-Klimaregler und deren Dummy-Ausgänge. |
-| **Klimasensoren** | [`sensors_climate.yaml`](../../packages/sensors/sensors_climate.yaml) | Definiert Eingangssensoren (SCD43, BME680, Home Assistant Sensoren) und Effizienzmetriken. |
+| **Klimasensoren** | [`sensors_climate.yaml`](../../packages/sensors/sensors_climate.yaml) | Definiert den effektiven CO2-Wert (SCD43 → SGP41-VOC-CO2-Äquivalent) und die CO2-Bewertung. |
 | **UI & Schwellwerte** | [`ui_controls.yaml`](../../packages/ui/ui_controls.yaml) | Stellt Home Assistant Entitäten für die Laufzeitkonfiguration bereit (Grenzwerte, Sollwerte). |
 | **Globaler Status** | [`globals.h`](../../components/helpers/globals.h) | Geteilte Zeiger und Variablen, auf die sowohl YAML als auch C++ zugreifen können. |
 
@@ -80,7 +80,7 @@ graph TD
 
 ### 1. Sensorfusion & Fallbacks
 Das System gewährleistet Stabilität, selbst wenn ein lokaler Sensor ausfällt.
-- **CO2-Fallback-Kette** (im Template-Sensor `effective_co2`): Lokaler SCD43 → Lokaler BME680 IAQ eCO2 → Letzten bekannten Wert halten (bis zu 5 min) → NaN.
+- **CO2-Fallback-Kette** (im Template-Sensor `effective_co2`): Lokaler SCD43 → lokales SGP41-VOC-CO2-Äquivalent (`sgp41`-Varianten) → Letzten bekannten Wert halten (bis zu 5 min) → NaN.
 - **Temperatur-Fallback-Kette** (in `auto_mode.h`, `get_effective_temperatures()`): Lokale SCD43-Temperatur → Phasengekoppelte NTC-Werte → **frische Peer-Daten über ESP-NOW** → **letzte eigene gültige Messung** (`HeldReading`, bis zu 30 min) → NaN.
 - **Phasengekoppelte NTC-Sensoren**: Die NTC-Sensoren sind fest im Luftkanal verbaut, die Zuordnung ändert sich also nie: `temp_zuluft` ist der Außensensor, `temp_abluft` der Innensensor. Ein Phase-Lock-Filter in `climate.h` lässt jeden NTC nur in der Lüftungsphase publizieren, in der er tatsächlich in seinem eigenen Luftstrom liegt (Innen-NTC bei Abluft, Außen-NTC bei Zuluft), und friert ihn andernfalls auf dem letzten Wert ein.
   - Bei **Wärmerückgewinnung** wechselt die Richtung alle 50–70 s, beide Sensoren werden also innerhalb eines Zyklus aufgefrischt und beide Werte genutzt.
@@ -122,6 +122,7 @@ Da dezentrale Geräte bauartbedingt keine mechanische Bypass-Klappe besitzen, si
 - **Bedingung**: Raumtemperatur > Schwelle (Slider, Standard 22°C) UND Außentemperatur < (Raum - 1.5°C) UND HA „Sommerbetrieb“ ist AKTIV UND keine aktive Klimaanlage (Klima-Koordination).
 - **Freigabe**: „Sommerbetrieb“ AUS, oder Außen ≥ Raum − 0,5°C, oder Raum < Schwelle − 0,5°C.
 - **Aktion**: Wechsel in `MODE_VENTILATION` (Durchlüften / unidirektionaler Luftstrom, ohne Timer).
+- **Innentemperatur**: Sensorboard an H2 (SCD43 oder SHT45), sonst der Innen-NTC, sonst ein Peer bzw. der letzte Messwert (≤ 30 min). Der BMP390 auf der Hauptplatine wird nie verwendet — er misst die Platine bzw. das Netzteil (10–15 K über dem Raum; bis 0.11.0 hielt er den Bypass dauerhaft an).
 - **Temperaturen**: Bei unidirektionalem Luftstrom ist nur der NTC im eigenen Luftstrom messbar (ansaugend: außen, ausblasend: innen). Der andere Wert kommt von einem Peer, sonst aus der letzten eigenen Messung (≤ 30 min); fehlt er weiterhin, kehrt `guard_summer_bypass()` in die Wärmerückgewinnung zurück und sperrt den Wiedereintritt 5 min lang (`SUMMER_COOLING_REMEASURE_MS`) zum Nachmessen.
 - **Vorteil**: Zieht kühle Nachtluft effizient ein, ohne sie im Keramik-Wärmespeicher aufzuheizen.
 
@@ -166,7 +167,7 @@ In Räumen mit Gasherd, Kamin oder anderen Verbrennungsgeräten erhöht der NOx-
 - **Anzeige**: `Automatik-Status` „NOx-Stoßlüftung: Index 85 → Stufe 7“; Abbrüche lösen das HA-Ereignis `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer` aus.
 
 ### 9. Automatik-Status, Automatik-Grund & HA-Ereignis (seit 0.10.38)
-- **`text_sensor.automatik_status`** („Automatik-Status“, alle Varianten, alle 10 s): was der Lüfter gerade macht und warum, z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `CO2-Notfall: 1600 ppm → Stufe 7`, `Schimmelschutz: 78 % → Stufe 6`, `Pausiert: Fenster offen` (nur solange die Fenstersperre den Lüfter wirklich stoppt — mit `Fenstersperre ignorieren` erscheint der reguläre Grund), `Manuell: Wärmerückgewinnung → Stufe 5`. Zusätze: `(Klimaanlage: max. Stufe 3)` während der Klima-Obergrenze, `· Sommer-Kühlung` im Sommer-Bypass. Priorität: Aus → Urlaub → Fenster → Manuell → NOx → CO2-Notfall → Schimmelschutz → Übersteuerung → keine Daten → CO2 → Feuchte → Grundlüftung (`components/ventilation_logic/auto_status.h`). CO2- und Feuchtewerte sind die raumweiten Maxima (inkl. Peers); der CO2-Wert kann ein VOC-Äquivalent sein (BME680- / SGP41-Varianten).
+- **`text_sensor.automatik_status`** („Automatik-Status“, alle Varianten, alle 10 s): was der Lüfter gerade macht und warum, z. B. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `CO2-Notfall: 1600 ppm → Stufe 7`, `Schimmelschutz: 78 % → Stufe 6`, `Pausiert: Fenster offen` (nur solange die Fenstersperre den Lüfter wirklich stoppt — mit `Fenstersperre ignorieren` erscheint der reguläre Grund), `Manuell: Wärmerückgewinnung → Stufe 5`. Zusätze: `(Klimaanlage: max. Stufe 3)` während der Klima-Obergrenze, `· Sommer-Kühlung` im Sommer-Bypass. Priorität: Aus → Urlaub → Fenster → Manuell → NOx → CO2-Notfall → Schimmelschutz → Übersteuerung → keine Daten → CO2 → Feuchte → Grundlüftung (`components/ventilation_logic/auto_status.h`). CO2- und Feuchtewerte sind die raumweiten Maxima (inkl. Peers); der CO2-Wert kann ein VOC-Äquivalent sein (SGP41-Varianten).
 - **`text_sensor.automatik_grund`** („Automatik-Grund“): derselbe Grund als stabiler Schlüssel für Automationen — `aus`, `urlaub`, `fenster`, `manuell`, `nox`, `co2_notfall`, `schimmelschutz`, `uebersteuerung`, `keine_daten`, `co2`, `feuchte`, `grundlueftung`.
 - **`event.lueftung_ereignis`** („Lüftung Ereignis“, HA-Ereignis-Entität): wird mit dem neuen Grund-Schlüssel ausgelöst, sobald dieser **30 s** besteht (kurzes Hin und Her wird gefiltert), und sofort mit `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`. Beispiel-Automation:
 

@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-18
+// Modified:    2026-10-26
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -127,6 +127,8 @@ inline bool is_system_ready() {
  *          offline or NaN, it attempts to use data shared by peers over ESP-NOW.
  *          It also dynamically maps NTC sensors based on the active airflow
  *          direction to differentiate between Indoor and Outdoor ambient temps.
+ *          Indoor: sensor board (SCD43 / SHT45) → indoor NTC → peer → held
+ *          reading (≤ 30 min).
  *
  * @param[in]  now      Current system time.
  * @param[out] eff_in   Effective indoor temperature calculation result.
@@ -140,9 +142,10 @@ inline void get_effective_temperatures(uint32_t now, float &eff_in, float &eff_o
   float local_in = NAN;
   float local_out = NAN;
 
-  // 1. Local Indoor Temp (SCD41 preferred)
-  if (temperature != nullptr && !std::isnan(temperature->state)) {
-    local_in = temperature->state;
+  // 1. Local indoor temperature: sensor board at H2 (SCD43 or SHT45), else the
+  //    indoor NTC below. Never the BMP390 — it measures the board / power supply.
+  if (scd41_temperature != nullptr && !std::isnan(scd41_temperature->state)) {
+    local_in = scd41_temperature->state;
   }
 
   // 2. Map NTC sensors based on current ventilation direction

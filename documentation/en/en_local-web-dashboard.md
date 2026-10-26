@@ -120,7 +120,7 @@ The dashboard dynamically scans and lists all active ESP-NOW ventilation units i
 * **"Dashboard dieses Geräts öffnen ↗"** *(0.10.49)*: link to the peer's own dashboard via its mDNS name (`http://ventosync-a1b2c3.local/`). Every device is called `ventosync-<last 6 hex digits of its MAC>` (`name_add_mac_suffix`), and the dashboard knows each peer's MAC from its ESP-NOW packets — no protocol change. The link needs a client that resolves `.local` names (macOS, iOS, Windows 10+, Linux with Avahi, recent Android); otherwise open the peer by its IP.
 
 > [!NOTE]
-> The air quality values are shared over ESP-NOW (protocol v11), so each card shows the readings of **that** device's own sensor — whether it is an SCD43 or the BME680 eCO2 fallback. A device without a climate sensor shows `--`; the rating uses the same classification as the local "Luftqualität" tile, so both always agree.
+> The air quality values are shared over ESP-NOW (protocol v11), so each card shows the readings of **that** device's own sensor — whether it is an SCD43 or the VOC CO2 equivalent of an SGP41. A device without a climate sensor shows `--`; the rating uses the same classification as the local "Luftqualität" tile, so both always agree.
 
 ---
 

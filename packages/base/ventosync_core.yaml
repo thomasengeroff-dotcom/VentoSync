@@ -147,7 +147,6 @@ esphome:
     - components/helpers/system_lifecycle.h
     - components/helpers/led_feedback.h
     - components/helpers/user_input.h
-    - components/helpers/bme680_iaq_engine.h
 
   name_add_mac_suffix: true # Adds MAC address to device name (because same firmware is used for all devices)
 
@@ -198,7 +197,6 @@ ventilation_group:
   fan_rpm_sensor: fan_rpm
   board_temp_sensor: temperature
   scd41_temp_sensor: scd41_temperature
-  bme680_temp_sensor: bme680_temperature
   mode_index_global: current_mode_index
   automatik_min_fan_level_global: automatik_min_fan_level
   automatik_max_fan_level_global: automatik_max_fan_level
@@ -208,7 +206,6 @@ ventilation_group:
   max_led_brightness_global: max_led_brightness
   co2_sensor: effective_co2
   scd41_humidity_sensor: scd41_humidity
-  bme680_humidity_sensor: bme680_humidity
   hvac_co2_threshold_global: hvac_co2_threshold_val
   hvac_emergency_co2_global: hvac_emergency_co2_val
   hvac_max_fan_level_global: hvac_max_fan_level_val
@@ -238,8 +235,6 @@ wrg_dashboard:
   effective_co2_id: effective_co2
   scd41_temperature_id: scd41_temperature
   scd41_humidity_id: scd41_humidity
-  bme680_temperature_id: bme680_temperature
-  bme680_humidity_id: bme680_humidity
   temp_zuluft_id: temp_zuluft
   temp_abluft_id: temp_abluft
   temp_zuluft_wrg_id: temp_zuluft_wrg

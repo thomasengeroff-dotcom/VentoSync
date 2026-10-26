@@ -15,7 +15,6 @@ Filterüberwachung, Bedienfeld-Einstellungen, Neustart und der optionale Bluetoo
 | [Maximale LED Helligkeit](#maximale-led-helligkeit) | `number.…_maximale_led_helligkeit` | Number | Raum | – |
 | [Kindersicherung](#kindersicherung) | `switch.…_kindersicherung` | Switch | Gerät | config |
 | [ESP Neustart erzwingen](#esp-neustart-erzwingen) | `button.…_esp_neustart_erzwingen` | Button | Gerät | config |
-| [BME680 Basiswert zurücksetzen](#bme680-basiswert-zurücksetzen) | `button.…_bme680_basiswert_zurucksetzen` | Button | Gerät | config |
 | [Bluetooth Proxy](#bluetooth-proxy) | `switch.…_bluetooth_proxy` | Switch | Gerät | config |
 
 ---
@@ -74,10 +73,6 @@ data:
 ## ESP Neustart erzwingen
 
 `button.…_esp_neustart_erzwingen` startet den ESP32 neu. Einstellungen, Modus und Stufe sind gespeichert und werden nach dem Start mit dem Raum abgeglichen.
-
-## BME680 Basiswert zurücksetzen
-
-`button.…_bme680_basiswert_zurucksetzen` (nur Varianten mit BME680) verwirft den gelernten Gas-Basiswert und startet die Einbrennphase neu (bis zu 48 h). Sinnvoll nach einem Sensortausch oder wenn das CO2-Äquivalent dauerhaft falsch wirkt.
 
 ---
 

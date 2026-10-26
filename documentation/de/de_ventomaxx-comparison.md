@@ -11,7 +11,7 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 
 - **Smart-Home-Integration** (WiFi 6, Home Assistant Native API, OTA-Updates)
 - **Komfort & Automatik** (Feuchtigkeitsmanagement, Fenstersperre, Silent-Mode, Sanftanlauf)
-- **Präzisions-Sensorik** (Steck-Sensorboards: SCD43 CO2 **oder** SGP41 + SHT45 VOC/NOx; BMP390 Luftdruck, HLK-LD2450 Radar, NTC-Temperaturen, BME680 Fallback)
+- **Präzisions-Sensorik** (Steck-Sensorboards: SCD43 CO2 **oder** SGP41 + SHT45 VOC/NOx; BMP390 Luftdruck, HLK-LD2450 Radar, NTC-Temperaturen)
 - **Intelligente Regelalgorithmen** (PID-gesteuerte CO2/Feuchte-Regelung, adaptive Zykluszeiten)
 - **Prädiktive Wartung** (Filterwechsel-Alarm basierend auf Betriebsstunden + Kalenderzeit)
 - **Kabelloses Mesh-Netzwerk** (ESP-NOW Discovery für autonomen / routerunabhängigen Gruppenbetrieb)
@@ -51,7 +51,6 @@ Die **VentoSync-Steuerung** bietet **100% der Original-Funktionalität** und erw
 | **Temperatur** | ❌ Keine Anzeige | ✅ **NTC-Sensoren** (Zuluft/Abluft) + HA Wetterdaten | ✅ **Visualisierung & Automatik** |
 | **Luftfeuchtigkeit** | Rudimentär (feste Schwellen) | ✅ **SCD43** (Innen) + **Außenfeuchte** (HA Wetterdienst/Sensor) | ✅ **PID-geregelt + Outdoor-Check** |
 | **Luftdruck** | ❌ Nein | ✅ **BMP390**: Wettertrend, Sturmwarnung, **Barometrische Kompensation** für SCD43 | ✅ **Korrekturen in Echtzeit** |
-| **BME680 Fallback** | ❌ Nein | ✅ **Zusatz-Sensor**: Automatisches Backup bei SCD43 Ausfall | ✅ **Fehlertoleranz** |
 | **Anwesenheit** | ❌ Nein | ✅ **HLK-LD2450 mmWave-Radar**: Präsenz, Moving/Still Targets, Target Count | ✅ **Raumgenaue Erfassung** |
 | **Richtungsanzeige** | ❌ Nein | ✅ **Klartext-Sensor**: "Zuluft", "Abluft", "Stillstand" in HA | ✅ **Sofortige Klarheit** |
 

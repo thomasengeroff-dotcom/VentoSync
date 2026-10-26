@@ -15,10 +15,10 @@ The device acts as a "black box" data logger for its specific room.
 
 * **Internal Sensors:**
   * CO2 (SCD43)
-  * Indoor Temperature & Humidity (SCD43/BME680)
+  * Indoor Temperature & Humidity (SCD43 / SHT45)
   * Outdoor Temperature & Humidity (NTCs + calculations)
-  * Air Pressure (BME680)
-  * VOC / Air Quality (BME680)
+  * Air Pressure (BMP390)
+  * VOC / NOx (SGP41)
 * **Actuator Status:**
   * Current fan level (RPM)
   * Runtime & mode (Heat Recovery vs. Through-ventilation)

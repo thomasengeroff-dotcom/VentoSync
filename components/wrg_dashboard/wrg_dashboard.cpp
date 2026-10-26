@@ -604,7 +604,7 @@ std::string WrgDashboard::build_state_json_() {
       if (!std::isnan(peer.fan_rpm)) p["rpm"] = peer.fan_rpm;
       if (!std::isnan(peer.board_temp)) p["board_t"] = peer.board_temp;
       if (!std::isnan(peer.room_temp)) p["room_t"] = peer.room_temp;
-      // Air quality shared over ESP-NOW (SCD43 or BME680, whichever the peer has).
+      // Air quality shared over ESP-NOW (SCD43 or SGP41 VOC CO2 equivalent, whichever the peer has).
       // The rating uses the same classification as the local card so both agree.
       if (!std::isnan(peer.room_co2) && peer.room_co2 > 0.0f) {
         p["co2"] = peer.room_co2;
@@ -648,18 +648,13 @@ std::string WrgDashboard::build_state_json_() {
   return out;
 }
 
-// Room climate: effective CO2 (may be a VOC/eCO2 estimate), SCD41 → BME680 fallback
+// Room climate: effective CO2 (may be a VOC CO2 equivalent), temperature /
+// humidity of the sensor board at H2 (SCD43 or SHT45)
 float WrgDashboard::room_co2_() const {
   return sensor_value(this->effective_co2_ != nullptr ? this->effective_co2_ : this->scd41_co2_);
 }
-float WrgDashboard::room_temperature_() const {
-  const float t = sensor_value(this->scd41_temperature_);
-  return std::isnan(t) ? sensor_value(this->bme680_temperature_) : t;
-}
-float WrgDashboard::room_humidity_() const {
-  const float rh = sensor_value(this->scd41_humidity_);
-  return std::isnan(rh) ? sensor_value(this->bme680_humidity_) : rh;
-}
+float WrgDashboard::room_temperature_() const { return sensor_value(this->scd41_temperature_); }
+float WrgDashboard::room_humidity_() const { return sensor_value(this->scd41_humidity_); }
 
 /**
  * @brief   Serializes the static limits of the writable settings (runs once).

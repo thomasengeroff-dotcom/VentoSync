@@ -22,7 +22,7 @@
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-04-21
+# Modified:    2026-10-26
 # ==========================================================================
 
 substitutions:
@@ -32,10 +32,8 @@ substitutions:
 esphome:
   build_flags:
       - "-DVENTOSYNC_NO_SCD41"
-      - "-DVENTOSYNC_NO_BME680"
 
 packages:
   base: !include packages/base/ventosync_base.yaml
   mock_scd41: !include packages/sensors/mock_scd41.yaml
-  mock_bme680: !include packages/sensors/mock_bme680.yaml
   ld2450: !include packages/sensors/sensor_LD2450.yaml

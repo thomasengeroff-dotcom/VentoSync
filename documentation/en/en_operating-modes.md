@@ -141,7 +141,7 @@ Upon initial power-on or microcontroller reset, **Mode 1 (Smart Automatic)** is 
 - **HA Entity:** `select.luftermodus` → `Aus` (or HA fan entity *off*)
 - **Function:** The fan motor is stopped (50 % PWM = standstill, 0 RPM). Only the power LED stays lit (dimmed after 30 s).
 - **Room-wide:** Like every other mode, `Aus` applies to the **whole room** — switching off on any device (HA, web dashboard, Mode or Power button) stops all devices of the room, and switching on on any device starts them all again.
-- **Active Sensors:** Wi-Fi, Home Assistant API, web dashboard, ESP-NOW and all sensors (SCD43, BMP390, BME680, radar, NTCs) stay active for uninterrupted data collection; the device keeps sharing its sensor data with the room.
+- **Active Sensors:** Wi-Fi, Home Assistant API, web dashboard, ESP-NOW and all sensors (SCD43 or SGP41 + SHT45, BMP390, radar, NTCs) stay active for uninterrupted data collection; the device keeps sharing its sensor data with the room.
 - **Power button:** A press (< 10 s) toggles between `Aus` and the **last active mode** (default `Smart-Automatik`) — room-wide. The HA fan entity's *turn on* restores the same mode. A very long press (> 10 s) restarts the device; the mode is kept.
 - **No sleep mode:** The hardware (rev. 1 PCB) cannot wake the ESP32 from deep sleep with a button, so there is no power-saving sleep state. The former long press (> 5 s, Wi-Fi off) was removed in 0.10.26 — it saved almost nothing (CPU, sensors and radar kept running) and ended by itself after 15 minutes.
 

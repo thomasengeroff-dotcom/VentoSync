@@ -112,7 +112,7 @@ struct __attribute__((packed)) VentilationPacket {
   float pid_demand;          ///< Sender's LOCAL-sensor PID demand (0.0–1.0, NaN without sensors) — never a fused value.
   float fan_rpm;             ///< Sender's current fan RPM.
   float board_temp;          ///< Sender's board temperature (BMP390).
-  float room_temp;           ///< Sender's room temperature (SCD41/BME680).
+  float room_temp;           ///< Sender's room temperature (SCD43 / SHT45, NaN without a sensor board).
   float room_co2;            ///< Sender's effective CO2 in ppm (or NAN) — shared for Smart Climate Control.
   float room_humidity;       ///< Sender's room relative humidity in % (or NAN) — shared for the dashboard.
 

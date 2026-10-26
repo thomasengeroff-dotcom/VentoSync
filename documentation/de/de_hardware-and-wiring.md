@@ -22,10 +22,9 @@ Dieses Dokument bietet detaillierte Spezifikationen der zentralen Hardware-Kompo
 | Komponente | Beschreibung | Dokumentation |
 | :--- | :--- | :--- |
 | **Lüfter** | Original Ventomaxx V-WRG (EBM-PAPST 4412 F/2 GLL) 3-Pin PWM oder AxiRev (4-Pin PWM) | [Fan Component](https://esphome.io/components/fan/speed.html) |
-| **SCD43** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C. Steck-Sensorboard für H2 (PCB v1 und v2). Firmware mit dem SCD43-Board als einzigem Klimasensor: `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); `ventosync.yaml` erwartet zusätzlich BME680 + LD2450 | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
+| **SCD43** | Sensirion CO2-Sensor (Echtes CO2 400-5000ppm, Temp, Hum) via I²C. Steck-Sensorboard für H2 (PCB v1 und v2). Firmware mit dem SCD43-Board als einzigem Klimasensor: `ventosync_scd43_only.yaml` (PCB v1) / `ventosync_v2_scd43_only.yaml` (PCB v2); `ventosync.yaml` erwartet zusätzlich den LD2450 | [SCD4X Component](https://esphome.io/components/sensor/scd4x.html) |
 | **SGP41 + SHT45** | Alternatives Steck-Sensorboard für H2 (PCB v1 und v2, statt des SCD43-Boards): Sensirion SGP41 VOC-/NOx-Index + SHT45 Temperatur/Feuchte via I²C (0x59 / 0x44, **nur 3,3 V**). Firmware `ventosync_sgp41.yaml` (PCB v1) / `ventosync_v2_sgp41.yaml` (PCB v2) — der SHT45 liefert Raumtemperatur/-feuchte, der VOC-Index wird für die Smart-Automatik auf ein CO2-Äquivalent abgebildet. | [SGP4x](https://esphome.io/components/sensor/sgp4x.html), [SHT4x](https://esphome.io/components/sensor/sht4x.html) |
 | **BMP390** / **BMP388** | Bosch Hochpräziser Barometrischer Drucksensor via I²C — BMP390 auf PCB v1, BMP388 auf PCB v2 (pin- und treiberkompatibel, gleiche Adresse 0x76; der BMP390 war bei JLCPCB nicht lieferbar) | [BMP3XX Component](https://esphome.io/components/sensor/bmp3xx.html) |
-| **BME680** | Bosch Gas Sensor (Fallback für IAQ/Luftqualität) via I²C | [BME680 Component](https://esphome.io/components/sensor/bme680.html) |
 | **NTCs** | 2x NTC 10k (Zuluft/Abluft) für Effizienzmessung | [NTC Sensor](https://esphome.io/components/sensor/ntc.html) |
 | **I/O Expander** | **MCP23017** (I2C) für VentoMaxx Panel | [MCP23017](https://esphome.io/components/mcp23017.html) |
 | **LED Driver** | **PCA9685** (I2C) für dimmbare LEDs im VentoMaxx Panel | [PCA9685](https://esphome.io/components/output/pca9685.html) |
@@ -83,7 +82,7 @@ Alle Erweiterungsanschlüsse der PCB v2.0 sind **JST SH** (1,0 mm Rastermaß, st
 
 - **Kabel:** Die winzigen SH-Kontakte lassen sich nur mit Spezialzange crimpen — praktischer sind fertig gecrimpte JST-SH-1,0-mm-Kabel (Einzellitzen oder 4-/8-polige Kabel mit Gehäuse an einem oder beiden Enden).
 - **Qwiic / STEMMA QT:** Diese Kabel nutzen ebenfalls 4-polige JST-SH-Stecker, aber mit der Reihenfolge GND · 3V3 · **SDA · SCL**. Vor dem Einstecken mit dem Bestückungsdruck von CN4 vergleichen — vertauschte SDA/SCL beschädigen nichts, aber der Sensor antwortet nicht.
-- **Belegte I²C-Adressen:** 0x40 (PCA9685), 0x76 (BMP388), 0x77 (BME680) und das Sensorboard an H2 (SCD43 0x62 bzw. SGP41 0x59 + SHT45 0x44). Ein externer Sensor braucht eine freie Adresse und eine eigene ESPHome-Konfiguration — die Firmware-Varianten enthalten keine.
+- **Belegte I²C-Adressen:** 0x40 (PCA9685), 0x76 (BMP390 / BMP388) und das Sensorboard an H2 (SCD43 0x62 bzw. SGP41 0x59 + SHT45 0x44). Ein externer Sensor braucht eine freie Adresse und eine eigene ESPHome-Konfiguration — die Firmware-Varianten enthalten keine.
 - **GPB0–GPB3** (U36) sind IO4, IO5, IO14 und IO15. IO4, IO5 und IO15 sind Strapping-Pins des ESP32-C6: Externe Beschaltung darf beim Reset keinen festen Pegel erzwingen.
 
 ### 🖱️ Bedienpanel am Gerät

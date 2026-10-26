@@ -254,7 +254,7 @@
         return `<span class="text-xs font-medium px-2.5 py-1 rounded-full border ${cls}">${sanitizeHTML(text)}</span>`;
     }
     // Air quality block shown on every device card. Values come from the local
-    // sensors or, for peers, from the ESP-NOW packet (SCD43 or BME680 eCO2).
+    // sensors or, for peers, from the ESP-NOW packet (SCD43 or SGP41 VOC CO2 equivalent).
     function airQualityBlock(co2, rating, temp, hum) {
         return `<div class="text-[10px] uppercase tracking-wider text-gray-500 mt-3 mb-1">Luftqualität</div>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded">

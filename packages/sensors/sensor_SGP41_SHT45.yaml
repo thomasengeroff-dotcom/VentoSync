@@ -24,16 +24,17 @@
 #              so this package takes over the SCD41 *roles*:
 #                - SHT45 → scd41_temperature / scd41_humidity (room climate:
 #                  humidity PID, mold guard, enthalpy, room fusion, dashboard)
-#                - SGP41 VOC index → iaq_co2eq (VOC-based CO2 equivalent, like
-#                  the BME680 estimate) → effective_co2 → CO2 PID / CO2 guards
-#              Requires mock_scd41.yaml and mock_bme680.yaml in the same variant
-#              (their template sensors are extended here, which keeps the
-#              TemplateSensor types expected by globals.h with VENTOSYNC_NO_SCD41).
+#                - SGP41 VOC index → voc_co2eq (VOC-based CO2 equivalent)
+#                  → effective_co2 → CO2 PID / CO2 guards
+#              Requires mock_scd41.yaml in the same variant (its template
+#              sensors are extended here, which keeps the TemplateSensor types
+#              expected by globals.h with VENTOSYNC_NO_SCD41); voc_co2eq is
+#              defined in sensors_climate.yaml.
 #              Substitution sht45_temperature_offset (°C, default 0.0) corrects
 #              the self-heating near the Traco power supply.
 # Author:      Thomas Engeroff
 # Created:     2026-10-15
-# Modified:    2026-10-20
+# Modified:    2026-10-26
 # ==========================================================================
 
 globals:
@@ -129,7 +130,7 @@ sensor:
       temperature_source: sht45_temperature
 
   # ---------------------------------------------------------
-  # SCD41 / BME680 ROLES (extend the mocks)
+  # SCD41 ROLES (extend the mock) and VOC CO2 EQUIVALENT
   # ---------------------------------------------------------
   # Room temperature / humidity used by the logic, the room fusion and the
   # web dashboard. Internal — HA shows the SHT45 entities above.
@@ -151,7 +152,7 @@ sensor:
 
   # VOC-based CO2 equivalent → effective_co2 (sensors_climate.yaml).
   # Mapping and limits: VentilationLogic::voc_index_to_co2eq().
-  - id: !extend iaq_co2eq
+  - id: !extend voc_co2eq
     name: "SGP41 VOC CO2-Äquivalent"
     internal: false
     device_class: "carbon_dioxide"

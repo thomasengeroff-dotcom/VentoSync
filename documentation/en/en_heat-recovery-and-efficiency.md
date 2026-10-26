@@ -3,7 +3,7 @@
 [![Language: DE](https://img.shields.io/badge/Language-DE-red.svg)](../de/de_heat-recovery-and-efficiency.md)
 
 
-This document provides in-depth technical details on the regenerative ceramic heat recovery cycle, phase-locked NTC temperature filtering, the BME680 IAQ engine, energy-based efficiency integration (DIN EN 13141-8), and multi-unit ESP-NOW push-pull synchronization.
+This document provides in-depth technical details on the regenerative ceramic heat recovery cycle, phase-locked NTC temperature filtering, energy-based efficiency integration (DIN EN 13141-8), and multi-unit ESP-NOW push-pull synchronization.
 
 ---
 
@@ -63,23 +63,13 @@ To avoid incorrect intermediate values in Home Assistant and to accurately captu
 - **Median Fallback:** If the reference sensor is temporarily unavailable, the system uses the median of the last 3 values as a safe compromise.
 - **120s Failsafe Timeout:** A generous watchdog ensures the sensors stay "online" in Home Assistant even during long phases where values are legitimately blocked by the Phase-Lock.
 
-*Note on redundancy:* `temp_zuluft` (Outdoor NTC) provides the actual outside temperature when the airflow is directed inward. `temp_abluft` (Indoor NTC) provides the room temperature when the airflow is directed outward and serves as redundancy for the more precise SCD43 sensor.
+*Note on redundancy:* `temp_zuluft` (Outdoor NTC) provides the actual outside temperature when the airflow is directed inward. `temp_abluft` (Indoor NTC) provides the room temperature when the airflow is directed outward and serves as redundancy for the more precise sensor board. Smart-Automatik takes the indoor temperature from the sensor board at H2 (SCD43 or SHT45), then from the indoor NTC; the BMP390 on the main board measures the board / power supply (10–15 K above the room) and is never used as room temperature.
 
 Specifically, the following sensor is used:
 
 | Manufacturer | Part Number | Source | Accuracy | Data Sheet |
 | :--- | :--- | :--- | :--- | :--- |
 | **VARIOHM** | `ENTC-EI-10K9777-02` | [Reichelt Elektronik](https://www.reichelt.de/de/de/shop/produkt/thermistor_NTC_-40_bis_125_c-350474) | ± 0.2 °C | [PDF](../datasheets/ENTC_EI-10K9777-02E.pdf) |
-
-### Air Quality & Gas Sensors (BME680)
-
-To provide precise Indoor Air Quality (IAQ) data, the system features a highly optimized **BME680 Advanced IAQ Engine**. Since the BSEC2 library is too heavy and restricted, VentoSync uses a custom, thread-safe C++ implementation:
-
-- **Optimized Heater Profile:** The gas sensor operates at **300°C for 150ms** (Bosch recommendation for IAQ). This reduces self-heating and extends the sensor's lifespan compared to default settings.
-- **Dynamic Thermal Compensation:** Temperature readings are dynamically corrected based on ambient conditions (interpolated offset between -1.0°C and -2.0°C) to compensate for the heater's thermal impact.
-- **Smart Flash Wear-Leveling:** The gas baseline is only persisted to the ESP32's flash memory if it has changed by more than **2%** and at least **1 hour** has passed. This maximizes the flash memory's longevity.
-- **Health Watchdog:** A dedicated monitoring logic detects I2C communication failures or "stuck" values and reports a sensor health problem to Home Assistant after 10 consecutive failures.
-- **Change-Detection Trend:** The IAQ trend and classification sensors use change-detection logic to minimize network traffic and database growth in Home Assistant.
 
 ### Efficiency Calculation (Energy-Based)
 

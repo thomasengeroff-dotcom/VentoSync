@@ -7,7 +7,7 @@ import hashlib
 #
 # IMPORTANT: The version is bumped ONCE per build session using a lock file,
 # not on every individual compile. This ensures all firmware variants
-# (full, nosensor, radar_only, bme680_only) share the same version number.
+# (full, nosensor, radar_only, sgp41, ...) share the same version number.
 
 try:
     from SCons.Script import Import

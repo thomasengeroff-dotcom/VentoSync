@@ -10,7 +10,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 - Platform: ESP32-C6 (RISC-V), ESPHome `2026.10.0`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
-- Sensors: Sensirion **SCD43** (CO2 / temperature / humidity) or **SGP41 + SHT45** board (VOC / NOx / temperature / humidity), BME680 (IAQ fallback), BMP390 (pressure),
+- Sensors: Sensirion **SCD43** (CO2 / temperature / humidity) or **SGP41 + SHT45** board (VOC / NOx / temperature / humidity), BMP390 (pressure, board temperature),
   2× NTC thermistors, HLK-LD2450 (mmWave radar).
   **Naming:** the SCD43 is driven by the ESPHome `scd4x` platform; all IDs, files and globals are
   historically named `scd41_*` (`sensor_SCD41.yaml`, `mock_scd41.yaml`, `VENTOSYNC_NO_SCD41`). Keep that
@@ -68,7 +68,7 @@ VentoSync/
 │   ├── globals/               # Global variables (automation, network, UI, ventilation)
 │   ├── integration/           # Home Assistant entities, HA fan entity, optional MQTT
 │   ├── io/                    # Fan PWM, buttons, PCA9685/MCP23017 hardware pinouts
-│   ├── sensors/               # Drivers & mocks for SCD4x, BME680, Radar, BMP390, NTCs
+│   ├── sensors/               # Drivers & mocks for SCD4x, SGP41/SHT45, Radar, BMP390, NTCs
 │   └── ui/                    # On-device front panel controls & diagnostic entities
 ├── tests/                     # Native C++ unit tests (simple_test_runner.cpp) & hardware test guide
 ├── ventosync*.yaml            # Variant entry points (see Hardware Variants)
@@ -95,18 +95,16 @@ compilation in `globals.h`; substitutions control which entities are visible in 
 
 | Variant YAML | Build flags | Sensor packages | `hide_ntc_sensors` | Hardware |
 |---|---|---|---|---|
-| `ventosync.yaml` | *(none)* | SCD41, BME680, LD2450 | `false` | Full: SCD43 + BME680 + radar + NTCs |
-| `ventosync_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | BME680 IAQ fallback + NTCs |
-| `ventosync_scd43_only.yaml` | `NO_BME680`, `NO_RADAR` | SCD41, mock BME680/radar | `false` | SCD43 board at H2 as the only climate sensor + NTCs |
-| `ventosync_radar_only.yaml` | `NO_SCD41`, `NO_BME680` | LD2450, mock SCD41/BME680 | `false` | Radar presence + NTCs, no climate sensor |
-| `ventosync_NTConly.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `false` | **NTCs fitted** (air temperature before/after fan & ceramic block), no I2C sensors |
-| `ventosync_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **No sensors at all** — not even NTCs |
-| `ventosync_v2_nosensor.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks only | `true` | **PCB v2.0** — as `nosensor` |
-| `ventosync_v2_bme680_only.yaml` | `NO_SCD41`, `NO_RADAR` | BME680, mock SCD41/radar | `false` | **PCB v2.0** — as `bme680_only` |
-| `ventosync_sgp41.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41/BME680), mock radar | `false` | SGP41/SHT45 VOC board at H2 instead of the SCD43 board |
-| `ventosync_v2_scd43_only.yaml` | `NO_BME680`, `NO_RADAR` | SCD41, mock BME680/radar | `false` | **PCB v2.0** — as `scd43_only` |
-| `ventosync_v2_sgp41.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41/BME680), mock radar | `false` | **PCB v2.0** — as `sgp41` |
-| `ventosync_nosensor_btproxy.yaml` | `NO_SCD41`, `NO_BME680`, `NO_RADAR` | mocks + `integration/bluetooth_proxy.yaml` | `true` | **Experimental** — `nosensor` + HA Bluetooth proxy, own partition table |
+| `ventosync.yaml` | *(none)* | SCD41, LD2450 | `false` | Full: SCD43 + radar + NTCs |
+| `ventosync_scd43_only.yaml` | `NO_RADAR` | SCD41, mock radar | `false` | SCD43 board at H2 as the only climate sensor + NTCs |
+| `ventosync_radar_only.yaml` | `NO_SCD41` | LD2450, mock SCD41 | `false` | Radar presence + NTCs, no climate sensor |
+| `ventosync_NTConly.yaml` | `NO_SCD41`, `NO_RADAR` | mocks only | `false` | **NTCs fitted** (air temperature before/after fan & ceramic block), no I2C sensors |
+| `ventosync_nosensor.yaml` | `NO_SCD41`, `NO_RADAR` | mocks only | `true` | **No sensors at all** — not even NTCs |
+| `ventosync_v2_nosensor.yaml` | `NO_SCD41`, `NO_RADAR` | mocks only | `true` | **PCB v2.0** — as `nosensor` |
+| `ventosync_sgp41.yaml` | `NO_SCD41`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41 and `voc_co2eq`), mock radar | `false` | SGP41/SHT45 VOC board at H2 instead of the SCD43 board |
+| `ventosync_v2_scd43_only.yaml` | `NO_RADAR` | SCD41, mock radar | `false` | **PCB v2.0** — as `scd43_only` |
+| `ventosync_v2_sgp41.yaml` | `NO_SCD41`, `NO_RADAR` | SGP41 + SHT45 (extends mock SCD41 and `voc_co2eq`), mock radar | `false` | **PCB v2.0** — as `sgp41` |
+| `ventosync_nosensor_btproxy.yaml` | `NO_SCD41`, `NO_RADAR` | mocks + `integration/bluetooth_proxy.yaml` | `true` | **Experimental** — `nosensor` + HA Bluetooth proxy, own partition table |
 
 (Flags are written without the `-DVENTOSYNC_` prefix, e.g. `NO_SCD41` = `-DVENTOSYNC_NO_SCD41`.)
 
@@ -117,6 +115,9 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   not in the repository.
 - Missing sensors are replaced by `mock_*.yaml` packages that return clean `NaN`/`false` values.
   Never add real sensor YAML without the corresponding mock for the fallback variants.
+- **No BME680** (removed in 0.11.0, it was a test sensor only): room CO2 comes from the SCD43 or the SGP41 VOC CO2
+  equivalent, room temperature / humidity only from the sensor board at H2 (SCD43 or SHT45 → `scd41_temperature` /
+  `scd41_humidity`).
 - **Bluetooth proxy** (`packages/integration/bluetooth_proxy.yaml`, only in `ventosync_nosensor_btproxy.yaml`): the BLE stack
   (~610 KB) does not fit ESPHome's default 4 MB layout, so the package sets `esp32: partitions:
   packages/board/partitions_4mb_btproxy.csv` (2 × 0x1F0000 app, 64 KB NVS), BLE 5.0 off, `assertion_level: SILENT`,
@@ -126,9 +127,9 @@ compilation in `globals.h`; substitutions control which entities are visible in 
   switch `bt_proxy_switch` ("Bluetooth Proxy", per device, also in the web dashboard). Do not add it to other variants
   without a size check. Details: `documentation/en/en_bluetooth-proxy.md`.
 - **SGP41 + SHT45 board** (`packages/sensors/sensor_SGP41_SHT45.yaml`, in `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml`): takes over the
-  SCD41 *roles* by `!extend`-ing the mocks — SHT45 → `scd41_temperature` / `scd41_humidity` (room climate),
-  SGP41 VOC index → `iaq_co2eq` (`VentilationLogic::voc_index_to_co2eq()`: 400 + 4 × (index − 50), 400–2200 ppm) →
-  `effective_co2`. The variant must therefore include `mock_scd41.yaml` and `mock_bme680.yaml`. NOx index is
+  SCD41 *roles* by `!extend`-ing the mock — SHT45 → `scd41_temperature` / `scd41_humidity` (room climate),
+  SGP41 VOC index → `voc_co2eq` (NaN placeholder in `sensors_climate.yaml`; `VentilationLogic::voc_index_to_co2eq()`:
+  400 + 4 × (index − 50), 400–2200 ppm) → `effective_co2`. The variant must therefore include `mock_scd41.yaml`. NOx index is
   used for the NOx boost (see ESP-NOW section). The mirrors go through `sensor_value_or_nan()` (`climate.h`): the drivers keep their last value on
   read errors, so the mirrors turn NaN after 2 min of warnings or a failed component. The package also sets
   `wrg_dashboard: voc_index_id / nox_index_id` (dashboard label "CO2-Äquivalent (VOC)" + index rows). The SGP41 board needs 3.3 V at H2 (identical on PCB v1 and v2).
@@ -316,7 +317,6 @@ Complex YAML lambda logic is extracted into focused header files:
 - **`auto_mode.h`** — Dual-PID demand evaluation, CO2 priority hysteresis, summer bypass, room demand fusion, HVAC glue
   (incl. the HA API action handlers `hvac_on_ha_ac_state()` and `window_on_ha_state()`)
 - **`automation_helpers.h`** — Fan motor actuation, V-curve PWM duty calculation, soft ramps, thermal cutoff
-- **`bme680_iaq_engine.h`** — BME680 IAQ index estimation, absolute humidity, and calibration logic
 - **`climate.h`** — Phase-locked NTC stabilization filter, sensor mapping, and human-readable AQI formatting
 - **`config_helpers.h`** — Dynamic runtime configuration (Room, Floor, Device ID, Phase) and NVS persistence
 - **`espnow_helpers.h`** — Unified incoming packet validation, source tagging (`RxSource`), and dispatch routing
@@ -405,8 +405,6 @@ substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA
 ### NVS / Flash wear
 
 - Filter runtime: accumulate in RAM, write to NVS every **8 hours** max (was 30 min → 1440 writes/day)
-- BME680 baseline: flash save gated by `save_interval_ms` (1 h minimum) and `save_delta_pct` (2 %) in
-  `bme680_iaq_engine.h`
 - Prefer native `restore_mode` for UI switches (no extra global variable)
 
 ---
@@ -431,6 +429,10 @@ substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA
   publishes (intake: outdoor, exhaust: indoor); the other one freezes at its last value. Never use it —
   `get_effective_temperatures()` falls back to peers / `HeldReading` (≤ 30 min) and `guard_summer_bypass()`
   returns to heat recovery to re-measure.
+- **The BMP390 (`id: temperature`) is not the room temperature:** it sits on the board near the Traco power supply
+  and reads 10–15 K above the room (power supply guard and `board_temp` only). The indoor temperature `eff_in`
+  (summer bypass, absolute humidity) comes from the sensor board (`scd41_temperature`: SCD43 / SHT45) → indoor NTC →
+  peer → held reading (`get_effective_temperatures()`); until 0.11.0 the BMP390 was used and kept the summer bypass on.
 - **No power-off / sleep state:** `system_on`, the Wi-Fi-off long press and `system_sleep` were removed in 0.10.26
   (rev. 1 PCB cannot wake from deep sleep). `api.reboot_timeout: 0s` keeps standalone devices (no HA client) from
   rebooting every 15 min. The Power button toggles `Aus` ↔ `last_active_mode_index`.
@@ -442,8 +444,8 @@ substitutions in `packages/base/ventosync_core.yaml` (used by the globals and HA
 - **`static` locals in `inline` header functions** are shared state for the whole firmware — they persist across
   mode switches and are not per-instance. The Smart-Automatik state lives in `auto_mode_state` (`auto_mode.h`:
   held readings, summer re-measure guard, ramp, hold-off); prefer such a named namespace over new hidden `static`s.
-- **`effective_co2` may be a VOC-based eCO2 estimate** (BME680 in the `bme680_only` variants, SGP41 VOC index in
-  the `sgp41` variants); room-wide maxima include it as if it were an NDIR value. The SGP41 VOC index is relative to the
+- **`effective_co2` may be a VOC-based eCO2 estimate** (SGP41 VOC index in the `sgp41` variants); room-wide maxima
+  include it as if it were an NDIR value. The SGP41 VOC index is relative to the
   last 24 h — a constant pollution level drifts back to index 100 (≈ 600 ppm).
 - **Local builds bump `version.json`** via `version_bump.py` — never commit that local bump.
 - **OTA is encrypted with the api key** (`ota: - platform: esphome` + bare `encryption:`, since 0.10.31): no OTA
