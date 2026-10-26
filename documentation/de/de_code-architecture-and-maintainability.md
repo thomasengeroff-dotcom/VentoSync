@@ -17,7 +17,7 @@ Die ehemals gewaltige Hauptdatei wurde drastisch verschlankt, um die Lesbarkeit 
 
 - **`base/`**: Enthält die grundlegende ESP32-C6 Gerätekonfiguration.
 - **`io/`**: Kapselt die physische Hardware. Beinhaltet I2C-Busse, Port-Expander, Basis-Pinbelegungen und die zentrale Lüfterkonfiguration.
-- **`sensors/`**: Beinhaltet die gesamte Mess-Peripherie (SCD43, BME680, Radar, NTCs).
+- **`sensors/`**: Beinhaltet die gesamte Mess-Peripherie (SCD43, SGP41 + SHT45, Radar, NTCs, BMP390).
   - 🧩 **Sensor-Mocks**: Fehlt ein Sensor (z.B. SCD43), springen automatisch Mocks (`mock_scd41.yaml`) ein. Diese verhindern Compile-Fehler, unterdrücken Log-Spamming und blenden nicht vorhandene Sensoren dank `internal: true` nahtlos aus Home Assistant aus.
 - **`actuators/`**: Das "Gehirn" der Anlage. Hier sitzen hochperformante Automatisierungen, PID-Klimaregler und die sicherheitskritische thermische Abschaltung (`logic_safety.yaml`).
 - **`integration/`**: Isoliert alle externen Home Assistant Datenpunkte (`homeassistant.yaml`), um das System autark lauffähig zu halten.

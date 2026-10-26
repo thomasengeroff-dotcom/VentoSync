@@ -22,7 +22,7 @@
 #              Includes CO2, temperature, humidity, and calibration.
 # Author:      Thomas Engeroff
 # Created:     2026-03-05
-# Modified:    2026-10-16
+# Modified:    2026-10-26
 # ==========================================================================
 
 sensor:
@@ -56,8 +56,8 @@ sensor:
 # Stale sensor guard: scd4x keeps its last values on read errors, so a lost
 # sensor board would freeze CO2, humidity PID, mold guard and room fusion.
 # After 2 min of read errors (or a board missing at boot) the three sensors are
-# set to NaN — effective_co2 then falls back to the BME680 (if fitted) or
-# turns NaN after its own 5 min hold (invalidate_stale_sensors(), climate.h).
+# set to NaN — effective_co2 turns NaN after its own 5 min hold and the room
+# temperature falls back to the indoor NTC (invalidate_stale_sensors(), climate.h).
 # ---------------------------------------------------------
 interval:
   - interval: 10s

@@ -3,7 +3,7 @@
 [![Language: EN](https://img.shields.io/badge/Language-EN-red.svg)](../en/en_heat-recovery-and-efficiency.md)
 
 
-Dieses Dokument bietet tiefe technische Einblicke in den regenerativen Keramik-Wärmerückgewinnungszyklus, die phasen-synchrone NTC-Temperaturstabilisierung, die BME680-IAQ-Engine, die energiebasierte Effizienzberechnung (DIN EN 13141-8) sowie die kabellose ESP-NOW Push-Pull-Gruppensynchronisation.
+Dieses Dokument bietet tiefe technische Einblicke in den regenerativen Keramik-Wärmerückgewinnungszyklus, die phasen-synchrone NTC-Temperaturstabilisierung, die energiebasierte Effizienzberechnung (DIN EN 13141-8) sowie die kabellose ESP-NOW Push-Pull-Gruppensynchronisation.
 
 ---
 
@@ -63,23 +63,13 @@ Um fehlerhafte Zwischenwerte in Home Assistant zu vermeiden und die wahren therm
 - **Median-Fallback:** Sollte ein Referenzsensor temporär ausfallen, nutzt das System den Median der letzten 3 Werte als sicheren Kompromiss.
 - **120s Failsafe-Timeout:** Ein großzügiger Watchdog hält die Sensoren in Home Assistant "online", auch wenn während langer Lüftungsphasen durch den Phase-Lock zeitweise keine Werte geliefert werden.
 
-*Hinweis zur Redundanz:* `temp_zuluft` (Außen-NTC) liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_abluft` (Innen-NTC) liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren SCD43 Sensor.
+*Hinweis zur Redundanz:* `temp_zuluft` (Außen-NTC) liefert bei nach innen gerichtetem Luftstrom die tatsächliche Außentemperatur. `temp_abluft` (Innen-NTC) liefert bei nach außen gerichtetem Luftstrom die Raumtemperatur und dient als Redundanz zum präziseren Sensorboard.
 
 Konkret wird der folgende Sensor verwendet:
 
 | Hersteller | Artikelnummer | Bezugsquelle | Genauigkeit | Datenblatt |
 | :--- | :--- | :--- | :--- | :--- |
 | **VARIOHM** | `ENTC-EI-10K9777-02` | [Reichelt Elektronik](https://www.reichelt.de/de/de/shop/produkt/thermistor_ntc_-40_bis_125_c-350474) | ± 0,2 °C | [PDF](../datasheets/ENTC_EI-10K9777-02E.pdf) |
-
-### Luftqualität & Gassensorik (BME680)
-
-Um präzise Daten zur Raumluftqualität (IAQ) zu liefern, verfügt das System über eine hochoptimierte **BME680 Advanced IAQ Engine**. Da die BSEC2-Bibliothek zu ressourcenintensiv ist, nutzt VentoSync eine eigene, thread-sichere C++ Implementierung:
-
-- **Optimiertes Heater-Profil:** Der Gassensor arbeitet bei **300°C für 150ms** (Bosch-Empfehlung für IAQ). Dies reduziert die Eigenwärme und verlängert die Lebensdauer des Sensors im Vergleich zu Standardeinstellungen.
-- **Dynamische Thermokompensation:** Die Temperaturwerte werden basierend auf der Umgebungstemperatur dynamisch korrigiert (interpolierter Offset zwischen -1,0°C und -2,0°C), um den thermischen Einfluss der Heizplatte auszugleichen.
-- **Intelligentes Flash-Wear-Leveling:** Die Gas-Baseline wird nur dann im Flash-Speicher des ESP32 persistiert, wenn sie sich um mehr als **2%** geändert hat **und** mindestens **1 Stunde** vergangen ist. Dies schont die Lebensdauer des Speichers maximal.
-- **Health-Watchdog:** Eine dedizierte Überwachungslogik erkennt I2C-Kommunikationsfehler oder "eingefrorene" Werte und meldet ein Sensorproblem an Home Assistant nach 10 aufeinanderfolgenden Fehlern.
-- **Change-Detection Trend:** Die IAQ-Trend- und Bewertungs-Sensoren nutzen eine Change-Detection-Logik, um Netzwerkverkehr und Datenbankwachstum in Home Assistant zu minimieren.
 
 ### Effizienzberechnung (Energiebasiert)
 

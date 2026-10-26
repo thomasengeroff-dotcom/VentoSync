@@ -39,7 +39,7 @@ Jede Einstellung in der [Entitäten-Referenz](../entitaeten/uebersicht.md) ist m
 
 ### Einstellungen pro Gerät
 
-`NOx-Stoßlüftung: Schwelle`, `Fenstersperre ignorieren`, `Kindersicherung`, `ESP-NOW Peerprüfung`, `Bluetooth Proxy`, die IDs und die Phase sowie Filterzähler, Neustart und BME680-Basiswert.
+`NOx-Stoßlüftung: Schwelle`, `Fenstersperre ignorieren`, `Kindersicherung`, `ESP-NOW Peerprüfung`, `Bluetooth Proxy`, die IDs und die Phase sowie Filterzähler und Neustart.
 
 :::tip Raumweite Werte am Master setzen
 Für Automationen und Skripte genügt es, eine raumweite Einstellung an **einem** Gerät pro Raum zu setzen. Nimm dafür den **Master**: Er wiederholt seine Werte regelmäßig, sodass ein Wert, der ihn nicht erreicht hat (z. B. weil er gerade neu startete), beim nächsten Heartbeat wieder überschrieben würde.

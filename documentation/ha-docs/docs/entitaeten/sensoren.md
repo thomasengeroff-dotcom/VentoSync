@@ -21,7 +21,7 @@ Fällt ein Sensor aus oder fehlt die Sensorplatine, liefern SCD43, SHT45 und SGP
 Die Quelle hängt von der Variante ab:
 
 1. **SCD43** (NDIR, echte CO2-Messung), sonst
-2. **BME680**-Schätzwert bzw. **SGP41**-CO2-Äquivalent aus dem VOC-Index, sonst
+2. **SGP41**-CO2-Äquivalent aus dem VOC-Index (`sgp41`-Varianten), sonst
 3. der letzte gültige Wert, höchstens 5 Minuten lang, danach kein Wert.
 
 Für Dashboards und Luftqualitäts-Automationen ist das die richtige CO2-Entität, weil sie in allen Varianten mit Klimasensor existiert. In Varianten ohne Klimasensor (`radar_only`, `NTConly`, `nosensor`) ist sie ausgeblendet.
@@ -91,28 +91,6 @@ Varianten `sgp41`, `v2_sgp41`.
 | SGP41 VOC CO2-Äquivalent | `sensor.…_sgp41_voc_co2_aquivalent` | ppm (`carbon_dioxide`) | VOC-Index umgerechnet: 400 + 4 × (Index − 50), begrenzt auf 400–2200 ppm. Speist `Effektiver CO2 Wert`. |
 
 Der Index-Algorithmus braucht nach dem Start etwa 1 Minute (VOC) bzw. 5 Minuten (NOx) und rund 12 Stunden, um den Raum zu lernen.
-
-## BME680 (Umgebung & Luftqualität)
-
-Varianten `ventosync`, `bme680_only`, `v2_bme680_only`.
-
-| Entität | Entitäts-ID | Einheit / Werte | Beschreibung |
-| --- | --- | --- | --- |
-| BME680 Temperatur | `sensor.…_bme680_temperatur` | °C | Korrigierte Temperatur. |
-| BME680 Luftfeuchtigkeit | `sensor.…_bme680_luftfeuchtigkeit` | % | Relative Luftfeuchte. |
-| BME680 Luftdruck (Relativ) | `sensor.…_bme680_luftdruck_relativ` | hPa | Auf Meereshöhe umgerechneter Luftdruck (die Firmware rechnet mit fester Höhe 250 m). |
-| BME680 Taupunkt | `sensor.…_bme680_taupunkt` | °C | Taupunkt der Raumluft. |
-| BME680 Absolute Feuchtigkeit | `sensor.…_bme680_absolute_feuchtigkeit` | g/m³ | Wassergehalt der Luft. |
-| BME680 Gaswiderstand | `sensor.…_bme680_gaswiderstand` | Ω | Rohwert des Gassensors. |
-| BME680 Gas-Basiswert | `sensor.…_bme680_gas_basiswert` | Ω | Gelernter Referenzwert für saubere Luft. |
-| BME680 Luftqualität (CO2eq) | `sensor.…_bme680_luftqualitat_co2eq` | ppm | Geschätztes CO2-Äquivalent, speist `Effektiver CO2 Wert`, wenn kein SCD43 da ist. |
-| BME680 IAQ Trend | `sensor.…_bme680_iaq_trend` | ppm/min | Änderungsrate der Luftqualität. |
-| BME680 IAQ Bewertung | `sensor.…_bme680_iaq_bewertung` | `Ausgezeichnet` ≤ 700, `Gut` ≤ 1000, `Maessig` ≤ 1500, `Schlecht` ≤ 2000, `Sehr schlecht` | Einordnung des CO2-Äquivalents. |
-| BME680 IAQ Trendrichtung | `sensor.…_bme680_iaq_trendrichtung` | `Stark verbessernd`, `Verbessernd`, `Stabil`, `Verschlechternd`, `Stark verschlechternd` | Trend in Worten (Grenzen ±10 / ±50 ppm/min). |
-| BME680 Sensor-Status | `sensor.…_bme680_sensor_status` | `Initialisierung`, `Aufwaermphase`, `Burn-in (Xh / 48h)`, `Bereit` | Lernphase des Gassensors. |
-| BME680 Sensor Health | `binary_sensor.…_bme680_sensor_health` | `problem` | `on` = Sensor liefert keine plausiblen Werte. |
-
-Der BME680 braucht nach dem ersten Start eine Einbrennphase von bis zu 48 Stunden, bevor das CO2-Äquivalent verlässlich ist. Den gelernten Basiswert setzt der Button [`BME680 Basiswert zurücksetzen`](wartung.md#bme680-basiswert-zurücksetzen) zurück.
 
 ## BMP390 (Luftdruck)
 

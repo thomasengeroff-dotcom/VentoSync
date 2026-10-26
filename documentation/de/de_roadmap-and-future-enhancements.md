@@ -89,7 +89,7 @@ Dieses Dokument beschreibt geplante Funktionen, Architekturkonzepte und zukünft
 
 ## 🔌 Erweiterungen & Gebäudeautomations-Gateways
 
-* **Mixed-Air VOC+CO2-Regelung**: Kombination von BME680 VOC/Gas-Messwerten mit Sensirion SCD4x CO2-Daten für eine ganzheitliche Luftqualitätsregelung.
+* **Mixed-Air VOC+CO2-Regelung**: Kombination von Sensirion SGP41 VOC/NOx-Messwerten mit SCD4x CO2-Daten für eine ganzheitliche Luftqualitätsregelung.
 * **Gebäudeleittechnik-Brücke (Modbus / KNX)**: Schnittstellen zur Einbindung von VentoSync in professionelle Gebäudeautomationssysteme zur gewerkeübergreifenden Abstimmung mit Heizung und Klimatechnik.
 
 ---

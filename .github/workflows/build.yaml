@@ -598,16 +598,14 @@ jobs:
 
           | Datei | Beschreibung |
           |-------|-------------|
-          | \`ventosync-full.ota.bin\` | Alle Sensoren (SCD41 + BME680 + LD2450) |
+          | \`ventosync-full.ota.bin\` | SCD43 CO2-Sensorboard + LD2450 Radar |
           | \`ventosync-nosensor.ota.bin\` | Ohne Sensoren (nur Lüftersteuerung) |
           | \`ventosync-radar-only.ota.bin\` | Nur LD2450 Radar |
-          | \`ventosync-bme680-only.ota.bin\` | Nur BME680 Sensor |
           | \`ventosync-scd43-only.ota.bin\` | Nur SCD43 CO2-Sensorboard (CO2, Temperatur, Feuchte) |
           | \`ventosync-ntconly.ota.bin\` | Nur NTC Sensoren (Wärmerückgewinnung) |
           | \`ventosync-sgp41.ota.bin\` | SGP41 + SHT45 Sensorboard (VOC, Temperatur, Feuchte) |
           | \`ventosync-nosensor-mqtt.ota.bin\` | Ohne Sensoren, MQTT statt Home-Assistant-API |
           | \`ventosync-v2-nosensor.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): ohne Sensoren |
-          | \`ventosync-v2-bme680-only.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): nur BME680 |
           | \`ventosync-v2-scd43-only.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): nur SCD43 CO2-Sensorboard (CO2, Temperatur, Feuchte) |
           | \`ventosync-v2-sgp41.ota.bin\` | **PCB v2.0** (ESP32-C6-MINI-1U): SGP41 + SHT45 Sensorboard (VOC, Temperatur, Feuchte) |
           | \`ventosync-nosensor-btproxy.factory.bin\` | **Experimentell**: ohne Sensoren + Bluetooth-Proxy, eigene Partitionstabelle – Erstinstallation nur per USB (factory.bin) |

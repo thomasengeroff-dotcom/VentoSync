@@ -118,7 +118,7 @@ Ist die Außenluft schwüler als der Raum, würde Lüften Feuchte *eintragen* �
 
 ### 3. Fehlender CO2-Messwert (raumweit)
 
-Die Gesundheitsgarantie dieses Features beruht auf einer CO2-Messung (SCD43 oder BME680-eCO2-Fallback über `effective_co2`). Die Messung gilt **raumweit**: Jedes Gerät teilt seinen eigenen effektiven CO2-Wert im ESP-NOW-Paket, und der Koordinator wertet den **höchsten** CO2-Wert aus lokalem Sensor und allen Peers aus, deren Wert höchstens 5 Minuten alt ist (`ventosync::room::PEER_DATA_MAX_AGE_MS`; bei längerem Sync-Intervall zwei Heartbeats). Ein Gerät ohne eigenen Sensor (Varianten `radar_only` / `nosensor` / `NTConly`) koordiniert damit auf Basis der Raummessung. Die Log-Zeile kennzeichnet Werte von einem Peer mit „via Peer".
+Die Gesundheitsgarantie dieses Features beruht auf einer CO2-Messung (SCD43 oder SGP41-VOC-CO2-Äquivalent über `effective_co2`). Die Messung gilt **raumweit**: Jedes Gerät teilt seinen eigenen effektiven CO2-Wert im ESP-NOW-Paket, und der Koordinator wertet den **höchsten** CO2-Wert aus lokalem Sensor und allen Peers aus, deren Wert höchstens 5 Minuten alt ist (`ventosync::room::PEER_DATA_MAX_AGE_MS`; bei längerem Sync-Intervall zwei Heartbeats). Ein Gerät ohne eigenen Sensor (Varianten `radar_only` / `nosensor` / `NTConly`) koordiniert damit auf Basis der Raummessung. Die Log-Zeile kennzeichnet Werte von einem Peer mit „via Peer".
 
 Der **Schimmelschutz** arbeitet genauso: Er nutzt die höchste relative Feuchte aus lokalem SCD41 und allen aktuellen Peers (`room_humidity`) sowie die am selben Ort gemessene Temperatur für den Vergleich der absoluten Feuchte. Damit greift er auch in Räumen, deren Master keinen Feuchtesensor hat.
 
@@ -265,7 +265,7 @@ Jedes Gerät wertet den Koordinator dennoch lokal mit den raumweiten Eingangsdat
 
 ## Implementierungshinweise
 
-1. **Sensor-Anforderungen:** Keine zusätzliche Hardware. Benötigt eine CO2-Quelle (`effective_co2`: SCD43 oder BME680-eCO2) und eine Home-Assistant-Automation, die den Klima-Status sendet (`set_ac_active`). Der Schimmelschutz nutzt zusätzlich die Raumfeuchte und `sensor.outdoor_humidity`.
+1. **Sensor-Anforderungen:** Keine zusätzliche Hardware. Benötigt eine CO2-Quelle (`effective_co2`: SCD43 oder SGP41-VOC-CO2-Äquivalent) und eine Home-Assistant-Automation, die den Klima-Status sendet (`set_ac_active`). Der Schimmelschutz nutzt zusätzlich die Raumfeuchte und `sensor.outdoor_humidity`.
 2. **Dateien:** `components/ventilation_logic/hvac_coordinator.h` (reiner `ventosync::hvac::Coordinator`, Unit-Tests T-7a–T-7p in `tests/simple_test_runner.cpp`), `components/ventilation_logic/room_fusion.h` (raumweite CO2-/Feuchte-/Klima-Fusion), `VentilationLogic::calculate_auto_target_level()` (Stufenfenster), `components/helpers/auto_mode.h` (`evaluate_hvac_coordination()`, `hvac_on_ha_ac_state()`, `apply_co2_setpoint()`, WRG-Sperre in `evaluate_auto_mode()`), `components/helpers/network_sync.h` (raumweiter Abgleich), `components/helpers/globals.h` (Entitäts-Externs, `hvac_state`), `packages/ui/ui_controls.yaml`, `packages/integration/homeassistant.yaml` (API-Action).
 3. **Heizbetrieb:** Dieselbe Logik gilt, wenn die Klimaanlage im Winter heizt — intensive Lüftung würde warme Raumluft hinausbefördern. Da Heizen nicht entfeuchtet, ist der Schimmelschutz in dieser Jahreszeit das Sicherheitsnetz.
 4. **Flash-Verschleiß:** Nur Schalter und die drei Slider werden (bei Änderung) persistiert. Der Laufzeitzustand (auch der gesendete Klima-Status) liegt im RAM.

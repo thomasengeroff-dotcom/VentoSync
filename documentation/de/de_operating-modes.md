@@ -140,7 +140,7 @@ Nach dem ersten Einschalten oder einem Microcontroller-Reset ist standardmäßig
 - **HA-Entität:** `select.luftermodus` → `Aus` (oder HA-Fan-Entität *aus*)
 - **Funktion:** Der Lüftermotor steht (50 % PWM = Stillstand, 0 RPM). Nur die Power-LED leuchtet (nach 30 s gedimmt).
 - **Raumweit:** Wie jeder andere Modus gilt `Aus` für den **ganzen Raum** — Ausschalten an einem beliebigen Gerät (HA, Web-Dashboard, Modus- oder Power-Taste) stoppt alle Geräte des Raums, Einschalten an einem beliebigen Gerät startet sie alle wieder.
-- **Aktive Sensoren:** WLAN, Home-Assistant-API, Web-Dashboard, ESP-NOW und alle Sensoren (SCD43, BMP390, BME680, Radar, NTCs) bleiben für lückenlose Messwerterfassung aktiv; das Gerät teilt seine Sensordaten weiter mit dem Raum.
+- **Aktive Sensoren:** WLAN, Home-Assistant-API, Web-Dashboard, ESP-NOW und alle Sensoren (SCD43 bzw. SGP41 + SHT45, BMP390, Radar, NTCs) bleiben für lückenlose Messwerterfassung aktiv; das Gerät teilt seine Sensordaten weiter mit dem Raum.
 - **Power-Taste:** Ein Druck (< 10 s) schaltet zwischen `Aus` und dem **zuletzt aktiven Modus** (Standard `Smart-Automatik`) um — raumweit. Das *Einschalten* der HA-Fan-Entität stellt denselben Modus wieder her. Ein sehr langer Druck (> 10 s) startet das Gerät neu; der Modus bleibt erhalten.
 - **Kein Schlafmodus:** Die Hardware (Platine Rev. 1) kann den ESP32 nicht per Taste aus dem Deep Sleep wecken, daher gibt es keinen Energiespar-Schlafzustand. Der frühere lange Druck (> 5 s, WLAN aus) wurde in 0.10.26 entfernt — er sparte kaum etwas (CPU, Sensoren und Radar liefen weiter) und endete nach 15 Minuten von selbst.
 

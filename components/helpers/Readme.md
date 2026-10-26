@@ -9,7 +9,6 @@ This folder contains the modular C++ helper headers for the VentoSync firmware. 
 | **`globals.h`** | **Central Registry**: `extern` declarations and shared pointers for all ESPHome sensors, numbers, switches, and selects. |
 | **`auto_mode.h`** | **Smart Auto Engine**: Dual-PID control logic (CO2 & Enthalpy/Humidity), hysteresis arbitration, and passive summer cooling bypass. |
 | **`automation_helpers.h`** | **Motor & Fan Actuation**: Fan PWM scaling, bidirectional V-curve voltage control, soft ramping, and emergency thermal cutoffs. |
-| **`bme680_iaq_engine.h`** | **BME680 IAQ Engine**: Indoor Air Quality (IAQ) indexing, absolute humidity calculation ($g/m^3$), and sensor calibration algorithms. |
 | **`climate.h`** | **Thermal & Environmental Processing**: Phase-locked NTC thermal stabilization filter, sensor fallbacks, and human-readable AQI formatting. |
 | **`config_helpers.h`** | **Dynamic Device Configuration**: Runtime device provisioning (Device ID, Room, Floor, Phase) with validation and NVS persistence. |
 | **`espnow_helpers.h`** | **ESP-NOW Dispatcher**: Unified incoming packet validation, source tagging, and dispatch routing. |

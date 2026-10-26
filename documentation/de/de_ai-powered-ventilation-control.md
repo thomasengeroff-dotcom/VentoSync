@@ -15,10 +15,10 @@ Das Gerät agiert als "Black Box" Datenlogger für seinen spezifischen Raum.
 
 * **Interne Sensoren:**
   * CO2 (SCD43)
-  * Temperatur & Luftfeuchtigkeit Innen (SCD43/BME680)
+  * Temperatur & Luftfeuchtigkeit Innen (SCD43 / SHT45)
   * Temperatur & Luftfeuchtigkeit Außen (NTCs + Berechnung)
-  * Luftdruck (BME680)
-  * VOC / Luftgüte (BME680)
+  * Luftdruck (BMP390)
+  * VOC / NOx (SGP41)
 * **Aktor-Status:**
   * Aktuelle Lüfterstufe (RPM)
   * Laufzeit & Modus (Wärmerückgewinnung vs. Durchzug)

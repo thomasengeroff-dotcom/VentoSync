@@ -21,7 +21,7 @@
 // Description: Global component pointers and constants.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-22
+// Modified:    2026-10-26
 // ==========================================================================
 #pragma once
 
@@ -308,7 +308,7 @@ extern esphome::binary_sensor::BinarySensor *const radar_presence; ///< Presence
 #endif
 
 extern esphome::template_::TemplateSensor
-    *const effective_co2; ///< Unified CO2 sensor (SCD41 or BME680 fallback).
+    *const effective_co2; ///< Unified CO2 sensor (SCD43 or SGP41 VOC CO2 equivalent).
 extern esphome::sensor::Sensor *const temperature; ///< Room Temperature (SCD41)
 extern esphome::ntc::NTC *const temp_zuluft; ///< Outside Air Temperature (NTC Outside)
 extern esphome::ntc::NTC *const temp_abluft; ///< Inside Air Temperature (NTC Inside)

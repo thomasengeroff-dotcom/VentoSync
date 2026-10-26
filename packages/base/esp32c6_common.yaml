@@ -21,7 +21,7 @@
 # Description: CORE CONFIGURATION & VERSIONING
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-10-22
+# Modified:    2026-10-26
 # ==========================================================================
 
 substitutions:
@@ -132,7 +132,7 @@ update:
   - platform: http_request
     name: "Firmware Update"
     # Uses per-variant manifest from GitHub Releases for OTA updates.
-    # Each variant (full, nosensor, radar-only, bme680-only) has its own manifest.
+    # Each variant (full, nosensor, radar-only, sgp41, ...) has its own manifest.
     source: "https://github.com/thomasengeroff-dotcom/VentoSync/releases/latest/download/manifest-${firmware_variant}.json"
     update_interval: 30min
 

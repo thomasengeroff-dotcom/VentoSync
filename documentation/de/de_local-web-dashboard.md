@@ -121,7 +121,7 @@ Das Web-Dashboard scannt und visualisiert alle aktiven Lüftungsgeräte im selbe
 * **„Dashboard dieses Geräts öffnen ↗“** *(0.10.49)*: Link zum Dashboard des Peers über seinen mDNS-Namen (`http://ventosync-a1b2c3.local/`). Jedes Gerät heißt `ventosync-<letzte 6 Hex-Stellen seiner MAC>` (`name_add_mac_suffix`), und das Dashboard kennt die MAC jedes Peers aus seinen ESP-NOW-Paketen — keine Protokolländerung. Der Link braucht einen Client, der `.local`-Namen auflöst (macOS, iOS, Windows 10+, Linux mit Avahi, aktuelles Android); sonst den Peer über seine IP öffnen.
 
 > [!NOTE]
-> Die Luftqualitätswerte werden per ESP-NOW (Protokoll v11) geteilt. Jede Karte zeigt also die Messwerte des **jeweiligen** Geräts — egal ob SCD43 oder der BME680-eCO2-Fallback. Geräte ohne Klimasensor zeigen `--`; die Bewertung nutzt dieselbe Klassifizierung wie die lokale Kachel „Luftqualität", sodass beide immer übereinstimmen.
+> Die Luftqualitätswerte werden per ESP-NOW (Protokoll v11) geteilt. Jede Karte zeigt also die Messwerte des **jeweiligen** Geräts — egal ob SCD43 oder das VOC-CO2-Äquivalent eines SGP41. Geräte ohne Klimasensor zeigen `--`; die Bewertung nutzt dieselbe Klassifizierung wie die lokale Kachel „Luftqualität", sodass beide immer übereinstimmen.
 
 ---
 

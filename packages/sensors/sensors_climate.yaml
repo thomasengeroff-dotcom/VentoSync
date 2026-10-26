@@ -18,18 +18,27 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 # File:        sensors_climate.yaml
-# Description: Configuration for climate sensors (BME390, SCD41) and IAQ.
+# Description: Effective CO2 (SCD43 → SGP41 VOC CO2 equivalent) and CO2 rating.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-10-22
+# Modified:    2026-10-26
 # ==========================================================================
 # ---------------------------------------------------------
 # SENSORS CONFIGURATION
 # ---------------------------------------------------------
 
 sensor:
-
-
+  # ---------------------------------------------------------
+  # VOC-BASED CO2 EQUIVALENT (placeholder)
+  # ---------------------------------------------------------
+  # NaN unless the SGP41 + SHT45 board package extends it
+  # (sensor_SGP41_SHT45.yaml, VentilationLogic::voc_index_to_co2eq()).
+  - platform: template
+    id: voc_co2eq
+    name: "VOC CO2-Äquivalent (Mock)"
+    unit_of_measurement: "ppm"
+    internal: true
+    lambda: 'return NAN;'
 
   # ---------------------------------------------------------
   # EFFECTIVE CO2 SENSOR (Unified Fallback)
@@ -49,7 +58,7 @@ sensor:
       // (nosensor, NTConly, radar_only) are stale for good.
       static bool stale_logged = false;
       float co2 = id(scd41_co2).state;
-      if (std::isnan(co2)) co2 = id(iaq_co2eq).state;
+      if (std::isnan(co2)) co2 = id(voc_co2eq).state;
       if (!std::isnan(co2)) {
         last_valid_sensor_ms = millis();
         if (stale_logged) {

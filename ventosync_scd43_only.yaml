@@ -19,12 +19,12 @@
 #
 # File:        ventosync_scd43_only.yaml
 # Description: ESPHome configuration variant for devices with the SCD43 CO2
-#              sensor board at H2 only (no BME680, no LD2450 radar).
+#              sensor board at H2 only (no LD2450 radar).
 #              SCD43 → CO2 (NDIR), room temperature / humidity for Smart-Automatik.
 #              Controls fan, clusters via ESP-NOW, and integrates with HA.
 # Author:      Thomas Engeroff
 # Created:     2026-10-16
-# Modified:    2026-10-16
+# Modified:    2026-10-26
 # ==========================================================================
 
 substitutions:
@@ -33,12 +33,10 @@ substitutions:
 
 esphome:
   build_flags:
-      - "-DVENTOSYNC_NO_BME680"
       - "-DVENTOSYNC_NO_RADAR"
 
 packages:
   base: !include packages/base/ventosync_base.yaml
   # SCD43 board at H2 (ESPHome scd4x platform; IDs historically scd41_*).
   scd41: !include packages/sensors/sensor_SCD41.yaml
-  mock_bme680: !include packages/sensors/mock_bme680.yaml
   mock_radar: !include packages/sensors/mock_radar.yaml

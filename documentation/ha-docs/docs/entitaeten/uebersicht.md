@@ -75,19 +75,6 @@ Alle Entitäten, die die VentoSync-Firmware in Home Assistant anlegt. Die IDs si
 | SGP41 VOC Index | `sensor.…_sgp41_voc_index` | sensor | – | SGP41 | [Sensoren](sensoren.md#sgp41--sht45-voc-nox-temperatur-feuchte) |
 | SGP41 NOx Index | `sensor.…_sgp41_nox_index` | sensor | – | SGP41 | [Sensoren](sensoren.md#sgp41--sht45-voc-nox-temperatur-feuchte) |
 | SGP41 VOC CO2-Äquivalent | `sensor.…_sgp41_voc_co2_aquivalent` | sensor | – | SGP41 | [Sensoren](sensoren.md#sgp41--sht45-voc-nox-temperatur-feuchte) |
-| BME680 Temperatur | `sensor.…_bme680_temperatur` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Luftfeuchtigkeit | `sensor.…_bme680_luftfeuchtigkeit` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Luftdruck (Relativ) | `sensor.…_bme680_luftdruck_relativ` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Taupunkt | `sensor.…_bme680_taupunkt` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Absolute Feuchtigkeit | `sensor.…_bme680_absolute_feuchtigkeit` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Gaswiderstand | `sensor.…_bme680_gaswiderstand` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Gas-Basiswert | `sensor.…_bme680_gas_basiswert` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Luftqualität (CO2eq) | `sensor.…_bme680_luftqualitat_co2eq` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 IAQ Trend | `sensor.…_bme680_iaq_trend` | sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 IAQ Bewertung | `sensor.…_bme680_iaq_bewertung` | sensor (Text) | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 IAQ Trendrichtung | `sensor.…_bme680_iaq_trendrichtung` | sensor (Text) | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Sensor-Status | `sensor.…_bme680_sensor_status` | sensor (Text) | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
-| BME680 Sensor Health | `binary_sensor.…_bme680_sensor_health` | binary_sensor | – | BME680 | [Sensoren](sensoren.md#bme680-umgebung--luftqualität) |
 | BMP390 Luftdruck | `sensor.…_bmp390_luftdruck` | sensor | – | alle | [Sensoren](sensoren.md#bmp390-luftdruck) |
 | BMP390 Temperatur | `sensor.…_bmp390_temperatur` | sensor | – | alle | [Sensoren](sensoren.md#bmp390-luftdruck) |
 | Radar Anwesenheit | `binary_sensor.…_radar_anwesenheit` | binary_sensor | – | Radar | [Radar](radar.md) |
@@ -109,7 +96,6 @@ Alle Sensoren gelten pro Gerät.
 | Maximale LED Helligkeit | `number.…_maximale_led_helligkeit` | number | – | Raum | alle | [Wartung](wartung.md#maximale-led-helligkeit) |
 | Kindersicherung | `switch.…_kindersicherung` | switch | config | Gerät | alle | [Wartung](wartung.md#kindersicherung) |
 | ESP Neustart erzwingen | `button.…_esp_neustart_erzwingen` | button | config | Gerät | alle | [Wartung](wartung.md#esp-neustart-erzwingen) |
-| BME680 Basiswert zurücksetzen | `button.…_bme680_basiswert_zurucksetzen` | button | config | Gerät | BME680 | [Wartung](wartung.md#bme680-basiswert-zurücksetzen) |
 | Bluetooth Proxy | `switch.…_bluetooth_proxy` | switch | config | Gerät | `nosensor_btproxy` | [Wartung](wartung.md#bluetooth-proxy) |
 
 ## Einrichtung & Diagnose

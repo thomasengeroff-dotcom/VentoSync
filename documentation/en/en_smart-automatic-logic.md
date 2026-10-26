@@ -16,7 +16,7 @@ The logic is distributed across several layers to ensure maintainability and hig
 | **Main Loop** | [`logic_automation.yaml`](../../packages/actuators/logic_automation.yaml) | Triggers the evaluation cycle every 10 seconds. Calls `evaluate_auto_mode()`. |
 | **Core Logic (C++)** | [`auto_mode.h`](../../components/helpers/auto_mode.h) | The "Engine". Implements math, sensor fusion, and mode switching logic. |
 | **PID Controllers** | [`logic_pid.yaml`](../../packages/actuators/logic_pid.yaml) | Defines the internal CO2 and Humidity PID climate controllers and their dummy outputs. |
-| **Climate Sensors** | [`sensors_climate.yaml`](../../packages/sensors/sensors_climate.yaml) | Defines input sensors (SCD43, BME680, Home Assistant sensors) and efficiency metrics. |
+| **Climate Sensors** | [`sensors_climate.yaml`](../../packages/sensors/sensors_climate.yaml) | Defines the effective CO2 (SCD43 → SGP41 VOC CO2 equivalent) and the CO2 rating. |
 | **UI & Thresholds** | [`ui_controls.yaml`](../../packages/ui/ui_controls.yaml) | Provides Home Assistant entities for runtime configuration (limits, targets). |
 | **Global State** | [`globals.h`](../../components/helpers/globals.h) | Shared pointers and variables accessible by both YAML and C++. |
 
@@ -81,7 +81,7 @@ graph TD
 
 ### 1. Sensor Fusion & Fallbacks
 The system ensures stability even if a local sensor fails.
-- **CO2 Fallback Chain** (in `effective_co2` template sensor): Local SCD43 → Local BME680 IAQ eCO2 → Hold last value (up to 5 min) → NaN.
+- **CO2 Fallback Chain** (in `effective_co2` template sensor): Local SCD43 → local SGP41 VOC CO2 equivalent (`sgp41` variants) → Hold last value (up to 5 min) → NaN.
 - **Temperature Fallback Chain** (in `auto_mode.h`, `get_effective_temperatures()`): Local SCD43 Temperature → NTC Phase-Locked Values → **fresh peer data via ESP-NOW** → **own last valid reading** (`HeldReading`, up to 30 min) → NaN.
 - **Phase-Locked NTC Sensors**: The NTC sensors are physically fixed in the air duct, so the assignment never changes: `temp_zuluft` is the outdoor sensor, `temp_abluft` the indoor one. A phase-lock filter in `climate.h` lets each NTC publish only during the ventilation phase in which it actually faces its own air stream (indoor NTC during exhaust, outdoor NTC during intake) and freezes it at its last value otherwise.
   - In **heat recovery** the direction alternates every 50–70 s, so both sensors are refreshed within one cycle and both values are used.
@@ -165,7 +165,7 @@ In rooms with a gas hob, fireplace or other combustion appliances, the NOx index
 - **Display**: `Automatik-Status` "NOx-Stoßlüftung: Index 85 → Stufe 7"; aborts fire the HA event `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`.
 
 ### 9. Automatik-Status, Automatik-Grund & HA event (since 0.10.38)
-- **`text_sensor.automatik_status`** ("Automatik-Status", all variants, every 10 s): what the fan is doing and why, e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `CO2-Notfall: 1600 ppm → Stufe 7`, `Schimmelschutz: 78 % → Stufe 6`, `Pausiert: Fenster offen` (only while the window guard really stops the fan — with `Fenstersperre ignorieren` on, the regular reason is shown), `Manuell: Wärmerückgewinnung → Stufe 5`. Suffixes: `(Klimaanlage: max. Stufe 3)` while the AC cap applies, `· Sommer-Kühlung` in the summer bypass. Priority: Aus → Urlaub → Fenster → Manuell → NOx → CO2-Notfall → Schimmelschutz → Übersteuerung → keine Daten → CO2 → Feuchte → Grundlüftung (`components/ventilation_logic/auto_status.h`). CO2 / humidity values are the room-wide maxima (incl. peers); the CO2 value may be a VOC equivalent (BME680 / SGP41 variants).
+- **`text_sensor.automatik_status`** ("Automatik-Status", all variants, every 10 s): what the fan is doing and why, e.g. `CO2 erhöht: 1150 ppm (Soll 1000) → Stufe 5`, `Feuchte erhöht: 68 % (Soll 60 %) → Stufe 4`, `NOx-Stoßlüftung: Index 85 → Stufe 7`, `Übersteuerung: noch 35 min → Stufe 4`, `Grundlüftung: kein Bedarf → Stufe 2`, `CO2-Notfall: 1600 ppm → Stufe 7`, `Schimmelschutz: 78 % → Stufe 6`, `Pausiert: Fenster offen` (only while the window guard really stops the fan — with `Fenstersperre ignorieren` on, the regular reason is shown), `Manuell: Wärmerückgewinnung → Stufe 5`. Suffixes: `(Klimaanlage: max. Stufe 3)` while the AC cap applies, `· Sommer-Kühlung` in the summer bypass. Priority: Aus → Urlaub → Fenster → Manuell → NOx → CO2-Notfall → Schimmelschutz → Übersteuerung → keine Daten → CO2 → Feuchte → Grundlüftung (`components/ventilation_logic/auto_status.h`). CO2 / humidity values are the room-wide maxima (incl. peers); the CO2 value may be a VOC equivalent (SGP41 variants).
 - **`text_sensor.automatik_grund`** ("Automatik-Grund"): the same reason as a stable key for automations — `aus`, `urlaub`, `fenster`, `manuell`, `nox`, `co2_notfall`, `schimmelschutz`, `uebersteuerung`, `keine_daten`, `co2`, `feuchte`, `grundlueftung`.
 - **`event.lueftung_ereignis`** ("Lüftung Ereignis", HA event entity): fires with the new reason key once it has persisted **30 s** (short flips are filtered), and immediately with `nox_abbruch_aussenluft` / `nox_abbruch_max_dauer`. Example automation:
 

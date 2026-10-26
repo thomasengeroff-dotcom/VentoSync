@@ -124,7 +124,7 @@ Result (complete variant incl. switch and dashboard toggle): **1,988,608 B of 2,
 - ⚠️ **Little headroom.** A new ESPHome release or an extra package can exceed the partition. CI therefore
   compiles this variant on **every pull request** — the build fails with `All app partitions are too small`
   as soon as it no longer fits.
-- ⚠️ **Only with the nosensor variant.** Sensor packages (SCD43, BME680, radar) are not planned for this
+- ⚠️ **Only with the nosensor variant.** Sensor packages (SCD43, SGP41 + SHT45, radar) are not planned for this
   variant; ESP-NOW still delivers the room's sensor values from the other units.
 - ⚠️ **No OTA switch to this variant.** The partition table is only written by a serial/USB flash. An OTA
   upload of this image to a device with the default layout is rejected (1.99 MB image, 1.75 MB slot).

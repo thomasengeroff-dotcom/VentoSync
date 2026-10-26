@@ -131,13 +131,11 @@ public:
   // Web server
   void set_web_server_base(web_server_base::WebServerBase *b) { base_ = b; }
 
-  // Sensors with a fallback chain (room climate: SCD41 → BME680)
+  // Room climate (CO2: SCD43 → SGP41 VOC CO2 equivalent; temperature / humidity: SCD43 or SHT45)
   void set_scd41_co2(sensor::Sensor *s) { scd41_co2_ = s; }
   void set_effective_co2(sensor::Sensor *s) { effective_co2_ = s; }
   void set_scd41_temperature(sensor::Sensor *s) { scd41_temperature_ = s; }
   void set_scd41_humidity(sensor::Sensor *s) { scd41_humidity_ = s; }
-  void set_bme680_temperature(sensor::Sensor *s) { bme680_temperature_ = s; }
-  void set_bme680_humidity(sensor::Sensor *s) { bme680_humidity_ = s; }
 
   void set_ventilation_ctrl(esphome::VentilationController *c) { ventilation_ctrl_ = c; }
   void set_firmware_info(const char *version, const char *variant) {
@@ -247,8 +245,6 @@ protected:
   sensor::Sensor *effective_co2_{nullptr};
   sensor::Sensor *scd41_temperature_{nullptr};
   sensor::Sensor *scd41_humidity_{nullptr};
-  sensor::Sensor *bme680_temperature_{nullptr};
-  sensor::Sensor *bme680_humidity_{nullptr};
   esphome::VentilationController *ventilation_ctrl_{nullptr};
   const uint8_t *html_gz_{nullptr};
   size_t html_gz_size_{0};

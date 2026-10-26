@@ -118,7 +118,7 @@ If the outdoor air is muggier than the room, ventilating would *add* moisture �
 
 ### 3. Missing CO2 Reading (Room-Wide)
 
-The health guarantee of this feature rests on a CO2 measurement (SCD43, or the BME680 eCO2 fallback via `effective_co2`). The measurement is **room-wide**: every device shares its own effective CO2 in the ESP-NOW packet, and the coordinator evaluates the **highest** CO2 of the local sensor and all peers whose reading is at most 5 minutes old (`ventosync::room::PEER_DATA_MAX_AGE_MS`; two heartbeats for longer sync intervals). A device without its own sensor (`radar_only` / `nosensor` / `NTConly` variants) therefore coordinates on the room's measurement. The log line marks values that came from a peer with "via Peer".
+The health guarantee of this feature rests on a CO2 measurement (SCD43, or the SGP41 VOC CO2 equivalent via `effective_co2`). The measurement is **room-wide**: every device shares its own effective CO2 in the ESP-NOW packet, and the coordinator evaluates the **highest** CO2 of the local sensor and all peers whose reading is at most 5 minutes old (`ventosync::room::PEER_DATA_MAX_AGE_MS`; two heartbeats for longer sync intervals). A device without its own sensor (`radar_only` / `nosensor` / `NTConly` variants) therefore coordinates on the room's measurement. The log line marks values that came from a peer with "via Peer".
 
 The **mold guard** works the same way: it uses the highest relative humidity of the local SCD41 and all fresh peers (`room_humidity`), together with the temperature measured at the same spot for the absolute-humidity check. It therefore also protects rooms whose Master has no humidity sensor.
 
@@ -265,7 +265,7 @@ Each device still evaluates the coordinator locally with the room-wide inputs, s
 
 ## Implementation Notes
 
-1. **Sensor requirements:** No additional hardware. Requires a CO2 source (`effective_co2`: SCD43 or BME680 eCO2) and a Home Assistant automation that pushes the AC state (`set_ac_active`). The mold guard additionally uses the indoor humidity and `sensor.outdoor_humidity`.
+1. **Sensor requirements:** No additional hardware. Requires a CO2 source (`effective_co2`: SCD43 or SGP41 VOC CO2 equivalent) and a Home Assistant automation that pushes the AC state (`set_ac_active`). The mold guard additionally uses the indoor humidity and `sensor.outdoor_humidity`.
 2. **Files:** `components/ventilation_logic/hvac_coordinator.h` (pure `ventosync::hvac::Coordinator`, unit tests T-7a–T-7p in `tests/simple_test_runner.cpp`), `components/ventilation_logic/room_fusion.h` (room-wide CO2 / humidity / AC fusion), `VentilationLogic::calculate_auto_target_level()` (level window), `components/helpers/auto_mode.h` (`evaluate_hvac_coordination()`, `hvac_on_ha_ac_state()`, `apply_co2_setpoint()`, ECO lock in `evaluate_auto_mode()`), `components/helpers/network_sync.h` (room-wide sync), `components/helpers/globals.h` (entity externs, `hvac_state`), `packages/ui/ui_controls.yaml`, `packages/integration/homeassistant.yaml` (API action).
 3. **Heating-mode support:** The same logic applies when the AC heats in winter — high ventilation would exhaust warm indoor air. Because heating does not dehumidify, the mold guard is the safety net in that season.
 4. **Flash wear:** Only the switch and the three sliders are persisted (on change). Runtime state (including the pushed AC state) lives in RAM.

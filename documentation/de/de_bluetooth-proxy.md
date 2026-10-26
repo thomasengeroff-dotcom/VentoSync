@@ -124,7 +124,7 @@ Ergebnis (komplette Variante inkl. Schalter und Dashboard-Toggle): **1.988.608 B
 - ⚠️ **Wenig Reserve.** Ein neues ESPHome-Release oder ein zusätzliches Paket kann die Partition sprengen. Die CI
   baut diese Variante deshalb bei **jedem Pull Request** – der Build schlägt mit `All app partitions are too small`
   fehl, sobald sie nicht mehr passt.
-- ⚠️ **Nur mit der nosensor-Variante.** Sensorpakete (SCD43, BME680, Radar) sind für diese Variante nicht
+- ⚠️ **Nur mit der nosensor-Variante.** Sensorpakete (SCD43, SGP41 + SHT45, Radar) sind für diese Variante nicht
   vorgesehen; die Sensorwerte des Raums liefern weiterhin die anderen Geräte per ESP-NOW.
 - ⚠️ **Kein OTA-Wechsel zu dieser Variante.** Die Partitionstabelle wird nur per Seriell-/USB-Flash geschrieben.
   Ein OTA-Upload dieses Images auf ein Gerät mit Standard-Layout wird abgelehnt (1,99-MB-Image, 1,75-MB-Slot).

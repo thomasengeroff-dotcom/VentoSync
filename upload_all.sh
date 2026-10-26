@@ -30,13 +30,12 @@ echo ""
 echo "=================================================="
 echo "🚀 Checking yaml configs..."
 echo "=================================================="
-esphome config ventosync_bme680_only.yaml
+esphome config ventosync_NTConly.yaml
 esphome config ventosync_nosensor.yaml
 esphome config ventosync_radar_only.yaml
 esphome config ventosync_sgp41.yaml
 esphome config ventosync_scd43_only.yaml
 esphome config ventosync_v2_nosensor.yaml
-esphome config ventosync_v2_bme680_only.yaml
 esphome config ventosync_v2_sgp41.yaml
 esphome config ventosync_v2_scd43_only.yaml
 # Bluetooth proxy (experimental): own partition table, first flash over USB only
@@ -47,7 +46,7 @@ echo "=================================================="
 echo "🚀 Compiling firmwares..."
 echo "=================================================="
 # esphome compile ventosync.yaml
-# esphome compile ventosync_bme680_only.yaml
+# esphome compile ventosync_NTConly.yaml
 # esphome compile ventosync_nosensor.yaml
 # esphome compile ventosync_radar_only.yaml
 
@@ -56,9 +55,9 @@ echo "=================================================="
 
 echo "=================================================="
 echo "🚀 Starte Compile & Upload auf Gerät WRG 12V Test (192.168.178.225)..."
-echo "device has BME680 and no SCD41 and no LD2450"
+echo "device has only NTC sensors"
 echo "=================================================="
-esphome run ventosync_bme680_only.yaml --device 192.168.178.225 --no-logs --skip-bootloader
+esphome run ventosync_NTConly.yaml --device 192.168.178.225 --no-logs --skip-bootloader
 
 echo ""
 echo "=================================================="
@@ -77,7 +76,7 @@ esphome run ventosync_nosensor.yaml --device 192.168.178.220 --no-logs --skip-bo
 echo ""
 echo "=================================================="
 echo "🚀 Starte Compile & Upload auf Gerät WRG DG Wohnraum (192.168.178.244)..."
-echo "device has LD2450 and no SCD41 and no BME680"
+echo "device has LD2450 and no SCD41"
 echo "=================================================="
 esphome run ventosync_radar_only.yaml --device 192.168.178.244 --no-logs --skip-bootloader
 

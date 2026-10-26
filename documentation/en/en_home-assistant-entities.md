@@ -8,7 +8,7 @@ This file lists the Home Assistant entities provided by the VentoSync firmware (
 > [!IMPORTANT]
 > **Entity IDs:** Home Assistant builds the entity ID from the **device name + entity name** (umlauts become plain letters: `ü` → `u`). The IDs below are shown **without the device prefix** — on a device named "Wohnzimmer" the mode select is `select.wohnzimmer_luftermodus`, not `select.luftermodus`. The German names in quotes are the entity names as shown in HA; the YAML ID is only needed when editing the firmware.
 >
-> Entities depending on missing hardware are hidden in the reduced variants (`internal: true`): climate sensors without SCD43/BME680, NTC and efficiency sensors in `nosensor`.
+> Entities depending on missing hardware are hidden in the reduced variants (`internal: true`): climate sensors without a sensor board (SCD43 / SGP41 + SHT45), NTC and efficiency sensors in `nosensor`.
 
 ## 1. Control & Operating Mode
 
@@ -104,7 +104,7 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 ## 3. Sensor Data & Climate
 
 ### Combined & Calculated Values
-* **`sensor.effektiver_co2_wert`** ("Effektiver CO2 Wert", YAML ID `effective_co2`) — CO2 used by the regulation: SCD43 (NDIR), BME680 CO2 estimate as fallback; in the `sgp41` variants the CO2 equivalent of the SGP41 VOC index.
+* **`sensor.effektiver_co2_wert`** ("Effektiver CO2 Wert", YAML ID `effective_co2`) — CO2 used by the regulation: SCD43 (NDIR); in the `sgp41` variants the CO2 equivalent of the SGP41 VOC index.
 * **`text_sensor.co2_bewertung`** ("CO2 Bewertung", YAML ID `effective_co2_bewertung`) — qualitative rating of the CO2 value.
 * **`sensor.wrg_effizienz`** ("WRG Effizienz", YAML ID `heat_recovery_efficiency`) — measured heat recovery efficiency (%), see [Heat Recovery & Efficiency](en_heat-recovery-and-efficiency.md).
 * **`sensor.wrg_effizienz_zyklus`** ("WRG Effizienz (Zyklus)") / **`sensor.wrg_energie_zyklus`** ("WRG Energie (Zyklus)") — efficiency and recovered energy (Wh) of the last push-pull cycle.
@@ -122,7 +122,6 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 
 ### Hardware Sensors
 * **SCD43** (precision CO2, `ventosync` / `ventosync_scd43_only` / `ventosync_v2_scd43_only`): `sensor.scd41_co2`, `sensor.scd41_temperatur`, `sensor.scd41_luftfeuchtigkeit`
-* **BME680** (environment & IAQ): `sensor.bme680_temperatur`, `sensor.bme680_luftdruck_relativ`, `sensor.bme680_taupunkt`, `sensor.bme680_absolute_feuchtigkeit`, `sensor.bme680_gas_basiswert`, `sensor.bme680_luftqualitat_co2eq`, `sensor.bme680_iaq_trend`, `binary_sensor.bme680_sensor_health`, `text_sensor.bme680_iaq_bewertung`, `text_sensor.bme680_iaq_trendrichtung`, `text_sensor.bme680_sensor_status`
 * **SGP41 + SHT45 board** (`ventosync_sgp41` / `ventosync_v2_sgp41` only): `sensor.sht45_temperatur`, `sensor.sht45_luftfeuchtigkeit` (room temperature / humidity for the regulation), `sensor.sgp41_voc_index`, `sensor.sgp41_nox_index` (Sensirion index 1–500, 100 / 1 = normal, informational), `sensor.sgp41_voc_co2_aquivalent` ("SGP41 VOC CO2-Äquivalent", VOC index mapped to 400–2200 ppm, feeds `Effektiver CO2 Wert`)
 * **BMP390** (precision pressure): `sensor.bmp390_luftdruck`, `sensor.bmp390_temperatur`
 * **NTC thermistors** (air in the tube): `sensor.temp_abluft_innen` ("Temp. Abluft (Innen)"), `sensor.temp_zuluft_aussen` ("Temp. Zuluft (Außen)"), plus the diagnostic `…_raw` values
@@ -137,7 +136,6 @@ Room-wide ventilation pause while a window is open. Setup: [📄 Window Guard Se
 * **`binary_sensor.filterwechsel_alarm`** ("Filterwechsel Alarm", YAML ID `filter_change_alarm`) — on after 8,760 fan operating hours or 3 years since the last filter change. Setup: [Filter Change Alarm](en_filter-change-alarm-ha-setup.md).
 * **`sensor.filter_betriebstage`** ("Filter Betriebstage", YAML ID `filter_operating_days_sensor`) — operating days since the last filter change (diagnostic).
 * **`button.filterwechsel_reset`** ("Filterwechsel (Reset)", YAML ID `filter_reset_btn`) — resets the counter after a filter change (config).
-* **`button.bme680_basiswert_zurucksetzen`** ("BME680 Basiswert zurücksetzen") — resets the BME680 gas baseline (new burn-in phase).
 * **`button.esp_neustart_erzwingen`** ("ESP Neustart erzwingen", YAML ID `force_restart_button`) — restarts the ESP32 (config).
 * **`number.maximale_led_helligkeit`** ("Maximale LED Helligkeit", YAML ID `led_max_brightness_config`) — maximum panel LED brightness, 5–100 % (default 80 %), room-wide.
 * **`switch.kindersicherung`** ("Kindersicherung", YAML ID `child_lock_switch`) — locks the panel buttons of this device (config, persisted). See [Comfort & Safety](en_comfort-and-safety-features.md#-child-protection-mode).
@@ -175,5 +173,4 @@ The panel LEDs themselves are driven by the firmware and are **not** exposed as 
 To protect the ESP32 flash from premature wear, high-frequency data is buffered in RAM:
 
 * **Filter operating hours:** written to NVS at most every **8 hours** (after a sudden power loss at most the last 8 h of runtime are lost).
-* **BME680 baseline:** saved at most once per hour and only after a change of ≥ 2 %.
 * **Settings** (mode, sliders, switches): stored when they change.

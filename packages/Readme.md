@@ -67,15 +67,14 @@ This directory contains the modularized ESPHome configuration files (packages). 
 ### 🌡️ Sensors (`sensors/`)
 | File | Description |
 | :--- | :--- |
-| **`sensors_climate.yaml`** | Climate calculations, absolute humidity ($g/m^3$), dew point, and fallback temperature selection. |
+| **`sensors_climate.yaml`** | Effective CO2 (`effective_co2`: SCD43 → SGP41 VOC CO2 equivalent `voc_co2eq` → 5 min hold), CO2 rating and WRG reference text. |
 | **`sensor_hrv_efficiency.yaml`** | Real-time sensible and latent heat recovery efficiency calculations (DIN EN 13141-8). |
 | **`sensor_SCD41.yaml`** | High-precision Sensirion SCD43 (ESPHome `scd4x`, IDs historically `scd41_*`) photoacoustic CO2, temperature, and relative humidity sensor — used by `ventosync.yaml` and the SCD43-only variants `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml`. |
 | **`sensor_BMP390.yaml`** | Bosch BMP390 (PCB v1) / BMP388 (PCB v2, pin- and driver-compatible, same address) barometric pressure sensor and pressure trend metrics. |
-| **`sensor_SGP41_SHT45.yaml`** | Plug-in sensor board (H2, PCB v1 and v2): Sensirion SGP41 VOC/NOx index + SHT45 temperature/humidity. Extends `mock_scd41` (room temperature/humidity) and `mock_bme680` (`iaq_co2eq` = VOC CO2 equivalent) — used by `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml`. |
-| **`sensor_BME680.yaml`** | Bosch BME680 environmental sensor (VOC, IAQ, temperature, pressure, humidity). |
+| **`sensor_SGP41_SHT45.yaml`** | Plug-in sensor board (H2, PCB v1 and v2): Sensirion SGP41 VOC/NOx index + SHT45 temperature/humidity. Extends `mock_scd41` (room temperature/humidity) and `voc_co2eq` (VOC CO2 equivalent, `sensors_climate.yaml`) — used by `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml`. |
 | **`sensor_LD2450.yaml`** | HLK-LD2450 24 GHz mmWave radar sensor for invisible human presence detection. |
 | **`sensor_NTC.yaml`** | Analog NTC temperature thermistors for supply air and room air measurement. |
-| **`mock_*.yaml`** | Mock sensor definitions (`mock_scd41`, `mock_bme680`, `mock_radar`) allowing modular firmware builds without physical sensors. |
+| **`mock_*.yaml`** | Mock sensor definitions (`mock_scd41`, `mock_radar`) allowing modular firmware builds without physical sensors. |
 
 ---
 

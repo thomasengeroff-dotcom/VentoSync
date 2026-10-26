@@ -33,7 +33,6 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 [![Platform](https://img.shields.io/badge/Platform-ESP32--C6-red?logo=espressif)](https://esphome.io/components/esp32.html)
 ![Sensor: SCD43](https://img.shields.io/badge/Sensor-SCD43-lightgrey)
 ![Sensor: BMP390](https://img.shields.io/badge/Sensor-BMP390-lightgrey)
-![Sensor: BME680](https://img.shields.io/badge/Sensor-BME680-lightgrey)
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
 ---
@@ -83,7 +82,7 @@ Attention: This solution is not compatible with the VentoMaxx ZR-WRG series, as 
 ## Motivation
 
 Many years ago, as part of a house renovation, I installed the V-WRG decentralized residential ventilation from Ventomaxx (10 units) and was very satisfied with it. However, the proprietary control and the lack of integration into my smart home system always bothered me. Therefore, I decided to develop my own circuit board (PCB) including control software based on ESPHome, as there was no ready-made solution. This solution is open source and is intended to help other users who are in the same situation as I was.
-For air-quality control I developed two small plug-in sensor boards that fit the same header (H2) of the main board, so every room gets the sensor that matches its air (both v1.0 ordered on 2026-10-15; until they are fitted, the Bosch BME680 serves as a fallback). In living rooms, bedrooms and offices the **SCD43 board** (Sensirion SCD43) measures the real CO2 concentration exhaled by people and controls the ventilation intensity according to the presets (using modern PID control). In the kitchen and in rooms with a fireplace or other combustion appliances the **SGP41 + SHT45 board** takes over: it detects cooking fumes and odours (VOC) as well as combustion gases (NOx, e.g. from a gas hob) — pollution that CO2 alone does not show — and can start a room-wide NOx boost that aborts itself if the NOx turns out to come from outside. All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German (at least for now).
+For air-quality control I developed two small plug-in sensor boards that fit the same header (H2) of the main board, so every room gets the sensor that matches its air (both v1.0 ordered on 2026-10-15). In living rooms, bedrooms and offices the **SCD43 board** (Sensirion SCD43) measures the real CO2 concentration exhaled by people and controls the ventilation intensity according to the presets (using modern PID control). In the kitchen and in rooms with a fireplace or other combustion appliances the **SGP41 + SHT45 board** takes over: it detects cooking fumes and odours (VOC) as well as combustion gases (NOx, e.g. from a gas hob) — pollution that CO2 alone does not show — and can start a room-wide NOx boost that aborts itself if the NOx turns out to come from outside. All code comments and internal documentation have been switched to English for better international maintainability, while the user interface remains in German (at least for now).
 Since the ventilation units in the various rooms are usually in a very central position, I also use them directly for presence detection via a radar sensor, which can be mounted invisibly hidden behind the cover of the ventilation unit. The presence detection adjusts the ventilation intensity in the manual modes (room-wide offset) and can also be used in Home Assistant for any other automation. Home Assistant also always shows what the ventilation is doing and why (`Automatik-Status`), and fires events for automations.
 According to my research, the range of functionality of this project goes beyond everything currently found on the ventilation unit market!
 If you own a VentoMaxx V-WRG system, you are in luck: you can easily upgrade your system and boost it with advanced, 21st-century smart features!
@@ -150,7 +149,6 @@ All devices in a room find each other automatically upon startup or room change 
   - ✅ **SCD43 board** (living room, bedroom, office): [Sensirion SCD43](https://sensirion.com/de/produkte/katalog/SCD43) with **photoacoustic sensing** for real CO2 (400–5000 ppm) instead of calculated equivalents, plus temperature and humidity. Documentation: `EasyEDA-Pro/components/SCD43-Sensirion.pdf`
   - ✅ **SGP41 + SHT45 board** (kitchen, rooms with fireplace / combustion appliances): Sensirion **SGP41** VOC and **NOx** index (cooking fumes, odours, gas hob, fireplace) and **SHT45** temperature/humidity (±1 % rH / ±0.1 °C, thermally decoupled from the SGP41 and used for its humidity compensation). The VOC index drives the automatic as a CO2 equivalent; the NOx index drives the optional NOx boost.
   - 🛡️ **Sensor failure detection**: if a board stops answering, its values turn "unavailable" after 2 minutes, so the regulation never runs on frozen values.
-  - ✅ **BME680 Advanced IAQ Engine** (fallback): a custom C++ engine for robust baseline tracking, dynamic thermal compensation and smart flash wear-leveling provides VOC/IAQ estimates without the BSEC library — useful only until a sensor board is fitted.
   - ⚠️ **Note:** The sensor boards (SCD43 and SGP41 + SHT45, v1.0) were ordered on 2026-10-15. Flash the firmware variant that matches the fitted sensors — `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml` for the SCD43 board, `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml` for the SGP41 + SHT45 board (see [Configuration & Compilation](#️-configuration--compilation)).
   - 🏔️ **Air Pressure Measurement & Hardware Protection via BMP390 / BMP388**: The high-precision barometer sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) (PCB v1; PCB v2 carries the pin- and driver-compatible BMP388, because the BMP390 was not available at JLCPCB) not only provides local weather data and barometric compensation for the SCD43 but also acts as a **safety guard for the Traco power supply**:
     - **Automatic Derating Management**: Monitoring the internal temperature in the housing of the ventilation unit to comply with Traco specifications.
@@ -400,15 +398,13 @@ pip install --upgrade pip setuptools
 
 VentoSync now uses a modular hardware architecture. Depending on your hardware setup, select the appropriate configuration file:
 
-- **`ventosync.yaml`**: Full version (SCD43, BME680, LD2450)
-- **`ventosync_bme680_only.yaml`**: Fallback/Test version (BME680, no SCD43, no LD2450)
-- **`ventosync_scd43_only.yaml`**: SCD43 CO2 sensor board at H2 only (real CO2 + room temperature/humidity, no BME680, no LD2450)
+- **`ventosync.yaml`**: Full version (SCD43 board, LD2450)
+- **`ventosync_scd43_only.yaml`**: SCD43 CO2 sensor board at H2 only (real CO2 + room temperature/humidity, no LD2450)
 - **`ventosync_radar_only.yaml`**: Devices with mmWave presence detection but no climate sensors
 - **`ventosync_nosensor.yaml`**: Basic ventilation control without environmental sensors
 - **`ventosync_sgp41.yaml`**: SGP41 + SHT45 sensor board at H2 instead of the SCD43 board (VOC/NOx index, temperature, humidity; the VOC index drives Smart-Automatik as a CO2 equivalent, no LD2450)
 - **`ventosync_NTConly.yaml`**: Core ventilation control with NTC supply/room temperature sensors only
 - **`ventosync_v2_nosensor.yaml`**: **PCB v2.0** (ESP32-C6-MINI-1U on board) – basic ventilation control without environmental sensors
-- **`ventosync_v2_bme680_only.yaml`**: **PCB v2.0** – BME680 variant (no SCD43, no LD2450)
 - **`ventosync_v2_scd43_only.yaml`**: **PCB v2.0** – SCD43-only variant (as `ventosync_scd43_only.yaml`)
 - **`ventosync_v2_sgp41.yaml`**: **PCB v2.0** – SGP41 + SHT45 variant (as `ventosync_sgp41.yaml`)
 - **`ventosync_nosensor_btproxy.yaml`**: *Experimental* – as `ventosync_nosensor.yaml` plus Home Assistant Bluetooth proxy; own partition table, **first flash over USB only** ([guide](documentation/en/en_bluetooth-proxy.md))
@@ -624,9 +620,8 @@ VentoSync uses a high-capacity **ceramic regenerator** (regenerative heat accumu
 - **Phase-Aware NTC Temperature Stabilization**: Dedicated indoor and outdoor NTC thermistors employ a C++ phase-lock filter pipeline (`filter_ntc_combined`) with thermal settling delays and seasonal min/max selection to provide accurate room and outdoor temperatures.
 - **DIN EN 13141-8 Energy-Based Efficiency**: Unlike basic systems that evaluate instantaneous points in time, VentoSync uses numerical **trapezoidal integration** over full cycles to compute the true thermodynamic heat recovery efficiency ($\eta_{WRG}$ up to ~85%) and calculates the actual **recovered thermal energy in Watt-hours (Wh)** based on calibrated volumetric airflow curves.
 - **Supply Air Temperature after Heat Recovery** *(since 0.10.51)*: during the supply phase the indoor NTC measures the air that has just been warmed by the ceramic. Its mean over each phase is published as `sensor.temp_zuluft_nach_wrg` ("Temp. Zuluft (nach WRG)") and shown in the web dashboard next to the outdoor and extract air, including the gain in K — e.g. 2 °C outside → 18 °C supply air at 21 °C room temperature.
-- **Advanced Air Quality (BME680 Engine)**: Integrated C++ IAQ engine featuring an optimized 300°C/150ms heater profile, dynamic ambient temperature compensation, and flash wear-leveling.
 
-> 👉 *For in-depth mathematical integration models, physical formulas, NTC filter algorithms, BME680 IAQ engine internals, and multi-unit synchronization diagrams, see [📄 Heat Recovery & Efficiency Guide](documentation/en/en_heat-recovery-and-efficiency.md).*
+> 👉 *For in-depth mathematical integration models, physical formulas, NTC filter algorithms and multi-unit synchronization diagrams, see [📄 Heat Recovery & Efficiency Guide](documentation/en/en_heat-recovery-and-efficiency.md).*
 
 ---
 
@@ -652,7 +647,7 @@ This documentation contains:
 VentoSync/
 ├── .github/                   # CI/CD workflows (build, lint, CodeQL, secret scan, version guard) + scripts/
 ├── components/                # Custom ESPHome C++ external components & helper libraries
-│   ├── helpers/               # Modular C++ headers (PID logic, ESP-NOW sync, IAQ engine, NTC filters)
+│   ├── helpers/               # Modular C++ headers (PID logic, ESP-NOW sync, NTC filters)
 │   ├── ventilation_group/     # Core group state machine & multi-device coordination
 │   ├── ventilation_logic/     # Pure, unit-tested logic: fan curve/PWM, HVAC coordinator, room fusion
 │   └── wrg_dashboard/         # Built-in Web UI dashboard (Tailwind CSS & Chart.js)
@@ -675,18 +670,16 @@ VentoSync/
 │   ├── globals/               # Separated global variables (automation, network, UI, fan)
 │   ├── integration/           # Home Assistant entity exposures & data exchange
 │   ├── io/                    # Fan PWM, buttons, PCA9685/MCP23017 hardware pinouts
-│   ├── sensors/               # Drivers & Mocks for SCD43, SGP41/SHT45, BME680, Radar, BMP390, NTCs
+│   ├── sensors/               # Drivers & Mocks for SCD43, SGP41/SHT45, Radar, BMP390, NTCs
 │   └── ui/                    # On-device front panel controls & diagnostic entities
 ├── tests/                     # C++ unit tests & native test runner suite
 ├── ventosync.yaml             # Main configuration entry point (Full sensor variant)
-├── ventosync_bme680_only.yaml # Hardware variant: BME680 fallback (no SCD43/Radar)
-├── ventosync_scd43_only.yaml  # Hardware variant: SCD43 CO2 sensor board only (no BME680/Radar)
+├── ventosync_scd43_only.yaml  # Hardware variant: SCD43 CO2 sensor board only (no Radar)
 ├── ventosync_radar_only.yaml  # Hardware variant: Radar presence only (no climate sensors)
 ├── ventosync_nosensor.yaml    # Hardware variant: Core HRV fan control without sensors
 ├── ventosync_NTConly.yaml     # Hardware variant: Core HRV with NTC temperature sensors only
 ├── ventosync_sgp41.yaml       # Hardware variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_v2_nosensor.yaml # PCB v2.0 variant: core HRV fan control without sensors
-├── ventosync_v2_bme680_only.yaml # PCB v2.0 variant: BME680 fallback
 ├── ventosync_v2_scd43_only.yaml # PCB v2.0 variant: SCD43 CO2 sensor board only
 ├── ventosync_v2_sgp41.yaml    # PCB v2.0 variant: SGP41 + SHT45 VOC sensor board
 ├── ventosync_nosensor_btproxy.yaml # Experimental: nosensor + Bluetooth proxy (own partition table)
@@ -704,7 +697,7 @@ VentoSync/
 To guarantee 24/7 reliability, long-term maintainability, and clean code quality, VentoSync employs a strictly decoupled, layered software architecture:
 
 - **Strict YAML Modularization (`packages/`)**: The firmware is split into 8 specialized domain packages (`base`, `communication`, `globals`, `io`, `sensors`, `actuators`, `integration`, `ui`). Sensor mocks (`mock_*.yaml`) provide graceful compilation fallbacks and zero log noise for optional hardware variants.
-- **Native C++ Helper Core (`components/helpers/`)**: All complex lambdas are moved from YAML into modular, type-safe C++ headers (PID regulation, ESP-NOW state synchronization, IAQ engines, button/LED handlers). Hardware-independent logic lives in `components/ventilation_logic/` and the state machine, which are covered by native C++ unit tests (ASan/UBSan) in CI; the ESPHome-bound helpers are verified by the firmware builds.
+- **Native C++ Helper Core (`components/helpers/`)**: All complex lambdas are moved from YAML into modular, type-safe C++ headers (PID regulation, ESP-NOW state synchronization, button/LED handlers). Hardware-independent logic lives in `components/ventilation_logic/` and the state machine, which are covered by native C++ unit tests (ASan/UBSan) in CI; the ESPHome-bound helpers are verified by the firmware builds.
 - **Technical & Runtime Excellence**: Thread-safe HTTP event handling with `std::lock_guard`, move semantics, NaN-safe PID control, flash wear-leveling (8h NVS buffering), and unified NTC filtering (`filter_ntc_combined`).
 - **Deterministic Boot Sequence**: Staged initialization sequence (`on_boot` priority -10) with cached peer restoration, delayed mesh discovery broadcasts, and LED hardware self-test.
 

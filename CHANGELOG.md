@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-10-26
+
+### Removed
+
+- **BME680 support** — the BME680 was only a test sensor; room air quality now comes from the plug-in sensor boards
+  at H2 (SCD43, or SGP41 + SHT45). Removed: `sensor_BME680.yaml`, `mock_bme680.yaml`, the IAQ engine
+  (`bme680_iaq_engine.h`), the build flag `VENTOSYNC_NO_BME680`, all `BME680 …` entities and the button
+  `BME680 Basiswert zurücksetzen`, the BME680 fallback in the ESP-NOW packet and the web dashboard.
+- **Firmware variants `ventosync_bme680_only.yaml` and `ventosync_v2_bme680_only.yaml`** — their OTA manifests
+  (`manifest-ventosync-bme680-only.json`, `manifest-ventosync-v2-bme680-only.json`) are no longer published, so devices
+  running them get **no further updates**. Switch such a device once over OTA to another variant of the same board
+  (e.g. `ventosync_NTConly.yaml`); the partition table is the same. `ventosync.yaml` (full) is now SCD43 board + LD2450
+  radar + NTCs; its old `BME680 …` entities stay in Home Assistant as orphans and can be deleted there.
+
+### Changed
+
+- **Room temperature / humidity in the ESP-NOW packet** come only from the sensor board at H2 (SCD43 or SHT45); NaN
+  without a board. Protocol stays **v16** — no joint flashing of a room needed.
+- **VOC CO2 equivalent** — the SGP41 VOC index now feeds `voc_co2eq` (internal ID, before `iaq_co2eq`), a NaN
+  placeholder defined in `sensors_climate.yaml`; the Home Assistant entity `SGP41 VOC CO2-Äquivalent` is unchanged.
+- `upload_all.sh`: the test device 192.168.178.225 gets `ventosync_NTConly.yaml`.
+
 ## [0.10.60] - 2026-10-26
 
 ### Added

@@ -89,7 +89,7 @@ This document outlines planned features, architectural concepts, and upcoming ha
 
 ## 🔌 Hardware Expansion & Industrial Smart Home Gateways
 
-* **Mixed-Air IAQ Logic (CO2 + VOC)**: Combining Bosch BME680 VOC/gas measurements with Sensirion SCD4x CO2 data for an all-encompassing Indoor Air Quality control loop.
+* **Mixed-Air IAQ Logic (CO2 + VOC)**: Combining Sensirion SGP41 VOC/NOx measurements with SCD4x CO2 data for an all-encompassing Indoor Air Quality control loop.
 * **Building Automation Gateways (Modbus / KNX)**: Standardized interfaces to bridge VentoSync units into professional commercial BMS (Building Management Systems) for HVAC and heating coordination.
 
 ---
