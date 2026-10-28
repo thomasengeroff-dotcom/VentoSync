@@ -10,7 +10,7 @@
                edit this file directly, then run tailwind/build_css.sh.
   Author:      Thomas Engeroff
   Created:     2026-03-09
-  Modified:    2026-10-26
+  Modified:    2026-10-28
 -->
 <html lang="de" class="dark">
 <head>
@@ -94,7 +94,7 @@
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftdruck:</span> <span class="font-medium text-lg"><span id="val_pressure">--</span> hPa</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Feuchtigkeit (Außen):</span> <span class="font-medium text-lg"><span id="val_outdoor_humidity">--</span> %</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Außenluft:</span> <span class="font-medium text-lg"><span id="val_temp_zuluft">--</span> °C</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" title="Mittelwert des Innen-NTC über jede Zuluft-Phase im WRG-Betrieb; in Klammern die Erwärmung gegenüber der Außenluft">Temperatur Zuluft (nach WRG):</span> <span class="font-medium text-lg"><span id="val_temp_zuluft_wrg">--</span> °C<span id="val_wrg_gain" class="text-sm text-accent ml-1"></span></span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" title="Mittelwert des Innen-NTC über jede Zuluft-Phase im WRG-Betrieb; in Klammern die Erwärmung gegenüber der Außenluft">Temperatur Zuluft (nach WRG):</span> <span class="font-medium text-lg whitespace-nowrap shrink-0"><span id="val_temp_zuluft_wrg">--</span> °C<span id="val_wrg_gain" class="text-sm text-accent ml-1"></span></span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Abluft (innen):</span> <span class="font-medium text-lg"><span id="val_temp_abluft">--</span> °C</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Effizienz WRG:</span> <span class="font-medium text-accent text-lg"><span id="val_heat_recovery_efficiency">--</span> %</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Lüfter RPM:</span> <span class="font-medium text-lg" id="val_fan_rpm">--</span></div>
@@ -772,7 +772,7 @@
         document.getElementById("val_temp_zuluft_wrg").textContent = tSup === null ? "--" : tSup.toFixed(1);
         const gain = tSup === null || tOut === null ? null : tSup - tOut;
         document.getElementById("val_wrg_gain").textContent =
-          gain === null ? "" : "(" + (gain >= 0 ? "+" : "−") + Math.abs(gain).toFixed(1) + " K)";
+          gain === null ? "" : "(" + (gain >= 0 ? "+" : "−") + Math.abs(gain).toFixed(1) + " °C)";
 
         // SGP41 board: label the VOC-based CO2 equivalent, show VOC / NOx index
         if (data.voc_index !== undefined) {

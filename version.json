@@ -1,5 +1,5 @@
 {
-    "project_version": "0.11.0",
-    "project_date": "2026-10-26",
-    "project_description": "BME680 removed (test sensor only); indoor temperature from the sensor board / indoor NTC instead of the BMP390."
+    "project_version": "0.11.1",
+    "project_date": "2026-10-28",
+    "project_description": "Web dashboard: supply air gain in °C, no line break in the supply air row."
 }
