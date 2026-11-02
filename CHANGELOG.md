@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-11-02
+
+### Changed
+
+- **Web dashboard:** the arrows that open and close the *Einstellungen* and *Verbundene Geräte (ESP-NOW)* cards and the
+  *Gerätekonfiguration* section were tiny `▾` characters and easy to miss. They are now a chevron icon in a round
+  button (40 px on the cards, 28 px on *Gerätekonfiguration*) that lights up in the accent colour on hover and still
+  turns over when the card opens.
+
 ## [1.0.0] - 2026-11-02
 
 ### 🎉 VentoSync 1.0 — ready for the whole house

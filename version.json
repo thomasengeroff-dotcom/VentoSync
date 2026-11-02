@@ -1,5 +1,5 @@
 {
-    "project_version": "1.0.0",
+    "project_version": "1.0.1",
     "project_date": "2026-11-02",
-    "project_description": "VentoSync 1.0: PCB v2.0 and SCD43 board finished; collapsible dashboard cards, peer check survives reboots, sync interval 1–5 min."
+    "project_description": "Larger, clearly visible open/close arrows on the collapsible web dashboard cards."
 }
