@@ -21,7 +21,7 @@
 // Description: Processing of physical button and slider interactions.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-22
+// Modified:    2026-11-02
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -75,7 +75,8 @@ inline void set_ventilation_timer(float value) {
  *
  * @details Adjusts how often the device broadcasts its status (heartbeat).
  *          Increasing this value reduces RF traffic but may lead to
- *          longer latencies in the WRG dashboard status updates.
+ *          longer latencies in the WRG dashboard status updates. Limited to
+ *          1–5 min (`ventosync::room::clamp_sync_interval_min()`).
  *
  * @param[in] value  Interval duration in minutes.
  *
@@ -86,16 +87,13 @@ inline void set_sync_interval_handler(float value) {
   auto *v = ventilation_ctrl;
 
   // FIXED K-1: Clamp float to safe domain boundaries before cast
-  constexpr float MIN_INTERVAL_MIN = 1.0f;
-  constexpr float MAX_INTERVAL_MIN = 1440.0f; // 24 hours
-  
-  if (value < MIN_INTERVAL_MIN || value > MAX_INTERVAL_MIN) {
-      ESP_LOGW("input", "Sync interval out of range: %.1f min (valid: %.0f-%.0f)", 
-               value, MIN_INTERVAL_MIN, MAX_INTERVAL_MIN);
-      value = std::clamp(value, MIN_INTERVAL_MIN, MAX_INTERVAL_MIN);
+  const int minutes = ventosync::room::clamp_sync_interval_min(value);
+  if (static_cast<float>(minutes) != value) {
+      ESP_LOGW("input", "Sync interval out of range: %.1f min (valid: %d-%d)",
+               value, ventosync::room::SYNC_INTERVAL_MIN_MIN, ventosync::room::SYNC_INTERVAL_MAX_MIN);
   }
 
-  v->set_sync_interval(static_cast<uint32_t>(value) * 60u * 1000u);
+  v->set_sync_interval(static_cast<uint32_t>(minutes) * 60u * 1000u);
   sync_settings_to_peers(); // Emit MSG_STATE explicitly to force peers
 }
 

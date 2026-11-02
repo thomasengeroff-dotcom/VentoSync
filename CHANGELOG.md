@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.3] - 2026-11-02
+
+### Fixed
+
+- **`ESP-NOW Peerprüfung` was switched off on every reboot:** the template switch mirrors a restoring global but had no
+  `restore_mode: DISABLED`, so the boot-time restore ran its turn-off action. That also sent the room settings before
+  the device IDs were loaded (as device 1 with default values — harmless only because no peers were loaded yet).
+- **`Sync Intervall` after a reboot:** the stored value never reached the controller, which ran with 60 s while HA
+  showed the stored value. It is now applied at boot.
+
+### Changed
+
+- **`Sync Intervall` limited to 1–5 min** (was 1–360 min). With longer intervals, peers timed out between two heartbeats
+  (15 min peer timeout) and their room data counted as stale. Larger values — stored on the device or received from a
+  device with older firmware — are lowered to 5 min.
+
 ## [0.11.2] - 2026-11-02
 
 ### Changed

@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-10-26
+// Modified:    2026-11-02
 // ==========================================================================
 #pragma once
 
@@ -48,6 +48,8 @@
 /** @brief Threshold for stale peer detection. 15 minutes is used to allow for
  * temporary WiFi drops without losing sync. */
 static constexpr uint32_t PEER_TIMEOUT_MS = 900000;
+static_assert(2ull * ventosync::room::SYNC_INTERVAL_MAX_MIN * 60000ull + 30000ull <= PEER_TIMEOUT_MS,
+              "Two heartbeats (plus jitter) must fit into the peer timeout");
 
 /** @brief Hardware ACK failure limit before a peer is considered dead. */
 static constexpr uint8_t MAX_PEER_SEND_FAILURES = 10;

@@ -251,7 +251,8 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
 - **Stoßlüftung schedule:** `remaining_duration_ms` carries the remaining time of the 4 h super-cycle (two bursts);
   slaves re-align to the **Master** only (`stoss_misaligned` in `ventilation_group.h`), so a rebooted slave never
   restarts the room's schedule and push-pull pairs never blow in the same direction.
-- **Heartbeat:** `sync_interval_config` (default 60 s). **Peer timeout:** `PEER_TIMEOUT_MS = 900000` (15 min)
+- **Heartbeat:** `sync_interval_config` (default 1 min, range 1–5 min = `ventosync::room::SYNC_INTERVAL_*_MIN`; a
+  `static_assert` keeps two heartbeats inside `PEER_TIMEOUT_MS`; clamped on input, boot restore and peer adoption). **Peer timeout:** `PEER_TIMEOUT_MS = 900000` (15 min)
   for mode/level following and the dashboard.
 - **Room-wide settings** (sliders incl. the summer cooling threshold, HVAC switch, vacation preset): a change is sent as `MSG_STATE` (`sync_settings_to_peers()`),
   applied in `handle_config_sync()` only inside the HA slider ranges, and re-asserted by the Master heartbeat.

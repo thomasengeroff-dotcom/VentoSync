@@ -21,7 +21,7 @@
 # Description: Web UI and physical control entities for ventilation.
 # Author:      Thomas Engeroff
 # Created:     2026-03-07
-# Modified:    2026-10-22
+# Modified:    2026-11-02
 # ==========================================================================
 
 
@@ -49,8 +49,8 @@ number:
     id: sync_interval_config
     icon: "mdi:sync"
     unit_of_measurement: "min"
-    min_value: 1
-    max_value: 360 # 6 hours
+    min_value: 1 # = ventosync::room::SYNC_INTERVAL_MIN_MIN
+    max_value: 5 # = SYNC_INTERVAL_MAX_MIN: two heartbeats stay within the 15 min peer timeout
     step: 1
     initial_value: 1 # 1 minute for dashboard reliability
     optimistic: true

@@ -21,7 +21,7 @@
 // Description: Pure room-wide sensor/demand fusion helpers (ESP-NOW peers).
 // Author:      Thomas Engeroff
 // Created:     2026-09-23
-// Modified:    2026-10-18
+// Modified:    2026-11-02
 // ==========================================================================
 #pragma once
 
@@ -48,9 +48,27 @@ namespace room {
 /// default 60 s heartbeat this tolerates several lost packets.
 constexpr uint32_t PEER_DATA_MAX_AGE_MS = 300000u;
 
+/// Range of the ESP-NOW heartbeat interval (`sync_interval_config`, minutes).
+/// Longer intervals let peers time out between two heartbeats (15 min peer
+/// timeout), so a single lost packet dropped a device from the room
+/// (static_assert next to `PEER_TIMEOUT_MS` in ventilation_group.h).
+constexpr int SYNC_INTERVAL_MIN_MIN = 1;
+constexpr int SYNC_INTERVAL_MAX_MIN = 5;
+
+/// @brief Heartbeat interval in minutes, clamped to the slider range.
+///
+/// Used for local input, the value restored at boot and the room-wide value
+/// adopted from a peer (older firmware allowed up to 360 min).
+inline int clamp_sync_interval_min(float minutes) {
+  if (std::isnan(minutes)) return SYNC_INTERVAL_MIN_MIN;
+  if (minutes < static_cast<float>(SYNC_INTERVAL_MIN_MIN)) return SYNC_INTERVAL_MIN_MIN;
+  if (minutes > static_cast<float>(SYNC_INTERVAL_MAX_MIN)) return SYNC_INTERVAL_MAX_MIN;
+  return static_cast<int>(minutes);
+}
+
 /// @brief Effective freshness window for a given ESP-NOW heartbeat interval.
 ///
-/// Every device announces itself once per `sync_interval_ms` (1–360 min,
+/// Every device announces itself once per `sync_interval_ms` (1–5 min,
 /// default 1 min). The window covers two heartbeats plus jitter so a single
 /// lost packet does not drop a peer, but never exceeds `peer_timeout_ms`
 /// (peers are removed from the cache after that anyway).
