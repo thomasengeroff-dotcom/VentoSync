@@ -14,7 +14,9 @@ Das **VentoSync Lokale Web-Dashboard** ist eine eigenständige, browserbasierte 
 * **Graphen & Verlauf** *(0.10.49)*: drei **Chart.js**-Diagramme, umschaltbar zwischen **Live** (letzte 10 Minuten, alle 2 s, nur im Browser), **6 h** und **24 h**:
   * *Luftqualität & Regelung*: CO2, Lüfterstufe (0 = Aus) und PID-Bedarf (lokaler Sensorbedarf, nur in der Smart-Automatik) — zeigt, wie die Regelung arbeitet (Hysterese, Stufensprünge).
   * *Raumklima*: Raumtemperatur, relative und **absolute Feuchte** (g/m³, Magnus-Formel wie beim Enthalpie-Schutz).
-  * *Wärmerückgewinnung*: Außenluft (NTC Zuluft), Zuluft nach WRG (Innen-NTC in der Zuluft-Phase, *0.10.51*), Abluft (NTC Abluft) und WRG-Wirkungsgrad.
+  * *Wärmerückgewinnung*: Außenluft (NTC Zuluft), Zuluft nach WRG (Innen-NTC in der Zuluft-Phase, *0.10.51*), Abluft (NTC Abluft) und WRG-Wirkungsgrad. Die Wirkungsgrad-Achse zeigt 60–100 % und reicht nur bei niedrigeren Werten weiter nach unten (*0.11.2*).
+
+  Jede Kurve mit eigener Einheit hat eine eigene Achse, deren Titel und Beschriftung die Farbe der Kurve tragen (*0.11.2*); nur die drei Temperaturen der Wärmerückgewinnung teilen sich die neutrale °C-Achse.
 
   Die Ansichten 6 h / 24 h kommen aus dem **Gerät** (`GET /history`): 5-Minuten-Mittelwerte der letzten 24 h in einem RAM-Ringpuffer (288 Punkte, ~5,2 KB). Sie überstehen also ein Neuladen der Seite und sind in jedem Browser gleich. Der Verlauf liegt nur im RAM (kein Flash-Verschleiß) und beginnt nach einem Neustart neu. Unter den Diagrammen zeigt eine **Statistik** Min / Mittel / Max über den gespeicherten Verlauf (bis 24 h, aus den 5-Minuten-Mitteln) für CO2, Temperatur, relative und absolute Feuchte, Lüfterstufe, Bedarf, Wirkungsgrad, Außenluft, Zuluft nach WRG und Abluft.
 * **Verbindungsanzeige** *(0.10.49)*: unter dem Titel — türkis „Live-Verbindung (Stream)“, gelb „Verbunden (Abfrage alle 2 s)“ (Ausweichweg), rot „Keine Verbindung“. Kommen 6 s lang keine Daten, nennt ein roter Hinweis das Alter der angezeigten Werte („letzte Daten vor 34 s“) und die Kacheln werden abgeblendet — veraltete Werte sehen nie wie aktuelle aus. Jede Anfrage hat ein Timeout (4 s, `/history` 8 s).

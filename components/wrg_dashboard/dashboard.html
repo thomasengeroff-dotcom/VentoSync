@@ -10,7 +10,7 @@
                edit this file directly, then run tailwind/build_css.sh.
   Author:      Thomas Engeroff
   Created:     2026-03-09
-  Modified:    2026-10-28
+  Modified:    2026-11-02
 -->
 <html lang="de" class="dark">
 <head>
@@ -404,16 +404,17 @@
       return out;
     }
 
-    const COL = {co2: '#bb86fc', level: '#03dac6', demand: '#f2b84b', t: '#cf6679', rh: '#03a9f4', ah: '#81d4fa', eff: '#03dac6', sup: '#f2b84b'};
+    const COL = {co2: '#bb86fc', level: '#03dac6', demand: '#f2b84b', t: '#cf6679', rh: '#03a9f4', ah: '#81c784', eff: '#03dac6', sup: '#f2b84b'};
     const GRID = '#374151', TICK = '#9ca3af';
     function ds(label, color, yAxisID, extra) {
       return Object.assign({label: label, borderColor: color, backgroundColor: color, data: [], yAxisID: yAxisID,
                             tension: 0.3, borderWidth: 2, pointRadius: 0}, extra || {});
     }
+    // Title and ticks in the colour of the axis' series; null for an axis shared by several series (same unit)
     function axis(position, title, color, extra) {
       return Object.assign({type: 'linear', position: position,
-                            title: {display: !!title, text: title, color: color, font: {size: 11}},
-                            ticks: {color: TICK},
+                            title: {display: !!title, text: title, color: color || TICK, font: {size: 11}},
+                            ticks: {color: color || TICK},
                             grid: position === 'left' ? {color: GRID} : {drawOnChartArea: false}}, extra || {});
     }
     // Without internet the Chart.js CDN is missing: no charts, the rest of the page works
@@ -441,21 +442,24 @@
          ds('Lüfterstufe', COL.level, 'yL', {stepped: true, tension: 0}),
          ds('Bedarf % (PID)', COL.demand, 'yD', {borderDash: [4, 3]})],
          {y: axis('left', 'CO2 ppm', COL.co2),
-          yL: axis('right', 'Stufe 0–10 / Bedarf 0–100 %', COL.level, {min: 0, max: 10}),
-          yD: axis('right', '', COL.demand, {min: 0, max: 100, display: false})}),
+          yL: axis('right', 'Lüfterstufe', COL.level, {min: 0, max: 10}),
+          yD: axis('right', 'Bedarf %', COL.demand, {min: 0, max: 100})}),
        values: [s => r1(s.co2), s => r1(s.level), s => s.demand === null ? null : Math.round(s.demand * 100)]},
       {chart: makeChart('chart_climate', [
          ds('Temperatur °C', COL.t, 'y'),
-         ds('Abs. Feuchte g/m³', COL.ah, 'y', {borderDash: [4, 3]}),
+         ds('Abs. Feuchte g/m³', COL.ah, 'yA', {borderDash: [4, 3]}),
          ds('Rel. Feuchte %', COL.rh, 'y1')],
-         {y: axis('left', '°C / g/m³', COL.t), y1: axis('right', '% rF', COL.rh)}),
+         {y: axis('left', '°C', COL.t),
+          yA: axis('left', 'g/m³', COL.ah, {grid: {drawOnChartArea: false}}),
+          y1: axis('right', '% rF', COL.rh)}),
        values: [s => r1(s.t), s => r1(absHumidity(s.t, s.rh)), s => r1(s.rh)]},
       {chart: makeChart('chart_hrv', [
          ds('Außenluft °C', COL.rh, 'y'),
          ds('Zuluft (nach WRG) °C', COL.sup, 'y'),
          ds('Abluft (innen) °C', COL.t, 'y'),
          ds('WRG-Wirkungsgrad %', COL.eff, 'y1')],
-         {y: axis('left', '°C', COL.t), y1: axis('right', 'Wirkungsgrad %', COL.eff, {suggestedMin: 0, suggestedMax: 100})}),
+         // 60–100 %: a working unit stays above 60 %; lower values still widen the axis
+         {y: axis('left', '°C', null), y1: axis('right', 'Wirkungsgrad %', COL.eff, {suggestedMin: 60, max: 100})}),
        values: [s => r1(s.t_out), s => r1(s.t_sup), s => r1(s.t_in), s => r1(s.eff)]},
     ];
 

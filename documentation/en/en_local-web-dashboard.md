@@ -14,7 +14,9 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
 * **Charts & history** *(0.10.49)*: three **Chart.js** charts, switchable between **Live** (last 10 minutes, every 2 s, kept in the browser), **6 h** and **24 h**:
   * *Luftqualität & Regelung*: CO2, fan level (0 = Aus) and PID demand (local sensor demand, Smart-Automatik only) — shows how the control works (hysteresis, level steps).
   * *Raumklima*: room temperature, relative and **absolute humidity** (g/m³, Magnus formula as in the enthalpy guard).
-  * *Wärmerückgewinnung*: outdoor air (NTC Zuluft), supply air after heat recovery (indoor NTC during the supply phase, *0.10.51*), extract air (NTC Abluft) and the heat recovery efficiency.
+  * *Wärmerückgewinnung*: outdoor air (NTC Zuluft), supply air after heat recovery (indoor NTC during the supply phase, *0.10.51*), extract air (NTC Abluft) and the heat recovery efficiency. The efficiency axis shows 60–100 % and extends further down only for lower values (*0.11.2*).
+
+  Every series with its own unit has its own axis, whose title and labels share the series' colour (*0.11.2*); only the three heat recovery temperatures share the neutral °C axis.
 
   The 6 h / 24 h views come from the **device** (`GET /history`): 5-minute averages of the last 24 h in a RAM ring buffer (288 points, ~5.2 KB), so they survive a page reload and are the same in every browser. The history lives in RAM only (no flash wear) and starts over after a reboot. Below the charts a **statistics table** shows min / mean / max over the stored history (up to 24 h, from the 5-minute averages) for CO2, temperature, relative and absolute humidity, fan level, demand, efficiency, outdoor air, supply air after heat recovery and extract air.
 * **Connection indicator** *(0.10.49)*: below the title — teal "Live-Verbindung (Stream)", amber "Verbunden (Abfrage alle 2 s)" (fallback), red "Keine Verbindung". When no data arrived for 6 s a red banner says how old the shown values are ("letzte Daten vor 34 s") and the cards are dimmed, so outdated values are never mistaken for current ones. Every request has a timeout (4 s, `/history` 8 s).

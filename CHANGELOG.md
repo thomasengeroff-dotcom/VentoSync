@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.2] - 2026-11-02
+
+### Changed
+
+- **Web dashboard charts:** every series with its own unit has its own axis, title and labels in the series' colour —
+  *Luftqualität & Regelung*: `Bedarf %` gets its own yellow axis next to the teal `Lüfterstufe` axis; *Raumklima*:
+  `Abs. Feuchte` (now green instead of light blue, easily confused with `Rel. Feuchte`) gets its own g/m³ axis
+  next to the red °C axis. The three temperatures of *Wärmerückgewinnung* share a neutral °C axis.
+- **Web dashboard:** the `WRG-Wirkungsgrad` axis shows 60–100 % instead of 0–100 %; lower values still extend it.
+
 ## [0.11.1] - 2026-10-28
 
 ### Fixed
