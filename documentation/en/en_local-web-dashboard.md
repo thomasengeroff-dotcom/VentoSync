@@ -23,7 +23,7 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
 * **Feedback for changes** *(0.10.49)*: a change is confirmed only when the device reports the new value (**"Gespeichert: …"**); a value the device did not take within 5 s shows **"Nicht übernommen: … (aktuell …)"**, a rejected request the reason (invalid value, security check, device busy, no connection), a number outside the device's range "Wert außerhalb min–max". Messages appear bottom right; the control is outlined teal / red as before.
 * **Device name** *(0.10.60)*: once a `Gerätename` is set (e.g. "VentoSync - DG Büro"), it replaces the title "WRG Lüftung Dashboard" and the browser tab title, and it heads this device's card and — sent over ESP-NOW (protocol v16) — its card on the dashboards of the other devices of the room (with the device ID beside it); the setup wizard's device list shows it as well. Without a name everything shows "Gerät <ID>" as before. Set it in *Gerätekonfiguration* (or in the wizard's step 2) or in Home Assistant (`text.geratename`); up to 31 bytes (umlauts count twice). The device cannot read the name you gave it in Home Assistant's device registry — enter it once here or in HA.
 * **Device & system info**: device name, Device ID (with a **MASTER** badge on device 1), floor / room, phase, firmware version and variant, mDNS host name (*0.10.49*), uptime, cause of the last restart (power-on, software restart, crash, watchdog, brown-out …), Wi-Fi signal, free RAM (and the minimum since boot). Name, IDs and phase are set in the settings group *Gerätekonfiguration* (*0.10.55*, name *0.10.60*).
-* **Settings** — every setting the device has, grouped like in HA; a **RAUMWEIT** tag marks room-wide settings (shared over ESP-NOW):
+* **Settings** — every setting the device has, grouped like in HA; a **RAUMWEIT** tag marks room-wide settings (shared over ESP-NOW). Since *1.0.0* the card is **collapsed by default** — click the heading *Einstellungen* to open it:
   * *Steuerung*: mode, fan level, Durchlüften duration (0 = continuous), child lock, Bluetooth proxy (only `ventosync_nosensor_btproxy`).
   * *Smart-Automatik*: min / max level, CO2 and humidity thresholds, presence offset, override duration, summer cooling threshold.
   * *Klima-Koordination*: switch, CO2 threshold, max level, CO2 emergency limit.
@@ -110,7 +110,7 @@ Only values that differ from the device's current ones are sent, through the sam
 
 ## 📡 ESP-NOW Peer Visualization
 
-The dashboard dynamically scans and lists all active ESP-NOW ventilation units in the same room. The **"Connected Devices (ESP-NOW)"** tile displays:
+The dashboard dynamically scans and lists all active ESP-NOW ventilation units in the same room. The **"Verbundene Geräte (ESP-NOW)"** tile (open by default, collapsible with a click on its heading since *1.0.0*) displays:
 * **Device name** *(0.10.60, protocol v16)* with the device ID beside it — or only "Gerät <ID>" when the peer has no name — with a **MASTER** badge on device 1 and the age of the last packet ("zuletzt vor 12 s")
 * **Status dot**: teal while the peer's data is fresh enough for the room fusion (≥ 5 min, two heartbeats), amber when it is older (the card stays until the 15-minute peer timeout)
 * **Operating Mode** (Automatik, WRG, Durchlüften, Stoßlüftung, Aus) — since 0.10.48 a peer in Smart-Automatik is shown as "Automatik" instead of the mode it currently runs
