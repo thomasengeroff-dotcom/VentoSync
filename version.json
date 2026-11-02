@@ -1,5 +1,5 @@
 {
-    "project_version": "0.11.3",
+    "project_version": "1.0.0",
     "project_date": "2026-11-02",
-    "project_description": "Peer check survives reboots; ESP-NOW sync interval limited to 1–5 min and applied at boot."
+    "project_description": "VentoSync 1.0: PCB v2.0 and SCD43 board finished; collapsible dashboard cards, peer check survives reboots, sync interval 1–5 min."
 }
