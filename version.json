@@ -1,5 +1,5 @@
 {
-    "project_version": "0.11.1",
-    "project_date": "2026-10-28",
-    "project_description": "Web dashboard: supply air gain in °C, no line break in the supply air row."
+    "project_version": "0.11.2",
+    "project_date": "2026-11-02",
+    "project_description": "Web dashboard: one coloured axis per chart series, efficiency axis 60–100 %."
 }
