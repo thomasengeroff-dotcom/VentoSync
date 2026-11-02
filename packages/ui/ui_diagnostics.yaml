@@ -21,7 +21,7 @@
 # Description: Network and system diagnostic UI entities.
 # Author:      Thomas Engeroff
 # Created:     2026-04-21
-# Modified:    2026-04-21
+# Modified:    2026-11-02
 # ==========================================================================
 
 # ---------------------------------------------------------
@@ -45,6 +45,9 @@ switch:
     id: peer_check_switch
     icon: "mdi:access-point-network"
     optimistic: false
+    # Mirrors the restoring global: a boot-time restore would run turn_off_action
+    # and clear the setting on every reboot (and sync it before the IDs are loaded)
+    restore_mode: DISABLED
     lambda: |-
       return id(peer_check_enabled);
     turn_on_action:

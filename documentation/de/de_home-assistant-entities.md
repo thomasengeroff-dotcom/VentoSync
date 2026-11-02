@@ -161,9 +161,9 @@ Die Panel-LEDs selbst steuert die Firmware; sie sind **keine** Light-Entitäten 
 * **`select.gerate_phase_a_b`** („Geräte-Phase (A|B)“, YAML-ID `config_phase`) — Phase A beginnt mit Zuluft, Phase B mit Abluft (Push-Pull-Paare brauchen je eines).
 * **`button.auf_standardwerte_zurucksetzen`** („Auf Standardwerte zurücksetzen“, Konfiguration) — setzt Stockwerk-, Raum- und Geräte-ID sowie die Phase zurück; das Web-Dashboard bietet danach wieder den Einrichtungs-Assistenten an (0.10.56).
 * **`button.force_espnow_discovery`** („Force ESPNOW Discovery“, Diagnose) — sucht nach Peers des Raums.
-* **`number.sync_intervall`** („Sync Intervall“, YAML-ID `sync_interval_config`) — Heartbeat-Intervall des Masters über ESP-NOW (1–360 min, Standard 1).
+* **`number.sync_intervall`** („Sync Intervall“, YAML-ID `sync_interval_config`) — Heartbeat-Intervall des Masters über ESP-NOW (1–5 min, Standard 1; bis *0.11.2* 1–360 min — bei längeren Intervallen liefen Peers zwischen zwei Heartbeats ab, größere gespeicherte oder empfangene Werte werden auf 5 min gesenkt).
 * **`text_sensor.gerate_konfiguration`** („Geräte-Konfiguration“), **`sensor.id_stockwerk`**, **`sensor.id_raum`**, **`sensor.id_gerat`** — aktive IDs und Phase (Diagnose).
-* **`text_sensor.esp_now_peers`** („ESP-NOW Peers“) und **`switch.esp_now_peerprufung`** („ESP-NOW Peerprüfung“) — bekannte Peers des Raums.
+* **`text_sensor.esp_now_peers`** („ESP-NOW Peers“) und **`switch.esp_now_peerprufung`** („ESP-NOW Peerprüfung“) — bekannte Peers des Raums; die Peerprüfung übersteht seit *1.0.0* einen Neustart.
 * System: `sensor.wlan_signal`, `sensor.wlan_kanal`, `sensor.laufzeit`, `sensor.freier_speicher_ram`, `sensor.watchdog_restarts`, `sensor.internal_esp32_c6_temperature`, `text_sensor.ip_adresse`, `text_sensor.wlan_ssid`, `text_sensor.esphome_version`, `text_sensor.projektversion`, `update.firmware_update`.
   `sensor.watchdog_restarts` („Watchdog Restarts“) zählt die vom Brain-Freeze-Watchdog erzwungenen Neustarts
   (Hauptschleife 10 min still); im NVS gespeichert, alle 60 s veröffentlicht.

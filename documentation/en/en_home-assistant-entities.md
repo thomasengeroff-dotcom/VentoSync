@@ -161,9 +161,9 @@ The panel LEDs themselves are driven by the firmware and are **not** exposed as 
 * **`select.gerate_phase_a_b`** ("Geräte-Phase (A|B)", YAML ID `config_phase`) — Phase A starts with supply air, Phase B with extract air (push-pull pairs need one of each).
 * **`button.auf_standardwerte_zurucksetzen`** ("Auf Standardwerte zurücksetzen", config) — resets floor, room and device ID and the phase; the web dashboard then offers its setup wizard again (0.10.56).
 * **`button.force_espnow_discovery`** ("Force ESPNOW Discovery", diagnostic) — searches for peers of the room.
-* **`number.sync_intervall`** ("Sync Intervall", YAML ID `sync_interval_config`) — Master heartbeat interval over ESP-NOW (1–360 min, default 1).
+* **`number.sync_intervall`** ("Sync Intervall", YAML ID `sync_interval_config`) — Master heartbeat interval over ESP-NOW (1–5 min, default 1; up to *0.11.2* 1–360 min — longer intervals let peers time out between two heartbeats, larger stored or received values are lowered to 5 min).
 * **`text_sensor.gerate_konfiguration`** ("Geräte-Konfiguration"), **`sensor.id_stockwerk`**, **`sensor.id_raum`**, **`sensor.id_gerat`** — active IDs and phase (diagnostic).
-* **`text_sensor.esp_now_peers`** ("ESP-NOW Peers") and **`switch.esp_now_peerprufung`** ("ESP-NOW Peerprüfung") — known peers of the room.
+* **`text_sensor.esp_now_peers`** ("ESP-NOW Peers") and **`switch.esp_now_peerprufung`** ("ESP-NOW Peerprüfung") — known peers of the room; the peer check survives a reboot since *1.0.0*.
 * System: `sensor.wlan_signal`, `sensor.wlan_kanal`, `sensor.laufzeit`, `sensor.freier_speicher_ram`, `sensor.watchdog_restarts`, `sensor.internal_esp32_c6_temperature`, `text_sensor.ip_adresse`, `text_sensor.wlan_ssid`, `text_sensor.esphome_version`, `text_sensor.projektversion`, `update.firmware_update`.
   `sensor.watchdog_restarts` ("Watchdog Restarts") counts the restarts forced by the brain-freeze watchdog (main loop
   silent for 10 min); stored in NVS, published every 60 s.

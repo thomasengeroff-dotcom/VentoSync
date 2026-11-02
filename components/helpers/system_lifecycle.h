@@ -21,7 +21,7 @@
 // Description: System-wide mode orchestration and lifecycle hooks.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-22
+// Modified:    2026-11-02
 // ==========================================================================
 #pragma once
 #include <esp_system.h>
@@ -343,6 +343,14 @@ inline void run_system_boot_initialization() {
   // 2. Controller & Mode Init
   sync_config_to_controller();
   publish_room_settings_from_globals();
+  // The restored "Sync Intervall" never reached the controller (it ran with
+  // 60 s while HA showed the stored value); values above the 5 min maximum of
+  // older firmware are clamped and shown.
+  if (sync_interval_config != nullptr && ventilation_ctrl != nullptr) {
+    const int sync_min = ventosync::room::clamp_sync_interval_min(sync_interval_config->state);
+    ventilation_ctrl->set_sync_interval(static_cast<uint32_t>(sync_min) * 60000u);
+    if (sync_interval_config->state != static_cast<float>(sync_min)) sync_interval_config->publish_state(sync_min);
+  }
   // The controller starts with its default level (5) and only learns the
   // level on a change — until then every packet carried 5, so after a Master
   // reboot the slaves followed level 5 in Smart-Automatik instead of the

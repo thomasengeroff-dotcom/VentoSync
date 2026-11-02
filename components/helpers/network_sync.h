@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-22
+// Modified:    2026-11-02
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -1008,11 +1008,12 @@ inline void handle_config_sync(const esphome::VentilationPacket *pkt) {
     dirty = true;
   }
 
-  // 3. System Timers
+  // 3. System Timers (older firmware sends up to 360 min — keep the slider range)
+  const int sync_min = ventosync::room::clamp_sync_interval_min(static_cast<float>(pkt->sync_interval_min));
   if (sync_interval_config != nullptr &&
-      v->sync_interval_ms != static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000)) {
-    v->sync_interval_ms = static_cast<uint32_t>(pkt->sync_interval_min * 60 * 1000);
-    sync_interval_config->publish_state(pkt->sync_interval_min);
+      v->sync_interval_ms != static_cast<uint32_t>(sync_min) * 60000u) {
+    v->sync_interval_ms = static_cast<uint32_t>(sync_min) * 60000u;
+    sync_interval_config->publish_state(sync_min);
     dirty = true;
   }
 

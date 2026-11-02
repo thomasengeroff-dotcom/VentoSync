@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-10-26
+// Modified:    2026-11-02
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -885,6 +885,14 @@ bool test_hvac_config_ranges() {
   TEST_ASSERT(fusion_max_age_ms(60000u, 900000u) == ventosync::room::PEER_DATA_MAX_AGE_MS);
   TEST_ASSERT(fusion_max_age_ms(300000u, 900000u) == 630000u);
   TEST_ASSERT(fusion_max_age_ms(21600000u, 900000u) == 900000u); // capped at the peer timeout
+
+  // Heartbeat interval: slider range 1-5 min, older firmware sent up to 360 min
+  using ventosync::room::clamp_sync_interval_min;
+  TEST_ASSERT(clamp_sync_interval_min(1.0f) == 1);
+  TEST_ASSERT(clamp_sync_interval_min(5.0f) == 5);
+  TEST_ASSERT(clamp_sync_interval_min(100.0f) == 5);
+  TEST_ASSERT(clamp_sync_interval_min(0.0f) == 1);
+  TEST_ASSERT(clamp_sync_interval_min(NAN) == 1);
   return true;
 }
 

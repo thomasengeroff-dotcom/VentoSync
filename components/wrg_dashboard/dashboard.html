@@ -125,9 +125,10 @@
         </div>
       </div>
 
-      <!-- Controls: rows are rendered from SETTINGS (below) and shown only when /state has the key -->
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 md:col-span-2 lg:col-span-3">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Einstellungen</h2>
+      <!-- Controls: rows are rendered from SETTINGS (below) and shown only when /state has the key.
+           Collapsed by default: the status cards above are what the page is opened for -->
+      <details id="settings_card" data-remember="vs_card_settings" class="group/card bg-card rounded-xl p-5 shadow-lg border border-gray-800 space-y-4 md:col-span-2 lg:col-span-3">
+        <summary class="flex justify-between items-center cursor-pointer select-none list-none border-b border-transparent group-open/card:border-gray-700 group-open/card:pb-2 group-open/card:mb-2"><h2 class="text-xl font-semibold text-white">Einstellungen</h2><span class="text-sm text-gray-500 transition-transform group-open/card:rotate-180">&#9662;</span></summary>
         <p class="text-xs text-gray-500 -mt-2"><span class="text-accent/80 font-semibold">RAUMWEIT</span> = gilt für alle Geräte des Raums und wird per ESP-NOW verteilt.</p>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
@@ -156,21 +157,21 @@
             <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">NOx-Stoßlüftung</span><div id="grp_nox" class="space-y-3"></div></div>
             <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Netzwerk</span><div id="grp_net" class="space-y-3"></div></div>
             <!-- Collapsed by default: only needed when setting up or moving a device -->
-            <details data-group class="group">
-              <summary class="flex justify-between items-center cursor-pointer select-none list-none text-sm text-gray-400 hover:text-gray-300 font-medium mb-2 border-b border-gray-700 pb-1">Gerätekonfiguration<span class="text-xs text-gray-500 transition-transform group-open:rotate-180">&#9662;</span></summary>
+            <details data-group class="group/dev">
+              <summary class="flex justify-between items-center cursor-pointer select-none list-none text-sm text-gray-400 hover:text-gray-300 font-medium mb-2 border-b border-gray-700 pb-1">Gerätekonfiguration<span class="text-xs text-gray-500 transition-transform group-open/dev:rotate-180">&#9662;</span></summary>
               <p class="text-xs text-gray-500 mb-3">Geräte mit gleichem Stockwerk und Raum bilden einen Raum; Gerät 1 ist der Master. Im Raum sollten gleich viele Geräte Phase A und Phase B haben (Paar: eines A, eines B).</p>
               <div id="grp_device" class="space-y-3"></div>
               <div id="device_actions" class="flex flex-wrap gap-2 mt-3"></div>
             </details>
           </div>
         </div>
-      </div>
+      </details>
 
-      <!-- Verbundene Geräte (ESP-NOW) -->
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 md:col-span-2 lg:col-span-3 hidden" id="peers_card">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Verbundene Geräte (ESP-NOW)</h2>
+      <!-- Verbundene Geräte (ESP-NOW), open by default -->
+      <details open data-remember="vs_card_peers" class="group/card bg-card rounded-xl p-5 shadow-lg border border-gray-800 space-y-4 md:col-span-2 lg:col-span-3 hidden" id="peers_card">
+        <summary class="flex justify-between items-center cursor-pointer select-none list-none border-b border-transparent group-open/card:border-gray-700 group-open/card:pb-2 group-open/card:mb-2"><h2 class="text-xl font-semibold text-white">Verbundene Geräte (ESP-NOW)</h2><span class="text-sm text-gray-500 transition-transform group-open/card:rotate-180">&#9662;</span></summary>
         <div id="peers_container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2"></div>
-      </div>
+      </details>
 
       <!-- Charts: Live (browser, last 10 min) or the device's 24 h history (GET /history, 5-min means) -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col md:col-span-2 lg:col-span-3">
@@ -373,6 +374,11 @@
     let HIST_LOADED = false;
     let RANGE = 'live';
     try { const r = localStorage.getItem('vs_range'); if (r) RANGE = r === 'live' ? r : Number(r); } catch (e) {}
+    // Collapsible cards keep the state chosen in this browser; without storage the HTML default applies
+    document.querySelectorAll('details[data-remember]').forEach(d => {
+      try { const v = localStorage.getItem(d.dataset.remember); if (v !== null) d.open = v === '1'; } catch (e) {}
+      d.addEventListener('toggle', () => { try { localStorage.setItem(d.dataset.remember, d.open ? '1' : '0'); } catch (e) {} });
+    });
 
     const num = v => (v === undefined || v === null || isNaN(v)) ? null : Number(v);
     const r1 = v => v === null ? null : Math.round(v * 10) / 10;

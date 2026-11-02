@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-11-02
+
+### 🎉 VentoSync 1.0 — ready for the whole house
+
+**The hardware is finished.** The first **PCB v2.0** runs in a VentoMaxx V-WRG together with the existing units of its room: in
+the same ESP-NOW group, in step with its push-pull partner and fully integrated into Home Assistant. The **SCD43 sensor
+board** measures CO2, temperature and humidity as planned. From here on, every ventilation unit in the house gets a
+VentoSync board — the proprietary VentoMaxx control is replaced completely by open hardware and open firmware.
+
+What 1.0 stands for:
+
+- **Own hardware, drop-in:** PCB v2.0 with the ESP32-C6-MINI-1U-H4, USB-C, Traco power supply and buck converters,
+  fits the original housing and keeps the original control panel. PCB v1.0 stays fully supported.
+- **Modular sensor boards at H2:** the SCD43 board for real CO2 in living rooms, bedrooms and offices, the
+  SGP41 + SHT45 board (VOC / NOx) for kitchens and rooms with combustion appliances, plus the optional mmWave radar.
+- **The room as one unit, without a router:** ESP-NOW (protocol v16, HMAC-authenticated) with a Master, synchronized
+  push-pull, room-wide modes and settings, and room-wide fusion of CO2, humidity, presence, AC and window state.
+- **Smart-Automatik:** dual PID for CO2 and humidity with an enthalpy guard, summer bypass, Klima-Koordination,
+  NOx boost, room-wide level override, vacation mode, and `Automatik-Status`, which explains in Home Assistant what the
+  ventilation does and why.
+- **Local web dashboard:** setup wizard, live values, 24 h history and statistics, every setting — fully usable without
+  Home Assistant and without internet.
+- **Maintained like a product:** native unit tests with sanitizers, a CI build of every hardware variant, CodeQL and
+  secret scanning, a release with an OTA manifest per variant, and OTA updates encrypted with the API key.
+
+Thanks to everyone who followed the project from its first prototype to this release.
+
+**Update:** works over OTA like 0.11.x. The ESP-NOW protocol is unchanged (v16), so the devices of a room can be
+updated one after another.
+
+### Added
+
+- **Web dashboard:** the *Einstellungen* card can be collapsed (**collapsed by default** — open it with a click on the
+  heading), and so can *Verbundene Geräte (ESP-NOW)* (open by default). The browser remembers the chosen state.
+- **README:** photos of the assembled PCB v2.0 and the SCD43 sensor board.
+
+
+### Fixed
+
+- **`ESP-NOW Peerprüfung` was switched off on every reboot:** the template switch mirrors a restoring global but had no
+  `restore_mode: DISABLED`, so the boot-time restore ran its turn-off action. That also sent the room settings before
+  the device IDs were loaded (as device 1 with default values — harmless only because no peers were loaded yet).
+- **`Sync Intervall` after a reboot:** the stored value never reached the controller, which ran with 60 s while HA
+  showed the stored value. It is now applied at boot.
+
+### Changed
+
+- **`Sync Intervall` limited to 1–5 min** (was 1–360 min). With longer intervals, peers timed out between two heartbeats
+  (15 min peer timeout) and their room data counted as stale. Larger values — stored on the device or received from a
+  device with older firmware — are lowered to 5 min.
+
 ## [0.11.2] - 2026-11-02
 
 ### Changed

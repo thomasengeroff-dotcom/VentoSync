@@ -11,6 +11,12 @@
 Dieses Open-Source-Projekt bietet eine professionelle, dezentrale Lüftungssteuerung basierend auf ESPHome. Es ersetzt die Steuerung der VentoMaxx V-WRG Serie mittels einer eigens dafür entwickelten Platine (PCB) und steuert damit den reversierbaren 12V Lüfter zur Wärmerückgewinnung, überwacht optional die Luftqualität mit einem von zwei steckbaren Sensirion-Sensorboards: Das **SCD43-Board** misst echtes CO2, Feuchte und Temperatur – ideal für Wohn-, Schlaf- und Arbeitszimmer, in denen vor allem Menschen die Quelle sind –, das **SGP41 + SHT45-Board** misst VOC und NOx (Stickoxide), Feuchte und Temperatur – gedacht für Küchen und Räume mit Kamin oder anderen Verbrennungsgeräten, in denen Kochdünste und Verbrennungsgase die Luft verschlechtern, während der CO2-Wert niedrig bleibt; ein NOx-Ereignis (z. B. Gasherd) kann eine raumweite Stoßlüftung auslösen. VentoSync berechnet die effektive Wärmerückgewinnung, zeigt in Home Assistant an, was die Lüftung gerade macht und warum, und nutzt das **originale VentoMaxx Bedienpanel** für eine nahtlose Integration und intuitive Steuerung. Darüber hinaus kann optional ein Radar-Sensor zur Anwesenheitserkennung integriert werden, der unsichtbar hinter der Blende des Lüftungsgerätes montiert werden kann.
 Die Kommunikation zwischen den einzelnen Lüftungsgeräten erfolgt über das ESP-NOW Protokoll, sodass kein WLAN oder eine zentrale Steuereinheit erforderlich sind (die Kommunikation über die Stromleitungen, welche Ventomaxx nutzt, wird nicht verwendet).
 
+> 🎉 **VentoSync 1.0 — bereit für das ganze Haus.** Mit Version 1.0.0 (November 2026) ist die Hardware fertig: Die
+> **PCB v2.0** läuft im VentoMaxx V-WRG zusammen mit den übrigen Geräten ihres Raums, und das **SCD43-Sensorboard**
+> misst CO2, Temperatur und Feuchte wie geplant. Ab jetzt bekommt jedes Lüftungsgerät im Haus eine VentoSync-Platine —
+> offene Hardware und offene Firmware statt der proprietären Steuerung. Was 1.0 umfasst:
+> [Release Notes](CHANGELOG.md).
+
 <p align="center">
   <img src="EasyEDA-Pro/PCB%20mounting/Ventomaxx-WRG-mit-VentoSync-PCB.jpg" width="48%" alt="VentoSync Platine im VentoMaxx V-WRG Gehäuse" />
   <img src="EasyEDA-Pro/PCB%20mounting/Ventomaxx-WRG-mit-VentoSync-PCB_Radarsensor.jpg" width="48%" alt="VentoSync Platine mit Radar-Sensor im VentoMaxx V-WRG Gehäuse" />
@@ -80,7 +86,7 @@ Achtung: Diese Lösung ist nicht kompatibel mit der VentoMaxx ZR-WRG Serie, da d
 ## Motivation
 
 Ich habe vor vielen Jahren im Rahmen der Haussanierung die dezentrale Wohnraumlüftung V-WRG von Ventomaxx installiert (10 Geräte) und war damit auch sehr zufrieden. Allerdings hat mich die proprietäre Steuerung und die fehlende Integration in mein Smart Home System immer gestört. Daher habe ich mich entschlossen, eine eigene Platine (PCB) inkl. der Steuerungssoftware auf Basis von ESPHome zu entwickeln, da es keine fertige Lösung gab. Diese Lösung ist Open Source und soll anderen Nutzern helfen, die in der gleichen Situation wie ich sind.
-Für die Regelung nach Luftqualität habe ich zwei kleine Steck-Sensorboards entwickelt, die auf denselben Anschluss (H2) der Hauptplatine passen, sodass jeder Raum den Sensor bekommt, der zu seiner Luft passt (beide v1.0 am 15.10.2026 bestellt). In Wohn-, Schlaf- und Arbeitszimmern misst das **SCD43-Board** (Sensirion SCD43) die echte, von Menschen ausgeatmete CO2-Konzentration und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung). In der Küche und in Räumen mit Kamin oder anderen Verbrennungsgeräten übernimmt das **SGP41 + SHT45-Board**: Es erkennt Kochdünste und Gerüche (VOC) sowie Verbrennungsgase (NOx, z. B. vom Gasherd) — Belastungen, die CO2 allein nicht zeigt — und kann eine raumweite NOx-Stoßlüftung starten, die sich selbst abbricht, wenn das NOx von draußen kommt. Sämtliche Code-Kommentare und die interne Dokumentation wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt, während das User-Interface weiterhin auf Deutsch bleibt.
+Für die Regelung nach Luftqualität habe ich zwei kleine Steck-Sensorboards entwickelt, die auf denselben Anschluss (H2) der Hauptplatine passen, sodass jeder Raum den Sensor bekommt, der zu seiner Luft passt (beide v1.0; das SCD43-Board ist seit VentoSync 1.0 im Einsatz). In Wohn-, Schlaf- und Arbeitszimmern misst das **SCD43-Board** (Sensirion SCD43) die echte, von Menschen ausgeatmete CO2-Konzentration und steuert die Lüftungsintensität entsprechend der Voreinstellungen (mittels einer modernen PID-Regelung). In der Küche und in Räumen mit Kamin oder anderen Verbrennungsgeräten übernimmt das **SGP41 + SHT45-Board**: Es erkennt Kochdünste und Gerüche (VOC) sowie Verbrennungsgase (NOx, z. B. vom Gasherd) — Belastungen, die CO2 allein nicht zeigt — und kann eine raumweite NOx-Stoßlüftung starten, die sich selbst abbricht, wenn das NOx von draußen kommt. Sämtliche Code-Kommentare und die interne Dokumentation wurden zur besseren internationalen Wartbarkeit auf Englisch umgestellt, während das User-Interface weiterhin auf Deutsch bleibt.
 Da die Lüftungsgeräte in den verschiedenen Räumen meistens eine sehr zentrale Position haben, nutze ich diese auch direkt zur Anwesenheitserkennung mittels Radar-Sensor, der unsichtbar hinter der Blende des Lüftungsgerätes versteckt montiert werden kann. Die Anwesenheitserkennung passt die Lüftungsintensität in den manuellen Modi an (raumweiter Offset) und kann darüber hinaus in Home Assistant für jegliche weitere Automatisierungen genutzt werden. Home Assistant zeigt außerdem jederzeit an, was die Lüftung gerade macht und warum (`Automatik-Status`), und löst Ereignisse für Automationen aus.
 Der Funktionsumfang dieser Eigenentwicklung geht nach meinen Recherchen über alles hinaus, was aktuell am Markt der Lüftungsgeräte zu finden ist!
 
@@ -146,7 +152,7 @@ Alle Geräte in einem Raum finden sich beim Start oder Raumwechsel vollautomatis
   - ✅ **SCD43-Board** (Wohn-, Schlaf-, Arbeitszimmer): [Sensirion SCD43](https://sensirion.com/de/produkte/katalog/SCD43) mit **photoakustischer Messung** für echtes CO2 (400–5000 ppm) statt berechneter Äquivalente, dazu Temperatur und Feuchte. Dokumentation: `EasyEDA-Pro/components/SCD43-Sensirion.pdf`
   - ✅ **SGP41 + SHT45-Board** (Küche, Räume mit Kamin / Verbrennungsgeräten): Sensirion **SGP41** VOC- und **NOx**-Index (Kochdünste, Gerüche, Gasherd, Kamin) und **SHT45** Temperatur/Feuchte (±1 % r.F. / ±0,1 °C, thermisch vom SGP41 entkoppelt und für dessen Feuchtekompensation genutzt). Der VOC-Index steuert die Automatik als CO2-Äquivalent, der NOx-Index die optionale NOx-Stoßlüftung.
   - 🛡️ **Sensorausfall-Erkennung**: Antwortet ein Board nicht mehr, werden seine Werte nach 2 Minuten „nicht verfügbar“ – die Regelung läuft nie auf eingefrorenen Werten.
-  - ⚠️ **Hinweis:** Die Sensorboards (SCD43 und SGP41 + SHT45, v1.0) wurden am 15.10.2026 bestellt. Es wird die Firmware-Variante geflasht, die zu den bestückten Sensoren passt — `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml` für das SCD43-Board, `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml` für das SGP41 + SHT45-Board (siehe [Konfiguration & Kompilierung](#️-konfiguration--kompilierung)).
+  - ⚠️ **Hinweis:** Das SCD43-Board (v1.0) ist seit VentoSync 1.0 im Einsatz; das SGP41 + SHT45-Board (v1.0) wird von der Firmware unterstützt. Es wird die Firmware-Variante geflasht, die zu den bestückten Sensoren passt — `ventosync_scd43_only.yaml` / `ventosync_v2_scd43_only.yaml` für das SCD43-Board, `ventosync_sgp41.yaml` / `ventosync_v2_sgp41.yaml` für das SGP41 + SHT45-Board (siehe [Konfiguration & Kompilierung](#️-konfiguration--kompilierung)).
   - 🏔️ **Luftdruckmessung & Hardware-Schutz via BMP390 / BMP388**: Der hochpräzise Barometer-Sensor [Bosch BMP390](https://www.bosch-sensortec.com/en/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp390.html) (PCB v1; PCB v2 trägt den pin- und treiberkompatiblen BMP388, da der BMP390 bei JLCPCB nicht lieferbar war) liefert nicht nur lokale Wetterdaten und barometrische Kompensation für den SCD43, sondern fungiert auch als **Sicherheitswächter für das Traco-Netzteil**:
     - **Automatisches Derating-Management**: Überwachung der Innentemperatur im Gehäuse des Lüftungsgerätes zur Einhaltung der Traco-Spezifikationen.
     - **Not-Abschaltung**: Bei kritischen Temperaturen (>60°C) startet ein Sicherheits-Protokoll (Lüfterstopp und 60min Deep Sleep), um die Hardware vor Überhitzung zu schützen und eine entsprechende Warnung an Home Assistant zu senden.
@@ -222,7 +228,7 @@ Das originale Bedienpanel des VentoMaxx V-WRG-1 (9 LEDs, 3 Taster) bleibt vollst
 
 ### 📊 VentoSync Dashboard - Lokales Web-Dashboard
 
-Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderlich: Jedes Lüftungsgerät stellt eine eigene, direkt im Webbrowser (auf Smartphone, Tablet oder PC) aufrufbare Benutzeroberfläche bereit — so kannst du Raumluftwerte live überwachen, Betriebsmodi steuern und Einstellungen vornehmen, ganz ohne App- oder Software-Installation. Seit 0.10.49 speichert das Gerät einen **24-h-Verlauf** (5-Minuten-Mittel von CO2, Raumklima, Lüfterstufe, Bedarf und Wärmerückgewinnung, mit Min / Mittel / Max), schickt Live-Werte per Server-Sent Events, zeigt einen Verbindungsabbruch an, bestätigt jede Änderung und verlinkt die Dashboards der anderen Geräte im Raum.
+Für VentoSync ist kein Home Assistant oder Smart-Home-Server zwingend erforderlich: Jedes Lüftungsgerät stellt eine eigene, direkt im Webbrowser (auf Smartphone, Tablet oder PC) aufrufbare Benutzeroberfläche bereit — so kannst du Raumluftwerte live überwachen, Betriebsmodi steuern und Einstellungen vornehmen, ganz ohne App- oder Software-Installation. Seit 0.10.49 speichert das Gerät einen **24-h-Verlauf** (5-Minuten-Mittel von CO2, Raumklima, Lüfterstufe, Bedarf und Wärmerückgewinnung, mit Min / Mittel / Max), schickt Live-Werte per Server-Sent Events, zeigt einen Verbindungsabbruch an, bestätigt jede Änderung und verlinkt die Dashboards der anderen Geräte im Raum. Die Kachel *Einstellungen* ist standardmäßig zugeklappt (seit 1.0.0), damit zuerst der Status zu sehen ist.
 
 <p align="center">
   <img src="documentation/screenshots/wrg-dashboard1.png" alt="WRG Dashboard: Status, Sensoren und Einstellungen" width="48%" />
@@ -254,7 +260,7 @@ VentoSync wird aktiv gepflegt und kontinuierlich weiterentwickelt, mit Fokus auf
 
 ## 🎛️ Eigene Platine - PCB
 
-Eine eigens entwickelte Platine (PCB) vereint alle Kernkomponenten in einer kompakten, robusten Einheit, die in das vorhandene VentoMaxx-Gehäuse passt. Die aktuelle **PCB v2.0** trägt ein **ESP32-C6-MINI-1U-H4**-Modul direkt auf der Platine (externe Antenne über MHF III / W.FL), Traco TMPS10-112 (12 V) sowie die Abwärtswandler AP63205 (5 V) und AP63203 (3,3 V) und **USB-C** zum Flashen (mit ESD-Schutz); der MCP23017-Portexpander der v1.0 entfällt — Tasten und Erweiterungs-Header liegen an nativen GPIOs. PCB v2.0 wurde am 15.10.2026 bei JLCPCB bestellt; die Vorgängerin **PCB v1.0** (Seeed XIAO ESP32-C6) wird mit eigenen Firmware-Varianten weiterhin voll unterstützt.
+Eine eigens entwickelte Platine (PCB) vereint alle Kernkomponenten in einer kompakten, robusten Einheit, die in das vorhandene VentoMaxx-Gehäuse passt. Die aktuelle **PCB v2.0** trägt ein **ESP32-C6-MINI-1U-H4**-Modul direkt auf der Platine (externe Antenne über MHF III / W.FL), Traco TMPS10-112 (12 V) sowie die Abwärtswandler AP63205 (5 V) und AP63203 (3,3 V) und **USB-C** zum Flashen (mit ESD-Schutz); der MCP23017-Portexpander der v1.0 entfällt — Tasten und Erweiterungs-Header liegen an nativen GPIOs. PCB v2.0 ist fertig und seit VentoSync 1.0 im Einsatz — die Platine für jedes Gerät im Haus; die Vorgängerin **PCB v1.0** (Seeed XIAO ESP32-C6) wird mit eigenen Firmware-Varianten weiterhin voll unterstützt.
 
 **Wichtige Design-Prinzipien:**
 
@@ -269,6 +275,14 @@ Eine eigens entwickelte Platine (PCB) vereint alle Kernkomponenten in einer komp
 
 ![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
+<p align="center">
+  <img src="EasyEDA-Pro/PCB%20v2%20Images/VentoSync-PCB-v2_SCD43.jpg" width="48%" alt="Bestückte VentoSync Platine v2.0 mit Traco-Netzteil, ESP32-C6-Modul und SCD43-Sensorboard" />
+  <img src="EasyEDA-Pro/PCB%20v2%20Images/VentoSync-PCB-v2_SCD43-Detail.jpg" width="48%" alt="SCD43-Sensorboard, eingelötet in den Anschluss H2 der VentoSync Platine v2.0" />
+</p>
+<p align="center">
+  <em><strong>Die echte Platine (VentoSync 1.0):</strong> die bestückte PCB v2.0 mit Traco-Netzteil, ESP32-C6-MINI-Modul und USB-C (links) und das in den Anschluss H2 eingelötete SCD43-Sensorboard (rechts).</em>
+</p>
+
 ### Passgenaues SCD43 Sensor Board
 
 Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine speziell für den **Sensirion SCD43** entwickelt. Im Gegensatz zu generischen Breakout-Boards implementiert dieses Design die Referenzspezifikationen des Herstellers zur Entkopplung und hat genau die Dimensionen, so dass der Sensor an der exakten Zuluftöffnung positioniert werden kann:
@@ -277,11 +291,12 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 - **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
 - **Perfekte Passform**: Entwickelt mit einer 1,27-mm-Winkel-Stiftleiste, die direkt in den Anschluss H2 gelötet wird und perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0 – Layout" width="25%" />
+<img src="EasyEDA-Pro/PCB%20v2%20Images/SCD43-Sensorboard-v1.jpg" alt="Bestücktes SCD43-Sensorboard v1.0" width="25%" />
 
 ### 🌿 Modulares Sensor-Ökosystem: Die passende Messgröße pro Raum
 
-Neben dem SCD43-Board gibt es das **SGP41 + SHT45-Board** — speziell konzipiert für Räume, in denen CO₂ die tatsächliche Luftqualität nicht ideal beschreibt. Beide Boards (v1.0) wurden am 15.10.2026 bestellt und werden von der Firmware unterstützt:
+Neben dem SCD43-Board gibt es das **SGP41 + SHT45-Board** — speziell konzipiert für Räume, in denen CO₂ die tatsächliche Luftqualität nicht ideal beschreibt. Beide Boards (v1.0) werden von der Firmware unterstützt; das SCD43-Board ist seit VentoSync 1.0 im Einsatz:
 
 - **Wohn- und Schlafbereich (Personenbelegung)**: CO₂ ist ein direktes Maß für die Anwesenheit von Menschen. Im Wohn- und Schlafbereich ist der Mensch die Quelle — dort regelt der **SCD43** exakt richtig.
 - **Küche (Bratfette, Gerüche & Verbrennungsgase)**: Beim Kochen entstehen Belastungen durch Bratfette, starke Gerüche, Lösemittel aus Reinigern und bei einer Gasflamme zusätzlich Stickoxide (NOx). Der CO₂-Wert bleibt dabei oft niedrig, während die Luft längst schlecht ist — eine reine CO₂-Regelung würde hier nicht reagieren.
