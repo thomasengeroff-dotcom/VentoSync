@@ -278,6 +278,14 @@ A custom-engineered PCB integrates all core components into a compact, robust un
 
 ![VentoSync PCB v2.0 – 3D render](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
+<p align="center">
+  <img src="EasyEDA-Pro/PCB%20v2%20Images/VentoSync-PCB-v2_SCD43.jpg" width="48%" alt="Assembled VentoSync PCB v2.0 with Traco power supply, ESP32-C6 module and SCD43 sensor board" />
+  <img src="EasyEDA-Pro/PCB%20v2%20Images/VentoSync-PCB-v2_SCD43-Detail.jpg" width="48%" alt="SCD43 sensor board soldered into header H2 of the VentoSync PCB v2.0" />
+</p>
+<p align="center">
+  <em><strong>The real thing (VentoSync 1.0):</strong> the assembled PCB v2.0 with Traco power supply, ESP32-C6-MINI module and USB-C (left), and the SCD43 sensor board soldered into header H2 (right).</em>
+</p>
+
 ### Specialized SCD43 Sensor Board
 
 To achieve the highest possible accuracy, I developed a secondary PCB specifically for the **Sensirion SCD43**. Unlike generic breakout boards, this design implements the manufacturer's reference specifications for decoupling:
@@ -286,7 +294,8 @@ To achieve the highest possible accuracy, I developed a secondary PCB specifical
 - **Precision Filtering**: Proper decoupling capacitors are placed in immediate proximity to the sensor.
 - **Perfect Fit**: Designed with a 1.27 mm pitch right-angle header, soldered directly into connector H2, to align perfectly with the VentoMaxx housing's ventilation intake.
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43 sensor board v1.0" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43 sensor board v1.0 – layout" width="25%" />
+<img src="EasyEDA-Pro/PCB%20v2%20Images/SCD43-Sensorboard-v1.jpg" alt="Assembled SCD43 sensor board v1.0" width="25%" />
 
 ### 🌿 Modular Sensor Ecosystem: The Right Metric for Every Room
 

@@ -275,6 +275,14 @@ Eine eigens entwickelte Platine (PCB) vereint alle Kernkomponenten in einer komp
 
 ![VentoSync Platine v2.0 – 3D-Ansicht](EasyEDA-Pro/PCB%20Prototype%20Images/3D_PCB_VentoSync-v2_2026-10-15.png)
 
+<p align="center">
+  <img src="EasyEDA-Pro/PCB%20v2%20Images/VentoSync-PCB-v2_SCD43.jpg" width="48%" alt="Bestückte VentoSync Platine v2.0 mit Traco-Netzteil, ESP32-C6-Modul und SCD43-Sensorboard" />
+  <img src="EasyEDA-Pro/PCB%20v2%20Images/VentoSync-PCB-v2_SCD43-Detail.jpg" width="48%" alt="SCD43-Sensorboard, eingelötet in den Anschluss H2 der VentoSync Platine v2.0" />
+</p>
+<p align="center">
+  <em><strong>Die echte Platine (VentoSync 1.0):</strong> die bestückte PCB v2.0 mit Traco-Netzteil, ESP32-C6-MINI-Modul und USB-C (links) und das in den Anschluss H2 eingelötete SCD43-Sensorboard (rechts).</em>
+</p>
+
 ### Passgenaues SCD43 Sensor Board
 
 Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine speziell für den **Sensirion SCD43** entwickelt. Im Gegensatz zu generischen Breakout-Boards implementiert dieses Design die Referenzspezifikationen des Herstellers zur Entkopplung und hat genau die Dimensionen, so dass der Sensor an der exakten Zuluftöffnung positioniert werden kann:
@@ -283,7 +291,8 @@ Um die höchstmögliche Genauigkeit zu erzielen, wurde eine separate Platine spe
 - **Präzisionsfilterung**: Korrekte Entkopplungskondensatoren sind in unmittelbarer Nähe des Sensors platziert.
 - **Perfekte Passform**: Entwickelt mit einer 1,27-mm-Winkel-Stiftleiste, die direkt in den Anschluss H2 gelötet wird und perfekt mit der Zuluftöffnung des VentoMaxx-Gehäuses ausgerichtet ist.
 
-<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0" width="25%" />
+<img src="EasyEDA-Pro/PCB%20Prototype%20Images/2D_PCB_SCD43_Sensor_2026-10-12.png" alt="SCD43-Sensorboard v1.0 – Layout" width="25%" />
+<img src="EasyEDA-Pro/PCB%20v2%20Images/SCD43-Sensorboard-v1.jpg" alt="Bestücktes SCD43-Sensorboard v1.0" width="25%" />
 
 ### 🌿 Modulares Sensor-Ökosystem: Die passende Messgröße pro Raum
 

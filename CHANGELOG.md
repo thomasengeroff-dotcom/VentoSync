@@ -38,7 +38,8 @@ updated one after another.
 ### Added
 
 - **Web dashboard:** the *Einstellungen* card can be collapsed (**collapsed by default** — open it with a click on the
-  heading), and so can *Verbundene Geräte (ESP-NOW)* (open by default).
+  heading), and so can *Verbundene Geräte (ESP-NOW)* (open by default). The browser remembers the chosen state.
+- **README:** photos of the assembled PCB v2.0 and the SCD43 sensor board.
 
 
 ### Fixed
