@@ -21,7 +21,7 @@
 // Description: Unit test runner for core ventilation logic.
 // Author:      Thomas Engeroff
 // Created:     2026-02-15
-// Modified:    2026-11-02
+// Modified:    2026-11-03
 // ==========================================================================
 
 #include "../components/ventilation_logic/ventilation_logic.h"
@@ -2407,6 +2407,20 @@ bool test_level_to_adopt() {
   return true;
 }
 
+// ============================================================
+// T-8h: Packets of another room are not adopted
+// ============================================================
+bool test_is_same_room() {
+  using ventosync::packet::is_same_room;
+  const auto pkt = valid_packet(); // floor 1, room 2
+
+  TEST_ASSERT(is_same_room(pkt, 1, 2));
+  TEST_ASSERT(!is_same_room(pkt, 1, 3)); // other room, same floor
+  TEST_ASSERT(!is_same_room(pkt, 2, 2)); // same room ID, other floor
+  TEST_ASSERT(!is_same_room(pkt, 2, 1)); // floor and room swapped
+  return true;
+}
+
 int main() {
   std::cout << "Running VentilationLogic Tests..." << std::endl;
 
@@ -2579,6 +2593,7 @@ int main() {
     {"T-8e: Timer started after the loop timestamp (#54)", test_timer_start_after_now},
     {"T-8f: Dashboard history ring buffer (24 h, 5 min)", test_dashboard_history},
     {"T-8g: Level taken over from a peer (vacation preset)", test_level_to_adopt},
+    {"T-8h: Packets of another room are not adopted", test_is_same_room},
   };
   for (const auto &tc : hvac_cases) {
     if (tc.fn()) {
