@@ -1,5 +1,5 @@
 {
-    "project_version": "1.0.1",
-    "project_date": "2026-11-02",
-    "project_description": "Larger, clearly visible open/close arrows on the collapsible web dashboard cards."
+    "project_version": "1.0.2",
+    "project_date": "2026-11-03",
+    "project_description": "ESP-NOW: packets of another room no longer change a device's settings or level override."
 }
