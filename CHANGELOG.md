@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-11-03
+
+### Fixed
+
+- **ESP-NOW room guard:** a device took over room-wide settings (Smart-Automatik sliders, Klima-Koordination, vacation
+  preset, sync interval, LED brightness and more) and the level override from packets of another room. This could happen
+  after moving a device to another floor or room: its old peers keep it in their peer list and keep sending to it, so
+  every change there, and every heartbeat of the old room's Master, still reached the moved device. Packets of another
+  room are now ignored before anything is adopted. Same-room traffic is unchanged and the packet format stays the same
+  (protocol v16). The old devices keep sending to the moved device, which only costs a little airtime.
+
 ## [1.0.1] - 2026-11-02
 
 ### Changed

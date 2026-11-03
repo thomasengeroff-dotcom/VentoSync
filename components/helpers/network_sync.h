@@ -21,7 +21,7 @@
 // Description: ESP-NOW peer synchronization and state mirroring.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-11-02
+// Modified:    2026-11-03
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -1228,6 +1228,17 @@ inline void process_espnow_packet_local(const std::vector<uint8_t> &frame, const
   if (static_cast<esphome::MessageType>(pkt->msg_type) ==
       esphome::MSG_STATUS_REQUEST) {
     espnow_handler::handle_status_request(pkt, src_mac);
+    return;
+  }
+
+  // Packets of another room must not change anything here: the settings and
+  // level override adoption below have no room check of their own. After a
+  // floor / room change the old peers still list this device and keep sending
+  // to it (their frames are ACKed, so they never drop it).
+  const auto local_room = get_local_room_ids();
+  if (!local_room || !ventosync::packet::is_same_room(pkt_val, local_room->first, local_room->second)) {
+    ESP_LOGI("vent_sync", "Ignored packet of device %d from another room (floor %d, room %d).",
+             pkt->device_id, pkt->floor_id, pkt->room_id);
     return;
   }
 

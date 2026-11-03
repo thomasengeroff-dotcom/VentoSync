@@ -243,6 +243,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   (pure, unit-tested; `espnow_handler::validate_and_parse_packet()` only logs) — **never** cast `uint8_t*` to a
   struct pointer.
 - **Discovery:** broadcast `ROOM_DISC` on boot → matching Floor + Room ID → unicast pairing.
+- **Room guard:** `process_espnow_packet_local()` drops packets of another room (`ventosync::packet::is_same_room()`) before
+  `handle_config_sync()` / `auto_override_adopt()`, which have no check of their own. A valid tag does not imply the same room:
+  the key is shared, and old peers keep sending to a device moved to another room (their frames are ACKed).
 - **Peer cache:** LRU, capped at `MAX_PEERS` = 10 peers (`VentilationController::peers` and the ESP-NOW `peer_cache`).
 - **Master/Slave authority:** device ID 1 (`MASTER_DEVICE_ID`, check with `is_master()` / `is_from_master()`) is Master. Slaves mirror mode and — in Smart-Automatik — the
   Master's **fan level**. `Aus` is a room mode like the others: a device in `MODE_OFF` still follows the room

@@ -22,7 +22,7 @@
 //              pure packet validation. No ESPHome dependencies — unit-tested.
 // Author:      Thomas Engeroff
 // Created:     2026-10-18
-// Modified:    2026-10-26
+// Modified:    2026-11-03
 // ==========================================================================
 #pragma once
 
@@ -357,6 +357,17 @@ inline void update_peer_state(esphome::PeerState &peer, const esphome::Ventilati
   peer.vacation_pre_intensity = pkt.vacation_pre_intensity;
   std::memcpy(peer.name.data(), pkt.device_name, peer.name.size());
   peer.name.back() = '\0';
+}
+
+/**
+ * @brief   True if a packet was sent by a device of the given floor and room.
+ *
+ * @details Authentication does not imply the same room: the key is shared by
+ *          the whole installation, and a device that was moved to another room
+ *          keeps receiving unicasts from its old peers.
+ */
+constexpr bool is_same_room(const esphome::VentilationPacket &pkt, int floor_id, int room_id) {
+  return pkt.floor_id == floor_id && pkt.room_id == room_id;
 }
 
 /// Smart-Automatik on the wire (UI mode index 0, globals.h MODE_INDEX_AUTO).
