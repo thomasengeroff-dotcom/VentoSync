@@ -1,5 +1,5 @@
 {
-    "project_version": "1.0.3",
+    "project_version": "1.0.4",
     "project_date": "2026-11-05",
-    "project_description": "Web dashboard: separate air quality tiles for this device and the room values the Smart-Automatik uses."
+    "project_description": "ESPHome 2026.10.2 (bug fix release, no functional change in VentoSync)."
 }
