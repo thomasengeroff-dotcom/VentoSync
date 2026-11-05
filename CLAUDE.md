@@ -8,7 +8,7 @@ and replaces the proprietary VentoMaxx control unit entirely.
 
 **Key facts:**
 
-- Platform: ESP32-C6 (RISC-V), ESPHome `2026.10.0`
+- Platform: ESP32-C6 (RISC-V), ESPHome `2026.10.2`
 - Hardware: Custom PCB with Traco power supply, MCP23017 GPIO expander, PCA9685 LED driver
 - Sensors: Sensirion **SCD43** (CO2 / temperature / humidity) or **SGP41 + SHT45** board (VOC / NOx / temperature / humidity), BMP390 (pressure, board temperature),
   2× NTC thermistors, HLK-LD2450 (mmWave radar).
@@ -181,7 +181,7 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-f
     -Icomponents && ./simple_test && rm -f simple_test
 ```
 
-Always validate before uploading. CI pins ESPHome to `2026.10.0` (needs Python 3.12–3.14) — use the same version
+Always validate before uploading. CI pins ESPHome to `2026.10.2` (needs Python 3.12–3.14) — use the same version
 locally; `upload_all.sh` aborts on a mismatch (override `ALLOW_ESPHOME_MISMATCH=1`).
 **ESPHome upgrade:** change `ESPHOME_VERSION` in `.github/workflows/build.yaml`, `.github/workflows/lint.yaml` and
 `upload_all.sh`, plus the version in this file and both READMEs; validate all variants (see `lint.yaml`).
@@ -507,7 +507,7 @@ Triggered on push and pull request to `master`:
     `ventosync-v2-sgp41`** (PCB v2.0 board package + the only variant with the SGP41/SHT45 drivers); the size-critical
     Bluetooth proxy image is compiled only after the merge — compile it locally when a change adds code. Push to
     `master` / `workflow_dispatch` build all
-    variants (incl. the generated `nosensor-mqtt`), ESPHome pinned to `2026.10.0`, secret-free OTA configs. The release
+    variants (incl. the generated `nosensor-mqtt`), ESPHome pinned to `2026.10.2`, secret-free OTA configs. The release
     job needs all builds. Check names stay `Build <name>` — renaming a variant changes a required check.
   - *Create Release* (push to `master`, or `workflow_dispatch` with `force_release: true`): tag
     `v<version.json>`, `.ota.bin`, `.factory.bin`, `manifest-<variant>.json`; release notes = first section
