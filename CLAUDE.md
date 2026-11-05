@@ -279,6 +279,9 @@ LED behaviour per mode: `documentation/en/en_operating-modes.md`.
   - **Vacation preset** (`vacation_preset_mode_index_val` / `vacation_preset_level_val`, HA "Urlaubsmodus
     Betriebsmodus" / "Urlaubsmodus Intensität", v14): the mode and level the leader applies — a room-wide *setting*
     like the sliders (`vacation_adopt_preset()` in `handle_config_sync()`), not part of the snapshot.
+- **Dashboard room values:** `VentilationController::auto_room_co2` / `auto_room_rh` are filled by `evaluate_auto_mode()` (NaN while
+  it is not regulating) and serialized as `/state` `auto_room_co2` / `auto_room_rh`. The page only displays them; never compute
+  room values from `peers[]` in `dashboard.html`, and never broadcast them (fused values).
 - **Level override** (`level_override.h`, `ventosync::auto_override`, `VentilationController::level_override`): the
   Level button in Smart-Automatik holds its level room-wide for `auto_override_duration_val` (30–300 min, default 60,
   room-wide setting synced like the min/max levels). Room-wide **state** like the mode, not a fused

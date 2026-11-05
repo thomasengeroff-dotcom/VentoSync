@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-11-05
+
+### Changed
+
+- **Web dashboard:** air quality now has two tiles in the right-hand column. *Dieses Gerät* shows the values of the device's
+  own sensor board. *Von der Automatik genutzt (Raum)* shows the room-wide CO2 and humidity of the Smart-Automatik's last
+  evaluation, delivered by the firmware (new `/state` keys `auto_room_co2`, `auto_room_rh`, `null` outside Smart-Automatik).
+  The values of the individual devices stay on the *Verbundene Geräte* cards. No change to the control itself or the ESP-NOW
+  packet (protocol v16).
+- **Web dashboard:** *Wartung* moved below *Gerät & System* to make room, and *Radar Präsenz* moved from *Wartung* to
+  *Aktuelle Sensordaten*. On tablet width the two air quality tiles sit side by side.
+
+### Fixed
+
+- **Web dashboard:** the tile with the device's own air quality kept showing the last CO2, temperature and humidity after a
+  sensor failed. It now shows `--`, with a note when no value is available at all.
+
 ## [1.0.2] - 2026-11-03
 
 ### Fixed

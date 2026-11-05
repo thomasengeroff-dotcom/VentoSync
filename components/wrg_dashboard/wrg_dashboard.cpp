@@ -21,7 +21,7 @@
 // Description: Web server component for the room ventilation dashboard.
 // Author:      Thomas Engeroff
 // Created:     2026-03-09
-// Modified:    2026-10-26
+// Modified:    2026-11-05
 // ==========================================================================
 
 #include "wrg_dashboard.h"
@@ -574,6 +574,8 @@ std::string WrgDashboard::build_state_json_() {
   if (v != nullptr) {
     const uint32_t fusion_age = ventosync::room::fusion_max_age_ms(v->sync_interval_ms, PEER_TIMEOUT_MS);
     doc["pid_demand"] = v->local_pid_demand;
+    doc["auto_room_co2"] = v->auto_room_co2;  // as used by evaluate_auto_mode(), null outside Smart-Automatik
+    doc["auto_room_rh"] = v->auto_room_rh;
     doc["is_master"] = v->device_id == MASTER_DEVICE_ID;
     doc["room_presence"] = v->presence_local || ventosync::room::any_fresh_peer_presence(v->peers, now, fusion_age);
     doc["window_guard"] = v->is_window_guard_active();

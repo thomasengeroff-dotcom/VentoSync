@@ -21,7 +21,7 @@
 // Description: Definitions for the ventilation group component.
 // Author:      Thomas Engeroff
 // Created:     2026-01-28
-// Modified:    2026-11-02
+// Modified:    2026-11-05
 // ==========================================================================
 #pragma once
 
@@ -149,6 +149,15 @@ public:
    *          room-wide maximum themselves from `peers[].pid_demand`.
    */
   float local_pid_demand = NAN;
+
+  /**
+   * @brief   Room-wide CO2 (ppm) and humidity (%) of the last evaluate_auto_mode() cycle.
+   * @details The values the automatic itself uses (Smart Climate Control, mold guard,
+   *          Automatik-Status), kept here for the dashboard so it never computes its own.
+   *          NaN while the automatic is not regulating. Fused values: never broadcast them.
+   */
+  float auto_room_co2 = NAN;
+  float auto_room_rh = NAN;
 
   bool co2_is_controlling =
       false; ///< Hysteresis state for CO2 priority (runtime only).

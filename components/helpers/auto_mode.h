@@ -22,7 +22,7 @@
 //              Final refactored version addressing all safety and maintainability concerns.
 // Author:      Thomas Engeroff
 // Created:     2026-03-29
-// Modified:    2026-10-26
+// Modified:    2026-11-05
 // ==========================================================================
 #pragma once
 #include "globals.h"
@@ -866,7 +866,11 @@ inline void evaluate_auto_mode(bool force) {
 
   if (!auto_mode::is_system_ready()) {
     // Not regulating: never advertise a frozen demand to the room.
-    if (ventilation_ctrl != nullptr) ventilation_ctrl->local_pid_demand = NAN;
+    if (ventilation_ctrl != nullptr) {
+      ventilation_ctrl->local_pid_demand = NAN;
+      ventilation_ctrl->auto_room_co2 = NAN;
+      ventilation_ctrl->auto_room_rh = NAN;
+    }
     return;
   }
 
@@ -960,6 +964,8 @@ inline void evaluate_auto_mode(bool force) {
                                                     auto_mode::fusion_max_age_ms()).rh_percent;
     st.rh_setpoint = (auto_humidity_threshold_val != nullptr)
         ? static_cast<float>(auto_humidity_threshold_val->value()) : NAN;
+    v->auto_room_co2 = st.room_co2;  // for the dashboard
+    v->auto_room_rh = st.room_rh;
     st.nox_active = nox_active;
     st.nox_strong = nox_strong;
     st.nox_from_peer = nox_from_peer;
