@@ -1,5 +1,5 @@
 {
-    "project_version": "1.0.2",
-    "project_date": "2026-11-03",
-    "project_description": "ESP-NOW: packets of another room no longer change a device's settings or level override."
+    "project_version": "1.0.3",
+    "project_date": "2026-11-05",
+    "project_description": "Web dashboard: separate air quality tiles for this device and the room values the Smart-Automatik uses."
 }
