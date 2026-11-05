@@ -10,7 +10,7 @@
                edit this file directly, then run tailwind/build_css.sh.
   Author:      Thomas Engeroff
   Created:     2026-03-09
-  Modified:    2026-11-02
+  Modified:    2026-11-05
 -->
 <html lang="de" class="dark">
 <head>
@@ -68,7 +68,8 @@
 
     <div id="main_grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity">
 
-      <!-- Device & system info -->
+      <!-- Device & system info + maintenance column -->
+      <div class="flex flex-col gap-6">
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-3">
         <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Gerät &amp; System</h2>
         <div class="flex justify-between items-center gap-3"><span class="text-gray-400 text-sm shrink-0">Gerätename:</span> <span class="font-medium text-lg truncate" id="val_device_name">--</span></div>
@@ -87,6 +88,15 @@
         </div>
       </div>
 
+      <!-- Maintenance -->
+      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 flex-1">
+        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Wartung</h2>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filter Betriebstage:</span> <span class="font-medium text-lg" id="val_filter_operating_days">--</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filterwechsel Alarm:</span> <span class="font-medium text-lg" id="val_filter_change_alarm">--</span></div>
+        <button id="btn_filter_reset" onclick="filterReset()" class="hidden w-full text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg p-2 transition-colors">Filterwechsel bestätigen (Zähler zurücksetzen)</button>
+      </div>
+      </div>
+
       <!-- Status & Sensors -->
       <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
         <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Aktuelle Sensordaten</h2>
@@ -99,13 +109,14 @@
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Effizienz WRG:</span> <span class="font-medium text-accent text-lg"><span id="val_heat_recovery_efficiency">--</span> %</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Lüfter RPM:</span> <span class="font-medium text-lg" id="val_fan_rpm">--</span></div>
         <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftrichtung:</span> <span class="font-medium text-accent text-lg" id="val_direction_display">--</span></div>
+        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Radar Präsenz:</span> <span class="font-medium text-lg" id="val_radar_presence">--</span></div>
       </div>
 
-      <!-- Air Quality & Maintenance combined column -->
-      <div class="flex flex-col gap-6">
-        <!-- Air Quality -->
-        <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 flex-1">
-          <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität</h2>
+      <!-- Air quality column: side by side on the two-column layout, where it spans the full width -->
+      <div class="flex flex-col md:flex-row lg:flex-col gap-6 md:col-span-2 lg:col-span-1">
+        <!-- Measured by this device's own sensor board -->
+        <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 md:flex-1 lg:flex-none min-w-0">
+          <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität <span class="block text-sm font-normal text-gray-500">Dieses Gerät</span></h2>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" id="lbl_room_co2">CO2:</span> <span class="font-medium text-lg"><span id="val_room_co2">--</span> ppm</span></div>
           <!-- SGP41 board: only shown when /state reports voc_index / nox_index (sensor_SGP41_SHT45.yaml) -->
           <div id="voc_index_row" class="hidden flex justify-between items-center"><span class="text-gray-400 text-sm">VOC-Index:</span> <span class="font-medium text-lg" id="val_voc_index">--</span></div>
@@ -113,15 +124,17 @@
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Bewertung:</span> <span class="font-medium text-lg" id="val_room_co2_bewertung">--</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur:</span> <span class="font-medium text-lg"><span id="val_room_temperature">--</span> °C</span></div>
           <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg"><span id="val_room_humidity">--</span> %</span></div>
+          <p id="own_air_note" class="hidden text-xs text-gray-500">Keine Messwerte: kein Luftsensor verbaut oder der Sensor startet noch.</p>
         </div>
 
-        <!-- Maintenance -->
-        <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
-          <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Wartung</h2>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filter Betriebstage:</span> <span class="font-medium text-lg" id="val_filter_operating_days">--</span></div>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filterwechsel Alarm:</span> <span class="font-medium text-lg" id="val_filter_change_alarm">--</span></div>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Radar Präsenz:</span> <span class="font-medium text-lg" id="val_radar_presence">--</span></div>
-          <button id="btn_filter_reset" onclick="filterReset()" class="hidden w-full text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg p-2 transition-colors">Filterwechsel bestätigen (Zähler zurücksetzen)</button>
+        <!-- auto_room_co2 / auto_room_rh: the values evaluate_auto_mode() uses. Display them only, never derive them from peers[] here -->
+        <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 flex-1 min-w-0">
+          <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität <span class="block text-sm font-normal text-gray-500">Von der Automatik genutzt (Raum)</span></h2>
+          <div id="auto_room_vals" class="space-y-4">
+            <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">CO2:</span> <span class="font-medium text-lg" id="val_auto_room_co2">--</span></div>
+            <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg" id="val_auto_room_rh">--</span></div>
+          </div>
+          <p id="auto_room_off" class="hidden text-sm text-gray-500">Nur in der Smart-Automatik</p>
         </div>
       </div>
 
@@ -659,6 +672,15 @@
     const miniFlag = t => `<span class="text-[10px] uppercase tracking-wide text-gray-300 bg-gray-700/60 px-1.5 py-0.5 rounded">${t}</span>`;
     const pct = v => (v !== undefined && v !== null && !isNaN(v)) ? Math.round(v * 100) + "%" : "--";
 
+    // Room values of the automatic: delivered by the firmware, only displayed here
+    function renderAutoRoom(data) {
+      const autoMode = data.luefter_modus === 'Smart-Automatik';
+      document.getElementById('auto_room_vals').classList.toggle('hidden', !autoMode);
+      document.getElementById('auto_room_off').classList.toggle('hidden', autoMode);
+      document.getElementById('val_auto_room_co2').textContent = fmtNum(data.auto_room_co2, 0, " ppm");
+      document.getElementById('val_auto_room_rh').textContent = fmtNum(data.auto_room_rh, 1, " %");
+    }
+
     function renderPeers(data) {
       document.getElementById('peers_card').classList.remove('hidden');
       const dir = data.direction_display || "";
@@ -763,8 +785,7 @@
         // Update direct text elements
         const ids = ["device_id", "floor_id", "room_id", "phase",
                      "temperature", "pressure", "outdoor_humidity", "temp_zuluft", "temp_abluft",
-                     "heat_recovery_efficiency", "fan_rpm", "room_co2",
-                     "room_temperature", "room_humidity", "filter_operating_days"];
+                     "heat_recovery_efficiency", "fan_rpm", "filter_operating_days"];
 
         ids.forEach(id => {
           const el = document.getElementById("val_" + id);
@@ -797,7 +818,13 @@
             (data.nox_index === null) ? "--" : Math.round(data.nox_index);
         }
 
+        // Own air quality: null (sensor missing or failed) must clear the last value
+        const ownCo2 = num(data.room_co2), ownT = num(data.room_temperature), ownRh = num(data.room_humidity);
+        document.getElementById("val_room_co2").textContent = ownCo2 === null ? "--" : ownCo2.toFixed(0);
+        document.getElementById("val_room_temperature").textContent = ownT === null ? "--" : ownT.toFixed(1);
+        document.getElementById("val_room_humidity").textContent = ownRh === null ? "--" : ownRh.toFixed(1);
         document.getElementById("val_room_co2_bewertung").textContent = data.room_co2_bewertung || "--";
+        document.getElementById("own_air_note").classList.toggle("hidden", ownCo2 !== null || ownT !== null || ownRh !== null);
 
         // Binary sensors
         const alarmEl = document.getElementById("val_filter_change_alarm");
@@ -831,6 +858,7 @@
         renderSystem(data);
         renderSettingValues(data);
         renderPeers(data);
+        renderAutoRoom(data);
         verifyPending(data);
         STATE = data;
         wizMaybeOpen(data);
