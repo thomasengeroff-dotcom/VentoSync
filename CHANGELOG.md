@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-11-05
+
+### Changed
+
+- **ESPHome 2026.10.2** — CI, YAML lint, `upload_all.sh` and the READMEs pin ESPHome `2026.10.2` (was `2026.10.0`). Bug fix
+  releases without breaking changes, no YAML or C++ change needed. Python requirement unchanged (3.12–3.14). Relevant for
+  VentoSync:
+  - **Lambdas:** generated lambda code is now emitted after the user includes (esphome#21307).
+  - **Bluetooth proxy:** held connections are released when a new client replaces the subscriber (esphome#22077).
+- Local builds: `upload_all.sh` aborts with ESPHome 2026.10.0 — update with `pip install esphome==2026.10.2`.
+
+No ESP-NOW protocol change — devices can be updated individually.
+
 ## [1.0.3] - 2026-11-05
 
 ### Changed
