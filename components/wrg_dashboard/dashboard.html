@@ -18,6 +18,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="description" content="Lokales Dashboard der VentoSync-Wohnraumlüftung: Luftqualität, Lüfterstatus, Einstellungen und Verlauf.">
   <title>Wohnraumlüftung Dashboard</title>
   <!-- Replaced by the committed dashboard.css at build time (__init__.py), so the page needs no
        internet; regenerate it with tailwind/build_css.sh after changing classes. -->
@@ -38,7 +39,7 @@
 
     <!-- Shown when no data arrived for CONN_STALE_MS: the values below are outdated -->
     <div id="conn_banner" class="hidden bg-danger/10 border border-danger/50 text-danger px-4 py-3 text-sm font-medium">
-      Verbindung zum Gerät verloren – letzte Daten vor <span id="conn_age" class="font-mono">--</span>. Die Werte unten sind nicht aktuell.
+      Verbindung zum Gerät verloren, letzte Daten vor <span id="conn_age" class="font-mono">--</span>. Die Werte unten sind nicht aktuell.
     </div>
 
     <!-- Automatik-Status: what the ventilation does and why, plus the active room inputs -->
@@ -186,9 +187,9 @@
         </div>
         <p id="hist_note" class="note mb-4"></p>
         <div class="space-y-8">
-          <div><div class="text-sm text-ink-2 mb-1">Luftqualität &amp; Regelung</div><div class="relative w-full h-[260px]"><canvas id="chart_control"></canvas></div></div>
-          <div><div class="text-sm text-ink-2 mb-1">Raumklima</div><div class="relative w-full h-[260px]"><canvas id="chart_climate"></canvas></div></div>
-          <div><div class="text-sm text-ink-2 mb-1">Wärmerückgewinnung</div><div class="relative w-full h-[260px]"><canvas id="chart_hrv"></canvas></div></div>
+          <div><div class="text-sm text-ink-2 mb-1">Luftqualität &amp; Regelung</div><div class="relative w-full h-[260px]"><canvas id="chart_control" aria-hidden="true"></canvas></div></div>
+          <div><div class="text-sm text-ink-2 mb-1">Raumklima</div><div class="relative w-full h-[260px]"><canvas id="chart_climate" aria-hidden="true"></canvas></div></div>
+          <div><div class="text-sm text-ink-2 mb-1">Wärmerückgewinnung</div><div class="relative w-full h-[260px]"><canvas id="chart_hrv" aria-hidden="true"></canvas></div></div>
         </div>
 
         <div class="mt-8">

@@ -11,9 +11,13 @@
 const token = name => `rgb(var(--c-${name}) / <alpha-value>)`;
 
 module.exports = {
+  corePlugins: {ringWidth: false, ringOffsetWidth: false},  // unused; their base vars carry colour literals
   content: {relative: true, files: ['../dashboard.html']},
   darkMode: 'class',
   theme: {
+    // The `ring` utility is unused; its defaults carry colour literals, so point them at tokens
+    ringColor: {DEFAULT: token('accent')},
+    ringOffsetColor: {DEFAULT: token('paper')},
     extend: {
       colors: {
         paper: token('paper'),
@@ -29,7 +33,9 @@ module.exports = {
         sky: token('sky'),
         danger: token('danger'),
         warn: token('warn'),
+        gray: {400: token('muted')},  // preflight placeholder colour
       },
+      borderColor: {DEFAULT: token('rule')},
       fontFamily: {
         sans: ['var(--font-sans)'],
         mono: ['var(--font-mono)'],

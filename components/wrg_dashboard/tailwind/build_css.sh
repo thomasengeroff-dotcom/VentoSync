@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # VentoSync HRV – builds components/wrg_dashboard/dashboard.css
 # Copyright (c) 2026 Thomas Engeroff — GPL v3 (see LICENSE)
-# Created: 2026-10-22, Modified: 2026-10-22
+# Created: 2026-10-22, Modified: 2026-11-16
 #
 # Usage: build_css.sh          regenerate dashboard.css (commit the result)
 #        build_css.sh --check  fail if dashboard.css is outdated (CI, lint.yaml)
@@ -47,12 +47,17 @@ fi
 if [[ "${1:-}" == "--check" ]]; then
   tmp=$(mktemp)
   trap 'rm -f "$tmp"' EXIT
-  "$BIN" -c "$DIR/tailwind.config.js" -i "$DIR/input.css" -o "$tmp" --minify 2>/dev/null
+  "$BIN" -c "$DIR/tailwind.config.js" -i "$DIR/input.css" -o "$tmp.css" --minify 2>/dev/null
+  cat "$DIR/stamp.css" "$tmp.css" > "$tmp"
+  rm -f "$tmp.css"
   if ! cmp -s "$tmp" "$OUT"; then
     echo "components/wrg_dashboard/dashboard.css is outdated — run components/wrg_dashboard/tailwind/build_css.sh and commit the result." >&2
     exit 1
   fi
   echo "dashboard.css is up to date"
 else
-  "$BIN" -c "$DIR/tailwind.config.js" -i "$DIR/input.css" -o "$OUT" --minify
+  "$BIN" -c "$DIR/tailwind.config.js" -i "$DIR/input.css" -o "$OUT.tmp" --minify
+  # Hallmark stamp must be line 1 of the CSS (Tailwind drops plain comments)
+  cat "$DIR/stamp.css" "$OUT.tmp" > "$OUT"
+  rm -f "$OUT.tmp"
 fi
