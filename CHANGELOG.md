@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-11-16
+
+### Changed
+
+- **Web dashboard redesign** (Hallmark, *Rim* theme): dark warm-black paper with hairline-divided sections instead of cards,
+  nothing rounded, orange for actions and the current state, sky blue for live values. The air quality of this device
+  (CO2, temperature, humidity) is now set as large monospace figures at the top of the page. System fonts only (the
+  page is served from flash and must work offline).
+- Colours and fonts are tokens at `:root` in `components/wrg_dashboard/tailwind/input.css` (RGB channels); charts and
+  the change feedback read them from there. `build_css.sh` prepends the Hallmark stamp (`tailwind/stamp.css`) to
+  `dashboard.css`.
+- Labels reworded for the new look: the `RAUMWEIT` / `PRÜFEN` / `MASTER` badges are now `Raumweit` / `Prüfen` / `Master`;
+  the `↗` after the peer dashboard link, the `·` in the wizard's peer list and the trailing colons of the labels are gone.
+- Chart legends and the wizard no longer use round markers or a pulsing dot.
+- Charts, change feedback and the setup wizard are unchanged in behaviour; all element ids and `/set` keys are kept.
+
+No firmware logic or ESP-NOW protocol change — devices can be updated individually. The dashboard screenshots in the
+documentation still show the old look.
+
 ## [1.0.4] - 2026-11-05
 
 ### Changed
