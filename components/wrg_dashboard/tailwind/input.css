@@ -1,3 +1,81 @@
+/*! Hallmark · shape: app screen · genre: modern-minimal · theme: Rim, night (deal 2/3 pick, seed local-control-dashboard-home-197e·6d6517c5·2026-11-16·r0) · redesign: full
+ * nav: kept (one page, no navigation) · signature: the air-quality readout, CO2 / temperature / humidity set as mono figures · states: connection lost, no sensor, loading, empty history, rejected value
+ * axes: dark/grotesk-sans/warm · posture: committed · contrast: pass · system faces only (offline firmware page) · v2.0.0 */
+/*! Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: no web fonts because the page is served from flash, system sans and mono stand in for Switzer and Geist Mono */
+/* VentoSync HRV – Tailwind input of the dashboard (components/wrg_dashboard)
+ * Copyright (c) 2026 Thomas Engeroff — GPL v3 (see LICENSE)
+ * Created: 2026-10-22, Modified: 2026-11-16
+ * Run tailwind/build_css.sh after changing this file or the classes in dashboard.html. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---- Tokens: every colour and font of the page lives here ---- */
+@layer base {
+  :root {
+    /* surfaces and ink, RGB channels (Rim, night): warm black paper, warm off-white ink */
+    --c-paper: 12 10 8; --c-paper-2: 21 19 17; --c-paper-3: 8 7 6;
+    --c-ink: 240 236 230; --c-ink-2: 212 207 200; --c-muted: 163 158 150;
+    --c-rule: 52 49 44; --c-rule-2: 30 28 25;
+    /* orange = the action and the current state; sky = live / ok / second series */
+    --c-accent: 240 116 58; --c-accent-ink: 26 12 4; --c-focus: 255 147 96; --c-sky: 127 180 238;
+    /* functional status colours (the theme has none): alarms and warnings carry meaning */
+    --c-danger: 255 107 107; --c-warn: 227 179 65;
+    /* extra chart series */
+    --c-sand: 217 194 122; --c-rose: 229 138 168; --c-mint: 111 207 176; --c-lilac: 179 157 219;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --dur-short: 140ms;
+    color-scheme: dark;
+  }
+
+  html, body { overflow-x: clip; }
+  html { scrollbar-color: rgb(var(--c-rule)) rgb(var(--c-paper)); }
+  body { background: rgb(var(--c-paper)); color: rgb(var(--c-ink-2)); font-family: var(--font-sans); line-height: 1.5;
+         -webkit-font-smoothing: antialiased; caret-color: rgb(var(--c-accent)); }
+  ::selection { background: rgb(var(--c-accent) / 0.35); color: rgb(var(--c-ink)); }
+  :focus-visible { outline: 2px solid rgb(var(--c-focus)); outline-offset: 2px; }
+  h1, h2, h3 { font-weight: 500; overflow-wrap: break-word; min-width: 0; }
+  button, input, select { font: inherit; }
+  summary::-webkit-details-marker { display: none; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: rgb(var(--c-rule)); cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 20px; margin-top: -9px;
+                                            background: rgb(var(--c-accent)); border: 0; border-radius: 0; cursor: pointer; }
+  input[type=range]::-moz-range-track { height: 2px; background: rgb(var(--c-rule)); }
+  input[type=range]::-moz-range-thumb { width: 10px; height: 20px; background: rgb(var(--c-accent)); border: 0; border-radius: 0; cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  }
+}
+
+/* ---- Components: hairlines divide, nothing is round, depth by lightness only ---- */
+@layer components {
+  /* a section of the page: hairline above, heading, content */
+  .sect { @apply border-t border-rule pt-4 min-w-0; }
+  .sect-h { @apply text-lg font-medium text-ink mb-3; letter-spacing: -0.02em; }
+  .sect-sub { @apply block text-sm font-normal text-muted; letter-spacing: 0; }
+  /* a labelled value on a ruled row */
+  .row { @apply flex justify-between items-baseline gap-3 py-2 border-b border-rule-2; }
+  .row-k { @apply text-sm text-muted; }
+  .row-v { @apply font-mono text-base text-ink text-right; font-variant-numeric: tabular-nums; }
+  .fig { @apply font-mono text-ink; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+  .unit { @apply font-mono text-sm text-muted ml-1; letter-spacing: 0; }
+  .well { @apply bg-paper-2 border border-rule; }
+  .note { @apply text-sm text-muted; }
+  .grp-h { @apply block text-sm font-medium text-ink mb-3 pb-1 border-b border-rule; }
+  /* controls */
+  .btn { @apply inline-flex items-center justify-center min-h-[40px] px-4 text-sm font-medium text-ink bg-transparent border border-rule transition-colors; transition-duration: var(--dur-short); }
+  .btn:hover { @apply border-muted; }
+  .btn:disabled { @apply opacity-40 cursor-not-allowed; }
+  .btn-primary { @apply text-accent-ink bg-accent border-accent; }
+  .btn-primary:hover { @apply bg-accent/90 border-accent/90; }
+  .btn-sm { @apply min-h-[36px] px-3; }
+  .btn-on { @apply text-accent border-accent bg-accent/10; }
+  .field { @apply block min-h-[36px] px-2 text-sm text-ink bg-paper border border-muted; }
+  .field:focus-visible { @apply border-accent; }
+  /* switch row of the settings: whole row is the hit target */
+  .srow { @apply flex justify-between items-center gap-3 min-h-[44px] py-1.5 border-b border-rule-2; }
+  /* tags */
+  .chip { @apply inline-flex items-center text-sm px-2.5 py-0.5 border; }
+  .tag { @apply inline-flex items-center text-xs px-1.5 py-0.5 border whitespace-nowrap; }
+}

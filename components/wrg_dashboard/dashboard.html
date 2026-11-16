@@ -8,231 +8,219 @@
   Description: Single-page web dashboard (GET /, alias /ui). Gzipped into the firmware
                at build time by __init__.py together with the inlined dashboard.css —
                edit this file directly, then run tailwind/build_css.sh.
+               Colours and fonts are tokens at :root in tailwind/input.css (Rim, night).
   Author:      Thomas Engeroff
   Created:     2026-03-09
-  Modified:    2026-11-05
+  Modified:    2026-11-16
 -->
 <html lang="de" class="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>Wohnraumlüftung Dashboard</title>
   <!-- Replaced by the committed dashboard.css at build time (__init__.py), so the page needs no
        internet; regenerate it with tailwind/build_css.sh after changing classes. -->
   <link rel="stylesheet" href="dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      height: 16px;
-      width: 16px;
-      border-radius: 50%;
-      background: #03dac6;
-      cursor: pointer;
-      margin-top: -6px;
-    }
-    input[type=range]::-webkit-slider-runnable-track {
-      width: 100%;
-      height: 4px;
-      cursor: pointer;
-      background: #555;
-      border-radius: 2px;
-    }
-    summary::-webkit-details-marker { display: none; }
-  </style>
 </head>
-<body class="bg-bg text-gray-200 min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col items-center">
-  <div class="w-full max-w-5xl space-y-6">
+<body class="bg-paper text-ink-2 min-h-screen font-sans">
+  <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
 
-    <header class="text-center space-y-2">
+    <header class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 pb-4 border-b border-rule">
       <!-- The device name ("Gerätename") replaces the generic title once set -->
-      <h1 class="text-3xl font-bold tracking-tight text-white break-words">
+      <h1 class="text-2xl sm:text-3xl text-ink min-w-0" style="letter-spacing:-0.03em">
         <span id="hdr_title">WRG Lüftung Dashboard</span>
-        <span id="hdr_version" class="text-sm font-normal text-gray-500 ml-2"></span>
+        <span id="hdr_version" class="font-mono text-sm font-normal text-muted ml-2"></span>
       </h1>
-      <div class="text-xs text-gray-500 mb-4"><span id="conn_dot" class="inline-block w-2 h-2 rounded-full bg-gray-500 mr-1.5"></span><span id="conn_label">Verbinde …</span></div>
+      <div class="text-sm text-muted flex items-center gap-2"><span id="conn_dot" class="inline-block w-2 h-2 bg-muted"></span><span id="conn_label">Verbinde …</span></div>
     </header>
 
     <!-- Shown when no data arrived for CONN_STALE_MS: the values below are outdated -->
-    <div id="conn_banner" class="hidden bg-danger/15 border border-danger/40 text-danger rounded-xl px-4 py-3 text-sm font-medium">
-      Verbindung zum Gerät verloren – letzte Daten vor <span id="conn_age">--</span>. Die Werte unten sind nicht aktuell.
+    <div id="conn_banner" class="hidden bg-danger/10 border border-danger/50 text-danger px-4 py-3 text-sm font-medium">
+      Verbindung zum Gerät verloren – letzte Daten vor <span id="conn_age" class="font-mono">--</span>. Die Werte unten sind nicht aktuell.
     </div>
 
     <!-- Automatik-Status: what the ventilation does and why, plus the active room inputs -->
-    <div id="status_card" class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 border-l-4">
-      <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">Automatik-Status</div>
-      <div id="val_auto_status" class="text-xl font-semibold text-white">--</div>
+    <div id="status_card" class="well border-l-4 p-5">
+      <div class="note mb-1">Automatik-Status</div>
+      <div id="val_auto_status" class="text-2xl font-medium text-ink" style="letter-spacing:-0.02em">--</div>
       <div id="status_chips" class="flex flex-wrap gap-2 mt-3 empty:hidden"></div>
     </div>
 
-    <div id="main_grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity">
+    <div id="main_grid" class="grid grid-cols-1 lg:grid-cols-12 gap-x-8 gap-y-10 transition-opacity">
 
-      <!-- Device & system info + maintenance column -->
-      <div class="flex flex-col gap-6">
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-3">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Gerät &amp; System</h2>
-        <div class="flex justify-between items-center gap-3"><span class="text-gray-400 text-sm shrink-0">Gerätename:</span> <span class="font-medium text-lg truncate" id="val_device_name">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-ID:</span> <span class="font-medium text-lg"><span id="val_device_id">--</span> <span id="master_badge" class="hidden text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">MASTER</span></span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Floor / Raum:</span> <span class="font-medium text-lg"><span id="val_floor_id">--</span> / <span id="val_room_id">--</span></span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Geräte-Phase (A/B):</span> <span class="font-medium text-lg" id="val_phase">--</span></div>
-        <div class="text-xs text-gray-500">Name, IDs und Phase ändern: Einstellungen → Gerätekonfiguration</div>
-        <div class="border-t border-gray-700 pt-3 space-y-1 text-sm">
-          <div class="flex justify-between"><span class="text-gray-400">Firmware:</span> <span id="sys_version">--</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">Variante:</span> <span id="sys_variant">--</span></div>
-          <div class="flex justify-between gap-2"><span class="text-gray-400">Hostname:</span> <span id="sys_host" class="truncate">--</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">Laufzeit:</span> <span id="sys_uptime">--</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">Letzter Neustart:</span> <span id="sys_reset">--</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">WLAN-Signal:</span> <span id="sys_rssi">--</span></div>
-          <div class="flex justify-between"><span class="text-gray-400">Freier RAM (min.):</span> <span id="sys_heap">--</span></div>
+      <!-- Signature: the air this device measures, set as figures -->
+      <section class="sect lg:col-span-8">
+        <h2 class="sect-h">Luftqualität <span class="sect-sub">Dieses Gerät</span></h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 sm:divide-x divide-rule">
+          <div class="py-3 sm:pr-6 min-w-0">
+            <div class="row-k" id="lbl_room_co2">CO2</div>
+            <div class="fig text-4xl sm:text-5xl mt-1"><span id="val_room_co2">--</span><span class="unit">ppm</span></div>
+          </div>
+          <div class="py-3 sm:px-6 min-w-0">
+            <div class="row-k">Temperatur</div>
+            <div class="fig text-4xl sm:text-5xl mt-1"><span id="val_room_temperature">--</span><span class="unit">°C</span></div>
+          </div>
+          <div class="py-3 sm:pl-6 min-w-0">
+            <div class="row-k">Luftfeuchtigkeit</div>
+            <div class="fig text-4xl sm:text-5xl mt-1"><span id="val_room_humidity">--</span><span class="unit">%</span></div>
+          </div>
         </div>
-      </div>
+        <div class="mt-3">
+          <div class="row border-t border-rule-2"><span class="row-k">Bewertung</span> <span class="row-v" id="val_room_co2_bewertung">--</span></div>
+          <!-- SGP41 board: only shown when /state reports voc_index / nox_index (sensor_SGP41_SHT45.yaml) -->
+          <div id="voc_index_row" class="hidden row"><span class="row-k">VOC-Index</span> <span class="row-v" id="val_voc_index">--</span></div>
+          <div id="nox_index_row" class="hidden row"><span class="row-k">NOx-Index</span> <span class="row-v" id="val_nox_index">--</span></div>
+        </div>
+        <p id="own_air_note" class="hidden note mt-3">Keine Messwerte: kein Luftsensor verbaut oder der Sensor startet noch.</p>
+      </section>
 
-      <!-- Maintenance -->
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 flex-1">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Wartung</h2>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filter Betriebstage:</span> <span class="font-medium text-lg" id="val_filter_operating_days">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Filterwechsel Alarm:</span> <span class="font-medium text-lg" id="val_filter_change_alarm">--</span></div>
-        <button id="btn_filter_reset" onclick="filterReset()" class="hidden w-full text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg p-2 transition-colors">Filterwechsel bestätigen (Zähler zurücksetzen)</button>
-      </div>
-      </div>
+      <!-- auto_room_co2 / auto_room_rh: the values evaluate_auto_mode() uses. Display them only, never derive them from peers[] here -->
+      <section class="sect lg:col-span-4">
+        <h2 class="sect-h">Luftqualität <span class="sect-sub">Von der Automatik genutzt (Raum)</span></h2>
+        <div id="auto_room_vals">
+          <div class="row"><span class="row-k">CO2</span> <span class="row-v text-xl" id="val_auto_room_co2">--</span></div>
+          <div class="row"><span class="row-k">Luftfeuchtigkeit</span> <span class="row-v text-xl" id="val_auto_room_rh">--</span></div>
+        </div>
+        <p id="auto_room_off" class="hidden note">Nur in der Smart-Automatik</p>
+      </section>
 
       <!-- Status & Sensors -->
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4">
-        <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Aktuelle Sensordaten</h2>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Board-Temperatur:</span> <span class="font-medium text-lg"><span id="val_temperature">--</span> °C</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftdruck:</span> <span class="font-medium text-lg"><span id="val_pressure">--</span> hPa</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Feuchtigkeit (Außen):</span> <span class="font-medium text-lg"><span id="val_outdoor_humidity">--</span> %</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Außenluft:</span> <span class="font-medium text-lg"><span id="val_temp_zuluft">--</span> °C</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" title="Mittelwert des Innen-NTC über jede Zuluft-Phase im WRG-Betrieb; in Klammern die Erwärmung gegenüber der Außenluft">Temperatur Zuluft (nach WRG):</span> <span class="font-medium text-lg whitespace-nowrap shrink-0"><span id="val_temp_zuluft_wrg">--</span> °C<span id="val_wrg_gain" class="text-sm text-accent ml-1"></span></span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur Abluft (innen):</span> <span class="font-medium text-lg"><span id="val_temp_abluft">--</span> °C</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Effizienz WRG:</span> <span class="font-medium text-accent text-lg"><span id="val_heat_recovery_efficiency">--</span> %</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Lüfter RPM:</span> <span class="font-medium text-lg" id="val_fan_rpm">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftrichtung:</span> <span class="font-medium text-accent text-lg" id="val_direction_display">--</span></div>
-        <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Radar Präsenz:</span> <span class="font-medium text-lg" id="val_radar_presence">--</span></div>
-      </div>
+      <section class="sect lg:col-span-4">
+        <h2 class="sect-h">Aktuelle Sensordaten</h2>
+        <div class="row"><span class="row-k">Board-Temperatur</span> <span class="row-v"><span id="val_temperature">--</span> °C</span></div>
+        <div class="row"><span class="row-k">Luftdruck</span> <span class="row-v"><span id="val_pressure">--</span> hPa</span></div>
+        <div class="row"><span class="row-k">Feuchtigkeit (Außen)</span> <span class="row-v"><span id="val_outdoor_humidity">--</span> %</span></div>
+        <div class="row"><span class="row-k">Temperatur Außenluft</span> <span class="row-v"><span id="val_temp_zuluft">--</span> °C</span></div>
+        <div class="row"><span class="row-k" title="Mittelwert des Innen-NTC über jede Zuluft-Phase im WRG-Betrieb; in Klammern die Erwärmung gegenüber der Außenluft">Temperatur Zuluft (nach WRG)</span> <span class="row-v whitespace-nowrap shrink-0"><span id="val_temp_zuluft_wrg">--</span> °C<span id="val_wrg_gain" class="text-sm text-sky ml-1"></span></span></div>
+        <div class="row"><span class="row-k">Temperatur Abluft (innen)</span> <span class="row-v"><span id="val_temp_abluft">--</span> °C</span></div>
+        <div class="row"><span class="row-k">Effizienz WRG</span> <span class="row-v text-sky"><span id="val_heat_recovery_efficiency">--</span> %</span></div>
+        <div class="row"><span class="row-k">Lüfter RPM</span> <span class="row-v" id="val_fan_rpm">--</span></div>
+        <div class="row"><span class="row-k">Luftrichtung</span> <span class="row-v text-sky" id="val_direction_display">--</span></div>
+        <div class="row"><span class="row-k">Radar Präsenz</span> <span class="row-v" id="val_radar_presence">--</span></div>
+      </section>
 
-      <!-- Air quality column: side by side on the two-column layout, where it spans the full width -->
-      <div class="flex flex-col md:flex-row lg:flex-col gap-6 md:col-span-2 lg:col-span-1">
-        <!-- Measured by this device's own sensor board -->
-        <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 md:flex-1 lg:flex-none min-w-0">
-          <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität <span class="block text-sm font-normal text-gray-500">Dieses Gerät</span></h2>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm" id="lbl_room_co2">CO2:</span> <span class="font-medium text-lg"><span id="val_room_co2">--</span> ppm</span></div>
-          <!-- SGP41 board: only shown when /state reports voc_index / nox_index (sensor_SGP41_SHT45.yaml) -->
-          <div id="voc_index_row" class="hidden flex justify-between items-center"><span class="text-gray-400 text-sm">VOC-Index:</span> <span class="font-medium text-lg" id="val_voc_index">--</span></div>
-          <div id="nox_index_row" class="hidden flex justify-between items-center"><span class="text-gray-400 text-sm">NOx-Index:</span> <span class="font-medium text-lg" id="val_nox_index">--</span></div>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Bewertung:</span> <span class="font-medium text-lg" id="val_room_co2_bewertung">--</span></div>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Temperatur:</span> <span class="font-medium text-lg"><span id="val_room_temperature">--</span> °C</span></div>
-          <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg"><span id="val_room_humidity">--</span> %</span></div>
-          <p id="own_air_note" class="hidden text-xs text-gray-500">Keine Messwerte: kein Luftsensor verbaut oder der Sensor startet noch.</p>
-        </div>
+      <!-- Device & system info -->
+      <section class="sect lg:col-span-4">
+        <h2 class="sect-h">Gerät &amp; System</h2>
+        <div class="row"><span class="row-k shrink-0">Gerätename</span> <span class="row-v truncate" id="val_device_name">--</span></div>
+        <div class="row"><span class="row-k">Geräte-ID</span> <span class="row-v"><span id="val_device_id">--</span> <span id="master_badge" class="hidden tag text-accent border-accent/50 font-sans">Master</span></span></div>
+        <div class="row"><span class="row-k">Floor / Raum</span> <span class="row-v"><span id="val_floor_id">--</span> / <span id="val_room_id">--</span></span></div>
+        <div class="row"><span class="row-k">Geräte-Phase (A/B)</span> <span class="row-v" id="val_phase">--</span></div>
+        <p class="note py-2">Name, IDs und Phase ändern: Einstellungen → Gerätekonfiguration</p>
+        <div class="row"><span class="row-k">Firmware</span> <span class="row-v text-sm" id="sys_version">--</span></div>
+        <div class="row"><span class="row-k">Variante</span> <span class="row-v text-sm" id="sys_variant">--</span></div>
+        <div class="row"><span class="row-k">Hostname</span> <span class="row-v text-sm truncate" id="sys_host">--</span></div>
+        <div class="row"><span class="row-k">Laufzeit</span> <span class="row-v text-sm" id="sys_uptime">--</span></div>
+        <div class="row"><span class="row-k">Letzter Neustart</span> <span class="row-v text-sm" id="sys_reset">--</span></div>
+        <div class="row"><span class="row-k">WLAN-Signal</span> <span class="row-v text-sm" id="sys_rssi">--</span></div>
+        <div class="row"><span class="row-k">Freier RAM (min.)</span> <span class="row-v text-sm" id="sys_heap">--</span></div>
+      </section>
 
-        <!-- auto_room_co2 / auto_room_rh: the values evaluate_auto_mode() uses. Display them only, never derive them from peers[] here -->
-        <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col space-y-4 flex-1 min-w-0">
-          <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2 mb-2">Luftqualität <span class="block text-sm font-normal text-gray-500">Von der Automatik genutzt (Raum)</span></h2>
-          <div id="auto_room_vals" class="space-y-4">
-            <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">CO2:</span> <span class="font-medium text-lg" id="val_auto_room_co2">--</span></div>
-            <div class="flex justify-between items-center"><span class="text-gray-400 text-sm">Luftfeuchtigkeit:</span> <span class="font-medium text-lg" id="val_auto_room_rh">--</span></div>
-          </div>
-          <p id="auto_room_off" class="hidden text-sm text-gray-500">Nur in der Smart-Automatik</p>
-        </div>
-      </div>
+      <!-- Maintenance -->
+      <section class="sect lg:col-span-4">
+        <h2 class="sect-h">Wartung</h2>
+        <div class="row"><span class="row-k">Filter Betriebstage</span> <span class="row-v" id="val_filter_operating_days">--</span></div>
+        <div class="row"><span class="row-k">Filterwechsel Alarm</span> <span class="row-v" id="val_filter_change_alarm">--</span></div>
+        <button id="btn_filter_reset" onclick="filterReset()" class="hidden btn w-full mt-4">Filterwechsel bestätigen (Zähler zurücksetzen)</button>
+      </section>
 
       <!-- Controls: rows are rendered from SETTINGS (below) and shown only when /state has the key.
-           Collapsed by default: the status cards above are what the page is opened for -->
-      <details id="settings_card" data-remember="vs_card_settings" class="group/card bg-card rounded-xl p-5 shadow-lg border border-gray-800 space-y-4 md:col-span-2 lg:col-span-3">
-        <summary class="flex justify-between items-center cursor-pointer select-none list-none border-b border-transparent group-open/card:border-gray-700 group-open/card:pb-2 group-open/card:mb-2"><h2 class="text-xl font-semibold text-white">Einstellungen</h2><span class="flex items-center justify-center w-10 h-10 shrink-0 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-accent transition-transform group-open/card:rotate-180" aria-hidden="true"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-        <p class="text-xs text-gray-500 -mt-2"><span class="text-accent/80 font-semibold">RAUMWEIT</span> = gilt für alle Geräte des Raums und wird per ESP-NOW verteilt.</p>
+           Collapsed by default: the status above is what the page is opened for -->
+      <details id="settings_card" data-remember="vs_card_settings" class="group/card sect lg:col-span-12">
+        <summary class="flex justify-between items-center cursor-pointer select-none list-none min-h-[44px]"><h2 class="sect-h !mb-0">Einstellungen</h2><span class="flex items-center justify-center w-10 h-10 shrink-0 border border-rule text-ink-2 hover:border-muted transition-transform group-open/card:rotate-180" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <p class="note mt-2"><span class="text-accent font-medium">Raumweit</span> = gilt für alle Geräte des Raums und wird per ESP-NOW verteilt.</p>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
-          <div class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8 mt-6">
+          <div class="space-y-8 min-w-0">
             <div>
-              <span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Steuerung</span>
+              <span class="grp-h">Steuerung</span>
               <div class="space-y-4">
-                <div class="flex flex-col space-y-2">
-                  <span class="text-sm text-gray-400 font-medium">Lüfter Modus <span class="text-[10px] font-semibold text-accent/80">RAUMWEIT</span></span>
-                  <select id="luefter_modus" data-sel="luefter_modus" onchange="sendSet('luefter_modus', this.value, this)" class="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5 transition-colors cursor-pointer"></select>
+                <div class="flex flex-col gap-2">
+                  <span class="text-sm text-ink-2">Lüfter Modus <span class="text-xs font-medium text-accent">Raumweit</span></span>
+                  <select id="luefter_modus" data-sel="luefter_modus" onchange="sendSet('luefter_modus', this.value, this)" class="field w-full cursor-pointer"></select>
                 </div>
 
-                <div class="flex flex-col space-y-2">
-                  <div class="flex justify-between"><span class="text-sm text-gray-400 font-medium">Lüfter Intensität</span><span id="label_fan_intensity" class="font-bold text-accent">--</span></div>
-                  <input type="range" id="fan_intensity_display" min="1" max="10" step="1" onchange="sendSet('fan_intensity_display', this.value, this)" oninput="document.getElementById('label_fan_intensity').innerText = this.value" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer mt-2">
-                  <span id="override_hint" class="text-xs text-gray-500"></span>
+                <div class="flex flex-col gap-2">
+                  <div class="flex justify-between items-baseline"><span class="text-sm text-ink-2">Lüfter Intensität</span><span id="label_fan_intensity" class="font-mono text-xl text-accent">--</span></div>
+                  <input type="range" id="fan_intensity_display" min="1" max="10" step="1" onchange="sendSet('fan_intensity_display', this.value, this)" oninput="document.getElementById('label_fan_intensity').innerText = this.value" class="w-full h-6 bg-transparent appearance-none cursor-pointer">
+                  <span id="override_hint" class="text-sm text-muted"></span>
                 </div>
-                <div id="grp_control" class="space-y-3"></div>
+                <div id="grp_control" class="space-y-0"></div>
               </div>
             </div>
-            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Klima-Koordination</span><div id="grp_hvac" class="space-y-3"></div></div>
-            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Urlaubsmodus</span><div id="grp_vac" class="space-y-3"></div></div>
+            <div data-group><span class="grp-h">Klima-Koordination</span><div id="grp_hvac"></div></div>
+            <div data-group><span class="grp-h">Urlaubsmodus</span><div id="grp_vac"></div></div>
           </div>
-          <div class="space-y-6">
-            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Smart-Automatik</span><div id="grp_auto" class="space-y-3"></div></div>
-            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">NOx-Stoßlüftung</span><div id="grp_nox" class="space-y-3"></div></div>
-            <div data-group><span class="text-sm text-gray-400 font-medium block mb-2 border-b border-gray-700 pb-1">Netzwerk</span><div id="grp_net" class="space-y-3"></div></div>
+          <div class="space-y-8 min-w-0">
+            <div data-group><span class="grp-h">Smart-Automatik</span><div id="grp_auto"></div></div>
+            <div data-group><span class="grp-h">NOx-Stoßlüftung</span><div id="grp_nox"></div></div>
+            <div data-group><span class="grp-h">Netzwerk</span><div id="grp_net"></div></div>
             <!-- Collapsed by default: only needed when setting up or moving a device -->
             <details data-group class="group/dev">
-              <summary class="flex justify-between items-center cursor-pointer select-none list-none text-sm text-gray-400 hover:text-gray-300 font-medium mb-2 border-b border-gray-700 pb-1">Gerätekonfiguration<span class="flex items-center justify-center w-7 h-7 shrink-0 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-accent transition-transform group-open/dev:rotate-180" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-              <p class="text-xs text-gray-500 mb-3">Geräte mit gleichem Stockwerk und Raum bilden einen Raum; Gerät 1 ist der Master. Im Raum sollten gleich viele Geräte Phase A und Phase B haben (Paar: eines A, eines B).</p>
-              <div id="grp_device" class="space-y-3"></div>
-              <div id="device_actions" class="flex flex-wrap gap-2 mt-3"></div>
+              <summary class="grp-h flex justify-between items-center cursor-pointer select-none list-none min-h-[36px]">Gerätekonfiguration<span class="flex items-center justify-center w-8 h-8 shrink-0 border border-rule text-ink-2 hover:border-muted transition-transform group-open/dev:rotate-180" aria-hidden="true"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+              <p class="note mb-3">Geräte mit gleichem Stockwerk und Raum bilden einen Raum; Gerät 1 ist der Master. Im Raum sollten gleich viele Geräte Phase A und Phase B haben (Paar: eines A, eines B).</p>
+              <div id="grp_device"></div>
+              <div id="device_actions" class="flex flex-wrap gap-2 mt-4"></div>
             </details>
           </div>
         </div>
       </details>
 
       <!-- Verbundene Geräte (ESP-NOW), open by default -->
-      <details open data-remember="vs_card_peers" class="group/card bg-card rounded-xl p-5 shadow-lg border border-gray-800 space-y-4 md:col-span-2 lg:col-span-3 hidden" id="peers_card">
-        <summary class="flex justify-between items-center cursor-pointer select-none list-none border-b border-transparent group-open/card:border-gray-700 group-open/card:pb-2 group-open/card:mb-2"><h2 class="text-xl font-semibold text-white">Verbundene Geräte (ESP-NOW)</h2><span class="flex items-center justify-center w-10 h-10 shrink-0 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-accent transition-transform group-open/card:rotate-180" aria-hidden="true"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-        <div id="peers_container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2"></div>
+      <details open data-remember="vs_card_peers" class="group/card sect lg:col-span-12 hidden" id="peers_card">
+        <summary class="flex justify-between items-center cursor-pointer select-none list-none min-h-[44px]"><h2 class="sect-h !mb-0">Verbundene Geräte (ESP-NOW)</h2><span class="flex items-center justify-center w-10 h-10 shrink-0 border border-rule text-ink-2 hover:border-muted transition-transform group-open/card:rotate-180" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+        <div id="peers_container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></div>
       </details>
 
       <!-- Charts: Live (browser, last 10 min) or the device's 24 h history (GET /history, 5-min means) -->
-      <div class="bg-card rounded-xl p-5 shadow-lg border border-gray-800 flex flex-col md:col-span-2 lg:col-span-3">
-        <div class="flex flex-wrap justify-between items-center gap-3 border-b border-gray-700 pb-2 mb-3">
-          <h2 class="text-xl font-semibold text-white">Graphen &amp; Verlauf</h2>
+      <section class="sect lg:col-span-12">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
+          <h2 class="sect-h !mb-0">Graphen &amp; Verlauf</h2>
           <div class="flex gap-1 text-sm">
-            <button data-range="live" onclick="setRange('live')" class="px-3 py-1 rounded-lg border transition-colors">Live</button>
-            <button data-range="6" onclick="setRange(6)" class="px-3 py-1 rounded-lg border transition-colors">6 h</button>
-            <button data-range="24" onclick="setRange(24)" class="px-3 py-1 rounded-lg border transition-colors">24 h</button>
+            <button data-range="live" onclick="setRange('live')" class="btn btn-sm">Live</button>
+            <button data-range="6" onclick="setRange(6)" class="btn btn-sm">6 h</button>
+            <button data-range="24" onclick="setRange(24)" class="btn btn-sm">24 h</button>
           </div>
         </div>
-        <p id="hist_note" class="text-xs text-gray-500 mb-4"></p>
-        <div class="space-y-6">
-          <div><div class="text-sm text-gray-400 font-medium mb-1">Luftqualität &amp; Regelung</div><div class="relative w-full h-[260px]"><canvas id="chart_control"></canvas></div></div>
-          <div><div class="text-sm text-gray-400 font-medium mb-1">Raumklima</div><div class="relative w-full h-[260px]"><canvas id="chart_climate"></canvas></div></div>
-          <div><div class="text-sm text-gray-400 font-medium mb-1">Wärmerückgewinnung</div><div class="relative w-full h-[260px]"><canvas id="chart_hrv"></canvas></div></div>
+        <p id="hist_note" class="note mb-4"></p>
+        <div class="space-y-8">
+          <div><div class="text-sm text-ink-2 mb-1">Luftqualität &amp; Regelung</div><div class="relative w-full h-[260px]"><canvas id="chart_control"></canvas></div></div>
+          <div><div class="text-sm text-ink-2 mb-1">Raumklima</div><div class="relative w-full h-[260px]"><canvas id="chart_climate"></canvas></div></div>
+          <div><div class="text-sm text-ink-2 mb-1">Wärmerückgewinnung</div><div class="relative w-full h-[260px]"><canvas id="chart_hrv"></canvas></div></div>
         </div>
 
-        <div class="mt-6 border-t border-gray-700 pt-4">
-          <div class="text-sm text-gray-400 font-medium mb-2">Statistik <span id="stats_span" class="text-xs text-gray-500"></span></div>
+        <div class="mt-8">
+          <div class="text-sm text-ink-2 mb-2">Statistik <span id="stats_span" class="text-muted"></span></div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead><tr class="text-xs uppercase tracking-wider text-gray-500"><th class="text-left font-medium py-1 pr-4"></th><th class="text-right font-medium px-2">Min</th><th class="text-right font-medium px-2">Mittel</th><th class="text-right font-medium px-2">Max</th></tr></thead>
+              <thead><tr class="text-sm text-muted border-b border-rule"><th class="text-left font-medium py-2 pr-4"></th><th class="text-right font-medium px-2">Min</th><th class="text-right font-medium px-2">Mittel</th><th class="text-right font-medium px-2">Max</th></tr></thead>
               <tbody id="stats_body"></tbody>
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
     </div>
   </div>
 
   <!-- Setup wizard: opens by itself on a device that was never set up, or via Gerätekonfiguration -->
-  <div id="wiz" class="hidden fixed inset-0 z-40 bg-black/70 overflow-y-auto">
+  <div id="wiz" class="hidden fixed inset-0 z-40 bg-paper-3/85 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
-      <div class="bg-card border border-gray-700 rounded-xl shadow-2xl w-full max-w-xl p-5 sm:p-6">
+      <div class="bg-paper-2 border border-rule w-full max-w-xl p-5 sm:p-6">
         <div class="flex justify-between items-center mb-1">
-          <div id="wiz_progress" class="text-xs uppercase tracking-wider text-gray-500"></div>
-          <button onclick="wizClose()" class="text-gray-500 hover:text-gray-300 text-2xl leading-none px-1" title="Schließen (später fortsetzen)">&times;</button>
+          <div id="wiz_progress" class="text-sm text-muted"></div>
+          <button onclick="wizClose()" class="text-muted hover:text-ink text-2xl leading-none w-10 h-10 transition-colors" title="Schließen (später fortsetzen)" aria-label="Schließen">&times;</button>
         </div>
-        <h2 id="wiz_title" class="text-xl font-semibold text-white mb-4"></h2>
-        <div id="wiz_body" class="space-y-4 text-sm text-gray-300"></div>
+        <h2 id="wiz_title" class="text-xl text-ink mb-4" style="letter-spacing:-0.02em"></h2>
+        <div id="wiz_body" class="space-y-4 text-sm text-ink-2"></div>
         <div id="wiz_err" class="hidden mt-4 text-sm text-danger"></div>
         <div class="flex flex-wrap justify-between items-center gap-2 mt-6">
-          <button id="wiz_back" onclick="wizGo(WIZ.step - 1)" class="text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 transition-colors">Zurück</button>
+          <button id="wiz_back" onclick="wizGo(WIZ.step - 1)" class="btn">Zurück</button>
           <div class="flex flex-wrap gap-2 ml-auto">
-            <button id="wiz_alt" onclick="wizSkip()" class="text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 transition-colors">Bereits eingerichtet</button>
-            <button id="wiz_next" onclick="wizNext()" class="text-sm font-semibold bg-accent hover:bg-accentHover text-black rounded-lg px-4 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"></button>
+            <button id="wiz_alt" onclick="wizSkip()" class="btn">Bereits eingerichtet</button>
+            <button id="wiz_next" onclick="wizNext()" class="btn btn-primary"></button>
           </div>
         </div>
       </div>
@@ -243,6 +231,9 @@
   <div id="toasts" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-end gap-2 pointer-events-none"></div>
 
   <script>
+    // Colour tokens live at :root in tailwind/input.css (RGB channels); JS-drawn colours read them from there
+    const tok = (name, alpha) => 'rgb(' + getComputedStyle(document.documentElement).getPropertyValue('--c-' + name).trim().replace(/\s+/g, ' ') + (alpha === undefined ? '' : ' / ' + alpha) + ')';
+
     function sanitizeHTML(str) {
         if (typeof str !== 'string') return str;
         return str.replace(/[<>&"]/g, function(c) {
@@ -263,19 +254,19 @@
         return (d > 0 ? d + " d " : "") + h + " h " + m + " min";
     }
     function chip(text, tone) {
-        const cls = {accent: 'text-accent bg-accent/10 border-accent/30', warn: 'text-warn bg-warn/10 border-warn/30',
-                     danger: 'text-danger bg-danger/10 border-danger/30', gray: 'text-gray-300 bg-gray-700/40 border-gray-600'}[tone];
-        return `<span class="text-xs font-medium px-2.5 py-1 rounded-full border ${cls}">${sanitizeHTML(text)}</span>`;
+        const cls = {accent: 'text-sky border-sky/40', warn: 'text-warn border-warn/40',
+                     danger: 'text-danger border-danger/40', gray: 'text-ink-2 border-rule'}[tone];
+        return `<span class="chip ${cls}">${sanitizeHTML(text)}</span>`;
     }
     // Air quality block shown on every device card. Values come from the local
     // sensors or, for peers, from the ESP-NOW packet (SCD43 or SGP41 VOC CO2 equivalent).
     function airQualityBlock(co2, rating, temp, hum) {
-        return `<div class="text-[10px] uppercase tracking-wider text-gray-500 mt-3 mb-1">Luftqualität</div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded">
-                <div class="flex justify-between"><span>CO2:</span> <strong class="text-gray-400">${fmtNum(co2, 0, " ppm")}</strong></div>
-                <div class="flex justify-between"><span>Bewertung:</span> <strong class="text-gray-400">${fmtTxt(rating)}</strong></div>
-                <div class="flex justify-between"><span>Temperatur:</span> <strong class="text-gray-400">${fmtNum(temp, 1, " °C")}</strong></div>
-                <div class="flex justify-between"><span>Feuchte:</span> <strong class="text-gray-400">${fmtNum(hum, 1, " %")}</strong></div>
+        return `<div class="text-sm text-muted mt-4 mb-1">Luftqualität</div>
+            <div class="grid grid-cols-2 gap-x-4 text-sm text-muted">
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>CO2</span> <span class="font-mono text-ink">${fmtNum(co2, 0, " ppm")}</span></div>
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>Bewertung</span> <span class="text-ink">${fmtTxt(rating)}</span></div>
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>Temperatur</span> <span class="font-mono text-ink">${fmtNum(temp, 1, " °C")}</span></div>
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>Feuchte</span> <span class="font-mono text-ink">${fmtNum(hum, 1, " %")}</span></div>
             </div>`;
     }
 
@@ -312,7 +303,7 @@
     // Device action buttons, shown when /meta lists the key: [key, label, confirmation]
     const ACTIONS = [['force_discovery', 'ESP-NOW Discovery starten', ''],
                      ['restart', 'Gerät neu starten', 'Gerät jetzt neu starten? Die Lüftung stoppt für einige Sekunden.']];
-    const INPUT_CLS = 'bg-gray-700 border border-gray-600 text-white text-sm rounded focus:ring-accent focus:border-accent block p-1.5';
+    const INPUT_CLS = 'field';
     // Names of the writable keys for the feedback messages
     const LABELS = {luefter_modus: 'Lüfter Modus', fan_intensity_display: 'Lüfter Intensität', filter_reset: 'Filterwechsel',
                     setup_done: 'Einrichtung'};
@@ -320,10 +311,10 @@
       for (const [grp, rows] of Object.entries(SETTINGS)) {
         rows.forEach(([, k, label]) => { LABELS[k] = label; });
         document.getElementById(grp).innerHTML = rows.map(([t, k, label, unit, rw]) => {
-          const badge = rw ? ' <span class="text-[10px] font-semibold text-accent/80">RAUMWEIT</span>' : '';
+          const badge = rw ? ' <span class="text-xs font-medium text-accent">Raumweit</span>' : '';
           let ctl;
           if (t === 'n') {
-            ctl = `<span class="flex items-center gap-2 shrink-0"><input type="number" id="${k}" data-num="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-20 text-center"><span class="text-xs text-gray-500">${unit}</span></span>`;
+            ctl = `<span class="flex items-center gap-2 shrink-0"><input type="number" id="${k}" data-num="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-20 text-center font-mono"><span class="text-xs text-muted">${unit}</span></span>`;
           } else if (t === 't') {
             ctl = `<input type="checkbox" id="${k}" data-sw="${k}" onchange="sendSet('${k}', this.checked ? 1 : 0, this)" class="w-5 h-5 accent-accent cursor-pointer shrink-0">`;
           } else if (t === 'x') {
@@ -331,7 +322,7 @@
           } else {
             ctl = `<select id="${k}" data-sel="${k}" onchange="sendSet('${k}', this.value, this)" class="${INPUT_CLS} w-44 cursor-pointer"></select>`;
           }
-          return `<label data-row="${k}" class="hidden flex justify-between items-center gap-3 bg-gray-800/50 p-3 rounded-lg border border-gray-700/50"><span class="text-sm text-gray-300">${label}${badge}</span>${ctl}</label>`;
+          return `<label data-row="${k}" class="hidden srow"><span class="text-sm text-ink-2">${label}${badge}</span>${ctl}</label>`;
         }).join('');
       }
     }
@@ -423,8 +414,8 @@
       return out;
     }
 
-    const COL = {co2: '#bb86fc', level: '#03dac6', demand: '#f2b84b', t: '#cf6679', rh: '#03a9f4', ah: '#81c784', eff: '#03dac6', sup: '#f2b84b'};
-    const GRID = '#374151', TICK = '#9ca3af';
+    const COL = {co2: tok('sky'), level: tok('accent'), demand: tok('sand'), t: tok('rose'), rh: tok('lilac'), ah: tok('mint'), eff: tok('accent'), sup: tok('sand')};
+    const GRID = tok('rule'), TICK = tok('muted');
     function ds(label, color, yAxisID, extra) {
       return Object.assign({label: label, borderColor: color, backgroundColor: color, data: [], yAxisID: yAxisID,
                             tension: 0.3, borderWidth: 2, pointRadius: 0}, extra || {});
@@ -446,8 +437,8 @@
           responsive: true, maintainAspectRatio: false, animation: false,
           interaction: {mode: 'index', intersect: false},
           plugins: {
-            legend: {labels: {color: '#e5e7eb', usePointStyle: true, boxWidth: 8}, position: 'top'},
-            tooltip: {backgroundColor: 'rgba(30, 30, 30, 0.9)', titleColor: '#fff', bodyColor: '#e5e7eb',
+            legend: {labels: {color: tok('ink-2'), usePointStyle: true, pointStyle: 'rect', boxWidth: 8}, position: 'top'},
+            tooltip: {backgroundColor: tok('paper-2', 0.95), titleColor: tok('ink'), bodyColor: tok('ink-2'), cornerRadius: 0,
                       borderColor: GRID, borderWidth: 1, padding: 10}
           },
           scales: Object.assign({x: {ticks: {color: TICK, maxRotation: 0, autoSkipPadding: 15}, grid: {color: GRID}}}, scales)
@@ -522,8 +513,7 @@
       try { localStorage.setItem('vs_range', String(r)); } catch (e) {}
       document.querySelectorAll('[data-range]').forEach(b => {
         const on = b.dataset.range === String(r);
-        b.className = 'px-3 py-1 rounded-lg border transition-colors ' +
-          (on ? 'bg-accent/20 text-accent border-accent/40' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700');
+        b.className = 'btn btn-sm ' + (on ? 'btn-on' : '');
       });
       renderCharts();
     }
@@ -540,12 +530,12 @@
         const vals = HIST.map(f).filter(v => v !== null && !isNaN(v));
         if (!vals.length) continue;
         const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-        rows.push(`<tr class="border-t border-gray-700/60"><td class="py-1.5 pr-4 text-gray-400">${label}</td>` +
-          [Math.min(...vals), avg, Math.max(...vals)].map(v => `<td class="py-1.5 px-2 text-right tabular-nums">${v.toFixed(digits)}${unit}</td>`).join('') +
+        rows.push(`<tr class="border-b border-rule-2"><td class="py-2 pr-4 text-muted">${label}</td>` +
+          [Math.min(...vals), avg, Math.max(...vals)].map(v => `<td class="py-2 px-2 text-right font-mono text-ink tabular-nums">${v.toFixed(digits)}${unit}</td>`).join('') +
           '</tr>');
       }
       document.getElementById('stats_body').innerHTML = rows.join('') ||
-        '<tr><td colspan="4" class="py-2 text-gray-500">Noch keine Verlaufsdaten</td></tr>';
+        '<tr><td colspan="4" class="py-2 text-muted">Noch keine Verlaufsdaten</td></tr>';
       const span = HIST.length * HIST_INTERVAL_S * 1000;
       document.getElementById('stats_span').textContent = !HIST.length ? ''
         : (span >= 24 * 3600000 ? '(letzte 24 h, aus 5-Minuten-Mitteln)' : `(seit ${fmtSpan(span)}, aus 5-Minuten-Mitteln)`);
@@ -576,12 +566,12 @@
     const REASON_TONE = {co2_notfall: 'danger', schimmelschutz: 'danger', nox: 'danger',
                          fenster: 'warn', urlaub: 'warn', uebersteuerung: 'warn', keine_daten: 'warn',
                          co2: 'accent', feuchte: 'accent'};
-    const TONE_BORDER = {danger: '#cf6679', warn: '#f2b84b', accent: '#03dac6'};
+    const TONE_BORDER = {danger: tok('danger'), warn: tok('warn'), accent: tok('accent')};
     const MODE_SHORT = ["Automatik", "WRG", "Durchlüften", "Stoßlüftung", "Aus"]; // UI mode index 0-4
 
     function renderStatus(data) {
       document.getElementById('val_auto_status').textContent = data.auto_status || '--';
-      document.getElementById('status_card').style.borderLeftColor = TONE_BORDER[REASON_TONE[data.auto_reason]] || '#4b5563';
+      document.getElementById('status_card').style.borderLeftColor = TONE_BORDER[REASON_TONE[data.auto_reason]] || tok('rule');
 
       const chips = [];
       if (data.vacation_active) chips.push(chip('Urlaubsmodus', 'warn'));
@@ -602,7 +592,7 @@
     function deviceTitle(name, id, master) {
       const tag = master ? MASTER_TAG : '';
       const idTxt = `Gerät ${sanitizeHTML(String(id))}`;
-      return name ? `${sanitizeHTML(name)}${tag} <span class="text-xs font-normal text-gray-500">${idTxt}</span>` : idTxt + tag;
+      return name ? `${sanitizeHTML(name)}${tag} <span class="text-xs font-normal text-muted">${idTxt}</span>` : idTxt + tag;
     }
 
     function renderSystem(data) {
@@ -640,20 +630,20 @@
     }
 
     function peerCard(title, local, modeLabel, speed, phaseBadge, rpm, boardT, pid, flags, dotCls, dotTitle, air, link) {
-      return `<div class="${local ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-800/80 border-gray-700 hover:border-gray-600 transition-colors'} rounded-lg p-4 border">
-            <div class="font-bold ${local ? 'text-gray-300' : 'text-white'} mb-3 pb-2 border-b border-gray-600 flex justify-between items-center">
-              <span>${title}</span>
-              <span class="w-2 h-2 rounded-full ${dotCls}" title="${dotTitle}"></span>
+      return `<div class="${local ? 'bg-paper-3 border-muted' : 'bg-paper-2 border-rule hover:border-muted transition-colors'} p-4 border min-w-0">
+            <div class="font-medium ${local ? 'text-ink-2' : 'text-ink'} mb-3 pb-2 border-b border-rule flex justify-between items-center gap-2">
+              <span class="min-w-0">${title}</span>
+              <span class="w-2 h-2 shrink-0 ${dotCls}" title="${dotTitle}"></span>
             </div>
-            <div class="flex justify-between text-sm mb-2">
-                <span class="text-gray-400">Modus: <strong class="text-gray-200">${sanitizeHTML(modeLabel)}</strong></span>
-                <span class="flex items-center gap-2">Stufe: <strong class="text-gray-200">${sanitizeHTML(String(speed))}</strong> ${phaseBadge}</span>
+            <div class="flex justify-between items-center text-sm mb-2">
+                <span class="text-muted">Modus: <span class="text-ink">${sanitizeHTML(modeLabel)}</span></span>
+                <span class="flex items-center gap-2 text-muted">Stufe: <span class="font-mono text-ink">${sanitizeHTML(String(speed))}</span> ${phaseBadge}</span>
             </div>
             ${flags ? `<div class="flex flex-wrap gap-1 mb-1">${flags}</div>` : ''}
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 bg-black/20 p-2 rounded mt-3">
-                <div class="flex justify-between"><span>Lüfter RPM:</span> <strong class="text-gray-400">${rpm}</strong></div>
-                <div class="flex justify-between"><span>Board-temp:</span> <strong class="text-gray-400">${boardT}</strong></div>
-                <div class="flex justify-between"><span>PID:</span> <strong class="text-accent/80">${pid}</strong></div>
+            <div class="grid grid-cols-2 gap-x-4 text-sm text-muted mt-3">
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>Lüfter RPM</span> <span class="font-mono text-ink">${rpm}</span></div>
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>Board-temp</span> <span class="font-mono text-ink">${boardT}</span></div>
+                <div class="flex justify-between gap-2 py-1 border-b border-rule-2"><span>PID</span> <span class="font-mono text-accent">${pid}</span></div>
             </div>
             ${air}
             ${link || ''}
@@ -663,13 +653,13 @@
     function peerLink(host) {
       if (!host) return '';
       const h = sanitizeHTML(host);
-      return `<a href="http://${h}/" class="block text-xs text-accent hover:underline mt-3" title="Öffnet ${h} – erfordert mDNS (.local) im Netzwerk">Dashboard dieses Geräts öffnen ↗</a>`;
+      return `<a href="http://${h}/" class="block text-sm text-accent hover:underline mt-3" title="Öffnet ${h} – erfordert mDNS (.local) im Netzwerk">Dashboard dieses Geräts öffnen</a>`;
     }
-    const BADGE_IN = "<span class='text-accent font-bold px-2 py-0.5 bg-accent/10 rounded-full text-xs'>IN</span>";
-    const BADGE_OUT = "<span class='text-danger font-bold px-2 py-0.5 bg-danger/10 rounded-full text-xs'>OUT</span>";
-    const BADGE_NONE = "<span class='text-gray-400 font-bold px-2 py-0.5 bg-gray-700/50 rounded-full text-xs'>--</span>";
-    const MASTER_TAG = " <span class='text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full'>MASTER</span>";
-    const miniFlag = t => `<span class="text-[10px] uppercase tracking-wide text-gray-300 bg-gray-700/60 px-1.5 py-0.5 rounded">${t}</span>`;
+    const BADGE_IN = "<span class='tag font-mono text-sky border-sky/50'>IN</span>";
+    const BADGE_OUT = "<span class='tag font-mono text-accent border-accent/50'>OUT</span>";
+    const BADGE_NONE = "<span class='tag font-mono text-muted border-rule'>--</span>";
+    const MASTER_TAG = " <span class='tag text-accent border-accent/50'>Master</span>";
+    const miniFlag = t => `<span class="tag text-ink-2 border-rule">${t}</span>`;
     const pct = v => (v !== undefined && v !== null && !isNaN(v)) ? Math.round(v * 100) + "%" : "--";
 
     // Room values of the automatic: delivered by the firmware, only displayed here
@@ -688,9 +678,9 @@
       const localMode = data.luefter_modus === 'Wärmerückgewinnung' ? 'WRG' : (data.luefter_modus || '--');
       const localFlags = [data.radar_presence ? miniFlag('Präsenz') : ''].join('');
 
-      let html = peerCard(`${deviceTitle(deviceName(data.device_name), data.device_id || "--", data.is_master)} <span class="text-xs font-normal text-gray-500">(lokal)</span>`, true,
+      let html = peerCard(`${deviceTitle(deviceName(data.device_name), data.device_id || "--", data.is_master)} <span class="text-xs font-normal text-muted">(lokal)</span>`, true,
           localMode, data.fan_intensity_display || "--", localBadge, fmtNum(data.fan_rpm, 0, ""),
-          fmtNum(data.temperature, 1, " °C"), pct(data.pid_demand), localFlags, 'bg-gray-400', 'Dieses Gerät',
+          fmtNum(data.temperature, 1, " °C"), pct(data.pid_demand), localFlags, 'bg-muted', 'Dieses Gerät',
           airQualityBlock(data.room_co2, data.room_co2_bewertung, data.room_temperature, data.room_humidity));
 
       (data.peers || []).forEach(peer => {
@@ -700,9 +690,9 @@
         const flags = [peer.presence ? miniFlag('Präsenz') : '', peer.window ? miniFlag('Fenster offen') : '',
                        peer.ac ? miniFlag('Klima an') : '', peer.nox ? miniFlag('NOx') : ''].join('');
         const seen = `zuletzt vor ${peer.age_s} s`;
-        html += peerCard(`${deviceTitle(deviceName(peer.name), peer.device_id, peer.master)} <span class="text-xs font-normal text-gray-500">${seen}</span>`, false,
+        html += peerCard(`${deviceTitle(deviceName(peer.name), peer.device_id, peer.master)} <span class="text-xs font-normal text-muted">${seen}</span>`, false,
             mode, peer.speed, badge, fmtNum(peer.rpm, 0, ""), fmtNum(peer.board_t, 1, " °C"), pct(peer.pid_demand), flags,
-            peer.fresh ? 'bg-accent' : 'bg-warn', peer.fresh ? 'Aktuell' : 'Veraltet: ' + seen,
+            peer.fresh ? 'bg-sky' : 'bg-warn', peer.fresh ? 'Aktuell' : 'Veraltet: ' + seen,
             airQualityBlock(peer.co2, peer.co2_rating, peer.room_t, peer.humidity), peerLink(peer.host));
       });
       document.getElementById('peers_container').innerHTML = html;
@@ -768,8 +758,8 @@
       document.getElementById('conn_banner').classList.toggle('hidden', !stale || !lastDataMs);
       document.getElementById('conn_age').textContent = lastDataMs ? fmtAge(age) : '--';
       document.getElementById('main_grid').classList.toggle('opacity-50', stale && !!lastDataMs);
-      document.getElementById('conn_dot').className = 'inline-block w-2 h-2 rounded-full mr-1.5 ' +
-        (stale ? 'bg-danger' : (streaming ? 'bg-accent' : 'bg-warn'));
+      document.getElementById('conn_dot').className = 'inline-block w-2 h-2 ' +
+        (stale ? 'bg-danger' : (streaming ? 'bg-sky' : 'bg-warn'));
       document.getElementById('conn_label').textContent = stale
         ? (lastDataMs ? 'Keine Verbindung' : 'Verbinde …')
         : (streaming ? 'Live-Verbindung (Stream)' : 'Verbunden (Abfrage alle 2 s)');
@@ -829,11 +819,11 @@
         // Binary sensors
         const alarmEl = document.getElementById("val_filter_change_alarm");
         alarmEl.innerText = data.filter_change_alarm ? "ALARM" : "OK";
-        alarmEl.className = data.filter_change_alarm ? "font-bold text-danger text-lg" : "font-medium text-accent text-lg";
+        alarmEl.className = data.filter_change_alarm ? "row-v !text-danger font-medium" : "row-v !text-sky";
 
         const radarEl = document.getElementById("val_radar_presence");
         radarEl.innerText = data.radar_presence ? "Ja" : "Nein";
-        radarEl.className = data.radar_presence ? "font-medium text-accent text-lg" : "font-medium text-gray-400 text-lg";
+        radarEl.className = data.radar_presence ? "row-v !text-sky" : "row-v !text-muted";
 
         // Mode select and intensity slider (not while the user edits them)
         const modeEl = document.getElementById("luefter_modus");
@@ -849,7 +839,7 @@
           overrideHint.innerText = (om > 0)
             ? `Automatik übersteuert – noch ${om} min (Moduswechsel beendet)`
             : 'Stufe ändern übersteuert die Automatik (raumweit, zeitlich begrenzt)';
-          overrideHint.className = (om > 0) ? 'text-xs text-accent' : 'text-xs text-gray-500';
+          overrideHint.className = (om > 0) ? 'text-sm text-accent' : 'text-sm text-muted';
         } else {
           overrideHint.innerText = '';
         }
@@ -871,9 +861,9 @@
 
     // ---------- Feedback for changes ----------
     function toast(msg, tone) {
-      const cls = {ok: 'border-accent/50 text-accent', warn: 'border-warn/50 text-warn', err: 'border-danger/50 text-danger'}[tone];
+      const cls = {ok: 'border-sky/50 text-sky', warn: 'border-warn/50 text-warn', err: 'border-danger/50 text-danger'}[tone];
       const el = document.createElement('div');
-      el.className = `pointer-events-auto bg-card/95 border ${cls} rounded-lg px-4 py-2 text-sm shadow-lg max-w-sm`;
+      el.className = `pointer-events-auto bg-paper-2 border ${cls} px-4 py-2 text-sm max-w-sm`;
       el.textContent = msg;
       document.getElementById('toasts').appendChild(el);
       setTimeout(() => el.remove(), tone === 'ok' ? 2000 : 5000);
@@ -881,7 +871,7 @@
     // Briefly outlines the control: accent = applied, danger = rejected
     function flash(el, ok) {
       if (!el) return;
-      el.style.outline = '2px solid ' + (ok ? '#03dac6' : '#cf6679');
+      el.style.outline = '2px solid ' + (ok ? tok('sky') : tok('danger'));
       setTimeout(() => { el.style.outline = ''; }, ok ? 800 : 2500);
     }
     const SET_ERRORS = {400: 'ungültiger Wert', 403: 'abgelehnt (Sicherheitsprüfung)', 405: 'abgelehnt (Sicherheitsprüfung)',
@@ -956,9 +946,9 @@
 
     function renderActions() {
       const keys = (META && META.buttons) || [];
-      const btn = 'text-sm font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 transition-colors';
+      const btn = 'btn';
       document.getElementById('device_actions').innerHTML = (wizAvailable()
-        ? `<button onclick="wizOpen()" class="${btn} text-accent border-accent/40">Einrichtungs-Assistent</button>` : '') +
+        ? `<button onclick="wizOpen()" class="${btn} btn-on">Einrichtungs-Assistent</button>` : '') +
         ACTIONS.filter(([k]) => keys.includes(k)).map(([k, label]) => {
           LABELS[k] = label;
           return `<button id="btn_${k}" onclick="pressAction('${k}')" class="${btn}">${label}</button>`;
@@ -996,7 +986,7 @@
     const WIZ_GROUPS = [
       {step: 3, title: 'Betriebsmodus', rows: [
         ['s', 'luefter_modus', 'Betriebsmodus', '', 1,
-         '<b class="text-gray-300">Smart-Automatik</b> (empfohlen) regelt die Stufe nach CO2 und Feuchte – mit dem eigenen Sensor oder dem eines anderen Geräts im Raum. Ohne Klimasensor im Raum: <b class="text-gray-300">Wärmerückgewinnung</b> auf fester Stufe.']]},
+         '<b class="text-ink-2">Smart-Automatik</b> (empfohlen) regelt die Stufe nach CO2 und Feuchte – mit dem eigenen Sensor oder dem eines anderen Geräts im Raum. Ohne Klimasensor im Raum: <b class="text-ink-2">Wärmerückgewinnung</b> auf fester Stufe.']]},
       {step: 3, title: 'Lüfterstufen der Smart-Automatik', rows: [
         ['n', 'automatik_min_luefterstufe', 'Min. Stufe', '', 1,
          'Schwächer lüftet die Automatik nie. Stufe 1–2 hält den Mindestluftwechsel zum Feuchteschutz (DIN 1946-6) auch in leeren Räumen.'],
@@ -1028,8 +1018,8 @@
     ];
     // Markers: 1 = RAUMWEIT (comes from the Master), 0 = PRÜFEN (this device only)
     const WIZ_BADGE = [
-      '<span class="text-[10px] font-semibold text-orange-400 bg-orange-400/10 border border-orange-400/40 rounded px-1.5 py-0.5 whitespace-nowrap" title="Gilt nur für dieses Gerät – bitte prüfen">PRÜFEN</span>',
-      '<span class="text-[10px] font-semibold text-accent/80 bg-accent/10 border border-accent/30 rounded px-1.5 py-0.5 whitespace-nowrap" title="Gilt für alle Geräte des Raums">RAUMWEIT</span>'];
+      '<span class="tag text-warn border-warn/50" title="Gilt nur für dieses Gerät – bitte prüfen">Prüfen</span>',
+      '<span class="tag text-accent border-accent/50" title="Gilt für alle Geräte des Raums">Raumweit</span>'];
     const wizEl = id => document.getElementById(id);
     const phaseOf = opt => String(opt || '').includes('Phase B') ? 'B' : 'A';
     const wizPeers = () => (STATE && STATE.peers) || [];
@@ -1079,12 +1069,12 @@
 
     // Markup helpers
     function wizRow(label, ctl, help, rw) {
-      return `<div class="bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-          <div class="flex justify-between items-center gap-3"><span class="text-gray-200">${label}${rw === undefined ? '' : ' ' + WIZ_BADGE[rw]}</span>${ctl}</div>
-          ${help ? `<p class="text-xs text-gray-500 mt-2">${help}</p>` : ''}</div>`;
+      return `<div class="well p-3">
+          <div class="flex justify-between items-center gap-3"><span class="text-ink">${label}${rw === undefined ? '' : ' ' + WIZ_BADGE[rw]}</span>${ctl}</div>
+          ${help ? `<p class="text-sm text-muted mt-2">${help}</p>` : ''}</div>`;
     }
     const wizGroup = (title, html) => `<section class="space-y-2">
-        <h3 class="text-sm text-gray-300 font-semibold border-b border-gray-700 pb-1">${title}</h3>${html}</section>`;
+        <h3 class="grp-h !mb-0">${title}</h3>${html}</section>`;
     function wizLimits(key, minFloor) {
       const [min, max, step] = (META.numbers || {})[key] || [0, 9999, 1];
       return [Math.max(min, minFloor === undefined ? min : minFloor), max, step];
@@ -1093,7 +1083,7 @@
       const [min, max, step] = wizLimits(key, minFloor);
       const v = (value === null || value === undefined) ? '' : Number(value);
       return `<span class="flex items-center gap-2 shrink-0"><input type="number" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}"
-          oninput="WIZ.touched[this.id] = 1; wizUpdate()" class="${INPUT_CLS} w-24 text-center">${unit ? `<span class="text-xs text-gray-500 w-8">${unit}</span>` : ''}</span>`;
+          oninput="WIZ.touched[this.id] = 1; wizUpdate()" class="${INPUT_CLS} w-24 text-center">${unit ? `<span class="text-xs text-muted w-8">${unit}</span>` : ''}</span>`;
     }
     function wizSelect(id, options, value) {
       return `<select id="${id}" onchange="WIZ.touched[this.id] = 1; wizUpdate()" class="${INPUT_CLS} w-56 cursor-pointer">` +
@@ -1112,9 +1102,9 @@
       if (t === 't') return wizToggle('wiz_' + k, d[k]);
       return wizSelect('wiz_' + k, (META.selects || {})[k] || [], d[k]);
     }
-    const wizHint = (html, tone) => `<div class="text-xs rounded-lg px-3 py-2 border ${{
-        accent: 'text-accent bg-accent/10 border-accent/30', warn: 'text-warn bg-warn/10 border-warn/30',
-        danger: 'text-danger bg-danger/10 border-danger/30', gray: 'text-gray-400 bg-black/20 border-gray-700'}[tone || 'gray']}">${html}</div>`;
+    const wizHint = (html, tone) => `<div class="text-sm px-3 py-2 border ${{
+        accent: 'text-accent bg-accent/10 border-accent/40', warn: 'text-warn bg-warn/10 border-warn/40',
+        danger: 'text-danger bg-danger/10 border-danger/40', gray: 'text-muted bg-paper-3 border-rule'}[tone || 'gray']}">${html}</div>`;
     // Reads a number input; null (with a message) when empty or out of range
     function wizNum(id, key, minFloor) {
       const el = wizEl(id), v = Number(el.value);
@@ -1153,10 +1143,10 @@
         const extras = wizGroups(4, d).map(g => g.brief || g.title).join(', ');
         return `<p>Dieser Assistent richtet das Gerät in vier Schritten ein:</p>
           <ol class="list-decimal ml-5 space-y-1">
-            <li><b class="text-gray-100">Raum</b> – zu welchem Raum das Gerät gehört (Stockwerk und Raum).</li>
-            <li><b class="text-gray-100">Gerät</b> – Geräte-ID, Phase und Name; dabei wird geprüft, ob die ID im Raum schon vergeben ist.</li>
-            <li><b class="text-gray-100">Betrieb &amp; Smart-Automatik</b> – Betriebsmodus, Lüfterstufen und Grenzwerte der Automatik.</li>
-            <li><b class="text-gray-100">Weitere Funktionen</b> – ${extras}.</li>
+            <li><b class="text-ink">Raum</b> – zu welchem Raum das Gerät gehört (Stockwerk und Raum).</li>
+            <li><b class="text-ink">Gerät</b> – Geräte-ID, Phase und Name; dabei wird geprüft, ob die ID im Raum schon vergeben ist.</li>
+            <li><b class="text-ink">Betrieb &amp; Smart-Automatik</b> – Betriebsmodus, Lüfterstufen und Grenzwerte der Automatik.</li>
+            <li><b class="text-ink">Weitere Funktionen</b> – ${extras}.</li>
           </ol>
           <p>Jeder Wert ist gekennzeichnet und erklärt:</p>
           <ul class="space-y-1.5 text-xs">
@@ -1165,25 +1155,25 @@
           </ul>
           ${wizHint(`Aktuell: Stockwerk ${fmtTxt(String(Number(d.config_floor_id)))}, Raum ${fmtTxt(String(Number(d.config_room_id)))},
             Gerät ${fmtTxt(String(Number(d.config_device_id)))}, Phase ${fmtTxt(d.phase)}${factory ? ' (Werkseinstellung)' : ''}.`)}
-          <p class="text-xs text-gray-500">Alle Werte lassen sich später unter <i>Einstellungen</i> ändern; den Assistenten erreichst du jederzeit
+          <p class="text-xs text-muted">Alle Werte lassen sich später unter <i>Einstellungen</i> ändern; den Assistenten erreichst du jederzeit
             über <i>Gerätekonfiguration → Einrichtungs-Assistent</i>. „Bereits eingerichtet“ blendet ihn auf diesem Gerät aus.</p>`;
       }
       if (step === 1) {
-        return `<p>Geräte mit <b class="text-gray-100">gleicher Stockwerk- und Raum-ID</b> bilden einen Raum: Sie laufen im selben Modus und Takt
+        return `<p>Geräte mit <b class="text-ink">gleicher Stockwerk- und Raum-ID</b> bilden einen Raum: Sie laufen im selben Modus und Takt
             und teilen ihre Sensorwerte per ESP-NOW – direkt von Gerät zu Gerät, ohne WLAN-Router. Geräte anderer Räume beeinflussen sich nicht.</p>
           ${wizRow('Stockwerk-ID', wizInput('wiz_floor', 'config_floor_id', d.config_floor_id, '', 1), '', 0)}
           ${wizRow('Raum-ID', wizInput('wiz_room', 'config_room_id', d.config_room_id, '', 1), '', 0)}
-          <p class="text-xs text-gray-500">Die Nummern sind frei wählbar, müssen aber auf allen Geräten eines Raums gleich sein und sich von
+          <p class="text-xs text-muted">Die Nummern sind frei wählbar, müssen aber auf allen Geräten eines Raums gleich sein und sich von
             anderen Räumen unterscheiden – z. B. Stockwerk 1 = Erdgeschoss, Raum 2 = Wohnzimmer. 0 ist hier nicht möglich: Mit Stockwerk
             oder Raum 0 sendet das Gerät keine Suchrufe nach anderen Geräten. Nach „Weiter“ sucht das Gerät die übrigen Geräte dieses Raums.</p>`;
       }
       if (step === 2) {
         const phases = (META.selects || {}).config_phase || [];
-        return `<div class="flex justify-between items-center gap-3"><span id="wiz_scan" class="text-gray-400"></span>
-            <button id="wiz_rescan" onclick="wizScan()" class="text-xs font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 transition-colors shrink-0">Erneut suchen</button></div>
+        return `<div class="flex justify-between items-center gap-3"><span id="wiz_scan" class="text-muted"></span>
+            <button id="wiz_rescan" onclick="wizScan()" class="btn btn-sm text-xs shrink-0">Erneut suchen</button></div>
           <div id="wiz_peers"></div>
           ${wizRow('Geräte-ID', wizInput('wiz_dev', 'config_device_id', d.config_device_id),
-              'Jedes Gerät im Raum braucht eine eigene ID. <b class="text-gray-300">Gerät 1 ist der Master</b>: Es gibt Takt, Betriebsmodus und die raumweiten Einstellungen vor – jeder Raum braucht genau einen.', 0)}
+              'Jedes Gerät im Raum braucht eine eigene ID. <b class="text-ink-2">Gerät 1 ist der Master</b>: Es gibt Takt, Betriebsmodus und die raumweiten Einstellungen vor – jeder Raum braucht genau einen.', 0)}
           <div id="wiz_dev_msg" class="space-y-2"></div>
           ${wizRow('Phase', wizSelect('wiz_phase', phases, d.config_phase),
               'Bei der Wärmerückgewinnung wechselt jedes Gerät etwa jede Minute die Richtung: Phase A beginnt mit Zuluft (hinein), Phase B mit Abluft (hinaus); beim Durchlüften bläst A dauerhaft hinein und B hinaus. Damit gleich viel Luft hinein- wie hinausströmt, sollten im Raum gleich viele Geräte Phase A und Phase B haben – bei einem Paar also eines A und eines B.', 0)}
@@ -1193,18 +1183,18 @@
       }
       if (step === 3 || step === 4) {
         const groups = wizGroups(step, d);
-        const html = groups.map(g => wizGroup(g.title, (g.intro ? `<p class="text-xs text-gray-500">${g.intro}</p>` : '') +
+        const html = groups.map(g => wizGroup(g.title, (g.intro ? `<p class="text-xs text-muted">${g.intro}</p>` : '') +
           g.rows.map(r => {
             const df = wizDefault(r);
             return wizRow(r[2], wizControl(r, d), r[5] + (df !== undefined
-              ? ` <span class="text-gray-400">Standard: ${sanitizeHTML(String(df))}${r[0] === 'n' && r[3] ? ' ' + r[3] : ''}.</span>` : ''), r[4]);
+              ? ` <span class="text-muted">Standard: ${sanitizeHTML(String(df))}${r[0] === 'n' && r[3] ? ' ' + r[3] : ''}.</span>` : ''), r[4]);
           }).join(''))).join('');
         const defaults = step === 3 || groups.some(g => g.rows.some(r => wizDefault(r) !== undefined));
         return `<div id="wiz_role"></div>${html}
-          ${defaults ? '<button onclick="wizDefaults()" class="text-xs font-medium bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 transition-colors">Standardwerte eintragen</button>' : ''}`;
+          ${defaults ? '<button onclick="wizDefaults()" class="btn btn-sm text-xs">Standardwerte eintragen</button>' : ''}`;
       }
       return `<div id="wiz_summary" class="space-y-4"></div>
-        <p class="text-xs text-gray-500">Alle Werte lassen sich unter <i>Einstellungen</i> ändern, der Assistent ist unter
+        <p class="text-xs text-muted">Alle Werte lassen sich unter <i>Einstellungen</i> ändern, der Assistent ist unter
           <i>Gerätekonfiguration</i> erneut erreichbar. Weitere Geräte dieses Raums richtest du über ihr eigenes Dashboard ein.</p>`;
     }
 
@@ -1232,13 +1222,13 @@
         const scanning = left > 0;
         const where = WIZ.target || {floor: Number(d.config_floor_id), room: Number(d.config_room_id)};
         wizEl('wiz_scan').innerHTML = scanning
-          ? `<span class="inline-block w-2 h-2 rounded-full bg-warn mr-2 animate-pulse"></span>Suche Geräte in Stockwerk ${where.floor}, Raum ${where.room} … ${left} s`
+          ? `<span class="inline-block w-2 h-2 bg-warn mr-2"></span>Suche Geräte in Stockwerk ${where.floor}, Raum ${where.room} … ${left} s`
           : `${peers.length ? peers.length + (peers.length === 1 ? ' weiteres Gerät' : ' weitere Geräte') : 'Keine weiteren Geräte'} in Stockwerk ${where.floor}, Raum ${where.room} gefunden.`;
         wizEl('wiz_rescan').disabled = scanning;
-        wizEl('wiz_peers').innerHTML = peers.length ? '<ul class="divide-y divide-gray-700/60 bg-black/20 rounded-lg">' +
+        wizEl('wiz_peers').innerHTML = peers.length ? '<ul class="divide-y divide-rule-2 bg-paper-3 border border-rule">' +
           peers.slice().sort((a, b) => a.device_id - b.device_id).map(p =>
             `<li class="flex justify-between gap-3 px-3 py-1.5"><span>${deviceTitle(deviceName(p.name), p.device_id, p.master)}</span>
-             <span class="text-gray-400">Phase ${sanitizeHTML(p.phase_cfg || '?')} · zuletzt vor ${sanitizeHTML(String(p.age_s))} s</span></li>`).join('') + '</ul>' : '';
+             <span class="text-muted">Phase ${sanitizeHTML(p.phase_cfg || '?')}, zuletzt vor ${sanitizeHTML(String(p.age_s))} s</span></li>`).join('') + '</ul>' : '';
         if (!scanning && !WIZ.suggested) {
           WIZ.suggested = true;  // once per scan, never over the user's choice
           if (!WIZ.touched.wiz_dev) wizEl('wiz_dev').value = wizSuggestId();
@@ -1283,8 +1273,8 @@
           else el.value = t === 'n' ? Number(d[k]) : d[k];
         }
       } else if (WIZ.step === WIZ_LAST) {
-        const line = (label, v, rw) => `<div class="flex justify-between items-center gap-3 py-1"><span class="text-gray-400">${label}${rw === undefined ? '' : ' ' + WIZ_BADGE[rw]}</span><span class="text-gray-100 text-right">${v}</span></div>`;
-        const block = (title, lines) => wizGroup(title, `<div class="bg-black/20 rounded-lg px-3 py-1 divide-y divide-gray-700/60">${lines}</div>`);
+        const line = (label, v, rw) => `<div class="flex justify-between items-center gap-3 py-1"><span class="text-muted">${label}${rw === undefined ? '' : ' ' + WIZ_BADGE[rw]}</span><span class="text-ink text-right">${v}</span></div>`;
+        const block = (title, lines) => wizGroup(title, `<div class="bg-paper-3 border border-rule px-3 py-1 divide-y divide-rule-2">${lines}</div>`);
         const value = ([t, k, , unit]) => (d[k] === null || d[k] === undefined) ? '--'
           : t === 't' ? (d[k] ? 'an' : 'aus') : t === 'n' ? `${Number(d[k])}${unit ? ' ' + unit : ''}` : fmtTxt(d[k]);
         wizEl('wiz_summary').innerHTML =
