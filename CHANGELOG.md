@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-11-16
+
+### Changed
+
+- **Web dashboard:** the Rim redesign from 1.0.5 is reverted; the dashboard looks as in 1.0.4 again (`dashboard.html`,
+  `dashboard.css`, labels `RAUMWEIT` / `PRÜFEN` / `MASTER` and the dashboard documentation are back as before).
+
+No firmware logic or ESP-NOW protocol change — devices can be updated individually.
+
 ## [1.0.5] - 2026-11-16
 
 ### Changed

@@ -23,7 +23,7 @@ The **VentoSync Local Web Dashboard** is a standalone, browser-based management 
 * **Feedback for changes** *(0.10.49)*: a change is confirmed only when the device reports the new value (**"Gespeichert: …"**); a value the device did not take within 5 s shows **"Nicht übernommen: … (aktuell …)"**, a rejected request the reason (invalid value, security check, device busy, no connection), a number outside the device's range "Wert außerhalb min–max". Messages appear bottom right; the control is outlined teal / red as before.
 * **Device name** *(0.10.60)*: once a `Gerätename` is set (e.g. "VentoSync - DG Büro"), it replaces the title "WRG Lüftung Dashboard" and the browser tab title, and it heads this device's card and — sent over ESP-NOW (protocol v16) — its card on the dashboards of the other devices of the room (with the device ID beside it); the setup wizard's device list shows it as well. Without a name everything shows "Gerät <ID>" as before. Set it in *Gerätekonfiguration* (or in the wizard's step 2) or in Home Assistant (`text.geratename`); up to 31 bytes (umlauts count twice). The device cannot read the name you gave it in Home Assistant's device registry — enter it once here or in HA.
 * **Device & system info**: device name, Device ID (with a **MASTER** badge on device 1), floor / room, phase, firmware version and variant, mDNS host name (*0.10.49*), uptime, cause of the last restart (power-on, software restart, crash, watchdog, brown-out …), Wi-Fi signal, free RAM (and the minimum since boot). Name, IDs and phase are set in the settings group *Gerätekonfiguration* (*0.10.55*, name *0.10.60*).
-* **Settings** — every setting the device has, grouped like in HA; a **Raumweit** tag marks room-wide settings (shared over ESP-NOW). Since *1.0.0* the card is **collapsed by default** — click the heading *Einstellungen* or the round arrow button on the right (larger since *1.0.1*) to open it; the browser remembers the state per device (local storage):
+* **Settings** — every setting the device has, grouped like in HA; a **RAUMWEIT** tag marks room-wide settings (shared over ESP-NOW). Since *1.0.0* the card is **collapsed by default** — click the heading *Einstellungen* or the round arrow button on the right (larger since *1.0.1*) to open it; the browser remembers the state per device (local storage):
   * *Steuerung*: mode, fan level, Durchlüften duration (0 = continuous), child lock, Bluetooth proxy (only `ventosync_nosensor_btproxy`).
   * *Smart-Automatik*: min / max level, CO2 and humidity thresholds, presence offset, override duration, summer cooling threshold.
   * *Klima-Koordination*: switch, CO2 threshold, max level, CO2 emergency limit.
@@ -75,8 +75,8 @@ On a device that was never set up, the dashboard opens a **setup wizard** by its
 
 Every value has an explanation, its factory default where one exists (*Standardwerte eintragen* fills in the defaults of the current step; the mode becomes the recommended Smart-Automatik) and a tag *(0.10.58)*:
 
-* **Raumweit** — applies to all devices of the room and comes from the Master (device 1). On a slave the values shown are the room's (taken over from the Master's status response right after the device ID was set); changing them is only needed to adjust the Master's values, and a change applies to the whole room, like everywhere else.
-* **Prüfen** (orange) — applies to this device only and should be checked: floor / room, device ID, phase and the child lock.
+* **RAUMWEIT** — applies to all devices of the room and comes from the Master (device 1). On a slave the values shown are the room's (taken over from the Master's status response right after the device ID was set); changing them is only needed to adjust the Master's values, and a change applies to the whole room, like everywhere else.
+* **PRÜFEN** (orange) — applies to this device only and should be checked: floor / room, device ID, phase and the child lock.
 
 Only values that differ from the device's current ones are sent, through the same `/set` path as the settings (with the usual feedback messages).
 
@@ -105,7 +105,7 @@ Only values that differ from the device's current ones are sent, through the sam
   <img src="../screenshots/wrg-dashboard2.png" alt="WRG Dashboard Connected Devices & Live Sensor Data" width="48%" />
 </p>
 
-*Left: Automatik-Status with room hints, device & system, sensor data, air quality, maintenance and all settings (Raumweit tagged, Gerätekonfiguration collapsed).*  
+*Left: Automatik-Status with room hints, device & system, sensor data, air quality, maintenance and all settings (RAUMWEIT tagged, Gerätekonfiguration collapsed).*  
 *Right: devices in the room (ESP-NOW, with a link to their dashboard), 24 h history and statistics.*
 
 ---
