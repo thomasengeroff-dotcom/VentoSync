@@ -370,7 +370,7 @@ Complex YAML lambda logic is extracted into focused header files:
   device page's "Visit" link (`configuration_url`). The page is `dashboard.html` — gzipped into flash by `__init__.py` at build time, edit it directly.
   Its Tailwind styles are **not** loaded from a CDN: `__init__.py` inlines the committed, generated `dashboard.css` in place
   of `<link rel="stylesheet" href="dashboard.css">`, so the page works offline (fallback hotspot). After changing classes
-  run `components/wrg_dashboard/tailwind/build_css.sh` and commit `dashboard.css` (colours / fonts are tokens at `:root` in `tailwind/input.css`, the Hallmark stamp is `tailwind/stamp.css`) (`lint.yaml` runs it with `--check`);
+  run `components/wrg_dashboard/tailwind/build_css.sh` and commit `dashboard.css` (`lint.yaml` runs it with `--check`);
   never build class names from fragments in JavaScript. Only Chart.js still comes from a CDN (charts degrade to a note).
   The server runs in its own task: read entities / `peers` only in `loop()` (it serializes `/state` and `/meta`),
   never in the request handler; the history ring buffer (`history.h`) is shared under the same mutex. `/stream`
@@ -383,7 +383,7 @@ Complex YAML lambda logic is extracted into focused header files:
   room change clearing `VentilationController::peers` and sending a status request (`invalidate_peer_cache_and_rediscover()`)
   and on the Master's `MSG_STATUS_RESPONSE` carrying the room-wide settings (`handle_config_sync()`, like its heartbeat),
   so a new slave shows — and never overwrites — the room's values. Steps 3/4 are data-driven (`WIZ_GROUPS`: groups, rows
-  with a room-wide flag → **Raumweit** / orange **Prüfen** badge, optional `when`, e.g. NOx only with `nox_index`); the
+  with a room-wide flag → **RAUMWEIT** / orange **PRÜFEN** badge, optional `when`, e.g. NOx only with `nox_index`); the
   summary reuses the groups. Keep a row's room-wide flag in sync with `SETTINGS`.
 
 ### Type Safety & Best Practices
